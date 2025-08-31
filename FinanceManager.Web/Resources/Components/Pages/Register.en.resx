@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="PageTitle"><value>Registration</value></data>
+  <data name="Heading"><value>Registration</value></data>
+  <data name="Label_Username"><value>Username</value></data>
+  <data name="Label_Password"><value>Password</value></data>
+  <data name="Button_Register"><value>Register</value></data>
+  <data name="Button_Wait"><value>Please wait...</value></data>
+  <data name="Error_MissingCredentials"><value>Username and password required.</value></data>
+  <data name="Error_RegisterFailed"><value>Registration failed.</value></data>
+  <data name="Error_Unexpected"><value>Unexpected error: {0}</value></data>
+  <data name="DebugModel_Title"><value>Debug Model:</value></data>
+  <data name="DebugModel_Username"><value>Username</value></data>
+  <data name="DebugModel_PasswordLength"><value>Password length</value></data>
+  <data name="Debug_On"><value>Debug on</value></data>
+  <data name="Debug_Off"><value>Debug off</value></data>
+</root>

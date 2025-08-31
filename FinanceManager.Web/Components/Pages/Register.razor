@@ -7,9 +7,10 @@
 @inject NavigationManager Nav
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Register> L
 
-<PageTitle>Registrierung</PageTitle>
-<h1>Registrierung</h1>
+<PageTitle>@L["PageTitle"]</PageTitle>
+<h1>@L["Heading"]</h1>
 
 @if (!string.IsNullOrEmpty(_error))
 {
@@ -19,9 +20,9 @@
 @if (_debugVisible)
 {
     <div style="font-size:.7rem;opacity:.6;line-height:1.1em;">
-        <strong>Debug Model:</strong><br />
-        Username: @_model.Username<br />
-        PasswordLength: @_model.Password?.Length
+        <strong>@L["DebugModel_Title"]</strong><br />
+        @L["DebugModel_Username"]: @_model.Username<br />
+        @L["DebugModel_PasswordLength"]: @_model.Password?.Length
     </div>
 }
 
@@ -31,7 +32,7 @@
     <DataAnnotationsValidator />
     <ValidationSummary />
     <div>
-        <label for="username">Benutzername</label>
+        <label for="username">@L["Label_Username"]</label>
         <InputText id="username"
                    @bind-Value="_model.Username"
                    @bind-Value:after="OnUsernameChanged"
@@ -39,7 +40,7 @@
         <ValidationMessage For="() => _model.Username" />
     </div>
     <div>
-        <label for="password">Passwort</label>
+        <label for="password">@L["Label_Password"]</label>
         <InputText id="password"
                    @bind-Value="_model.Password"
                    @bind-Value:after="OnPasswordChanged"
@@ -49,9 +50,9 @@
     </div>
     <div style="margin-top:1.25rem;display:flex;gap:.5rem;align-items:center;">
         <button type="submit" disabled="@_busy">
-            @(_busy ? "Bitte warten..." : "Registrieren")
+            @(_busy ? L["Button_Wait"] : L["Button_Register"]) 
         </button>
-        <button type="button" @onclick="ToggleDebug" style="background:#444;">Debug @( _debugVisible ? "aus" : "an")</button>
+        <button type="button" @onclick="ToggleDebug" style="background:#444;">@(_debugVisible ? L["Debug_Off"] : L["Debug_On"])</button>
     </div>
 </EditForm>
 
@@ -77,7 +78,7 @@
 
         if (string.IsNullOrWhiteSpace(_model.Username) || string.IsNullOrWhiteSpace(_model.Password))
         {
-            _error = "Benutzername und Passwort erforderlich.";
+            _error = L["Error_MissingCredentials"];
             _busy = false;
             return;
         }
@@ -90,7 +91,7 @@
             {
                 var problem = await resp.Content.ReadFromJsonAsync<Dictionary<string, string>>();
                 problem?.TryGetValue("error", out _error);
-                _error ??= "Registrierung fehlgeschlagen.";
+                _error ??= L["Error_RegisterFailed"];
             }
             else
             {
@@ -99,7 +100,7 @@
         }
         catch (Exception ex)
         {
-            _error = "Unerwarteter Fehler: " + ex.Message;
+            _error = string.Format(L["Error_Unexpected"], ex.Message);
         }
 
         _busy = false;
@@ -126,7 +127,7 @@
 
     private void OnPasswordChanged()
     {
-        // Platz für Password-Strength-Checks / Live-Feedback
+        // Placeholder for password strength checks
     }
 
     private sealed class RegisterVm

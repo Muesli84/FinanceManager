@@ -5,41 +5,42 @@
 @using Microsoft.AspNetCore.Components
 @inject HttpClient Http
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Users> L
 
-<PageTitle>Benutzerverwaltung</PageTitle>
+<PageTitle>@L["PageTitle"]</PageTitle>
 
 @if (!CurrentUser.IsAuthenticated)
 {
-    <p>Zugriff verweigert.</p>
+    <p>@L["Access_Denied"]</p>
 }
 else if (!_loaded)
 {
-    <p>Lade...</p>
+    <p>@L["Loading"]</p>
 }
 else if (!CurrentUser.IsAdmin)
 {
-    <p>Nur Administratoren.</p>
+    <p>@L["Access_AdminOnly"]</p>
 }
 else
 {
-    <h1>Benutzer</h1>
+    <h1>@L["Heading_Users"]</h1>
     <EditForm Model="_create" OnValidSubmit="CreateAsync" class="create-user-form">
         <DataAnnotationsValidator />
         <div class="create-user-grid">
-            <label for="cu-username">Username</label>
+            <label for="cu-username">@L["Create_Label_Username"]</label>
             <InputText id="cu-username" @bind-Value="_create.Username" />
 
-            <label for="cu-password">Passwort</label>
+            <label for="cu-password">@L["Create_Label_Password"]</label>
             <InputText id="cu-password" @bind-Value="_create.Password" Type="password" />
 
-            <label>Rolle</label>
+            <label>@L["Create_Label_Role"]</label>
             <div class="inline-checkbox">
                 <input id="cu-admin" type="checkbox" @bind="_create.IsAdmin" />
-                <label for="cu-admin" class="chk-label">Admin</label>
+                <label for="cu-admin" class="chk-label">@L["Create_Label_Role_Admin"]</label>
             </div>
 
             <div class="full-row form-actions">
-                <button type="submit" disabled="@_busyCreate">@(_busyCreate ? "Anlegen..." : "Benutzer anlegen")</button>
+                <button type="submit" disabled="@_busyCreate">@(_busyCreate ? L["Create_Button_Submit_Busy"] : L["Create_Button_Submit"])</button>
             </div>
             <div class="full-row">
                 <ValidationSummary />
@@ -56,20 +57,20 @@ else
     {
         var userName = _users.FirstOrDefault(u => u.Id == _lastResetUserId)?.Username;
         <div class="pw-reset-hint" style="margin-top:1rem;padding:.75rem 1rem;border:1px solid #444;background:#25252d;border-radius:6px;max-width:620px;">
-            <strong>Neues Passwort</strong> für <span style="opacity:.85">@userName</span>: <code>@_lastResetPassword</code>
-            <button style="margin-left:.75rem;" @onclick="ClearLastPassword">Ausblenden</button>
+            <strong>@L["PasswordReset_Title"]</strong> @L["PasswordReset_For"] <span style="opacity:.85">@userName</span>: <code>@_lastResetPassword</code>
+            <button style="margin-left:.75rem;" @onclick="ClearLastPassword">@L["PasswordReset_Hide"]</button>
         </div>
     }
 
     <table class="user-table" style="width:100%;border-collapse:collapse;margin-top:1.25rem;">
         <thead>
             <tr>
-                <th style="text-align:left;">Username</th>
-                <th>Admin</th>
-                <th>Aktiv</th>
-                <th>LockedUntil</th>
-                <th>LastLogin</th>
-                <th>Aktionen</th>
+                <th style="text-align:left;">@L["Table_Header_Username"]</th>
+                <th>@L["Table_Header_IsAdmin"]</th>
+                <th>@L["Table_Header_Active"]</th>
+                <th>@L["Table_Header_LockedUntil"]</th>
+                <th>@L["Table_Header_LastLogin"]</th>
+                <th>@L["Table_Header_Actions"]</th>
             </tr>
         </thead>
         <tbody>
@@ -92,18 +93,18 @@ else
                 <td style="white-space:nowrap;">
                     @if (editing)
                     {
-                        <button @onclick="(()=>SaveEditAsync(u.Id))" disabled="@_busyRow">Speichern</button>
-                        <button @onclick="CancelEdit" disabled="@_busyRow">Abbrechen</button>
+                        <button @onclick="(()=>SaveEditAsync(u.Id))" disabled="@_busyRow">@L["Action_Save"]</button>
+                        <button @onclick="CancelEdit" disabled="@_busyRow">@L["Action_Cancel"]</button>
                     }
                     else
                     {
-                        <button @onclick="(()=>BeginEdit(u))" disabled="@_busyRow">Edit</button>
-                        <button @onclick="(()=>ResetPasswordAsync(u.Id))" disabled="@_busyRow">PW</button>
+                        <button @onclick="(()=>BeginEdit(u))" disabled="@_busyRow">@L["Action_Edit"]</button>
+                        <button @onclick="(()=>ResetPasswordAsync(u.Id))" disabled="@_busyRow">@L["Action_ResetPassword"]</button>
                         @if (locked)
                         {
-                            <button @onclick="(()=>UnlockAsync(u.Id))" disabled="@_busyRow">Unlock</button>
+                            <button @onclick="(()=>UnlockAsync(u.Id))" disabled="@_busyRow">@L["Action_Unlock"]</button>
                         }
-                        <button @onclick="(()=>DeleteAsync(u.Id))" disabled="@_busyRow">Löschen</button>
+                        <button @onclick="(()=>DeleteAsync(u.Id))" disabled="@_busyRow">@L["Action_Delete"]</button>
                     }
                 </td>
             </tr>
@@ -236,7 +237,7 @@ else
     {
         if (_users.Count == 1)
         {
-            _error = "Letzter Benutzer kann nicht gelöscht werden.";
+            _error = L["Error_DeleteLastUser"];
             return;
         }
         _busyRow = true;

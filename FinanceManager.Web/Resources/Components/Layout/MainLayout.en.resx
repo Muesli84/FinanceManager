@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, ...</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, ...</value></resheader>
+
+  <data name="Brand"><value>FinanceManager</value></data>
+  <data name="Nav_Home"><value>Home</value></data>
+  <data name="Nav_Accounts"><value>Accounts</value></data>
+  <data name="Nav_Imports"><value>Imports</value></data>
+  <data name="Nav_Contacts"><value>Contacts</value></data>
+  <data name="Nav_Plans"><value>Savings Plans</value></data>
+  <data name="Nav_Securities"><value>Securities</value></data>
+  <data name="Nav_Reports"><value>Reports</value></data>
+  <data name="Nav_Users"><value>Users</value></data>
+  <data name="Error_Unhandled"><value>An unhandled error has occurred.</value></data>
+  <data name="Error_Reload"><value>Reload</value></data>
+</root>

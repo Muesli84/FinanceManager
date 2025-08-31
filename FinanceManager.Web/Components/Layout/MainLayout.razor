@@ -1,22 +1,23 @@
 ﻿@inherits LayoutComponentBase
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Layout.MainLayout> L
 
 <div class="app-shell dark-mode">
     <nav class="sidebar">
-        <div class="brand">FinanceManager</div>
+        <div class="brand">@L["Brand"]</div>
         <ul class="nav-links">
             @if (CurrentUser.IsAuthenticated)
             {
-                <li><NavLink href="/" Match="NavLinkMatch.All">Home</NavLink></li>
-                <li><NavLink href="/accounts">Accounts</NavLink></li>
-                <li><NavLink href="/imports">Imports</NavLink></li>
-                <li><NavLink href="/contacts">Contacts</NavLink></li>
-                <li><NavLink href="/plans">Savings Plans</NavLink></li>
-                <li><NavLink href="/securities">Securities</NavLink></li>
-                <li><NavLink href="/reports">Reports</NavLink></li>
+                <li><NavLink href="/" Match="NavLinkMatch.All">@L["Nav_Home"]</NavLink></li>
+                <li><NavLink href="/accounts">@L["Nav_Accounts"]</NavLink></li>
+                <li><NavLink href="/imports">@L["Nav_Imports"]</NavLink></li>
+                <li><NavLink href="/contacts">@L["Nav_Contacts"]</NavLink></li>
+                <li><NavLink href="/plans">@L["Nav_Plans"]</NavLink></li>
+                <li><NavLink href="/securities">@L["Nav_Securities"]</NavLink></li>
+                <li><NavLink href="/reports">@L["Nav_Reports"]</NavLink></li>
                 @if (CurrentUser.IsAdmin)
                 {
-                    <li><NavLink href="/users">Users</NavLink></li>
+                    <li><NavLink href="/users">@L["Nav_Users"]</NavLink></li>
                 }
             }
         </ul>
@@ -32,7 +33,7 @@
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
+    @L["Error_Unhandled"]
+    <a href="." class="reload">@L["Error_Reload"]</a>
     <span class="dismiss">🗙</span>
 </div>

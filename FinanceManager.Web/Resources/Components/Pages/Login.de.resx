@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, ...</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, ...</value></resheader>
+
+  <data name="PageTitle"><value>Anmeldung</value></data>
+  <data name="Heading"><value>Anmeldung</value></data>
+  <data name="Label_Username"><value>Benutzername</value></data>
+  <data name="Label_Password"><value>Passwort</value></data>
+  <data name="Button_Login"><value>Anmelden</value></data>
+  <data name="Button_Wait"><value>Bitte warten...</value></data>
+  <data name="Link_RegisterPrompt"><value>Noch kein Benutzer?</value></data>
+  <data name="Link_RegisterNow"><value>Jetzt registrieren</value></data>
+  <data name="Error_LoginFailed"><value>Login fehlgeschlagen.</value></data>
+  <data name="Error_Unexpected"><value>Unerwarteter Fehler: {0}</value></data>
+</root>

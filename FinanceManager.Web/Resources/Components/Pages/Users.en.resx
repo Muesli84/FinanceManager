@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="PageTitle"><value>User Management</value></data>
+  <data name="Access_Denied"><value>Access denied.</value></data>
+  <data name="Loading"><value>Loading...</value></data>
+  <data name="Access_AdminOnly"><value>Administrators only.</value></data>
+  <data name="Heading_Users"><value>Users</value></data>
+  <data name="Create_Label_Username"><value>Username</value></data>
+  <data name="Create_Label_Password"><value>Password</value></data>
+  <data name="Create_Label_Role"><value>Role</value></data>
+  <data name="Create_Label_Role_Admin"><value>Admin</value></data>
+  <data name="Create_Button_Submit"><value>Create user</value></data>
+  <data name="Create_Button_Submit_Busy"><value>Creating...</value></data>
+  <data name="PasswordReset_Title"><value>New password</value></data>
+  <data name="PasswordReset_For"><value>for</value></data>
+  <data name="PasswordReset_Hide"><value>Hide</value></data>
+  <data name="Table_Header_Username"><value>Username</value></data>
+  <data name="Table_Header_IsAdmin"><value>Admin</value></data>
+  <data name="Table_Header_Active"><value>Active</value></data>
+  <data name="Table_Header_LockedUntil"><value>Locked until</value></data>
+  <data name="Table_Header_LastLogin"><value>Last login</value></data>
+  <data name="Table_Header_Actions"><value>Actions</value></data>
+  <data name="Action_Save"><value>Save</value></data>
+  <data name="Action_Cancel"><value>Cancel</value></data>
+  <data name="Action_Edit"><value>Edit</value></data>
+  <data name="Action_ResetPassword"><value>PW</value></data>
+  <data name="Action_Unlock"><value>Unlock</value></data>
+  <data name="Action_Delete"><value>Delete</value></data>
+  <data name="Error_DeleteLastUser"><value>Cannot delete the last remaining user.</value></data>
+</root>

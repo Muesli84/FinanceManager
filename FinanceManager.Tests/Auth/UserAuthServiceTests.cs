@@ -237,19 +237,19 @@ public sealed class UserAuthServiceTests
         (lock1End - clock.UtcNow).Should().BeCloseTo(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
         // Advance & attempt 4 -> 10 min
-        clock.UtcNow = lock1End.AddSeconds(1);
+        clock.UtcNow = lock1End.Value.AddSeconds(1);
         await sut.LoginAsync(new LoginCommand("dave", "x"), CancellationToken.None);
         var lock2End = user.LockedUntilUtc!;
         (lock2End - clock.UtcNow).Should().BeCloseTo(TimeSpan.FromMinutes(10), TimeSpan.FromSeconds(5));
 
         // Advance & attempt 5 -> 20 min
-        clock.UtcNow = lock2End.AddSeconds(1);
+        clock.UtcNow = lock2End.Value.AddSeconds(1);
         await sut.LoginAsync(new LoginCommand("dave", "x"), CancellationToken.None);
         var lock3End = user.LockedUntilUtc!;
         (lock3End - clock.UtcNow).Should().BeCloseTo(TimeSpan.FromMinutes(20), TimeSpan.FromSeconds(5));
 
         // Advance & attempt 6 -> 40 min
-        clock.UtcNow = lock3End.AddSeconds(1);
+        clock.UtcNow = lock3End.Value.AddSeconds(1);
         await sut.LoginAsync(new LoginCommand("dave", "x"), CancellationToken.None);
         var lock4End = user.LockedUntilUtc!;
         (lock4End - clock.UtcNow).Should().BeCloseTo(TimeSpan.FromMinutes(40), TimeSpan.FromSeconds(5));

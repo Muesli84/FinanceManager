@@ -5,9 +5,12 @@
 @using FinanceManager.Application.Users
 @inject FinanceManager.Application.Users.IUserReadService UserRead
 @inject NavigationManager Nav
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Login> Localizer
 
-<PageTitle>Login</PageTitle>
-<h1>Anmeldung</h1>
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<h1>@Localizer["Heading"]</h1>
+
 @if (!string.IsNullOrEmpty(_error))
 {
     <div class="error">@_error</div>
@@ -17,20 +20,25 @@
     <DataAnnotationsValidator />
     <ValidationSummary />
     <div>
-        <label>Benutzername</label>
-        <InputText @bind-Value="_model.Username" autocomplete="username" />
+        <label for="login-user">@Localizer["Label_Username"]</label>
+        <InputText id="login-user" @bind-Value="_model.Username" autocomplete="username" />
         <ValidationMessage For="() => _model.Username" />
     </div>
     <div>
-        <label>Passwort</label>
-        <InputText @bind-Value="_model.Password" Type="password" autocomplete="current-password" />
+        <label for="login-pass">@Localizer["Label_Password"]</label>
+        <InputText id="login-pass" @bind-Value="_model.Password" Type="password" autocomplete="current-password" />
         <ValidationMessage For="() => _model.Password" />
     </div>
     <div style="margin-top:1.25rem;">
-        <button type="submit" disabled="@_busy">@(_busy ? "Bitte warten..." : "Anmelden")</button>
+        <button type="submit" disabled="@_busy">
+            @(_busy ? Localizer["Button_Wait"] : Localizer["Button_Login"])
+        </button>
     </div>
 </EditForm>
-<p style="margin-top:1rem;font-size:.8rem;">Noch kein Benutzer? <a href="/register">Jetzt registrieren</a></p>
+
+<p style="margin-top:1rem;font-size:.8rem;">
+    @Localizer["Link_RegisterPrompt"] <a href="/register">@Localizer["Link_RegisterNow"]</a>
+</p>
 
 @code {
     private readonly LoginVm _model = new();
@@ -56,16 +64,18 @@
             var result = await JS.InvokeAsync<AuthJsResult>("fmAuthLogin", username, password);
             if (!result.ok)
             {
-                _error = string.IsNullOrWhiteSpace(result.error) ? "Login fehlgeschlagen." : result.error;
+                _error = string.IsNullOrWhiteSpace(result.error)
+                    ? Localizer["Error_LoginFailed"]
+                    : result.error; // Backend-Fehler evtl. später auch mappen
             }
             else
             {
-                Nav.NavigateTo("/", forceLoad: true); // Reload so middleware sees cookie
+                Nav.NavigateTo("/", forceLoad: true);
             }
         }
         catch (Exception ex)
         {
-            _error = "Unerwarteter Fehler: " + ex.Message;
+            _error = string.Format(Localizer["Error_Unexpected"], ex.Message);
         }
         _busy = false;
     }
@@ -74,6 +84,7 @@
     {
         [Required, MinLength(3)]
         public string Username { get; set; } = string.Empty;
+
         [Required, MinLength(6)]
         public string Password { get; set; } = string.Empty;
     }

@@ -8,8 +8,16 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
+using FinanceManager.Web.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddLocalization(o => o.ResourcesPath = "Resources");
+// Unterstützte Kulturen zentral definieren
+var supportedCultures = new[] { "de", "en" }.Select(c => new CultureInfo(c)).ToList();
+
 // Fail-Fast falls Jwt:Key fehlt
 if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]))
 {
@@ -51,6 +59,13 @@ builder.Services.AddScoped(sp =>
 });
 
 var app = builder.Build();
+
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture("de"),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures
+});
 
 // Datenbankmigrationen anwenden (statt EnsureCreated)
 using (var scope = app.Services.CreateScope())
