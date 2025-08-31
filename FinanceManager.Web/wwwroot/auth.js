@@ -16,3 +16,15 @@ window.fmAuthLogin = async (username, password) => {
     return { ok: false, error: e?.message || 'Network error' };
   }
 };
+
+window.fmAuthLogout = async () => {
+  try {
+    const resp = await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'same-origin'
+    });
+    return resp.ok;
+  } catch {
+    return false;
+  }
+};

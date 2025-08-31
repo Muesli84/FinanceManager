@@ -63,11 +63,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (await UserRead.HasAnyUsersAsync(CancellationToken.None))
-        {
-            Nav.NavigateTo("/login");
-            return;
-        }
+        // if (await UserRead.HasAnyUsersAsync(CancellationToken.None))
+        // {
+        //     Nav.NavigateTo("/login");
+        //     return;
+        // }
     }
 
     private async Task RegisterAsync()

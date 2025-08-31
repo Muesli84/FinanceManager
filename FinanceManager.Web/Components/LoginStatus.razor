@@ -1,12 +1,13 @@
 @using Microsoft.AspNetCore.Components
+@rendermode InteractiveServer
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject NavigationManager Nav
-@inject IHttpContextAccessor Http
+@inject IJSRuntime JS
     
 @if (CurrentUser.IsAuthenticated)
 {
     <div class="login-status">@CurrentUser.UserId<br />
-        <button @onclick="Logout">Logout</button>
+        <button @onclick="LogoutAsync">Logout</button>
     </div>
 }
 else
@@ -15,22 +16,10 @@ else
 }
 
 @code {
-    private Task Logout()
+    private async Task LogoutAsync()
     {
-        if (Http.HttpContext != null)
-        {
-            if (Http.HttpContext.Request.Cookies.ContainsKey("fm_auth"))
-            {
-                Http.HttpContext.Response.Cookies.Append("fm_auth", string.Empty, new CookieOptions
-                {
-                    Expires = DateTimeOffset.UnixEpoch,
-                    HttpOnly = true,
-                    Secure = true,
-                    SameSite = SameSiteMode.Lax
-                });
-            }
-            Nav.NavigateTo("/login", forceLoad: true);
-        }
-        return Task.CompletedTask;
+        var ok = await JS.InvokeAsync<bool>("fmAuthLogout");
+        // Fallback: falls API nicht erreichbar, erzwungener Reload löscht serverseitig nicht gesetzte Cookies evtl. nicht, aber UI wird zur Login-Seite gehen
+        Nav.NavigateTo("/login", forceLoad: true);
     }
 }

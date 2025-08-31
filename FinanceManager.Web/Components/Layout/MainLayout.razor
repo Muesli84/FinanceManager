@@ -1,16 +1,24 @@
 ﻿@inherits LayoutComponentBase
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
 
 <div class="app-shell dark-mode">
     <nav class="sidebar">
         <div class="brand">FinanceManager</div>
         <ul class="nav-links">
-            <li><NavLink href="/" Match="NavLinkMatch.All">Home</NavLink></li>
-            <li><NavLink href="/accounts">Accounts</NavLink></li>
-            <li><NavLink href="/imports">Imports</NavLink></li>
-            <li><NavLink href="/contacts">Contacts</NavLink></li>
-            <li><NavLink href="/plans">Savings Plans</NavLink></li>
-            <li><NavLink href="/securities">Securities</NavLink></li>
-            <li><NavLink href="/reports">Reports</NavLink></li>
+            @if (CurrentUser.IsAuthenticated)
+            {
+                <li><NavLink href="/" Match="NavLinkMatch.All">Home</NavLink></li>
+                <li><NavLink href="/accounts">Accounts</NavLink></li>
+                <li><NavLink href="/imports">Imports</NavLink></li>
+                <li><NavLink href="/contacts">Contacts</NavLink></li>
+                <li><NavLink href="/plans">Savings Plans</NavLink></li>
+                <li><NavLink href="/securities">Securities</NavLink></li>
+                <li><NavLink href="/reports">Reports</NavLink></li>
+                @if (CurrentUser.IsAdmin)
+                {
+                    <li><NavLink href="/users">Users</NavLink></li>
+                }
+            }
         </ul>
         <div class="user-area">
             <LoginStatus />

@@ -20,6 +20,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<FinanceManager.Application.Users.IUserAuthService, UserAuthService>();
         services.AddScoped<FinanceManager.Application.Users.IUserReadService, UserReadService>();
+        services.AddScoped<FinanceManager.Application.Users.IUserAdminService, UserAdminService>();
         return services;
     }
 }

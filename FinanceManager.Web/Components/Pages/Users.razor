@@ -1,0 +1,323 @@
+@page "/users"
+@rendermode InteractiveServer
+@using System.Net.Http.Json
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components
+@inject HttpClient Http
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
+
+<PageTitle>Benutzerverwaltung</PageTitle>
+
+@if (!CurrentUser.IsAuthenticated)
+{
+    <p>Zugriff verweigert.</p>
+}
+else if (!_loaded)
+{
+    <p>Lade...</p>
+}
+else if (!CurrentUser.IsAdmin)
+{
+    <p>Nur Administratoren.</p>
+}
+else
+{
+    <h1>Benutzer</h1>
+    <EditForm Model="_create" OnValidSubmit="CreateAsync" class="create-user-form">
+        <DataAnnotationsValidator />
+        <div class="create-user-grid">
+            <label for="cu-username">Username</label>
+            <InputText id="cu-username" @bind-Value="_create.Username" />
+
+            <label for="cu-password">Passwort</label>
+            <InputText id="cu-password" @bind-Value="_create.Password" Type="password" />
+
+            <label>Rolle</label>
+            <div class="inline-checkbox">
+                <input id="cu-admin" type="checkbox" @bind="_create.IsAdmin" />
+                <label for="cu-admin" class="chk-label">Admin</label>
+            </div>
+
+            <div class="full-row form-actions">
+                <button type="submit" disabled="@_busyCreate">@(_busyCreate ? "Anlegen..." : "Benutzer anlegen")</button>
+            </div>
+            <div class="full-row">
+                <ValidationSummary />
+            </div>
+        </div>
+    </EditForm>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error" style="margin-top:.75rem;">@_error</div>
+    }
+
+    @if (_lastResetUserId != Guid.Empty && !string.IsNullOrEmpty(_lastResetPassword))
+    {
+        var userName = _users.FirstOrDefault(u => u.Id == _lastResetUserId)?.Username;
+        <div class="pw-reset-hint" style="margin-top:1rem;padding:.75rem 1rem;border:1px solid #444;background:#25252d;border-radius:6px;max-width:620px;">
+            <strong>Neues Passwort</strong> für <span style="opacity:.85">@userName</span>: <code>@_lastResetPassword</code>
+            <button style="margin-left:.75rem;" @onclick="ClearLastPassword">Ausblenden</button>
+        </div>
+    }
+
+    <table class="user-table" style="width:100%;border-collapse:collapse;margin-top:1.25rem;">
+        <thead>
+            <tr>
+                <th style="text-align:left;">Username</th>
+                <th>Admin</th>
+                <th>Aktiv</th>
+                <th>LockedUntil</th>
+                <th>LastLogin</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var u in _users)
+        {
+            var editing = _edit?.Id == u.Id;
+            bool locked = u.LockedUntilUtc != null && u.LockedUntilUtc > DateTime.UtcNow;
+            <tr class="@(locked?"locked-row":"")">
+                <td>
+                    @if (editing) { <InputText @bind-Value="_editUsername" /> } else { @u.Username }
+                </td>
+                <td style="text-align:center;">
+                    @if (editing) { <input type="checkbox" @bind="_editIsAdmin" /> } else { @((MarkupString)(u.IsAdmin ? "&#10003;" : string.Empty)) }
+                </td>
+                <td style="text-align:center;">
+                    @if (editing) { <input type="checkbox" @bind="_editActive" /> } else { @((MarkupString)(u.Active ? "&#10003;" : "&#10007;")) }
+                </td>
+                <td style="text-align:center;">@(u.LockedUntilUtc?.ToString("u") ?? "-")</td>
+                <td style="text-align:center;">@((u.LastLoginUtc==default)?"-":u.LastLoginUtc.ToString("u"))</td>
+                <td style="white-space:nowrap;">
+                    @if (editing)
+                    {
+                        <button @onclick="(()=>SaveEditAsync(u.Id))" disabled="@_busyRow">Speichern</button>
+                        <button @onclick="CancelEdit" disabled="@_busyRow">Abbrechen</button>
+                    }
+                    else
+                    {
+                        <button @onclick="(()=>BeginEdit(u))" disabled="@_busyRow">Edit</button>
+                        <button @onclick="(()=>ResetPasswordAsync(u.Id))" disabled="@_busyRow">PW</button>
+                        @if (locked)
+                        {
+                            <button @onclick="(()=>UnlockAsync(u.Id))" disabled="@_busyRow">Unlock</button>
+                        }
+                        <button @onclick="(()=>DeleteAsync(u.Id))" disabled="@_busyRow">Löschen</button>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+<style>
+    .create-user-form { background:#1e1e24; padding:1rem 1.25rem; border:1px solid #333; border-radius:6px; max-width:620px; }
+    .create-user-grid { display:grid; grid-template-columns:160px 1fr; gap:.55rem .75rem; align-items:center; }
+    .create-user-grid label { font-size:.72rem; letter-spacing:.5px; text-transform:uppercase; opacity:.75; }
+    .inline-checkbox { display:flex; align-items:center; gap:.5rem; }
+    .inline-checkbox .chk-label { text-transform:none; font-size:.85rem; opacity:.9; letter-spacing:0; }
+    .form-actions { display:flex; gap:.5rem; }
+    .form-actions button { min-width:140px; }
+    .user-table th, .user-table td { padding:.4rem .5rem; border-bottom:1px solid #2c2c34; }
+    .user-table tr.locked-row { background:#402626; }
+    .user-table tr.locked-row:hover { background:#4a2d2d; }
+    .user-table tr:hover { background:#23232b; }
+    .error { color:#ffb3b3; }
+</style>
+
+@code {
+    private bool _loaded;
+    private string? _error;
+    private List<UserVm> _users = new();
+
+    private CreateVm _create = new();
+    private bool _busyCreate;
+    private bool _busyRow;
+
+    private UserVm? _edit;
+    private string _editUsername = string.Empty;
+    private bool _editIsAdmin;
+    private bool _editActive;
+
+    private Guid _lastResetUserId;
+    private string? _lastResetPassword;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CurrentUser.IsAuthenticated)
+        {
+            await LoadAsync();
+        }
+        _loaded = true;
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _error = null;
+            var data = await Http.GetFromJsonAsync<List<UserVm>>("/api/admin/users");
+            _users = data ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        StateHasChanged();
+    }
+
+    private void BeginEdit(UserVm u)
+    {
+        _edit = u;
+        _editUsername = u.Username;
+        _editIsAdmin = u.IsAdmin;
+        _editActive = u.Active;
+    }
+
+    private void CancelEdit() => _edit = null;
+
+    private async Task SaveEditAsync(Guid id)
+    {
+        if (_edit == null) return;
+        _busyRow = true;
+        _error = null;
+        try
+        {
+            var req = new UpdateUserRequest { Username = _editUsername, IsAdmin = _editIsAdmin, Active = _editActive };
+            var resp = await Http.PutAsJsonAsync($"/api/admin/users/{id}", req);
+            if (resp.IsSuccessStatusCode)
+            {
+                var updated = await resp.Content.ReadFromJsonAsync<UserVm>();
+                var idx = _users.FindIndex(x => x.Id == id);
+                if (idx >= 0 && updated != null) _users[idx] = updated;
+                _edit = null;
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busyRow = false;
+    }
+
+    private async Task CreateAsync()
+    {
+        _busyCreate = true;
+        _error = null;
+        try
+        {
+            var req = new CreateUserRequest { Username = _create.Username.Trim(), Password = _create.Password, IsAdmin = _create.IsAdmin };
+            var resp = await Http.PostAsJsonAsync("/api/admin/users", req);
+            if (resp.IsSuccessStatusCode)
+            {
+                var created = await resp.Content.ReadFromJsonAsync<UserVm>();
+                if (created != null) _users.Add(created);
+                _create = new();
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busyCreate = false;
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        if (_users.Count == 1)
+        {
+            _error = "Letzter Benutzer kann nicht gelöscht werden.";
+            return;
+        }
+        _busyRow = true;
+        try
+        {
+            var resp = await Http.DeleteAsync($"/api/admin/users/{id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                _users.RemoveAll(u => u.Id == id);
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busyRow = false;
+    }
+
+    private async Task ResetPasswordAsync(Guid id)
+    {
+        var newPw = Guid.NewGuid().ToString("N")[..12];
+        _busyRow = true;
+        try
+        {
+            var resp = await Http.PostAsJsonAsync($"/api/admin/users/{id}/reset-password", new ResetPasswordRequest { NewPassword = newPw });
+            if (resp.IsSuccessStatusCode)
+            {
+                _lastResetUserId = id;
+                _lastResetPassword = newPw;
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busyRow = false;
+    }
+
+    private async Task UnlockAsync(Guid id)
+    {
+        _busyRow = true;
+        try
+        {
+            var resp = await Http.PostAsync($"/api/admin/users/{id}/unlock", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var found = _users.FirstOrDefault(x => x.Id == id);
+                if (found != null)
+                {
+                    found.LockedUntilUtc = null;
+                }
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busyRow = false;
+    }
+
+    private void ClearLastPassword()
+    {
+        _lastResetUserId = Guid.Empty;
+        _lastResetPassword = null;
+    }
+
+    private sealed class CreateVm { [Required, MinLength(3)] public string Username { get; set; } = string.Empty; [Required, MinLength(6)] public string Password { get; set; } = string.Empty; public bool IsAdmin { get; set; } }
+    private sealed class CreateUserRequest { public string Username { get; set; } = string.Empty; public string Password { get; set; } = string.Empty; public bool IsAdmin { get; set; } }
+    private sealed class UpdateUserRequest { public string? Username { get; set; } public bool? IsAdmin { get; set; } public bool? Active { get; set; } }
+    private sealed class ResetPasswordRequest { public string NewPassword { get; set; } = string.Empty; }
+    private sealed class UserVm { public Guid Id { get; set; } public string Username { get; set; } = string.Empty; public bool IsAdmin { get; set; } public bool Active { get; set; } public DateTime? LockedUntilUtc { get; set; } public DateTime LastLoginUtc { get; set; } public string? PreferredLanguage { get; set; } }
+}
