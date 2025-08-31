@@ -7,6 +7,7 @@ using FinanceManager.Infrastructure.Auth;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -18,11 +19,13 @@ public sealed class UserAdminServiceTests
     {
         var services = new ServiceCollection();
         services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+        services.AddLogging(); // Logger registrieren
         var sp = services.BuildServiceProvider();
         var db = sp.GetRequiredService<AppDbContext>();
         var hasher = new Mock<IPasswordHasher>();
         hasher.Setup(h => h.Hash(It.IsAny<string>())).Returns<string>(p => $"HASH::{p}");
-        var sut = new UserAdminService(db, hasher.Object);
+        var logger = sp.GetRequiredService<ILogger<UserAdminService>>(); // Logger abrufen
+        var sut = new UserAdminService(db, hasher.Object, logger); // Logger übergeben
         return (sut, db, hasher);
     }
 

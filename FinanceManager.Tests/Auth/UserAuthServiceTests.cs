@@ -8,6 +8,7 @@ using FinanceManager.Infrastructure.Auth;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -18,6 +19,7 @@ public sealed class UserAuthServiceTests
     private static (UserAuthService sut, AppDbContext db, Mock<IPasswordHasher> hasher, Mock<IJwtTokenService> jwt, TestClock clock) Create()
     {
         var services = new ServiceCollection();
+        services.AddLogging(); // ensures ILogger<T> infrastructure if needed
         services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
         var sp = services.BuildServiceProvider();
         var db = sp.GetRequiredService<AppDbContext>();
@@ -29,7 +31,8 @@ public sealed class UserAuthServiceTests
             .Returns<string, string>((pw, hash) => hash == $"HASH::{pw}");
         jwt.Setup(j => j.CreateToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<DateTime>()))
             .Returns("token");
-        var sut = new UserAuthService(db, hasher.Object, jwt.Object, clock);
+        var logger = new Mock<ILogger<UserAuthService>>();
+        var sut = new UserAuthService(db, hasher.Object, jwt.Object, clock, logger.Object);
         return (sut, db, hasher, jwt, clock);
     }
 
@@ -100,16 +103,13 @@ public sealed class UserAuthServiceTests
         db.Users.Add(user); db.SaveChanges();
         hasher.Setup(h => h.Verify("wrong", It.IsAny<string>())).Returns(false);
 
-        // initial lock at 3
         await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
         await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
         await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
         var firstLockExpiry = user.LockedUntilUtc!;
 
-        // advance beyond lock
         clock.UtcNow = firstLockExpiry.Value.AddSeconds(1);
 
-        // one more invalid triggers new (escalated) lock (attempts now 4)
         await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
         user.FailedLoginAttempts.Should().Be(4);
         user.LockedUntilUtc.Should().NotBeNull();
@@ -156,11 +156,9 @@ public sealed class UserAuthServiceTests
         db.Users.Add(user);
         db.SaveChanges();
 
-        // Falsche Credentials konfigurieren
         hasher.Setup(h => h.Verify("wrong", It.IsAny<string>())).Returns(false);
         hasher.Setup(h => h.Verify("pw", It.IsAny<string>())).Returns(true);
 
-        // 3 Fehlversuche -> Lock
         await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
         await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
         await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
@@ -168,16 +166,14 @@ public sealed class UserAuthServiceTests
         user.LockedUntilUtc.Should().NotBeNull();
         var lockedUntil = user.LockedUntilUtc!.Value;
 
-        // Zeit vorspulen hinter die Sperre
         clock.UtcNow = lockedUntil.AddSeconds(1);
 
-        // Gültige Anmeldung nach Ablauf
         var result = await sut.LoginAsync(new LoginCommand("bob", "pw"), CancellationToken.None);
 
         result.Success.Should().BeTrue();
         result.Value!.Token.Should().Be("token");
-        user.LockedUntilUtc.Should().BeNull("lock should clear after successful login post expiry");
-        user.FailedLoginAttempts.Should().Be(0, "failed attempts should reset after success");
+        user.LockedUntilUtc.Should().BeNull();
+        user.FailedLoginAttempts.Should().Be(0);
     }
 
     private sealed class TestClock : IDateTimeProvider
