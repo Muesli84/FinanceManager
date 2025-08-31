@@ -11,20 +11,18 @@ using Microsoft.Data.Sqlite;
 using System.Globalization;
 using Microsoft.AspNetCore.Localization;
 using FinanceManager.Web.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer; // NEU
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddLocalization(o => o.ResourcesPath = "Resources");
-// Unterstützte Kulturen zentral definieren
 var supportedCultures = new[] { "de", "en" }.Select(c => new CultureInfo(c)).ToList();
 
-// Fail-Fast falls Jwt:Key fehlt
 if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]))
 {
     throw new InvalidOperationException("Configuration 'Jwt:Key' missing. Set via user secrets: dotnet user-secrets set \"Jwt:Key\" \"<random>\"");
 }
 
-// Serilog configuration
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
     .Enrich.FromLogContext()
@@ -36,27 +34,71 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Controller Support
 builder.Services.AddControllers();
 
-// Infrastructure (DbContext, providers)
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("Default"));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-// Scoped HttpClient mit dynamischer Basisadresse (abhängig vom eingehenden Request)
-builder.Services.AddScoped(sp =>
+// Named HttpClient (bleibt)
+builder.Services.AddTransient<AuthenticatedHttpClientHandler>();
+builder.Services.AddSingleton<IAuthTokenProvider, JwtCookieAuthTokenProvider>();
+builder.Services.AddHttpClient("Api", (sp, client) =>
 {
     var accessor = sp.GetRequiredService<IHttpContextAccessor>();
-    var ctx = accessor.HttpContext;
-    var baseUri = ctx != null ? $"{ctx.Request.Scheme}://{ctx.Request.Host.ToUriComponent()}/" : "http://localhost/";
-    return new HttpClient { BaseAddress = new Uri(baseUri) };
+    var ctx = accessor.HttpContext;     
+    var baseUri = ctx != null
+        ? $"{ctx.Request.Scheme}://{ctx.Request.Host.ToUriComponent()}/"
+        : builder.Configuration["Api:BaseAddress"] ?? "https://localhost:5001/";
+    client.BaseAddress = new Uri(baseUri);
+}).AddHttpMessageHandler<AuthenticatedHttpClientHandler>();
+builder.Services.AddScoped(sp =>
+{
+    var accessor = sp.GetRequiredService<IHttpClientFactory>();
+    var client = accessor.CreateClient("Api");
+    return client;
 });
+
+// JWT Authentication (Header Bearer + Cookie fm_auth)
+var keyBytes = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = true;
+        options.SaveToken = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+            ClockSkew = TimeSpan.FromSeconds(10)
+        };
+        // Zusätzliche Quelle: Cookie falls kein Authorization Header
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                if (string.IsNullOrEmpty(ctx.Token))
+                {
+                    var cookie = ctx.Request.Cookies["fm_auth"];
+                    if (!string.IsNullOrEmpty(cookie))
+                    {
+                        ctx.Token = cookie;
+                    }
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -67,7 +109,7 @@ app.UseRequestLocalization(new RequestLocalizationOptions
     SupportedUICultures = supportedCultures
 });
 
-// Datenbankmigrationen anwenden (statt EnsureCreated)
+// EF Core Migration
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -77,7 +119,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch (SqliteException ex) when (ex.SqliteErrorCode == 1)
     {
-        Log.Error(ex, "EF Core migrations failed – likely existing database created via EnsureCreated() without __EFMigrationsHistory. Delete the existing DB file and restart. DataSource={DataSource}", db.Database.GetDbConnection().DataSource);
+        Log.Error(ex, "EF Core migrations failed – likely existing database created via EnsureCreated()");
         throw;
     }
     catch (Exception ex)
@@ -87,7 +129,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -98,41 +139,14 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-// Custom JWT Cookie -> ClaimsPrincipal Middleware
-app.Use(async (ctx, next) =>
-{
-    var cookie = ctx.Request.Cookies["fm_auth"]; // JWT
-    if (!string.IsNullOrEmpty(cookie))
-    {
-        try
-        {
-            var key = ctx.RequestServices.GetRequiredService<IConfiguration>()["Jwt:Key"]!;
-            var handler = new JwtSecurityTokenHandler();
-            var parameters = new TokenValidationParameters
-            {
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-                ClockSkew = TimeSpan.FromSeconds(10)
-            };
-            var principal = handler.ValidateToken(cookie, parameters, out _);
-            ctx.User = principal; // ersetzt Default (anonym)
-        }
-        catch
-        {
-            // Ungültiges / abgelaufenes Token ignorieren
-        }
-    }
-    await next();
-});
+// Authentication / Authorization einschleusen
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// Map Controller Endpoints (API)
 app.MapControllers();
 
 app.Run();

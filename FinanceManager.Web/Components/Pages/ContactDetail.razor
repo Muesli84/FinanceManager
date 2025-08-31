@@ -1,0 +1,150 @@
+@page "/contacts/{Id:guid}"
+@page "/contacts/new"
+@using FinanceManager.Application.Contacts
+@using FinanceManager.Domain
+@using System.ComponentModel.DataAnnotations
+@rendermode InteractiveServer
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
+
+<h1>Contact</h1>
+
+@if (!_loaded)
+{
+    <p>Loading...</p>
+}
+else if (!CurrentUser.IsAuthenticated)
+{
+    <p>Please login.</p>
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div>
+            <label>Name</label>
+            <InputText @bind-Value="_model.Name" />
+            <ValidationMessage For="()=>_model.Name" />
+        </div>
+        <div>
+            <label>Type</label>
+            <InputSelect @bind-Value="_model.Type">
+                @foreach (var t in Enum.GetValues<ContactType>())
+                {
+                    <option value="@t">@t</option>
+                }
+            </InputSelect>
+        </div>
+        <div style="margin-top:1rem;">
+            <button type="submit" disabled="@_busy">@(_busy ? "Saving..." : "Save")</button>
+            @if (IsEdit)
+            {
+                <button type="button" @onclick="DeleteAsync" disabled="@_busy" style="margin-left:.75rem;">Delete</button>
+            }
+            <button type="button" @onclick="Back" style="margin-left:.75rem;">Back</button>
+        </div>
+    </EditForm>
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="error" style="margin-top:.75rem;">@_error</div>
+    }
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private ContactEditModel _model = new();
+    private bool _loaded;
+    private bool _busy;
+    private string? _error;
+
+    private bool IsEdit => Id.HasValue;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CurrentUser.IsAuthenticated)
+        {
+            if (IsEdit)
+            {
+                var http = ClientFactory.CreateClient("Api");
+                var resp = await http.GetAsync($"/api/contacts/{Id}");
+                if (resp.IsSuccessStatusCode)
+                {
+                    var dto = await resp.Content.ReadFromJsonAsync<ContactDto>();
+                    if (dto != null)
+                    {
+                        _model.Name = dto.Name;
+                        _model.Type = dto.Type.ToString();
+                    }
+                }
+                else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    _error = "Not found";
+                }
+                else
+                {
+                    _error = "Load failed";
+                }
+            }
+        }
+        _loaded = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true; _error = null;
+        try
+        {
+            if (IsEdit)
+            {
+                var update = new { Name = _model.Name, Type = Enum.Parse<ContactType>(_model.Type), CategoryId = (Guid?)null };
+                var http = ClientFactory.CreateClient("Api");
+                var resp = await http.PutAsJsonAsync($"/api/contacts/{Id}", update);
+                if (!resp.IsSuccessStatusCode) _error = "Save failed"; else Back();
+            }
+            else
+            {
+                var create = new { Name = _model.Name, Type = Enum.Parse<ContactType>(_model.Type), CategoryId = (Guid?)null };
+                var http = ClientFactory.CreateClient("Api");
+                var resp = await http.PostAsJsonAsync("/api/contacts", create);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var dto = await resp.Content.ReadFromJsonAsync<ContactDto>();
+                    if (dto != null) Navigation.NavigateTo($"/contacts/{dto.Id}", forceLoad: true);
+                }
+                else _error = "Create failed" + await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busy = false;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!IsEdit) return;
+        _busy = true; _error = null;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.DeleteAsync($"/api/contacts/{Id}");
+            if (resp.IsSuccessStatusCode) Back(); else _error = "Delete failed";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        _busy = false;
+    }
+
+    private void Back() => Navigation.NavigateTo("/contacts", forceLoad: true);
+
+    private sealed class ContactEditModel
+    {
+        [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = ContactType.Person.ToString();
+    }
+
+    private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Type { get; set; } = string.Empty; }
+}

@@ -14,4 +14,22 @@ public sealed class Contact : Entity, IAggregateRoot
     public string Name { get; private set; } = null!;
     public ContactType Type { get; private set; }
     public Guid? CategoryId { get; private set; }
+
+    public void Rename(string name)
+    {
+        Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
+        Touch();
+    }
+
+    public void ChangeType(ContactType type)
+    {
+        Type = type;
+        Touch();
+    }
+
+    public void SetCategory(Guid? categoryId)
+    {
+        CategoryId = categoryId;
+        Touch();
+    }
 }

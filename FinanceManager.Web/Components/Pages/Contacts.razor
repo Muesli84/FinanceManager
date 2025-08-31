@@ -1,0 +1,92 @@
+@page "/contacts"
+@using FinanceManager.Application.Contacts
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
+
+<h1>Contacts</h1>
+
+@if (!_loaded)
+{
+    <p>Loading...</p>
+}
+else if (!CurrentUser.IsAuthenticated)
+{
+    <p>Please login.</p>
+}
+else
+{
+    <div class="contact-list" @onscroll="OnScrollAsync" style="max-height:60vh;overflow:auto;border:1px solid #333;padding:.5rem;">
+        @foreach (var c in _contacts)
+        {
+            <div class="contact-row" style="padding:.35rem .4rem;cursor:pointer;" @onclick="(()=>OpenDetail(c.Id))">@c.Name (@c.Type)</div>
+        }
+        @if (_loadingMore)
+        {
+            <div style="opacity:.6;padding:.35rem;">Loading more...</div>
+        }
+        @if (_allLoaded && _contacts.Count == 0)
+        {
+            <div style="opacity:.7;">No contacts.</div>
+        }
+    </div>
+    <div style="margin-top:1rem;">
+        <button @onclick="CreateNew">New Contact</button>
+    </div>
+}
+
+@code {
+    private List<ContactVm> _contacts = new();
+    private bool _loaded;
+    private bool _loadingMore;
+    private bool _allLoaded;
+    private const int PageSize = 50;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CurrentUser.IsAuthenticated)
+        {
+            await LoadMoreAsync();
+        }
+        _loaded = true;
+    }
+
+    // Fix for CS0246: Use Microsoft.AspNetCore.Components.Web.UIEventArgs is obsolete, use EventArgs instead.
+    // Fix for CS1998: Add an await statement (simulate async work).
+    private async Task OnScrollAsync(EventArgs args)
+    {
+        await Task.Yield(); // Placeholder to satisfy async requirement
+        // JS interop would be better; placeholder for logic.
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (_loadingMore || _allLoaded) { return; }
+        _loadingMore = true;
+        var resp = await Http.GetAsync($"/api/contacts?skip={_contacts.Count}&take={PageSize}");
+        if (resp.IsSuccessStatusCode)
+        {
+            var more = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
+            if (more.Count < PageSize) { _allLoaded = true; }
+            _contacts.AddRange(more.Select(dto => new ContactVm
+            {
+                Id = dto.Id,
+                Name = dto.Name,
+                Type = dto.Type.ToString()
+            }));
+        }
+        _loadingMore = false;
+        StateHasChanged();
+    }
+
+    private void CreateNew() => OpenDetail(null);
+
+    private void OpenDetail(Guid? id)
+    {
+        var url = id == null ? "/contacts/new" : $"/contacts/{id}";
+        Navigation.NavigateTo(url);
+    }
+
+    private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Type { get; set; } = string.Empty; }
+}
