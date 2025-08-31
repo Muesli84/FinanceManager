@@ -1,0 +1,86 @@
+@page "/login"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@inject IJSRuntime JS
+@using FinanceManager.Application.Users
+@inject FinanceManager.Application.Users.IUserReadService UserRead
+@inject NavigationManager Nav
+
+<PageTitle>Login</PageTitle>
+<h1>Anmeldung</h1>
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="error">@_error</div>
+}
+
+<EditForm Model="_model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div>
+        <label>Benutzername</label>
+        <InputText @bind-Value="_model.Username" autocomplete="username" />
+        <ValidationMessage For="() => _model.Username" />
+    </div>
+    <div>
+        <label>Passwort</label>
+        <InputText @bind-Value="_model.Password" Type="password" autocomplete="current-password" />
+        <ValidationMessage For="() => _model.Password" />
+    </div>
+    <div style="margin-top:1.25rem;">
+        <button type="submit" disabled="@_busy">@(_busy ? "Bitte warten..." : "Anmelden")</button>
+    </div>
+</EditForm>
+<p style="margin-top:1rem;font-size:.8rem;">Noch kein Benutzer? <a href="/register">Jetzt registrieren</a></p>
+
+@code {
+    private readonly LoginVm _model = new();
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await UserRead.HasAnyUsersAsync(CancellationToken.None))
+        {
+            Nav.NavigateTo("/register", forceLoad: true);
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var username = _model.Username.Trim();
+            var password = _model.Password;
+            var result = await JS.InvokeAsync<AuthJsResult>("fmAuthLogin", username, password);
+            if (!result.ok)
+            {
+                _error = string.IsNullOrWhiteSpace(result.error) ? "Login fehlgeschlagen." : result.error;
+            }
+            else
+            {
+                Nav.NavigateTo("/", forceLoad: true); // Reload so middleware sees cookie
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = "Unerwarteter Fehler: " + ex.Message;
+        }
+        _busy = false;
+    }
+
+    private sealed class LoginVm
+    {
+        [Required, MinLength(3)]
+        public string Username { get; set; } = string.Empty;
+        [Required, MinLength(6)]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private sealed class AuthJsResult
+    {
+        public bool ok { get; set; }
+        public string? error { get; set; }
+    }
+}

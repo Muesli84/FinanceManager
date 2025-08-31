@@ -1,6 +1,27 @@
 ﻿@inherits LayoutComponentBase
 
-@Body
+<div class="app-shell dark-mode">
+    <nav class="sidebar">
+        <div class="brand">FinanceManager</div>
+        <ul class="nav-links">
+            <li><NavLink href="/" Match="NavLinkMatch.All">Home</NavLink></li>
+            <li><NavLink href="/accounts">Accounts</NavLink></li>
+            <li><NavLink href="/imports">Imports</NavLink></li>
+            <li><NavLink href="/contacts">Contacts</NavLink></li>
+            <li><NavLink href="/plans">Savings Plans</NavLink></li>
+            <li><NavLink href="/securities">Securities</NavLink></li>
+            <li><NavLink href="/reports">Reports</NavLink></li>
+        </ul>
+        <div class="user-area">
+            <LoginStatus />
+        </div>
+    </nav>
+    <main class="content">
+        <div class="inner">
+            @Body
+        </div>
+    </main>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

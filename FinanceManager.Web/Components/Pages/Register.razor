@@ -1,0 +1,140 @@
+@page "/register"
+@rendermode InteractiveServer
+@using System.Net.Http.Json
+@inject HttpClient Http
+@using FinanceManager.Application.Users
+@inject IUserReadService UserRead
+@inject NavigationManager Nav
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Registrierung</PageTitle>
+<h1>Registrierung</h1>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="error">@_error</div>
+}
+
+@if (_debugVisible)
+{
+    <div style="font-size:.7rem;opacity:.6;line-height:1.1em;">
+        <strong>Debug Model:</strong><br />
+        Username: @_model.Username<br />
+        PasswordLength: @_model.Password?.Length
+    </div>
+}
+
+<EditForm Model="_model"
+          OnValidSubmit="RegisterAsync"
+          OnInvalidSubmit="InvalidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div>
+        <label for="username">Benutzername</label>
+        <InputText id="username"
+                   @bind-Value="_model.Username"
+                   @bind-Value:after="OnUsernameChanged"
+                   autocomplete="username" />
+        <ValidationMessage For="() => _model.Username" />
+    </div>
+    <div>
+        <label for="password">Passwort</label>
+        <InputText id="password"
+                   @bind-Value="_model.Password"
+                   @bind-Value:after="OnPasswordChanged"
+                   Type="password"
+                   autocomplete="new-password" />
+        <ValidationMessage For="() => _model.Password" />
+    </div>
+    <div style="margin-top:1.25rem;display:flex;gap:.5rem;align-items:center;">
+        <button type="submit" disabled="@_busy">
+            @(_busy ? "Bitte warten..." : "Registrieren")
+        </button>
+        <button type="button" @onclick="ToggleDebug" style="background:#444;">Debug @( _debugVisible ? "aus" : "an")</button>
+    </div>
+</EditForm>
+
+@code {
+    private readonly RegisterVm _model = new();
+    private bool _busy;
+    private string? _error;
+    private bool _debugVisible;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await UserRead.HasAnyUsersAsync(CancellationToken.None))
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+    }
+
+    private async Task RegisterAsync()
+    {
+        _busy = true;
+        _error = null;
+
+        if (string.IsNullOrWhiteSpace(_model.Username) || string.IsNullOrWhiteSpace(_model.Password))
+        {
+            _error = "Benutzername und Passwort erforderlich.";
+            _busy = false;
+            return;
+        }
+
+        try
+        {
+            var payload = new { Username = _model.Username.Trim(), Password = _model.Password };
+            var resp = await Http.PostAsJsonAsync("/api/auth/register", payload);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var problem = await resp.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                problem?.TryGetValue("error", out _error);
+                _error ??= "Registrierung fehlgeschlagen.";
+            }
+            else
+            {
+                Nav.NavigateTo("/", forceLoad: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = "Unerwarteter Fehler: " + ex.Message;
+        }
+
+        _busy = false;
+    }
+
+    private void InvalidSubmit(EditContext ctx)
+    {
+    }
+
+    private void ToggleDebug() => _debugVisible = !_debugVisible;
+
+    private void OnUsernameChanged()
+    {
+        var value = _model.Username;
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            var trimmed = value.Trim();
+            if (trimmed != _model.Username)
+            {
+                _model.Username = trimmed;
+            }
+        }
+    }
+
+    private void OnPasswordChanged()
+    {
+        // Platz für Password-Strength-Checks / Live-Feedback
+    }
+
+    private sealed class RegisterVm
+    {
+        [Required, MinLength(3)]
+        public string Username { get; set; } = string.Empty;
+
+        [Required, MinLength(6)]
+        public string Password { get; set; } = string.Empty;
+    }
+}

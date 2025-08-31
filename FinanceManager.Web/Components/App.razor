@@ -5,14 +5,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
-    <link rel="stylesheet" href="@Assets["app.css"]" />
-    <link rel="stylesheet" href="@Assets["FinanceManager.Web.styles.css"]" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="FinanceManager.Web.styles.css" />
     <ImportMap />
     <HeadOutlet />
 </head>
 
-<body>
+<body class="dark-mode">
+    <AuthRedirect />
     <Routes />
+    <script src="auth.js"></script>
     <script src="_framework/blazor.web.js"></script>
 </body>
 

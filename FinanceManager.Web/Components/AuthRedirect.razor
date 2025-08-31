@@ -1,0 +1,93 @@
+@inject NavigationManager Nav
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
+@inject FinanceManager.Application.Users.IUserReadService UserRead
+@rendermode InteractiveServer
+
+@code {
+    private bool _initialized;
+    private string _lastPath = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await CheckRedirectAsync(e.Location);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+            await CheckRedirectAsync(Nav.Uri);
+        }
+    }
+
+    private async Task CheckRedirectAsync(string uri)
+    {
+        try
+        {
+            var path = GetPath(uri);
+            if (path == _lastPath)
+            {
+                return; // prevent re-entrancy loops
+            }
+            _lastPath = path;
+
+            // Allowlist of public routes
+            if (IsPublicPath(path))
+            {
+                return;
+            }
+
+            if (!CurrentUser.IsAuthenticated)
+            {
+                // Decide whether to go to register (first user) or login
+                bool anyUsers = await UserRead.HasAnyUsersAsync(CancellationToken.None);
+                var target = anyUsers ? "/login" : "/register";
+                if (!string.Equals(path, target, StringComparison.OrdinalIgnoreCase))
+                {
+                    Nav.NavigateTo(target, forceLoad: true);
+                }
+            }
+        }
+        catch
+        {
+            // swallow – redirect helper must never throw
+        }
+    }
+
+    private static string GetPath(string uri)
+    {
+        if (string.IsNullOrEmpty(uri)) return "/";
+        var idx = uri.IndexOf("//", StringComparison.Ordinal);
+        if (idx >= 0)
+        {
+            var pathIdx = uri.IndexOf('/', idx + 2);
+            if (pathIdx >= 0)
+            {
+                var qIdx = uri.IndexOf('?', pathIdx);
+                return qIdx >= 0 ? uri.Substring(pathIdx, qIdx - pathIdx) : uri[pathIdx..];
+            }
+            return "/";
+        }
+        return uri;
+    }
+
+    private static bool IsPublicPath(string path)
+    {
+        if (string.IsNullOrEmpty(path) || path == "/") return false; // root requires auth
+        return path.Equals("/login", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/register", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/api/auth", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/error", StringComparison.OrdinalIgnoreCase); 
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

@@ -1,0 +1,17 @@
+namespace FinanceManager.Domain.Contacts;
+
+public sealed class Contact : Entity, IAggregateRoot
+{
+    private Contact() { }
+    public Contact(Guid ownerUserId, string name, ContactType type, Guid? categoryId)
+    {
+        OwnerUserId = Guards.NotEmpty(ownerUserId, nameof(ownerUserId));
+        Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
+        Type = type;
+        CategoryId = categoryId;
+    }
+    public Guid OwnerUserId { get; private set; }
+    public string Name { get; private set; } = null!;
+    public ContactType Type { get; private set; }
+    public Guid? CategoryId { get; private set; }
+}

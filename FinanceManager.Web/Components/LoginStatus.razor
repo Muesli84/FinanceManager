@@ -1,0 +1,36 @@
+@using Microsoft.AspNetCore.Components
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
+@inject NavigationManager Nav
+@inject IHttpContextAccessor Http
+    
+@if (CurrentUser.IsAuthenticated)
+{
+    <div class="login-status">@CurrentUser.UserId<br />
+        <button @onclick="Logout">Logout</button>
+    </div>
+}
+else
+{
+    <div class="login-status"><a href="/login">Login</a></div>
+}
+
+@code {
+    private Task Logout()
+    {
+        if (Http.HttpContext != null)
+        {
+            if (Http.HttpContext.Request.Cookies.ContainsKey("fm_auth"))
+            {
+                Http.HttpContext.Response.Cookies.Append("fm_auth", string.Empty, new CookieOptions
+                {
+                    Expires = DateTimeOffset.UnixEpoch,
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Lax
+                });
+            }
+            Nav.NavigateTo("/login", forceLoad: true);
+        }
+        return Task.CompletedTask;
+    }
+}
