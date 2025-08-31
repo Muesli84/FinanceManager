@@ -24,12 +24,29 @@ public sealed class Pbkdf2PasswordHasher : IPasswordHasher
 
     public bool Verify(string password, string hash)
     {
+        if (string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(hash))
+        {
+            return false;
+        }
         var parts = hash.Split('|');
-        if (parts.Length != 4 || parts[0] != "pbkdf2") return false;
-        var iterations = int.Parse(parts[1]);
-        var salt = Convert.FromBase64String(parts[2]);
-        var key = Convert.FromBase64String(parts[3]);
-        var attempted = KeyDerivation.Pbkdf2(password, salt, KeyDerivationPrf.HMACSHA256, iterations, key.Length);
-        return CryptographicOperations.FixedTimeEquals(key, attempted);
+        if (parts.Length != 4 || parts[0] != "pbkdf2")
+        {
+            return false;
+        }
+        if (!int.TryParse(parts[1], out var iterations) || iterations <= 0)
+        {
+            return false;
+        }
+        try
+        {
+            var salt = Convert.FromBase64String(parts[2]);
+            var key = Convert.FromBase64String(parts[3]);
+            var attempted = KeyDerivation.Pbkdf2(password, salt, KeyDerivationPrf.HMACSHA256, iterations, key.Length);
+            return CryptographicOperations.FixedTimeEquals(key, attempted);
+        }
+        catch (FormatException)
+        {
+            return false; // invalid base64 in salt/key
+        }
     }
 }
