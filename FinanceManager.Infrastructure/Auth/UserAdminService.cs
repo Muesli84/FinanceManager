@@ -48,11 +48,11 @@ public sealed class UserAdminService : IUserAdminService
         {
             bool exists = await _db.Users.AnyAsync(u => u.Username == username && u.Id != id, ct);
             if (exists) throw new InvalidOperationException("Username already exists");
-            user.GetType().GetProperty("Username")!.SetValue(user, username.Trim());
+            user.Rename(username.Trim());
         }
         if (isAdmin.HasValue)
         {
-            user.GetType().GetProperty("IsAdmin")!.SetValue(user, isAdmin.Value);
+            user.SetAdmin(isAdmin.Value);
         }
         if (active.HasValue && user.Active != active.Value)
         {
@@ -62,7 +62,7 @@ public sealed class UserAdminService : IUserAdminService
             }
             else
             {
-                user.GetType().GetProperty("Active")!.SetValue(user, true);
+                user.Activate();
             }
         }
         if (preferredLanguage != null)
@@ -78,7 +78,7 @@ public sealed class UserAdminService : IUserAdminService
         if (string.IsNullOrWhiteSpace(newPassword)) throw new ArgumentException("Password required", nameof(newPassword));
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
         if (user == null) return false;
-        user.GetType().GetProperty("PasswordHash")!.SetValue(user, _passwordHasher.Hash(newPassword));
+        user.SetPasswordHash(_passwordHasher.Hash(newPassword));
         await _db.SaveChangesAsync(ct);
         return true;
     }

@@ -20,6 +20,13 @@ public sealed class User : Entity, IAggregateRoot
 
     public void MarkLogin(DateTime utcNow) => LastLoginUtc = utcNow;
     public void SetLockedUntil(DateTime? utc) => LockedUntilUtc = utc;
-    public void SetPreferredLanguage(string? lang) => PreferredLanguage = lang;
+    public void SetPreferredLanguage(string? lang) => PreferredLanguage = string.IsNullOrWhiteSpace(lang) ? null : lang.Trim();
     public void Deactivate() => Active = false;
+    public void Activate() => Active = true;
+    public void Rename(string newUsername)
+    {
+        Username = Guards.NotNullOrWhiteSpace(newUsername, nameof(newUsername));
+    }
+    public void SetAdmin(bool isAdmin) => IsAdmin = isAdmin;
+    public void SetPasswordHash(string passwordHash) => PasswordHash = Guards.NotNullOrWhiteSpace(passwordHash, nameof(passwordHash));
 }
