@@ -59,16 +59,79 @@ public sealed class UserAuthServiceTests
     }
 
     [Fact]
-    public async Task LoginAsync_ShouldLockUser_OnInvalidPassword()
+    public async Task LoginAsync_FirstAndSecondInvalid_NoLock()
     {
         var (sut, db, hasher, _, clock) = Create();
         var user = new User("bob", "HASH::pw", false);
         db.Users.Add(user); db.SaveChanges();
         hasher.Setup(h => h.Verify("wrong", It.IsAny<string>())).Returns(false);
 
-        var res = await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
-        res.Success.Should().BeFalse();
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        user.FailedLoginAttempts.Should().Be(1);
+        user.LockedUntilUtc.Should().BeNull();
+
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        user.FailedLoginAttempts.Should().Be(2);
+        user.LockedUntilUtc.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LoginAsync_ThirdInvalid_LocksUser()
+    {
+        var (sut, db, hasher, _, clock) = Create();
+        var user = new User("bob", "HASH::pw", false);
+        db.Users.Add(user); db.SaveChanges();
+        hasher.Setup(h => h.Verify("wrong", It.IsAny<string>())).Returns(false);
+
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+
+        user.FailedLoginAttempts.Should().Be(3);
         user.LockedUntilUtc.Should().NotBeNull();
+        (user.LockedUntilUtc - clock.UtcNow).Should().BeGreaterThan(TimeSpan.FromMinutes(4)).And.BeLessThan(TimeSpan.FromMinutes(6));
+    }
+
+    [Fact]
+    public async Task LoginAsync_AfterLockExpires_FurtherInvalidsEscalateLock()
+    {
+        var (sut, db, hasher, _, clock) = Create();
+        var user = new User("bob", "HASH::pw", false);
+        db.Users.Add(user); db.SaveChanges();
+        hasher.Setup(h => h.Verify("wrong", It.IsAny<string>())).Returns(false);
+
+        // initial lock at 3
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        var firstLockExpiry = user.LockedUntilUtc!;
+
+        // advance beyond lock
+        clock.UtcNow = firstLockExpiry.Value.AddSeconds(1);
+
+        // one more invalid triggers new (escalated) lock (attempts now 4)
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        user.FailedLoginAttempts.Should().Be(4);
+        user.LockedUntilUtc.Should().NotBeNull();
+        (user.LockedUntilUtc - clock.UtcNow).Should().BeGreaterThan(TimeSpan.FromMinutes(9)); // ~10 minutes
+    }
+
+    [Fact]
+    public async Task LoginAsync_Success_ResetsCounterAndLock()
+    {
+        var (sut, db, hasher, _, clock) = Create();
+        var user = new User("bob", "HASH::pw", false);
+        db.Users.Add(user); db.SaveChanges();
+        hasher.Setup(h => h.Verify("wrong", It.IsAny<string>())).Returns(false);
+        hasher.Setup(h => h.Verify("pw", It.IsAny<string>())).Returns(true);
+
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+
+        var success = await sut.LoginAsync(new LoginCommand("bob", "pw"), CancellationToken.None);
+        success.Success.Should().BeTrue();
+        user.FailedLoginAttempts.Should().Be(0);
+        user.LockedUntilUtc.Should().BeNull();
     }
 
     [Fact]
@@ -83,6 +146,38 @@ public sealed class UserAuthServiceTests
         res.Success.Should().BeTrue();
         res.Value!.Token.Should().Be("token");
         user.LockedUntilUtc.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LoginAsync_ShouldSucceed_AfterLockExpired_AndValidCredentials()
+    {
+        var (sut, db, hasher, jwt, clock) = Create();
+        var user = new User("bob", "HASH::pw", false);
+        db.Users.Add(user);
+        db.SaveChanges();
+
+        // Falsche Credentials konfigurieren
+        hasher.Setup(h => h.Verify("wrong", It.IsAny<string>())).Returns(false);
+        hasher.Setup(h => h.Verify("pw", It.IsAny<string>())).Returns(true);
+
+        // 3 Fehlversuche -> Lock
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+        await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
+
+        user.LockedUntilUtc.Should().NotBeNull();
+        var lockedUntil = user.LockedUntilUtc!.Value;
+
+        // Zeit vorspulen hinter die Sperre
+        clock.UtcNow = lockedUntil.AddSeconds(1);
+
+        // Gültige Anmeldung nach Ablauf
+        var result = await sut.LoginAsync(new LoginCommand("bob", "pw"), CancellationToken.None);
+
+        result.Success.Should().BeTrue();
+        result.Value!.Token.Should().Be("token");
+        user.LockedUntilUtc.Should().BeNull("lock should clear after successful login post expiry");
+        user.FailedLoginAttempts.Should().Be(0, "failed attempts should reset after success");
     }
 
     private sealed class TestClock : IDateTimeProvider

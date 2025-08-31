@@ -6,6 +6,8 @@ using FinanceManager.Web.Services;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
 
 var builder = WebApplication.CreateBuilder(args);
 // Fail-Fast falls Jwt:Key fehlt
@@ -44,24 +46,28 @@ builder.Services.AddScoped(sp =>
 {
     var accessor = sp.GetRequiredService<IHttpContextAccessor>();
     var ctx = accessor.HttpContext;
-    // Fallback auf http://localhost falls außerhalb eines HTTP-Kontexts (z.B. Hintergrundtasks)
     var baseUri = ctx != null ? $"{ctx.Request.Scheme}://{ctx.Request.Host.ToUriComponent()}/" : "http://localhost/";
-    return new HttpClient { BaseAddress = new Uri($"{baseUri}") };
+    return new HttpClient { BaseAddress = new Uri(baseUri) };
 });
 
 var app = builder.Build();
 
-// DB initialisieren (einfaches EnsureCreated als Platzhalter – später Migrations verwenden)
+// Datenbankmigrationen anwenden (statt EnsureCreated)
 using (var scope = app.Services.CreateScope())
 {
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.Database.EnsureCreated();
+        db.Database.Migrate();
+    }
+    catch (SqliteException ex) when (ex.SqliteErrorCode == 1)
+    {
+        Log.Error(ex, "EF Core migrations failed – likely existing database created via EnsureCreated() without __EFMigrationsHistory. Delete the existing DB file and restart. DataSource={DataSource}", db.Database.GetDbConnection().DataSource);
+        throw;
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "Database initialization failed");
+        Log.Error(ex, "Database migration failed");
         throw;
     }
 }
@@ -101,7 +107,7 @@ app.Use(async (ctx, next) =>
         }
         catch
         {
-            // Ungültiges Token ignorieren (anonym weiter)
+            // Ungültiges / abgelaufenes Token ignorieren
         }
     }
     await next();

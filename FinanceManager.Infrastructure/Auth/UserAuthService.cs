@@ -12,8 +12,8 @@ public sealed class UserAuthService : IUserAuthService
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwt;
     private readonly IDateTimeProvider _clock;
-    private const int MaxFailedAttempts = 3; // TODO implement tracking
-    private readonly TimeSpan LockDuration = TimeSpan.FromMinutes(60);
+    private const int MaxFailedAttempts = 3;
+    private static readonly TimeSpan BaseLockDuration = TimeSpan.FromMinutes(5); // first lock
 
     public UserAuthService(AppDbContext db, IPasswordHasher passwordHasher, IJwtTokenService jwt, IDateTimeProvider clock)
     { _db = db; _passwordHasher = passwordHasher; _jwt = jwt; _clock = clock; }
@@ -21,7 +21,9 @@ public sealed class UserAuthService : IUserAuthService
     public async Task<Result<AuthResult>> RegisterAsync(RegisterUserCommand command, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(command.Username) || string.IsNullOrWhiteSpace(command.Password))
+        {
             return Result<AuthResult>.Fail("Username and password required");
+        }
 
         var exists = await _db.Users.AsNoTracking().AnyAsync(u => u.Username == command.Username, ct);
         if (exists) return Result<AuthResult>.Fail("Username already exists");
@@ -30,7 +32,9 @@ public sealed class UserAuthService : IUserAuthService
         var hash = _passwordHasher.Hash(command.Password);
         var user = new User(command.Username, hash, isFirst);
         if (!string.IsNullOrWhiteSpace(command.PreferredLanguage))
+        {
             user.SetPreferredLanguage(command.PreferredLanguage);
+        }
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
         var expires = _clock.UtcNow.AddMinutes(30);
@@ -42,8 +46,11 @@ public sealed class UserAuthService : IUserAuthService
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == command.Username, ct);
         if (user is null) return Result<AuthResult>.Fail("Invalid credentials");
+
         if (user.LockedUntilUtc.HasValue && user.LockedUntilUtc.Value > _clock.UtcNow)
+        {
             return Result<AuthResult>.Fail("Account locked");
+        }
 
         if (!_passwordHasher.Verify(command.Password, user.PasswordHash))
         {
@@ -61,7 +68,18 @@ public sealed class UserAuthService : IUserAuthService
 
     private async Task RegisterFailedAttemptAsync(User user, CancellationToken ct)
     {
-        user.SetLockedUntil(_clock.UtcNow.Add(LockDuration));
+        var failed = user.IncrementFailedLoginAttempts();
+        if (failed >= MaxFailedAttempts)
+        {
+            // Exponential backoff style: base * 2^(failed - MaxFailedAttempts)
+            int escalation = failed - MaxFailedAttempts; // 0 first lock window
+            var duration = TimeSpan.FromTicks(BaseLockDuration.Ticks * (long)Math.Pow(2, escalation));
+            if (duration > TimeSpan.FromHours(8))
+            {
+                duration = TimeSpan.FromHours(8); // cap
+            }
+            user.SetLockedUntil(_clock.UtcNow.Add(duration));
+        }
         await _db.SaveChangesAsync(ct);
     }
 }

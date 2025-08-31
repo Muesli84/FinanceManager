@@ -17,16 +17,27 @@ public sealed class User : Entity, IAggregateRoot
     public string? PreferredLanguage { get; private set; }
     public DateTime LastLoginUtc { get; private set; }
     public bool Active { get; private set; } = true;
+    public int FailedLoginAttempts { get; private set; }
 
-    public void MarkLogin(DateTime utcNow) => LastLoginUtc = utcNow;
-    public void SetLockedUntil(DateTime? utc) => LockedUntilUtc = utc;
+    public void MarkLogin(DateTime utcNow)
+    {
+        LastLoginUtc = utcNow;
+        ResetFailedLoginAttempts();
+    }
+    public void SetLockedUntil(DateTime? utc)
+    {
+        LockedUntilUtc = utc;
+        if (utc == null)
+        {
+            ResetFailedLoginAttempts();
+        }
+    }
     public void SetPreferredLanguage(string? lang) => PreferredLanguage = string.IsNullOrWhiteSpace(lang) ? null : lang.Trim();
     public void Deactivate() => Active = false;
     public void Activate() => Active = true;
-    public void Rename(string newUsername)
-    {
-        Username = Guards.NotNullOrWhiteSpace(newUsername, nameof(newUsername));
-    }
+    public void Rename(string newUsername) => Username = Guards.NotNullOrWhiteSpace(newUsername, nameof(newUsername));
     public void SetAdmin(bool isAdmin) => IsAdmin = isAdmin;
     public void SetPasswordHash(string passwordHash) => PasswordHash = Guards.NotNullOrWhiteSpace(passwordHash, nameof(passwordHash));
+    public int IncrementFailedLoginAttempts() => ++FailedLoginAttempts;
+    public void ResetFailedLoginAttempts() => FailedLoginAttempts = 0;
 }

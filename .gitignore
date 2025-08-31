@@ -365,3 +365,5 @@ FodyWeavers.xsd
 
 /TestResults/
 /coverage/
+/FinanceManager.Web/financemanager.db-shm
+/FinanceManager.Web/financemanager.db-wal
