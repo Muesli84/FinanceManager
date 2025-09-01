@@ -1,0 +1,77 @@
+@page "/statement-drafts/{Id:guid}"
+@inject HttpClient Http
+@using FinanceManager.Application.Statements
+
+<h3>Statement Draft Detail</h3>
+@if(_draft == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <p><strong>File:</strong> @_draft.OriginalFileName</p>
+    <p><strong>Status:</strong> @_draft.Status</p>
+    <p><strong>Detected Account:</strong> @_draft.DetectedAccountId</p>
+
+    <h4>Entries (@_draft.Entries.Count)</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Subject</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach(var e in _draft.Entries.OrderBy(e => e.BookingDate))
+        {
+            <tr>
+                <td>@e.BookingDate.ToShortDateString()</td>
+                <td>@e.Amount</td>
+                <td>@e.Subject</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    @if(_draft.Status == FinanceManager.Domain.StatementDraftStatus.Draft)
+    {
+        <h4>Add Entry</h4>
+        <EditForm Model="_form" OnValidSubmit="AddEntryAsync">
+            <InputDate @bind-Value="_form.BookingDate" />
+            <InputNumber @bind-Value="_form.Amount" />
+            <InputText @bind-Value="_form.Subject" />
+            <button type="submit">Add</button>
+        </EditForm>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private StatementDraftDto? _draft;
+
+    private EntryForm _form = new() { BookingDate = DateTime.Today };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _draft = await Http.GetFromJsonAsync<StatementDraftDto>($"api/statement-drafts/{Id}");
+    }
+
+    private async Task AddEntryAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"api/statement-drafts/{Id}/entries", new { BookingDate = _form.BookingDate, Amount = _form.Amount, Subject = _form.Subject });
+        if(response.IsSuccessStatusCode)
+        {
+            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
+            _form = new EntryForm { BookingDate = DateTime.Today };
+            StateHasChanged();
+        }
+    }
+
+    private sealed class EntryForm
+    {
+        public DateTime BookingDate { get; set; }
+        public decimal Amount { get; set; }
+        public string Subject { get; set; } = string.Empty;
+    }
+}

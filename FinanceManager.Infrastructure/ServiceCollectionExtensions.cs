@@ -7,6 +7,8 @@ using FinanceManager.Application.Contacts;
 using FinanceManager.Infrastructure.Contacts;
 using FinanceManager.Application.Accounts;
 using FinanceManager.Infrastructure.Accounts;
+using FinanceManager.Application.Statements;
+using FinanceManager.Infrastructure.Statements;
 
 namespace FinanceManager.Infrastructure;
 
@@ -28,6 +30,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IContactCategoryService, ContactCategoryService>();
         services.AddScoped<IAccountService, AccountService>();
+        services.AddScoped<IStatementDraftService, StatementDraftService>();
         return services;
     }
 }

@@ -35,6 +35,13 @@ public enum StatementEntryStatus
     IgnoredDuplicate = 2
 }
 
+public enum StatementDraftStatus
+{
+    Draft = 0,
+    Committed = 1,
+    Expired = 2
+}
+
 public enum PostingKind
 {
     Bank = 0,

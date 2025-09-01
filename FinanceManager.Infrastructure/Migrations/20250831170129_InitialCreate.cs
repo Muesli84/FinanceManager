@@ -234,11 +234,79 @@ namespace FinanceManager.Infrastructure.Migrations
                 principalTable: "ContactCategories",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.SetNull);
+
+            migrationBuilder.CreateTable(
+                name: "StatementDrafts",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    OwnerUserId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    OriginalFileName = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
+                    DetectedAccountId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    Status = table.Column<int>(type: "INTEGER", nullable: false),
+                    CreatedUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    ModifiedUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StatementDrafts", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StatementDraftEntries",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    DraftId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    BookingDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Amount = table.Column<decimal>(type: "TEXT", nullable: false),
+                    Subject = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
+                    CreatedUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    ModifiedUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StatementDraftEntries", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_StatementDraftEntries_StatementDrafts_DraftId",
+                        column: x => x.DraftId,
+                        principalTable: "StatementDrafts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StatementDraftEntries_DraftId_BookingDate",
+                table: "StatementDraftEntries",
+                columns: new[] { "DraftId", "BookingDate" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StatementDrafts_OwnerUserId_CreatedUtc",
+                table: "StatementDrafts",
+                columns: new[] { "OwnerUserId", "CreatedUtc" });
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_StatementDraftEntries_StatementDrafts_DraftId",
+                table: "StatementDraftEntries",
+                column: "DraftId",
+                principalTable: "StatementDrafts",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_StatementDraftEntries_StatementDrafts_DraftId",
+                table: "StatementDraftEntries");
+
+            migrationBuilder.DropTable(
+                name: "StatementDraftEntries");
+
+            migrationBuilder.DropTable(
+                name: "StatementDrafts");
+
             migrationBuilder.DropForeignKey(
                 name: "FK_Contacts_ContactCategories_CategoryId",
                 table: "Contacts");

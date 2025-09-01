@@ -1,8 +1,8 @@
 @page "/contacts"
 @using FinanceManager.Application.Contacts
 @rendermode InteractiveServer
-@inject HttpClient Http
 @inject NavigationManager Navigation
+@inject HttpClient Http
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 
 <h1>Contacts</h1>
@@ -18,28 +18,35 @@ else if (!CurrentUser.IsAuthenticated)
 else
 {
     <div class="action-bar">
-        <button @onclick="CreateNew" aria-label="New Contact" title="New Contact" class="icon-btn"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
-        <button @onclick="OpenCategories" aria-label="Contact Groups" title="Contact Groups" class="icon-btn"><svg><use href="/icons/sprite.svg#groups" /></svg></button>
+        <button @onclick="CreateNew" aria-label="New Contact" title="New Contact" class="icon-btn">
+            <svg><use href="/icons/sprite.svg#plus" /></svg>
+        </button>
+        <!-- Weitere Symbol-Buttons für Aktionen -->
     </div>
-    <div class="contact-list" @onscroll="OnScrollAsync" style="max-height:60vh;overflow:auto;border:1px solid #333;padding:.5rem;">
-        @foreach (var c in _contacts)
-        {
-            <div class="contact-row" style="padding:.35rem .4rem;cursor:pointer;display:flex;justify-content:space-between;gap:.5rem;" @onclick="(()=>OpenDetail(c.Id))">
-                <span>@c.Name (@c.Type)</span>
-                <span style="opacity:.5;"><svg style="width:.9rem;height:.9rem;vertical-align:middle;"><use href="/icons/sprite.svg#arrow-right" /></svg></span>
-            </div>
-        }
-        @if (_loadingMore)
-        {
-            <div style="opacity:.6;padding:.35rem;">Loading more...</div>
-        }
-        @if (_allLoaded && _contacts.Count == 0)
-        {
-            <div style="opacity:.7;">No contacts.</div>
-        }
+    <div class="table-responsive">
+        <table class="fm-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in _contacts)
+                {
+                    <tr style="cursor:pointer;" @onclick="() => OpenDetail(c.Id)">
+                        <td>@c.Name</td>
+                        <td>@c.Type</td>
+                    </tr>
+                }
+                @if (_contacts.Count == 0)
+                {
+                    <tr><td colspan="2" style="opacity:.6;">No contacts.</td></tr>
+                }
+            </tbody>
+        </table>
     </div>
 }
-
 @code {
     private List<ContactVm> _contacts = new();
     private bool _loaded;
@@ -54,11 +61,6 @@ else
             await LoadMoreAsync();
         }
         _loaded = true;
-    }
-
-    private async Task OnScrollAsync(EventArgs args)
-    {
-        await Task.Yield();
     }
 
     private async Task LoadMoreAsync()
@@ -87,7 +89,8 @@ else
         var url = id == null ? "/contacts/new" : $"/contacts/{id}";
         Navigation.NavigateTo(url);
     }
-    private void OpenCategories() => Navigation.NavigateTo("/contact-categories");
+
+    private void OpenDetail(Guid id) => Navigation.NavigateTo($"/contacts/{id}");
 
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Type { get; set; } = string.Empty; }
 }

@@ -1,0 +1,52 @@
+@page "/statement-drafts"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using FinanceManager.Application.Statements
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.StatementDrafts> Localizer
+
+<h3>@Localizer["Nav_StatementDrafts"]</h3>
+
+@if(_drafts == null)
+{
+    <p>Loading...</p>
+}
+else if(_drafts.Count == 0)
+{
+    <p>@Localizer["Nav_StatementDrafts_NoDrafts"]</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="fm-table">
+            <thead>
+                <tr>
+                    <th>@Localizer["Nav_StatementDrafts_File"]</th>
+                    <th>@Localizer["Nav_StatementDrafts_Status"]</th>
+                    <th>@Localizer["Nav_StatementDrafts_Entries"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(var d in _drafts)
+                {
+                    <tr style="cursor:pointer;" @onclick="() => OpenDetail(d.DraftId)">
+                        <td>@d.OriginalFileName</td>
+                        <td>@d.Status</td>
+                        <td>@d.Entries.Count</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<StatementDraftDto>? _drafts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _drafts = await Http.GetFromJsonAsync<List<StatementDraftDto>>("api/statement-drafts");
+    }
+
+    private void OpenDetail(Guid id) => Nav.NavigateTo($"/statement-drafts/{id}");
+}

@@ -224,6 +224,72 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.ToTable("Postings");
                 });
 
+            modelBuilder.Entity("FinanceManager.Domain.Statements.StatementDraft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DetectedAccountId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "CreatedUtc");
+
+                    b.ToTable("StatementDrafts");
+                });
+
+            modelBuilder.Entity("FinanceManager.Domain.Statements.StatementDraftEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("BookingDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DraftId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DraftId", "BookingDate");
+
+                    b.ToTable("StatementDraftEntries");
+                });
+
             modelBuilder.Entity("FinanceManager.Domain.Statements.StatementEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -364,6 +430,20 @@ namespace FinanceManager.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("FinanceManager.Domain.Statements.StatementDraftEntry", b =>
+                {
+                    b.HasOne("FinanceManager.Domain.Statements.StatementDraft", null)
+                        .WithMany("Entries")
+                        .HasForeignKey("DraftId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FinanceManager.Domain.Statements.StatementDraft", b =>
+                {
+                    b.Navigation("Entries");
                 });
 #pragma warning restore 612, 618
         }

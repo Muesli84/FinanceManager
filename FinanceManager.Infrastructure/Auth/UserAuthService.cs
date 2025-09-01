@@ -1,10 +1,10 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Users;
 using FinanceManager.Domain;
+using FinanceManager.Domain.Contacts; // added
 using FinanceManager.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using FinanceManager.Domain.Contacts; // added
 
 namespace FinanceManager.Infrastructure.Auth;
 
@@ -65,6 +65,8 @@ public sealed class UserAuthService : IUserAuthService
 
         var expires = _clock.UtcNow.AddMinutes(30);
         var token = _jwt.CreateToken(user.Id, user.Username, user.IsAdmin, expires);
+
+        await new DemoDataService(_db).CreateDemoDataForUserAsync(user.Id, ct);
 
         _logger.LogInformation("User {UserId} ({Username}) registered (IsAdmin={IsAdmin})", user.Id, user.Username, user.IsAdmin);
         return Result<AuthResult>.Ok(new AuthResult(user.Id, user.Username, user.IsAdmin, token, expires));

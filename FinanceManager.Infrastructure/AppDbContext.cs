@@ -20,6 +20,8 @@ public class AppDbContext : DbContext
     public DbSet<StatementImport> StatementImports => Set<StatementImport>();
     public DbSet<StatementEntry> StatementEntries => Set<StatementEntry>();
     public DbSet<Posting> Postings => Set<Posting>();
+    public DbSet<StatementDraft> StatementDrafts => Set<StatementDraft>();
+    public DbSet<StatementDraftEntry> StatementDraftEntries => Set<StatementDraftEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,7 +45,6 @@ public class AppDbContext : DbContext
         {
             b.HasIndex(x => new { x.OwnerUserId, x.Name });
             b.Property(x => x.Name).HasMaxLength(200).IsRequired();
-            // FK zu ContactCategory (optional)
             b.HasOne<ContactCategory>()
              .WithMany()
              .HasForeignKey(x => x.CategoryId)
@@ -78,6 +79,22 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Posting>(b =>
         {
             b.HasIndex(x => new { x.AccountId, x.BookingDate });
+        });
+
+        modelBuilder.Entity<StatementDraft>(b =>
+        {
+            b.Property(x => x.OriginalFileName).HasMaxLength(255).IsRequired();
+            b.HasMany<StatementDraftEntry>("Entries")
+              .WithOne()
+              .HasForeignKey(e => e.DraftId)
+              .OnDelete(DeleteBehavior.Cascade);
+            b.HasIndex(x => new { x.OwnerUserId, x.CreatedUtc });
+        });
+
+        modelBuilder.Entity<StatementDraftEntry>(b =>
+        {
+            b.Property(x => x.Subject).HasMaxLength(500).IsRequired();
+            b.HasIndex(x => new { x.DraftId, x.BookingDate });
         });
     }
 }

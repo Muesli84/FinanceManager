@@ -1,15 +1,56 @@
 ﻿@page "/"
 @using Microsoft.AspNetCore.Authorization
+@rendermode InteractiveServer
 @inject IHttpContextAccessor httpContextAccessor
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Home> Localizer
+@inject HttpClient Http
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
+@inject NavigationManager Nav
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 <h1>@Localizer["PageTitle"]</h1>
+
+@if (CurrentUser.IsAuthenticated)
+{
+    <div class="action-bar">
+        <div class="icon-btn" title="Import Statement" aria-label="Import Statement" style="padding:.3rem .6rem;">
+            <InputFile OnChange="OnFileChanged" />
+        </div>
+    </div>
+}
+
+@if (_importSuccess && _draftId != null)
+{
+    <div class="alert alert-success" style="margin-top:1rem;">
+        @Localizer["Import_Success"]
+        <a href="@($"/statement-drafts/{_draftId}")" class="alert-link">@Localizer["Import_ShowDetails"]</a>
+    </div>
+}
+
 <p>KPI placeholders will appear here.</p>
 
 @code {
-    protected override Task OnInitializedAsync()
+    private bool _importSuccess;
+    private Guid? _draftId;
+
+    private async Task OnFileChanged(InputFileChangeEventArgs e)
     {
-        var context = httpContextAccessor.HttpContext;
-        return base.OnInitializedAsync();
+        var file = e.File;
+        if (file == null) { return; }
+        using var content = new MultipartFormDataContent();
+        await using var stream = file.OpenReadStream(10_000_000);
+        content.Add(new StreamContent(stream), "file", file.Name);
+        var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
+        if (resp.IsSuccessStatusCode)
+        {
+            var draft = await resp.Content.ReadFromJsonAsync<StatementDraftDto>();
+            if (draft != null)
+            {
+                _draftId = draft.DraftId;
+                _importSuccess = true;
+            }
+        }
     }
+
+    private sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, List<StatementDraftEntryDto> Entries);
+    private sealed record StatementDraftEntryDto(Guid TempId, DateTime BookingDate, decimal Amount, string Subject);
 }
