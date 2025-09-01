@@ -92,6 +92,12 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
         }
     }
 
+    // Explicit cache clear for logout
+    public void Clear()
+    {
+        InvalidateCache();
+    }
+
     private (string token, DateTimeOffset expiry) IssueToken(IEnumerable<Claim> claims)
     {
         var key = _configuration["Jwt:Key"]!;
@@ -124,7 +130,8 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Lax,
-            Expires = expiry
+            Expires = expiry,
+            Path = "/"
         });
     }
 

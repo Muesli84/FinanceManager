@@ -10,8 +10,10 @@ namespace FinanceManager.Web.Controllers;
 public sealed class AuthController : ControllerBase
 {
     private readonly IUserAuthService _auth;
+    private readonly IAuthTokenProvider _tokenProvider;
 
-    public AuthController(IUserAuthService auth) => _auth = auth;
+    public AuthController(IUserAuthService auth, IAuthTokenProvider tokenProvider)
+    { _auth = auth; _tokenProvider = tokenProvider; }
 
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)
@@ -25,7 +27,6 @@ public sealed class AuthController : ControllerBase
         {
             return Unauthorized(new { error = result.Error });
         }
-        // Session cookie (no Expires) accessible for whole site (Path=/)
         Response.Cookies.Append("fm_auth", result.Value!.Token, new CookieOptions
         {
             HttpOnly = true,
@@ -65,15 +66,17 @@ public sealed class AuthController : ControllerBase
     {
         if (Request.Cookies.ContainsKey("fm_auth"))
         {
-            Response.Cookies.Append("fm_auth", string.Empty, new CookieOptions
+            Response.Cookies.Delete("fm_auth", new CookieOptions
             {
-                Expires = DateTimeOffset.UnixEpoch,
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Lax,
                 Path = "/",
-                IsEssential = true
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.Lax
             });
+        }
+        if (_tokenProvider is JwtCookieAuthTokenProvider concrete)
+        {
+            concrete.Clear();
         }
         return Ok();
     }

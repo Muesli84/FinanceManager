@@ -2,6 +2,8 @@ using FinanceManager.Application.Users;
 using FinanceManager.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using FinanceManager.Domain.Contacts; // added
+using FinanceManager.Domain; // added for ContactType
 
 namespace FinanceManager.Infrastructure.Auth;
 
@@ -59,6 +61,16 @@ public sealed class UserAdminService : IUserAdminService
         var user = new User(username, _passwordHasher.Hash(password), isAdmin);
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
+
+        // Create self contact (admin path) – bypass public service restriction on creating Self contacts.
+        bool hasSelf = await _db.Contacts.AsNoTracking().AnyAsync(c => c.OwnerUserId == user.Id && c.Type == ContactType.Self, ct);
+        if (!hasSelf)
+        {
+            _db.Contacts.Add(new Contact(user.Id, user.Username, ContactType.Self, null));
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("Created self contact for user {UserId}", user.Id);
+        }
+
         _logger.LogInformation("Created user {UserId} ({Username})", user.Id, user.Username);
         return new UserAdminDto(user.Id, user.Username, user.IsAdmin, user.Active, user.LockedUntilUtc, user.LastLoginUtc, user.PreferredLanguage);
     }

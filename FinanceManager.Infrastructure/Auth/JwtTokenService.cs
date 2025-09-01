@@ -24,6 +24,8 @@ public sealed class JwtTokenService : IJwtTokenService
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(ClaimTypes.NameIdentifier, userId.ToString()), // ensure claim recognized by CurrentUserService
+            new(ClaimTypes.Name, username),
             new(JwtRegisteredClaimNames.UniqueName, username),
             new("is_admin", isAdmin ? "true" : "false")
         };

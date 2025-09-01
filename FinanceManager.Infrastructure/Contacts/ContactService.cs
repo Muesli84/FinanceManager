@@ -12,6 +12,10 @@ public sealed class ContactService : IContactService
 
     public async Task<ContactDto> CreateAsync(Guid ownerUserId, string name, ContactType type, Guid? categoryId, CancellationToken ct)
     {
+        if (type == ContactType.Self)
+        {
+            throw new ArgumentException("Creating a contact of type 'Self' is not allowed.");
+        }
         var contact = new Contact(ownerUserId, name, type, categoryId);
         _db.Contacts.Add(contact);
         await _db.SaveChangesAsync(ct);
@@ -22,8 +26,24 @@ public sealed class ContactService : IContactService
     {
         var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
         if (contact == null) return null;
+
+        // Prevent changing type to or from Self.
+        bool isSelf = contact.Type == ContactType.Self;
+        if (isSelf && type != ContactType.Self)
+        {
+            throw new ArgumentException("Changing the type of a 'Self' contact is not allowed.");
+        }
+        if (!isSelf && type == ContactType.Self)
+        {
+            throw new ArgumentException("Changing a contact's type to 'Self' is not allowed.");
+        }
+
         contact.Rename(name);
-        contact.ChangeType(type);
+        // Only apply type change if not self (guard above ensures validity)
+        if (!isSelf)
+        {
+            contact.ChangeType(type);
+        }
         contact.SetCategory(categoryId);
         await _db.SaveChangesAsync(ct);
         return new ContactDto(contact.Id, contact.Name, contact.Type, contact.CategoryId);
@@ -33,6 +53,10 @@ public sealed class ContactService : IContactService
     {
         var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
         if (contact == null) return false;
+        if (contact.Type == ContactType.Self)
+        {
+            throw new ArgumentException("Deleting the 'Self' contact is not allowed.");
+        }
         _db.Contacts.Remove(contact);
         await _db.SaveChangesAsync(ct);
         return true;
