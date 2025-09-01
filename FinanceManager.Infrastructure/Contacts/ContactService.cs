@@ -10,19 +10,19 @@ public sealed class ContactService : IContactService
     private readonly AppDbContext _db;
     public ContactService(AppDbContext db) { _db = db; }
 
-    public async Task<ContactDto> CreateAsync(Guid ownerUserId, string name, ContactType type, Guid? categoryId, CancellationToken ct)
+    public async Task<ContactDto> CreateAsync(Guid ownerUserId, string name, ContactType type, Guid? categoryId, string? description, CancellationToken ct)
     {
         if (type == ContactType.Self)
         {
             throw new ArgumentException("Creating a contact of type 'Self' is not allowed.");
         }
-        var contact = new Contact(ownerUserId, name, type, categoryId);
+        var contact = new Contact(ownerUserId, name, type, categoryId, description);
         _db.Contacts.Add(contact);
         await _db.SaveChangesAsync(ct);
-        return new ContactDto(contact.Id, contact.Name, contact.Type, contact.CategoryId);
+        return new ContactDto(contact.Id, contact.Name, contact.Type, contact.CategoryId, contact.Description);
     }
 
-    public async Task<ContactDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, ContactType type, Guid? categoryId, CancellationToken ct)
+    public async Task<ContactDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, ContactType type, Guid? categoryId, string? description, CancellationToken ct)
     {
         var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
         if (contact == null) return null;
@@ -45,8 +45,9 @@ public sealed class ContactService : IContactService
             contact.ChangeType(type);
         }
         contact.SetCategory(categoryId);
+        contact.SetDescription(description);
         await _db.SaveChangesAsync(ct);
-        return new ContactDto(contact.Id, contact.Name, contact.Type, contact.CategoryId);
+        return new ContactDto(contact.Id, contact.Name, contact.Type, contact.CategoryId, contact.Description);
     }
 
     public async Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct)
@@ -68,7 +69,7 @@ public sealed class ContactService : IContactService
             .Where(c => c.OwnerUserId == ownerUserId)
             .OrderBy(c => c.Name)
             .Skip(skip).Take(take)
-            .Select(c => new ContactDto(c.Id, c.Name, c.Type, c.CategoryId))
+            .Select(c => new ContactDto(c.Id, c.Name, c.Type, c.CategoryId, c.Description))
             .ToListAsync(ct);
     }
 
@@ -76,7 +77,7 @@ public sealed class ContactService : IContactService
     {
         return await _db.Contacts.AsNoTracking()
             .Where(c => c.Id == id && c.OwnerUserId == ownerUserId)
-            .Select(c => new ContactDto(c.Id, c.Name, c.Type, c.CategoryId))
+            .Select(c => new ContactDto(c.Id, c.Name, c.Type, c.CategoryId, c.Description))
             .FirstOrDefaultAsync(ct);
     }
 }

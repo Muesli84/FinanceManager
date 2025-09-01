@@ -22,8 +22,8 @@ public sealed class ContactsController : ControllerBase
     public ContactsController(IContactService contacts, ICurrentUserService current, ILogger<ContactsController> logger)
     { _contacts = contacts; _current = current; _logger = logger; }
 
-    public sealed record ContactCreateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId);
-    public sealed record ContactUpdateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId);
+    public sealed record ContactCreateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description);
+    public sealed record ContactUpdateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description);
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactDto>), StatusCodes.Status200OK)]
@@ -67,7 +67,7 @@ public sealed class ContactsController : ControllerBase
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
         {
-            var created = await _contacts.CreateAsync(_current.UserId, req.Name, req.Type, req.CategoryId, ct);
+            var created = await _contacts.CreateAsync(_current.UserId, req.Name, req.Type, req.CategoryId, req.Description, ct);
             return CreatedAtRoute("GetContact", new { id = created.Id }, created);
         }
         catch (ArgumentException ex)
@@ -89,7 +89,7 @@ public sealed class ContactsController : ControllerBase
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
         {
-            var updated = await _contacts.UpdateAsync(id, _current.UserId, req.Name, req.Type, req.CategoryId, ct);
+            var updated = await _contacts.UpdateAsync(id, _current.UserId, req.Name, req.Type, req.CategoryId, req.Description, ct);
             return updated is null ? NotFound() : Ok(updated);
         }
         catch (ArgumentException ex)

@@ -59,6 +59,10 @@ else
                 }
             </InputSelect>
         </div>
+        <div>
+            <label>Description</label>
+            <textarea @bind="_model.Description" rows="4" style="width:100%;max-width:520px;"></textarea>
+        </div>
         @if (!string.IsNullOrEmpty(_error))
         {
             <div class="error" style="margin-top:.75rem;">@_error</div>
@@ -152,14 +156,14 @@ else
             var http = ClientFactory.CreateClient("Api");
             if (IsEdit)
             {
-                var update = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId };
+                var update = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId, Description = _model.Description };
                 var resp = await http.PutAsJsonAsync($"/api/contacts/{Id}", update);
                 if (!resp.IsSuccessStatusCode) { _error = "Save failed"; }
                 else { await AfterSaveAssignToDraftIfNeeded(Id!.Value); }
             }
             else
             {
-                var create = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId };
+                var create = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId, Description = _model.Description };
                 var resp = await http.PostAsJsonAsync("/api/contacts", create);
                 if (resp.IsSuccessStatusCode)
                 {
@@ -231,6 +235,7 @@ else
         [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = ContactType.Person.ToString();
         public string CategoryId { get; set; } = string.Empty;
+        public string? Description { get; set; }
     }
 
     private sealed class CategoryVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
