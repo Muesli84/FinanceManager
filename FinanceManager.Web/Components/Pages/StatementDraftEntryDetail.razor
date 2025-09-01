@@ -29,32 +29,37 @@ else
             <tr>
                 <th>Contact</th>
                 <td>
-                    <div class="contact-combobox" style="position:relative;max-width:420px;">
-                        <input type="text" @bind="_contactFilter" @bind:event="oninput" @bind:after="(()=>OnContactFilterAfterChanged())" placeholder="Type to filter contacts" @onfocus="ShowDropdown" />
-                        <input type="hidden" value="@_selectedContactId" />
-                        @if (_dropdownVisible)
-                        {
-                            <ul class="combo-list" style="list-style:none;margin:0;padding:.25rem .25rem;position:absolute;z-index:20;left:0;right:0;max-height:14rem;overflow:auto;background:#222;border:1px solid #444;border-radius:4px;box-shadow:0 4px 16px #0006;">
-                                <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectContact(null))" class="@( _selectedContactId==null?"active":string.Empty)">-- none --</li>
-                                @foreach(var c in FilteredContacts)
-                                {
-                                    <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectContact(c.Id))" class="@( _selectedContactId==c.Id?"active":string.Empty)" title="@c.Name">@c.Name</li>
-                                }
-                                @if(!FilteredContacts.Any())
-                                {
-                                    <li style="padding:.3rem .4rem;opacity:.6;">No matches</li>
-                                }
-                            </ul>
-                        }
+                    <div class="contact-combobox" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:420px;margin-bottom:1rem;">
+                        <div style="position:relative;min-width:0;">
+                            <input type="text" style="width:95%;" @bind="_contactFilter" @bind:event="oninput" @bind:after="(()=>OnContactFilterAfterChanged())" placeholder="Type to filter contacts" @onfocus="ShowDropdown" />
+                            <input type="hidden" value="@_selectedContactId" />
+                            @if (_dropdownVisible)
+                            {
+                                <ul class="combo-list" style="list-style:none;margin:0;padding:.25rem .25rem;position:absolute;z-index:10;left:0;right:0;max-height:9.5rem;overflow:auto;background:#222;border:1px solid #444;border-radius:4px;box-shadow:0 3px 12px #0005;">
+                                    <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectContact(null))" class="@( _selectedContactId==null?"active":string.Empty)">-- none --</li>
+                                    @foreach(var c in FilteredContacts)
+                                    {
+                                        <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectContact(c.Id))" class="@( _selectedContactId==c.Id?"active":string.Empty)" title="@c.Name">@c.Name</li>
+                                    }
+                                    @if(!FilteredContacts.Any())
+                                    {
+                                        <li style="padding:.3rem .4rem;opacity:.6;">No matches</li>
+                                    }
+                                </ul>
+                            }
+                            @if(_dirty)
+                            {
+                                <div style="margin-top:.3rem;font-size:.7rem;opacity:.7;">Unsaved change</div>
+                            }
+                            @if(!string.IsNullOrEmpty(_contactError))
+                            {
+                                <div style="color:#e66;font-size:.8rem;margin-top:.3rem;">@_contactError</div>
+                            }
+                        </div>
+                        <div>
+                            <button class="icon-btn" title="New Contact" aria-label="New Contact" @onclick="OpenCreateContact"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
+                        </div>
                     </div>
-                    @if(_dirty)
-                    {
-                        <div style="margin-top:.3rem;font-size:.7rem;opacity:.7;">Unsaved change</div>
-                    }
-                    @if(!string.IsNullOrEmpty(_contactError))
-                    {
-                        <div style="color:#e66;font-size:.8rem;margin-top:.3rem;">@_contactError</div>
-                    }
                 </td>
             </tr>
         </tbody>
@@ -182,6 +187,15 @@ else
     }
 
     private void Back() => Nav.NavigateTo($"/statement-drafts/{DraftId}");
+    private void OpenCreateContact()
+    {
+        // prefill with recipient or current filter text
+        var name = _vm?.Entry.RecipientName;
+        if (string.IsNullOrWhiteSpace(name)) { name = string.IsNullOrWhiteSpace(_contactFilter) ? _vm?.Entry.Subject : _contactFilter; }
+        name ??= string.Empty;
+        var url = $"/contacts/new?prefillName={Uri.EscapeDataString(name)}&draftId={DraftId}&entryId={EntryId}";
+        Nav.NavigateTo(url);
+    }
 
     private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, StatementDraftEntryStatus Status, Guid? ContactId);
     private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry);

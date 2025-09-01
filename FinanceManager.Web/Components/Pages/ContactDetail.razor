@@ -75,12 +75,16 @@ else
     private bool _busy;
     private string? _error;
 
+    private Guid? _prefillDraftId;
+    private Guid? _prefillEntryId;
+
     private bool IsEdit => Id.HasValue;
 
     protected override async Task OnParametersSetAsync()
     {
         if (CurrentUser.IsAuthenticated)
         {
+            ParseQueryParams();
             await LoadCategoriesAsync();
 
             if (IsEdit)
@@ -106,8 +110,26 @@ else
                     _error = "Load failed";
                 }
             }
+            else if (!string.IsNullOrWhiteSpace(_pendingPrefillName))
+            {
+                _model.Name = _pendingPrefillName!;
+            }
         }
         _loaded = true;
+    }
+
+    private string? _pendingPrefillName;
+    private void ParseQueryParams()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var prefillName = query.Get("prefillName");
+        if (!string.IsNullOrWhiteSpace(prefillName))
+        {
+            _pendingPrefillName = prefillName;
+        }
+        if (Guid.TryParse(query.Get("draftId"), out var did)) { _prefillDraftId = did; }
+        if (Guid.TryParse(query.Get("entryId"), out var eid)) { _prefillEntryId = eid; }
     }
 
     private async Task LoadCategoriesAsync()
@@ -130,19 +152,22 @@ else
             var http = ClientFactory.CreateClient("Api");
             if (IsEdit)
             {
-                var update = new { Name = _model.Name, Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId };
+                var update = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId };
                 var resp = await http.PutAsJsonAsync($"/api/contacts/{Id}", update);
                 if (!resp.IsSuccessStatusCode) { _error = "Save failed"; }
-                else { Back(); }
+                else { await AfterSaveAssignToDraftIfNeeded(Id!.Value); }
             }
             else
             {
-                var create = new { Name = _model.Name, Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId };
+                var create = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId };
                 var resp = await http.PostAsJsonAsync("/api/contacts", create);
                 if (resp.IsSuccessStatusCode)
                 {
                     var dto = await resp.Content.ReadFromJsonAsync<ContactDto>();
-                    if (dto != null) Navigation.NavigateTo($"/contacts/{dto.Id}", forceLoad: true);
+                    if (dto != null)
+                    {
+                        await AfterSaveAssignToDraftIfNeeded(dto.Id);
+                    }
                 }
                 else _error = "Create failed";
             }
@@ -152,6 +177,30 @@ else
             _error = ex.Message;
         }
         _busy = false;
+    }
+
+    private async Task AfterSaveAssignToDraftIfNeeded(Guid contactId)
+    {
+        if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
+        {
+            try
+            {
+                var http = ClientFactory.CreateClient("Api");
+                var payload = new { ContactId = (Guid?)contactId };
+                await http.PostAsJsonAsync($"/api/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}/contact", payload);
+            }
+            catch { }
+            // navigate back to draft entry detail
+            Navigation.NavigateTo($"/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}", forceLoad: true);
+        }
+        else
+        {
+            // normal flow: go back to list or stay on detail if editing existing
+            if (!IsEdit)
+            {
+                Navigation.NavigateTo("/contacts", forceLoad: true);
+            }
+        }
     }
 
     private async Task DeleteAsync()
