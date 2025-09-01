@@ -5,6 +5,8 @@ using FinanceManager.Application;
 using FinanceManager.Infrastructure.Auth;
 using FinanceManager.Application.Contacts;
 using FinanceManager.Infrastructure.Contacts;
+using FinanceManager.Application.Accounts;
+using FinanceManager.Infrastructure.Accounts;
 
 namespace FinanceManager.Infrastructure;
 
@@ -25,6 +27,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<FinanceManager.Application.Users.IUserAdminService, UserAdminService>();
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IContactCategoryService, ContactCategoryService>();
+        services.AddScoped<IAccountService, AccountService>();
         return services;
     }
 }

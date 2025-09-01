@@ -1,0 +1,210 @@
+@page "/accounts/{Id:guid}"
+@page "/accounts/new"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
+
+<h1>@(IsNew ? "New Account" : "Edit Account")</h1>
+
+@if (!_loaded)
+{
+    <p>Loading...</p>
+}
+else if (!CurrentUser.IsAuthenticated)
+{
+    <p>Please login.</p>
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="@SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div style="display:grid;gap:.6rem;max-width:520px;">
+            <div>
+                <label>Name</label><br />
+                <InputText @bind-Value="_model.Name" />
+            </div>
+            <div>
+                <label>Type</label><br />
+                <select @bind="_model.Type">
+                    <option value="Giro">Giro</option>
+                    <option value="Savings">Savings</option>
+                </select>
+            </div>
+            <div>
+                <label>IBAN</label><br />
+                <InputText @bind-Value="_model.Iban" />
+            </div>
+            <div>
+                <label>Bank Contact</label><br />
+                <select @bind="_model.BankContactId" @bind:after="OnBankContactAfterChanged">
+                    <option value="">-- select --</option>
+                    @foreach (var c in _bankContacts)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+            </div>
+            @if (string.IsNullOrWhiteSpace(_model.BankContactId))
+            {
+                <div>
+                    <label>Create new bank contact</label><br />
+                    <InputText @bind-Value="_newBankContactName" />
+                </div>
+            }
+        </div>
+        <div style="margin-top:1rem;display:flex;gap:.75rem;">
+            <button type="submit" disabled="@_busy">@(_busy?"Saving...":"Save")</button>
+            <button type="button" @onclick="Back">Back</button>
+            @if (!IsNew)
+            {
+                <button type="button" @onclick="DeleteAsync" disabled="@_busy" style="background:#6d1f1f;">Delete</button>
+                <button type="button" @onclick="OpenBankContact" disabled="@_busy">Bank Contact</button>
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div style="color:#e66;margin-top:1rem;">@_error</div>
+        }
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    private bool IsNew => !Id.HasValue;
+
+    private AccountEditModel _model = new();
+    private List<BankContactVm> _bankContacts = new();
+    private string? _newBankContactName;
+    private bool _loaded;
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (CurrentUser.IsAuthenticated)
+        {
+            await LoadBankContactsAsync();
+            if (!IsNew)
+            {
+                var resp = await Http.GetAsync($"/api/accounts/{Id}");
+                if (resp.IsSuccessStatusCode)
+                {
+                    var dto = await resp.Content.ReadFromJsonAsync<AccountDto>();
+                    if (dto != null)
+                    {
+                        _model.Name = dto.Name;
+                        _model.Type = dto.Type.ToString();
+                        _model.Iban = dto.Iban;
+                        _model.BankContactId = dto.BankContactId.ToString();
+                    }
+                }
+                else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    _error = "Not found";
+                }
+                else
+                {
+                    _error = "Load failed";
+                }
+            }
+        }
+        _loaded = true;
+    }
+
+    private async Task LoadBankContactsAsync()
+    {
+        var resp = await Http.GetAsync("/api/contacts?skip=0&take=500");
+        if (resp.IsSuccessStatusCode)
+        {
+            var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
+            _bankContacts = list.Where(c => c.Type == ContactType.Bank).Select(c => new BankContactVm { Id = c.Id, Name = c.Name }).ToList();
+        }
+    }
+
+    private void OnBankContactAfterChanged()
+    {
+        if (!string.IsNullOrWhiteSpace(_model.BankContactId))
+        {
+            _newBankContactName = null;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true; _error = null;
+        try
+        {
+            Guid? bankContactId = Guid.TryParse(_model.BankContactId, out var parsed) ? parsed : null;
+            if (IsNew)
+            {
+                var payload = new { Name = _model.Name, Type = Enum.Parse<AccountType>(_model.Type), Iban = _model.Iban, BankContactId = bankContactId, NewBankContactName = _newBankContactName };
+                var resp = await Http.PostAsJsonAsync("/api/accounts", payload);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var dto = await resp.Content.ReadFromJsonAsync<AccountDto>();
+                    if (dto != null) Nav.NavigateTo($"/accounts/{dto.Id}", forceLoad: true);
+                }
+                else _error = await resp.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                var payload = new { Name = _model.Name, Iban = _model.Iban, BankContactId = bankContactId, NewBankContactName = _newBankContactName };
+                var resp = await Http.PutAsJsonAsync($"/api/accounts/{Id}", payload);
+                if (!resp.IsSuccessStatusCode) _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busy = false;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (Id == null) return;
+        _busy = true; _error = null;
+        try
+        {
+            var resp = await Http.DeleteAsync($"/api/accounts/{Id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                Back();
+            }
+            else _error = await resp.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busy = false;
+    }
+
+    private void Back() => Nav.NavigateTo("/accounts", forceLoad: true);
+
+    private void OpenBankContact()
+    {
+        if (!string.IsNullOrWhiteSpace(_model.BankContactId))
+        {
+            Nav.NavigateTo($"/contacts/{_model.BankContactId}");
+        }
+    }
+
+    private sealed class AccountEditModel
+    {
+        [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
+        [Required] public string Type { get; set; } = "Giro";
+        public string? Iban { get; set; }
+        public string? BankContactId { get; set; }
+    }
+
+    private sealed class BankContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+
+    private sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
+    private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
+    private enum ContactType { Self, Bank, Person, Organization, Other }
+    private enum AccountType { Giro, Savings }
+}

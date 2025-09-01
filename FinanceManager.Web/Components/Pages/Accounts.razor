@@ -1,0 +1,115 @@
+@page "/accounts"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
+@using FinanceManager.Domain
+
+<h1>Accounts</h1>
+
+@if (!_loaded)
+{
+    <p>Loading...</p>
+}
+else if (!CurrentUser.IsAuthenticated)
+{
+    <p>Please login.</p>
+}
+else
+{
+    @if (_filterContactId != null)
+    {
+        <p style="opacity:.75;">Filtered by bank contact @(_filterContactId)</p>
+        <button @onclick="ClearFilter" style="margin-bottom:1rem;">Clear Filter</button>
+    }
+    <div style="margin-bottom:1rem;display:flex;gap:.75rem;">
+        <button @onclick="CreateNew">New Account</button>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th style="text-align:left;">Name</th>
+                <th style="text-align:left;">Type</th>
+                <th style="text-align:left;">IBAN</th>
+                <th style="text-align:right;">Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in _accounts)
+            {
+                <tr style="cursor:pointer;" @onclick="(()=>OpenDetail(a.Id))">
+                    <td>@a.Name</td>
+                    <td>@a.Type</td>
+                    <td>@a.Iban</td>
+                    <td style="text-align:right;">@a.CurrentBalance</td>
+                </tr>
+            }
+            @if (_accounts.Count == 0)
+            {
+                <tr><td colspan="4" style="opacity:.6;">No accounts.</td></tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool _loaded;
+    private List<AccountVm> _accounts = new();
+    private Guid? _filterContactId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CurrentUser.IsAuthenticated)
+        {
+            var uri = new Uri(Nav.Uri);
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            if (Guid.TryParse(query.Get("bankContactId"), out var contactId))
+            {
+                _filterContactId = contactId;
+            }
+            await LoadAsync();
+        }
+        _loaded = true;
+    }
+
+    private async Task LoadAsync()
+    {
+        var url = "/api/accounts";
+        if (_filterContactId != null)
+        {
+            url += $"?bankContactId={_filterContactId}";
+        }
+        var resp = await Http.GetAsync(url);
+        if (resp.IsSuccessStatusCode)
+        {
+            var list = await resp.Content.ReadFromJsonAsync<List<AccountDto>>() ?? new();
+            _accounts = list.Select(d => new AccountVm
+            {
+                Id = d.Id,
+                Name = d.Name,
+                Type = d.Type.ToString(),
+                Iban = d.Iban,
+                CurrentBalance = d.CurrentBalance
+            }).ToList();
+        }
+    }
+
+    private void CreateNew() => Nav.NavigateTo("/accounts/new");
+    private void OpenDetail(Guid id) => Nav.NavigateTo($"/accounts/{id}");
+    private void ClearFilter()
+    {
+        _filterContactId = null;
+        Nav.NavigateTo("/accounts", forceLoad: true);
+    }
+
+    private sealed class AccountVm
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string? Iban { get; set; }
+        public decimal CurrentBalance { get; set; }
+    }
+
+    private sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
+}

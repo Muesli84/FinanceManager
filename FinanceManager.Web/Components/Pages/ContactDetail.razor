@@ -52,6 +52,10 @@ else
             @if (IsEdit)
             {
                 <button type="button" @onclick="DeleteAsync" disabled="@_busy" style="margin-left:.75rem;">Delete</button>
+                @if (Enum.Parse<ContactType>(_model.Type) == ContactType.Bank)
+                {
+                    <button type="button" @onclick="OpenBankAccounts" disabled="@_busy" style="margin-left:.75rem;">Accounts</button>
+                }
             }
             <button type="button" @onclick="Back" style="margin-left:.75rem;">Back</button>
         </div>
@@ -165,6 +169,13 @@ else
     }
 
     private void Back() => Navigation.NavigateTo("/contacts", forceLoad: true);
+    private void OpenBankAccounts()
+    {
+        if (Id.HasValue)
+        {
+            Navigation.NavigateTo($"/accounts?bankContactId={Id}");
+        }
+    }
 
     private sealed class ContactEditModel
     {

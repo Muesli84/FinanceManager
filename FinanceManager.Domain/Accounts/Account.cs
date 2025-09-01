@@ -17,4 +17,37 @@ public sealed class Account : Entity, IAggregateRoot
     public string? Iban { get; private set; }
     public decimal CurrentBalance { get; private set; }
     public Guid BankContactId { get; private set; }
+
+    public void Rename(string name)
+    {
+        Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
+        Touch();
+    }
+
+    public void SetIban(string? iban)
+    {
+        Iban = string.IsNullOrWhiteSpace(iban) ? null : iban.Trim();
+        Touch();
+    }
+
+    public void SetBankContact(Guid bankContactId)
+    {
+        BankContactId = Guards.NotEmpty(bankContactId, nameof(bankContactId));
+        Touch();
+    }
+
+    public void SetType(AccountType type)
+    {
+        if (Type != type)
+        {
+            Type = type;
+            Touch();
+        }
+    }
+
+    public void AdjustBalance(decimal delta)
+    {
+        CurrentBalance += delta;
+        Touch();
+    }
 }
