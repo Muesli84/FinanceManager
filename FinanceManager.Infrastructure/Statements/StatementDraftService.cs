@@ -25,10 +25,8 @@ public sealed class StatementDraftService : IStatementDraftService
             throw new InvalidOperationException("No valid statement file reader found or no movements detected.");
         }
 
-        // Kontoauszug-Draft anlegen
         var draft = new StatementDraft(ownerUserId, originalFileName);
 
-        // Headerdaten (z.B. IBAN) übernehmen
         if (!string.IsNullOrWhiteSpace(parsedDraft.Header.IBAN))
         {
             var account = await _db.Accounts
@@ -39,10 +37,9 @@ public sealed class StatementDraftService : IStatementDraftService
             }
         }
 
-        // Bewegungen übernehmen
         foreach (var movement in parsedDraft.Movements)
         {
-            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject);
+            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview);
         }
 
         _db.StatementDrafts.Add(draft);
@@ -86,17 +83,25 @@ public sealed class StatementDraftService : IStatementDraftService
         if (draft == null || draft.Status != StatementDraftStatus.Draft) { return null; }
         if (!await _db.Accounts.AnyAsync(a => a.Id == accountId && a.OwnerUserId == ownerUserId, ct)) { return null; }
 
-        // create import entity
         var import = new StatementImport(accountId, format, draft.OriginalFileName);
         _db.StatementImports.Add(import);
         await _db.SaveChangesAsync(ct);
 
-        // create statement entries (simplified hash = Guid.NewGuid().ToString())
         foreach (var e in draft.Entries)
         {
-            _db.StatementEntries.Add(new StatementEntry(import.Id, e.BookingDate, e.Amount, e.Subject, Guid.NewGuid().ToString()));
+            _db.StatementEntries.Add(new StatementEntry(
+                import.Id,
+                e.BookingDate,
+                e.Amount,
+                e.Subject,
+                Guid.NewGuid().ToString(),
+                e.RecipientName,
+                e.ValutaDate,
+                e.CurrencyCode,
+                e.BookingDescription,
+                e.IsAnnounced));
         }
-        import.GetType().GetProperty("TotalEntries")!.SetValue(import, draft.Entries.Count); // quick set; consider mutator
+        import.GetType().GetProperty("TotalEntries")!.SetValue(import, draft.Entries.Count);
         draft.MarkCommitted();
         await _db.SaveChangesAsync(ct);
 
@@ -117,5 +122,14 @@ public sealed class StatementDraftService : IStatementDraftService
         draft.OriginalFileName,
         draft.DetectedAccountId,
         draft.Status,
-        draft.Entries.Select(e => new StatementDraftEntryDto(e.Id, e.BookingDate, e.Amount, e.Subject)).ToList());
+        draft.Entries.Select(e => new StatementDraftEntryDto(
+            e.Id,
+            e.BookingDate,
+            e.ValutaDate,
+            e.Amount,
+            e.CurrencyCode,
+            e.Subject,
+            e.RecipientName,
+            e.BookingDescription,
+            e.IsAnnounced)).ToList());
 }

@@ -16,10 +16,33 @@ public sealed class StatementDraft : Entity, IAggregateRoot
     public StatementDraftStatus Status { get; private set; }
     public ICollection<StatementDraftEntry> Entries => _entries;
     public void SetDetectedAccount(Guid accountId) { DetectedAccountId = accountId; Touch(); }
+
+    // Existing simple variant (backwards compatibility)
     public StatementDraftEntry AddEntry(DateTime bookingDate, decimal amount, string subject)
+        => AddEntry(bookingDate, amount, subject, null, null, null, null, false);
+
+    // Extended variant with additional data
+    public StatementDraftEntry AddEntry(
+        DateTime bookingDate,
+        decimal amount,
+        string subject,
+        string? recipientName,
+        DateTime? valutaDate,
+        string? currencyCode,
+        string? bookingDescription,
+        bool isAnnounced)
     {
-        var entry = new StatementDraftEntry(Id, bookingDate, amount, subject);
-        _entries.Add(entry); 
+        var entry = new StatementDraftEntry(
+            Id,
+            bookingDate,
+            amount,
+            subject,
+            recipientName,
+            valutaDate,
+            currencyCode,
+            bookingDescription,
+            isAnnounced);
+        _entries.Add(entry);
         Touch();
         return entry;
     }
@@ -30,15 +53,34 @@ public sealed class StatementDraft : Entity, IAggregateRoot
 public sealed class StatementDraftEntry : Entity
 {
     private StatementDraftEntry() { }
-    public StatementDraftEntry(Guid draftId, DateTime bookingDate, decimal amount, string subject)
+    public StatementDraftEntry(
+        Guid draftId,
+        DateTime bookingDate,
+        decimal amount,
+        string subject,
+        string? recipientName,
+        DateTime? valutaDate,
+        string? currencyCode,
+        string? bookingDescription,
+        bool isAnnounced)
     {
         DraftId = Guards.NotEmpty(draftId, nameof(draftId));
         BookingDate = bookingDate;
         Amount = amount;
         Subject = Guards.NotNullOrWhiteSpace(subject, nameof(subject));
+        RecipientName = recipientName;
+        ValutaDate = valutaDate;
+        CurrencyCode = string.IsNullOrWhiteSpace(currencyCode) ? "EUR" : currencyCode!; // default EUR
+        BookingDescription = bookingDescription;
+        IsAnnounced = isAnnounced;
     }
     public Guid DraftId { get; private set; }
     public DateTime BookingDate { get; private set; }
+    public DateTime? ValutaDate { get; private set; }
     public decimal Amount { get; private set; }
     public string Subject { get; private set; } = null!;
+    public string? RecipientName { get; private set; }
+    public string CurrencyCode { get; private set; } = "EUR";
+    public string? BookingDescription { get; private set; }
+    public bool IsAnnounced { get; private set; }
 }

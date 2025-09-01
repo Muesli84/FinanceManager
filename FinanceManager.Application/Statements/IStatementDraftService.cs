@@ -12,6 +12,16 @@ public interface IStatementDraftService
     Task<bool> CancelAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
 }
 
-public sealed record StatementDraftEntryDto(Guid Id, DateTime BookingDate, decimal Amount, string Subject);
+public sealed record StatementDraftEntryDto(
+    Guid Id,
+    DateTime BookingDate,
+    DateTime? ValutaDate,
+    decimal Amount,
+    string CurrencyCode,
+    string Subject,
+    string? RecipientName,
+    string? BookingDescription,
+    bool IsAnnounced);
+
 public sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, StatementDraftStatus Status, IReadOnlyList<StatementDraftEntryDto> Entries);
 public sealed record CommitResult(Guid StatementImportId, int TotalEntries);
