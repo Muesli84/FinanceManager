@@ -17,14 +17,17 @@ else if (!CurrentUser.IsAuthenticated)
 }
 else
 {
+    <div class="action-bar">
+        <button @onclick="CreateNew" aria-label="New Account" title="New Account" class="icon-btn"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
+        @if (_filterContactId != null)
+        {
+            <button @onclick="ClearFilter" aria-label="Clear Filter" title="Clear Filter" class="icon-btn"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+        }
+    </div>
     @if (_filterContactId != null)
     {
         <p style="opacity:.75;">Filtered by bank contact @(_filterContactId)</p>
-        <button @onclick="ClearFilter" style="margin-bottom:1rem;">Clear Filter</button>
     }
-    <div style="margin-bottom:1rem;display:flex;gap:.75rem;">
-        <button @onclick="CreateNew">New Account</button>
-    </div>
     <table style="width:100%;border-collapse:collapse;">
         <thead>
             <tr>

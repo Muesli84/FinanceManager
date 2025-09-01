@@ -17,14 +17,17 @@ else if (!CurrentUser.IsAuthenticated)
 }
 else
 {
-    <div class="actions" style="margin:0 0 1rem 0;display:flex;gap:.75rem;">
-        <button @onclick="CreateNew">New Contact</button>
-        <button @onclick="OpenCategories">Contact Groups</button>
+    <div class="action-bar">
+        <button @onclick="CreateNew" aria-label="New Contact" title="New Contact" class="icon-btn"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
+        <button @onclick="OpenCategories" aria-label="Contact Groups" title="Contact Groups" class="icon-btn"><svg><use href="/icons/sprite.svg#groups" /></svg></button>
     </div>
     <div class="contact-list" @onscroll="OnScrollAsync" style="max-height:60vh;overflow:auto;border:1px solid #333;padding:.5rem;">
         @foreach (var c in _contacts)
         {
-            <div class="contact-row" style="padding:.35rem .4rem;cursor:pointer;" @onclick="(()=>OpenDetail(c.Id))">@c.Name (@c.Type)</div>
+            <div class="contact-row" style="padding:.35rem .4rem;cursor:pointer;display:flex;justify-content:space-between;gap:.5rem;" @onclick="(()=>OpenDetail(c.Id))">
+                <span>@c.Name (@c.Type)</span>
+                <span style="opacity:.5;"><svg style="width:.9rem;height:.9rem;vertical-align:middle;"><use href="/icons/sprite.svg#arrow-right" /></svg></span>
+            </div>
         }
         @if (_loadingMore)
         {

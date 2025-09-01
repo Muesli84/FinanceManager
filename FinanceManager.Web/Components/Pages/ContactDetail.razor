@@ -20,6 +20,18 @@ else if (!CurrentUser.IsAuthenticated)
 }
 else
 {
+    <div class="action-bar">
+        <button type="button" @onclick="Back" aria-label="Back" title="Back" class="icon-btn"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+        <button type="button" @onclick="SaveAsync" disabled="@_busy" aria-label="Save" title="Save" class="icon-btn"><svg><use href="/icons/sprite.svg#save" /></svg></button>
+        @if (IsEdit)
+        {
+            <button type="button" @onclick="DeleteAsync" disabled="@_busy" aria-label="Delete" title="Delete" class="icon-btn danger"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
+            @if (Enum.Parse<ContactType>(_model.Type) == ContactType.Bank)
+            {
+                <button type="button" @onclick="OpenBankAccounts" disabled="@_busy" aria-label="Accounts" title="Accounts" class="icon-btn"><svg><use href="/icons/sprite.svg#accounts" /></svg></button>
+            }
+        }
+    </div>
     <EditForm Model="_model" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator />
         <ValidationSummary />
@@ -47,23 +59,11 @@ else
                 }
             </InputSelect>
         </div>
-        <div style="margin-top:1rem;">
-            <button type="submit" disabled="@_busy">@(_busy ? "Saving..." : "Save")</button>
-            @if (IsEdit)
-            {
-                <button type="button" @onclick="DeleteAsync" disabled="@_busy" style="margin-left:.75rem;">Delete</button>
-                @if (Enum.Parse<ContactType>(_model.Type) == ContactType.Bank)
-                {
-                    <button type="button" @onclick="OpenBankAccounts" disabled="@_busy" style="margin-left:.75rem;">Accounts</button>
-                }
-            }
-            <button type="button" @onclick="Back" style="margin-left:.75rem;">Back</button>
-        </div>
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="error" style="margin-top:.75rem;">@_error</div>
+        }
     </EditForm>
-    @if (!string.IsNullOrEmpty(_error))
-    {
-        <div class="error" style="margin-top:.75rem;">@_error</div>
-    }
 }
 
 @code {
