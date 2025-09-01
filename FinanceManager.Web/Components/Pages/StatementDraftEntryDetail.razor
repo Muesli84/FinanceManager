@@ -11,9 +11,13 @@
 }
 else
 {
-    <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+    <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
         <button class="icon-btn" @onclick="Back" title="Back" aria-label="Back"><svg><use href="/icons/sprite.svg#back" /></svg></button>
         <button class="icon-btn" @onclick="Reclassify" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
+        <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
+            <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrev" title="Previous Entry" aria-label="Previous Entry"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+            <button class="icon-btn" disabled="@(_vm?.NextEntryId==null)" @onclick="GoNext" title="Next Entry" aria-label="Next Entry"><svg style="transform:rotate(180deg)"><use href="/icons/sprite.svg#back" /></svg></button>
+        </div>
     </div>
     <p><strong>Draft File:</strong> @_vm.OriginalFileName</p>
     <table class="fm-table" style="max-width:960px;">
@@ -197,8 +201,23 @@ else
         Nav.NavigateTo(url);
     }
 
+    private void GoPrev()
+    {
+        if (_vm?.PrevEntryId != null)
+        {
+            Nav.NavigateTo($"/statement-drafts/{DraftId}/entries/{_vm.PrevEntryId}");
+        }
+    }
+    private void GoNext()
+    {
+        if (_vm?.NextEntryId != null)
+        {
+            Nav.NavigateTo($"/statement-drafts/{DraftId}/entries/{_vm.NextEntryId}");
+        }
+    }
+
     private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, StatementDraftEntryStatus Status, Guid? ContactId);
-    private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry);
+    private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }

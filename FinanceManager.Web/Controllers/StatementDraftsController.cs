@@ -53,8 +53,13 @@ public sealed class StatementDraftsController : ControllerBase
     {
         var draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
         if (draft is null) { return NotFound(); }
-        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
-        return entry is null ? NotFound() : Ok(new { draft.DraftId, draft.OriginalFileName, Entry = entry });
+        var ordered = draft.Entries.OrderBy(e => e.BookingDate).ThenBy(e => e.Id).ToList();
+        var entry = ordered.FirstOrDefault(e => e.Id == entryId);
+        if (entry is null) { return NotFound(); }
+        var index = ordered.FindIndex(e => e.Id == entryId);
+        var prev = index > 0 ? ordered[index - 1].Id : (Guid?)null;
+        var next = index < ordered.Count - 1 ? ordered[index + 1].Id : (Guid?)null;
+        return Ok(new { draft.DraftId, draft.OriginalFileName, Entry = entry, PrevEntryId = prev, NextEntryId = next });
     }
 
     [HttpPost("{draftId:guid}/entries")]
@@ -86,6 +91,15 @@ public sealed class StatementDraftsController : ControllerBase
         return result is null ? NotFound() : Ok(result);
     }
 
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/contact")]
+    public async Task<IActionResult> SetEntryContactAsync(Guid draftId, Guid entryId, [FromBody] SetContactRequest body, CancellationToken ct)
+    {
+        var draft = await _drafts.SetEntryContactAsync(draftId, entryId, body.ContactId, _current.UserId, ct);
+        if (draft == null) { return NotFound(); }
+        var entry = draft.Entries.First(e => e.Id == entryId);
+        return Ok(entry);
+    }
+
     [HttpDelete("{draftId:guid}")]
     public async Task<IActionResult> CancelAsync(Guid draftId, CancellationToken ct)
     {
@@ -95,15 +109,5 @@ public sealed class StatementDraftsController : ControllerBase
 
     public sealed record AddEntryRequest([property:Required] DateTime BookingDate, [property:Required] decimal Amount, [property:Required, MaxLength(500)] string Subject);
     public sealed record CommitRequest(Guid AccountId, ImportFormat Format);
-
-    [HttpPost("{draftId:guid}/entries/{entryId:guid}/contact")] // body: { contactId: Guid|null }
-    public async Task<IActionResult> SetEntryContactAsync(Guid draftId, Guid entryId, [FromBody] SetContactRequest body, CancellationToken ct)
-    {
-        var draft = await _drafts.SetEntryContactAsync(draftId, entryId, body.ContactId, _current.UserId, ct);
-        if (draft == null) { return NotFound(); }
-        var entry = draft.Entries.First(e => e.Id == entryId);
-        return Ok(entry);
-    }
-
     public sealed record SetContactRequest(Guid? ContactId);
 }
