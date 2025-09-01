@@ -5,6 +5,7 @@ using FinanceManager.Application.Statements;
 using FinanceManager.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -47,11 +48,34 @@ public sealed class StatementDraftsController : ControllerBase
         return draft is null ? NotFound() : Ok(draft);
     }
 
+    [HttpGet("{draftId:guid}/entries/{entryId:guid}")]
+    public async Task<IActionResult> GetEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
+    {
+        var draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
+        if (draft is null) { return NotFound(); }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        return entry is null ? NotFound() : Ok(new { draft.DraftId, draft.OriginalFileName, Entry = entry });
+    }
+
     [HttpPost("{draftId:guid}/entries")]
     public async Task<IActionResult> AddEntryAsync(Guid draftId, [FromBody] AddEntryRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         var draft = await _drafts.AddEntryAsync(draftId, _current.UserId, req.BookingDate, req.Amount, req.Subject, ct);
+        return draft is null ? NotFound() : Ok(draft);
+    }
+
+    [HttpPost("{draftId:guid}/classify")]
+    public async Task<IActionResult> ClassifyAsync(Guid draftId, CancellationToken ct)
+    {
+        var draft = await _drafts.ClassifyAsync(draftId, _current.UserId, ct);
+        return draft is null ? NotFound() : Ok(draft);
+    }
+
+    [HttpPost("{draftId:guid}/account/{accountId:guid}")]
+    public async Task<IActionResult> SetAccountAsync(Guid draftId, Guid accountId, CancellationToken ct)
+    {
+        var draft = await _drafts.SetAccountAsync(draftId, _current.UserId, accountId, ct);
         return draft is null ? NotFound() : Ok(draft);
     }
 
@@ -71,4 +95,15 @@ public sealed class StatementDraftsController : ControllerBase
 
     public sealed record AddEntryRequest([property:Required] DateTime BookingDate, [property:Required] decimal Amount, [property:Required, MaxLength(500)] string Subject);
     public sealed record CommitRequest(Guid AccountId, ImportFormat Format);
+
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/contact")] // body: { contactId: Guid|null }
+    public async Task<IActionResult> SetEntryContactAsync(Guid draftId, Guid entryId, [FromBody] SetContactRequest body, CancellationToken ct)
+    {
+        var draft = await _drafts.SetEntryContactAsync(draftId, entryId, body.ContactId, _current.UserId, ct);
+        if (draft == null) { return NotFound(); }
+        var entry = draft.Entries.First(e => e.Id == entryId);
+        return Ok(entry);
+    }
+
+    public sealed record SetContactRequest(Guid? ContactId);
 }

@@ -1,8 +1,9 @@
-@page "/statement-drafts/{Id:guid}"
+﻿@page "/statement-drafts/{Id:guid}"
 @rendermode InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager Nav
 @using FinanceManager.Application.Statements
+@using FinanceManager.Domain.Statements
 
 <h3>Statement Draft Detail</h3>
 @if (_draft == null)
@@ -11,42 +12,61 @@
 }
 else
 {
-    <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
+    <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
         <button @onclick="DeleteDraftAsync" class="icon-btn" title="Delete Draft" aria-label="Delete Draft">
             <svg><use href="/icons/sprite.svg#delete" /></svg>
         </button>
+        <button @onclick="ClassifyAsync" class="icon-btn" title="Reclassify" aria-label="Reclassify">
+            <svg><use href="/icons/sprite.svg#refresh" /></svg>
+        </button>        
     </div>
     <p><strong>File:</strong> @_draft.OriginalFileName</p>
     <p><strong>Status:</strong> @_draft.Status</p>
-    <p><strong>Detected Account:</strong> @_draft.DetectedAccountId</p>
+    <p>
+        <strong>Account:</strong> 
+        <select @onchange="OnAccountChanged" value="@_selectedAccountId">
+            <option value="">-- select --</option>
+            @foreach (var grp in _groupedAccounts)
+            {
+                <optgroup label="@grp.Key">
+                    @foreach (var acc in grp.Value)
+                    {
+                        <option value="@acc.Id" selected="@(acc.Id == _selectedAccountId)">@acc.Name</option>
+                    }
+                </optgroup>
+            }
+        </select>
+    </p>
 
     <h4>Entries (@_draft.Entries.Count)</h4>
-    <div class="table-responsive">
-        <table class="fm-table">
+    <div class="draft-entries-container">
+        <table class="fm-table wide">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Valuta</th>
-                    <th style="text-align:right;">Amount</th>
-                    <th>Currency</th>
+                    <th style="width:7rem;">Date</th>
+                    <th style="width:7rem;">Valuta</th>
+                    <th style="width:7rem;text-align:right;">Amount</th>
+                    <th style="width:6rem;">Currency</th>
                     <th>Subject</th>
-                    <th>Recipient</th>
+                    <th style="width:14%;">Recipient</th>
                     <th>Description</th>
-                    <th>Announced</th>
+                    <th style="width:6rem;">Announced</th>
+                    <th style="width:9rem;">Status</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var e in _draft.Entries.OrderBy(e => e.BookingDate))
                 {
-                    <tr>
+                    <tr style="cursor:pointer;" @onclick="(() => OpenEntry(e.Id))">
                         <td>@e.BookingDate.ToShortDateString()</td>
                         <td>@(e.ValutaDate?.ToShortDateString() ?? "-")</td>
                         <td style="text-align:right;">@e.Amount</td>
                         <td>@e.CurrencyCode</td>
-                        <td>@e.Subject</td>
-                        <td>@(string.IsNullOrWhiteSpace(e.RecipientName) ? "-" : e.RecipientName)</td>
-                        <td>@(string.IsNullOrWhiteSpace(e.BookingDescription) ? "-" : e.BookingDescription)</td>
-                        <td>@(e.IsAnnounced ? "?" : "")</td>
+                        <td class="wrap">@e.Subject</td>
+                        <td class="wrap">@(string.IsNullOrWhiteSpace(e.RecipientName) ? "-" : e.RecipientName)</td>
+                        <td class="wrap">@(string.IsNullOrWhiteSpace(e.BookingDescription) ? "-" : e.BookingDescription)</td>
+                        <td>@(e.IsAnnounced ? "✓" : "")</td>
+                        <td>@e.Status</td>
                     </tr>
                 }
             </tbody>
@@ -73,9 +93,51 @@ else
 
     private EntryForm _form = new() { BookingDate = DateTime.Today };
 
+    private List<AccountVm> _accounts = new();
+    private Dictionary<string, List<AccountVm>> _groupedAccounts = new();
+    private Guid? _selectedAccountId;
+
     protected override async Task OnParametersSetAsync()
     {
         _draft = await Http.GetFromJsonAsync<StatementDraftDto>($"api/statement-drafts/{Id}");
+        await LoadAccountsAsync();
+        _selectedAccountId = _draft?.DetectedAccountId;
+    }
+
+    private async Task LoadAccountsAsync()
+    {
+        var resp = await Http.GetAsync("/api/accounts?skip=0&take=500");
+        if (resp.IsSuccessStatusCode)
+        {
+            var list = await resp.Content.ReadFromJsonAsync<List<AccountDto>>() ?? new();
+            _accounts = list.Select(a => new AccountVm { Id = a.Id, Name = a.Name, BankContactId = a.BankContactId }).ToList();
+            // load contacts for grouping names
+            var contactsResp = await Http.GetAsync("/api/contacts?skip=0&take=500");
+            var contacts = new List<ContactDto>();
+            if (contactsResp.IsSuccessStatusCode)
+            {
+                contacts = await contactsResp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
+            }
+            var bankContacts = contacts.Where(c => c.Type == ContactType.Bank).ToDictionary(c => c.Id, c => c.Name);
+            _groupedAccounts = _accounts
+                .GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)" )
+                .OrderBy(g => g.Key)
+                .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
+        }
+    }
+
+    private async Task OnAccountChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var accId))
+        {
+            var resp = await Http.PostAsync($"api/statement-drafts/{Id}/account/{accId}", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                _draft = await resp.Content.ReadFromJsonAsync<StatementDraftDto>();
+                _selectedAccountId = _draft?.DetectedAccountId;
+                StateHasChanged();
+            }
+        }
     }
 
     private async Task AddEntryAsync()
@@ -89,6 +151,17 @@ else
         }
     }
 
+    private async Task ClassifyAsync()
+    {
+        var response = await Http.PostAsync($"api/statement-drafts/{Id}/classify", null);
+        if (response.IsSuccessStatusCode)
+        {
+            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
+            _selectedAccountId = _draft?.DetectedAccountId;
+            StateHasChanged();
+        }
+    }
+
     private async Task DeleteDraftAsync()
     {
         if (_draft == null) { return; }
@@ -98,6 +171,8 @@ else
             Nav.NavigateTo("/statement-drafts");
         }
     }
+
+    private void OpenEntry(Guid entryId) => Nav.NavigateTo($"/statement-drafts/{Id}/entries/{entryId}");
 
     private sealed class EntryForm
     {
@@ -115,7 +190,9 @@ else
         string Subject,
         string? RecipientName,
         string? BookingDescription,
-        bool IsAnnounced);
+        bool IsAnnounced,
+        StatementDraftEntryStatus Status,
+        Guid? ContactId);
 
     private sealed record StatementDraftDto(
         Guid DraftId,
@@ -123,4 +200,10 @@ else
         Guid? DetectedAccountId,
         FinanceManager.Domain.StatementDraftStatus Status,
         List<StatementDraftEntryDto> Entries);
+
+    private sealed record AccountDto(Guid Id, string Name, int Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
+    private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
+    private enum ContactType { Self, Bank, Person, Organization, Other }
+
+    private sealed class AccountVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid BankContactId { get; set; } }
 }

@@ -1,0 +1,191 @@
+@page "/statement-drafts/{DraftId:guid}/entries/{EntryId:guid}"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using FinanceManager.Domain.Statements
+
+<h3>Statement Draft Entry</h3>
+@if (_vm == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;">
+        <button class="icon-btn" @onclick="Back" title="Back" aria-label="Back"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+        <button class="icon-btn" @onclick="Reclassify" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
+    </div>
+    <p><strong>Draft File:</strong> @_vm.OriginalFileName</p>
+    <table class="fm-table" style="max-width:960px;">
+        <tbody>
+            <tr><th style="width:180px;">Booking Date</th><td>@_vm.Entry.BookingDate.ToShortDateString()</td></tr>
+            <tr><th>Valuta Date</th><td>@(_vm.Entry.ValutaDate?.ToShortDateString() ?? "-")</td></tr>
+            <tr><th>Amount</th><td>@_vm.Entry.Amount @_vm.Entry.CurrencyCode</td></tr>
+            <tr><th>Subject</th><td class="wrap">@_vm.Entry.Subject</td></tr>
+            <tr><th>Recipient</th><td class="wrap">@(_vm.Entry.RecipientName ?? "-")</td></tr>
+            <tr><th>Description</th><td class="wrap">@(_vm.Entry.BookingDescription ?? "-")</td></tr>
+            <tr><th>Announced</th><td>@(_vm.Entry.IsAnnounced ? "Yes" : "No")</td></tr>
+            <tr><th>Status</th><td>@_vm.Entry.Status</td></tr>
+            <tr>
+                <th>Contact</th>
+                <td>
+                    <div class="contact-combobox" style="position:relative;max-width:420px;">
+                        <input type="text" @bind="_contactFilter" @bind:event="oninput" @bind:after="(()=>OnContactFilterAfterChanged())" placeholder="Type to filter contacts" @onfocus="ShowDropdown" />
+                        <input type="hidden" value="@_selectedContactId" />
+                        @if (_dropdownVisible)
+                        {
+                            <ul class="combo-list" style="list-style:none;margin:0;padding:.25rem .25rem;position:absolute;z-index:20;left:0;right:0;max-height:14rem;overflow:auto;background:#222;border:1px solid #444;border-radius:4px;box-shadow:0 4px 16px #0006;">
+                                <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectContact(null))" class="@( _selectedContactId==null?"active":string.Empty)">-- none --</li>
+                                @foreach(var c in FilteredContacts)
+                                {
+                                    <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectContact(c.Id))" class="@( _selectedContactId==c.Id?"active":string.Empty)" title="@c.Name">@c.Name</li>
+                                }
+                                @if(!FilteredContacts.Any())
+                                {
+                                    <li style="padding:.3rem .4rem;opacity:.6;">No matches</li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    @if(_dirty)
+                    {
+                        <div style="margin-top:.3rem;font-size:.7rem;opacity:.7;">Unsaved change</div>
+                    }
+                    @if(!string.IsNullOrEmpty(_contactError))
+                    {
+                        <div style="color:#e66;font-size:.8rem;margin-top:.3rem;">@_contactError</div>
+                    }
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <div style="margin-top:1rem;display:flex;gap:.6rem;align-items:center;">
+        <button class="icon-btn" disabled="@(!_dirty || _pendingSave)" @onclick="SaveAll" title="Save Changes" aria-label="Save Changes"><svg><use href="/icons/sprite.svg#save" /></svg></button>
+        @if(_pendingSave)
+        {
+            <span style="font-size:.8rem;opacity:.7;">Saving...</span>
+        }
+        else if(_dirty)
+        {
+            <span style="font-size:.75rem;opacity:.65;">There are unsaved changes.</span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Guid DraftId { get; set; }
+    [Parameter] public Guid EntryId { get; set; }
+
+    private EntryDetailVm? _vm;
+    private List<ContactVm> _allContacts = new();
+    private string _contactFilter = string.Empty;
+    private Guid? _selectedContactId;
+    private string? _contactError;
+    private bool _dropdownVisible;
+    private bool _dirty; // any unsaved change
+    private bool _pendingSave;
+
+    private IEnumerable<ContactVm> FilteredContacts => string.IsNullOrWhiteSpace(_contactFilter)
+        ? _allContacts
+        : _allContacts.Where(c => c.Name.Contains(_contactFilter, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadEntryAsync();
+        await LoadContactsAsync();
+        _selectedContactId = _vm?.Entry.ContactId;
+        _contactFilter = _vm?.Entry.ContactId != null ? _allContacts.FirstOrDefault(c=>c.Id==_vm.Entry.ContactId)?.Name ?? string.Empty : string.Empty;
+        _dirty = false;
+    }
+
+    private async Task LoadEntryAsync()
+    {
+        var resp = await Http.GetAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}");
+        if (resp.IsSuccessStatusCode)
+        {
+            _vm = await resp.Content.ReadFromJsonAsync<EntryDetailVm>();
+        }
+    }
+
+    private async Task LoadContactsAsync()
+    {
+        var resp = await Http.GetAsync("/api/contacts?skip=0&take=500");
+        if (resp.IsSuccessStatusCode)
+        {
+            var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
+            _allContacts = list.Where(c => c.Type != ContactType.Bank).Select(c => new ContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name).ToList();
+        }
+    }
+
+    private void ShowDropdown(FocusEventArgs _) => _dropdownVisible = true;
+
+    private void SelectContact(Guid? id)
+    {
+        if (_selectedContactId != id)
+        {
+            _selectedContactId = id;
+            _dirty = true;
+        }
+        _contactFilter = id == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==id)?.Name ?? string.Empty;
+        _dropdownVisible = false;
+    }
+
+    private void OnContactFilterAfterChanged()
+    {
+        _dropdownVisible = true;
+        _dirty = true;
+        if (_selectedContactId != null && !_allContacts.Any(c => string.Equals(c.Name, _contactFilter, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedContactId = null;
+        }
+    }
+
+    private async Task SaveAll()
+    {
+        if (!_dirty || _vm == null) { return; }
+        _pendingSave = true; _contactError = null;
+        try
+        {
+            // Persist contact selection (null allowed)
+            var payload = new { ContactId = _selectedContactId };
+            var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/contact", payload);
+            if (resp.IsSuccessStatusCode)
+            {
+                await LoadEntryAsync();
+                _selectedContactId = _vm?.Entry.ContactId;
+                _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==_selectedContactId)?.Name ?? string.Empty;
+                _dirty = false;
+            }
+            else
+            {
+                _contactError = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _contactError = ex.Message;
+        }
+        _pendingSave = false;
+    }
+
+    private async Task Reclassify()
+    {
+        var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/classify", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            await LoadEntryAsync();
+            _selectedContactId = _vm?.Entry.ContactId;
+            _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==_selectedContactId)?.Name ?? string.Empty;
+            _dirty = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Back() => Nav.NavigateTo($"/statement-drafts/{DraftId}");
+
+    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, StatementDraftEntryStatus Status, Guid? ContactId);
+    private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry);
+    private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
+    private enum ContactType { Self, Bank, Person, Organization, Other }
+    private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+}

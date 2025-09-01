@@ -3,7 +3,6 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure.Statements.Reader;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -45,6 +44,9 @@ public sealed class StatementDraftService : IStatementDraftService
         _db.StatementDrafts.Add(draft);
         await _db.SaveChangesAsync(ct);
 
+        // Auto classify after creation
+        await ClassifyInternalAsync(draft, ownerUserId, ct);
+        await _db.SaveChangesAsync(ct);
         return Map(draft);
     }
 
@@ -72,6 +74,7 @@ public sealed class StatementDraftService : IStatementDraftService
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         if (draft == null || draft.Status != StatementDraftStatus.Draft) { return null; }
         _db.Entry(draft.AddEntry(bookingDate, amount, subject)).State = EntityState.Added;
+        await ClassifyInternalAsync(draft, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
         return Map(draft);
     }
@@ -117,6 +120,138 @@ public sealed class StatementDraftService : IStatementDraftService
         return true;
     }
 
+    public async Task<StatementDraftDto?> ClassifyAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        await ClassifyInternalAsync(draft, ownerUserId, ct);
+        await _db.SaveChangesAsync(ct);
+        return Map(draft);
+    }
+
+    public async Task<StatementDraftDto?> SetAccountAsync(Guid draftId, Guid ownerUserId, Guid accountId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null || draft.Status != StatementDraftStatus.Draft) { return null; }
+        var accountExists = await _db.Accounts.AnyAsync(a => a.Id == accountId && a.OwnerUserId == ownerUserId, ct);
+        if (!accountExists) { return null; }
+        draft.SetDetectedAccount(accountId);
+        await ClassifyInternalAsync(draft, ownerUserId, ct);
+        await _db.SaveChangesAsync(ct);
+        return Map(draft);
+    }
+
+    public async Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+
+        if (contactId == null)
+        {
+            entry.ClearContact();
+        }
+        else
+        {
+            bool contactExists = await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == contactId && c.OwnerUserId == ownerUserId, ct);
+            if (!contactExists) { return null; }
+            entry.MarkAccounted(contactId.Value);
+        }
+        await _db.SaveChangesAsync(ct);
+        return Map(draft);
+    }
+
+    private async Task ClassifyInternalAsync(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
+    {
+        // Account detection fallback if still not set: pick single account if only one exists
+        if (draft.DetectedAccountId == null)
+        {
+            var singleAccountId = await _db.Accounts.AsNoTracking()
+                .Where(a => a.OwnerUserId == ownerUserId)
+                .Select(a => a.Id)
+                .ToListAsync(ct);
+            if (singleAccountId.Count == 1)
+            {
+                draft.SetDetectedAccount(singleAccountId[0]);
+            }
+        }
+
+        // Preload data needed for classification
+        var contacts = await _db.Contacts.AsNoTracking()
+            .Where(c => c.OwnerUserId == ownerUserId)
+            .Select(c => new { c.Id, c.Name })
+            .ToListAsync(ct);
+        var aliasLookup = await _db.AliasNames.AsNoTracking()
+            .Where(a => contacts.Select(c => c.Id).Contains(a.ContactId))
+            .GroupBy(a => a.ContactId)
+            .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.Pattern).ToList(), ct);
+
+        // Duplicate check basis: existing statement entries for detected account (last 180 days)
+        List<(DateTime BookingDate, decimal Amount, string Subject)> existing = new();
+        if (draft.DetectedAccountId != null)
+        {
+            var since = DateTime.UtcNow.AddDays(-180);
+            var tempExisting = await _db.StatementEntries.AsNoTracking()
+                .Where(se => se.BookingDate >= since)
+                .Select(se => new { se.BookingDate, se.Amount, se.Subject })
+                .ToListAsync(ct);
+            existing = tempExisting
+                .Select(x => (x.BookingDate.Date, x.Amount, x.Subject))
+                .ToList();
+        }
+
+        foreach (var entry in draft.Entries)
+        {
+            // Reset to base status first (keep AlreadyBooked if previously flagged)
+            if (entry.Status != StatementDraftEntryStatus.AlreadyBooked)
+            {
+                entry.ResetOpen();
+            }
+
+            // Duplicate (already booked)? – naive match BookingDate+Amount+Subject
+            if (existing.Any(x => x.BookingDate == entry.BookingDate.Date && x.Amount == entry.Amount && string.Equals(x.Subject, entry.Subject, StringComparison.OrdinalIgnoreCase)))
+            {
+                entry.MarkAlreadyBooked();
+                continue;
+            }
+
+            if (entry.IsAnnounced)
+            {
+                // Announced stays unless we can fully account it with a contact
+            }
+
+            // Contact resolution: match by exact name or alias contains in subject/counterparty
+            var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant();
+            var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant();
+
+            Guid? matchedContactId = contacts
+                .Where(c => string.Equals(c.Name, entry.RecipientName, StringComparison.OrdinalIgnoreCase) || string.Equals(c.Name, entry.Subject, StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.Id)
+                .FirstOrDefault();
+            if (matchedContactId == Guid.Empty)
+            {
+                // alias match
+                foreach (var kvp in aliasLookup)
+                {
+                    if (kvp.Value.Any(p => (!string.IsNullOrWhiteSpace(p)) && (normalizedSubject.Contains(p.ToLowerInvariant()) || normalizedRecipient.Contains(p.ToLowerInvariant()))))
+                    {
+                        matchedContactId = kvp.Key;
+                        break;
+                    }
+                }
+            }
+
+            if (matchedContactId != null && matchedContactId != Guid.Empty)
+            {
+                entry.MarkAccounted(matchedContactId.Value);
+            }
+        }
+    }
+
     private static StatementDraftDto Map(StatementDraft draft) => new(
         draft.Id,
         draft.OriginalFileName,
@@ -131,5 +266,7 @@ public sealed class StatementDraftService : IStatementDraftService
             e.Subject,
             e.RecipientName,
             e.BookingDescription,
-            e.IsAnnounced)).ToList());
+            e.IsAnnounced,
+            e.Status,
+            e.ContactId)).ToList());
 }
