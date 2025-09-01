@@ -4,6 +4,7 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using FinanceManager.Domain.Contacts; // added
 
 namespace FinanceManager.Infrastructure.Auth;
 
@@ -53,6 +54,14 @@ public sealed class UserAuthService : IUserAuthService
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
+
+        // Create self contact if not existing (first time user registration). This allows linking postings/other entities to the user as a contact.
+        bool hasSelfContact = await _db.Contacts.AsNoTracking().AnyAsync(c => c.OwnerUserId == user.Id && c.Type == ContactType.Self, ct);
+        if (!hasSelfContact)
+        {
+            _db.Contacts.Add(new Contact(user.Id, user.Username, ContactType.Self, null));
+            await _db.SaveChangesAsync(ct);
+        }
 
         var expires = _clock.UtcNow.AddMinutes(30);
         var token = _jwt.CreateToken(user.Id, user.Username, user.IsAdmin, expires);
