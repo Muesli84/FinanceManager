@@ -7,9 +7,15 @@
 
 <h3>@Localizer["Nav_StatementDrafts"]</h3>
 
+<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
+    <div class="icon-btn" title="@Localizer["Nav_StatementDrafts_Import"]" aria-label="@Localizer["Nav_StatementDrafts_Import"]" style="padding:.3rem .6rem;">
+        <InputFile OnChange="OnFileChanged" />
+    </div>
+</div>
+
 @if(_drafts == null)
 {
-    <p>Loading...</p>
+    <p>@Localizer["Nav_StatementDrafts_Loading"]</p>
 }
 else if(_drafts.Count == 0)
 {
@@ -45,8 +51,35 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
         _drafts = await Http.GetFromJsonAsync<List<StatementDraftDto>>("api/statement-drafts");
     }
 
     private void OpenDetail(Guid id) => Nav.NavigateTo($"/statement-drafts/{id}");
+
+    private async Task OnFileChanged(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) { return; }
+        using var content = new MultipartFormDataContent();
+        await using var stream = file.OpenReadStream(10_000_000);
+        content.Add(new StreamContent(stream), "file", file.Name);
+        var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
+        if (resp.IsSuccessStatusCode)
+        {
+            var draft = await resp.Content.ReadFromJsonAsync<StatementDraftDto>();
+            if (draft != null)
+            {
+                Nav.NavigateTo($"/statement-drafts/{draft.DraftId}");
+                return;
+            }
+        }
+        // fallback reload list
+        await LoadAsync();
+        StateHasChanged();
+    }
 }

@@ -1,5 +1,7 @@
 @page "/statement-drafts/{Id:guid}"
+@rendermode InteractiveServer
 @inject HttpClient Http
+@inject NavigationManager Nav
 @using FinanceManager.Application.Statements
 
 <h3>Statement Draft Detail</h3>
@@ -9,39 +11,48 @@
 }
 else
 {
+    <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
+        <button @onclick="DeleteDraftAsync" class="icon-btn" title="Delete Draft" aria-label="Delete Draft">
+            <svg><use href="/icons/sprite.svg#delete" /></svg>
+        </button>
+    </div>
     <p><strong>File:</strong> @_draft.OriginalFileName</p>
     <p><strong>Status:</strong> @_draft.Status</p>
     <p><strong>Detected Account:</strong> @_draft.DetectedAccountId</p>
 
     <h4>Entries (@_draft.Entries.Count)</h4>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Subject</th>
-            </tr>
-        </thead>
-        <tbody>
-        @foreach(var e in _draft.Entries.OrderBy(e => e.BookingDate))
-        {
-            <tr>
-                <td>@e.BookingDate.ToShortDateString()</td>
-                <td>@e.Amount</td>
-                <td>@e.Subject</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="fm-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th style="text-align:right;">Amount</th>
+                    <th>Subject</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach(var e in _draft.Entries.OrderBy(e => e.BookingDate))
+            {
+                <tr>
+                    <td>@e.BookingDate.ToShortDateString()</td>
+                    <td style="text-align:right;">@e.Amount</td>
+                    <td>@e.Subject</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
 
     @if(_draft.Status == FinanceManager.Domain.StatementDraftStatus.Draft)
     {
         <h4>Add Entry</h4>
         <EditForm Model="_form" OnValidSubmit="AddEntryAsync">
-            <InputDate @bind-Value="_form.BookingDate" />
-            <InputNumber @bind-Value="_form.Amount" />
-            <InputText @bind-Value="_form.Subject" />
-            <button type="submit">Add</button>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+                <InputDate @bind-Value="_form.BookingDate" />
+                <InputNumber @bind-Value="_form.Amount" />
+                <InputText @bind-Value="_form.Subject" />
+                <button type="submit" class="icon-btn">Add</button>
+            </div>
         </EditForm>
     }
 }
@@ -65,6 +76,16 @@ else
             _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
             _form = new EntryForm { BookingDate = DateTime.Today };
             StateHasChanged();
+        }
+    }
+
+    private async Task DeleteDraftAsync()
+    {
+        if(_draft == null) { return; }
+        var resp = await Http.DeleteAsync($"api/statement-drafts/{Id}");
+        if (resp.IsSuccessStatusCode || resp.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            Nav.NavigateTo("/statement-drafts");
         }
     }
 
