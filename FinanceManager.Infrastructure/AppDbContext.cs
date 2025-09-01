@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<AccountShare> AccountShares => Set<AccountShare>();
     public DbSet<Contact> Contacts => Set<Contact>();
+    public DbSet<ContactCategory> ContactCategories => Set<ContactCategory>();
     public DbSet<AliasName> AliasNames => Set<AliasName>();
     public DbSet<StatementImport> StatementImports => Set<StatementImport>();
     public DbSet<StatementEntry> StatementEntries => Set<StatementEntry>();
@@ -42,6 +43,17 @@ public class AppDbContext : DbContext
         {
             b.HasIndex(x => new { x.OwnerUserId, x.Name });
             b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            // FK zu ContactCategory (optional)
+            b.HasOne<ContactCategory>()
+             .WithMany()
+             .HasForeignKey(x => x.CategoryId)
+             .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ContactCategory>(b =>
+        {
+            b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
+            b.Property(x => x.Name).HasMaxLength(150).IsRequired();
         });
 
         modelBuilder.Entity<AliasName>(b =>

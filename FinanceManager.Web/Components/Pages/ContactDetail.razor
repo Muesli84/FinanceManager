@@ -37,6 +37,16 @@ else
                 }
             </InputSelect>
         </div>
+        <div>
+            <label>Group</label>
+            <InputSelect @bind-Value="_model.CategoryId">
+                <option value="">-- none --</option>
+                @foreach (var g in _categories.OrderBy(c=>c.Name))
+                {
+                    <option value="@g.Id">@g.Name</option>
+                }
+            </InputSelect>
+        </div>
         <div style="margin-top:1rem;">
             <button type="submit" disabled="@_busy">@(_busy ? "Saving..." : "Save")</button>
             @if (IsEdit)
@@ -56,6 +66,7 @@ else
     [Parameter] public Guid? Id { get; set; }
 
     private ContactEditModel _model = new();
+    private List<CategoryVm> _categories = new();
     private bool _loaded;
     private bool _busy;
     private string? _error;
@@ -66,6 +77,8 @@ else
     {
         if (CurrentUser.IsAuthenticated)
         {
+            await LoadCategoriesAsync();
+
             if (IsEdit)
             {
                 var http = ClientFactory.CreateClient("Api");
@@ -77,6 +90,7 @@ else
                     {
                         _model.Name = dto.Name;
                         _model.Type = dto.Type.ToString();
+                        _model.CategoryId = dto.CategoryId?.ToString() ?? string.Empty;
                     }
                 }
                 else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -92,29 +106,41 @@ else
         _loaded = true;
     }
 
+    private async Task LoadCategoriesAsync()
+    {
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.GetAsync("/api/contact-categories");
+        if (resp.IsSuccessStatusCode)
+        {
+            var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new();
+            _categories = list.Select(c => new CategoryVm { Id = c.Id, Name = c.Name }).ToList();
+        }
+    }
+
     private async Task SaveAsync()
     {
         _busy = true; _error = null;
         try
         {
+            var categoryId = Guid.TryParse(_model.CategoryId, out var parsed) ? parsed : (Guid?)null;
+            var http = ClientFactory.CreateClient("Api");
             if (IsEdit)
             {
-                var update = new { Name = _model.Name, Type = Enum.Parse<ContactType>(_model.Type), CategoryId = (Guid?)null };
-                var http = ClientFactory.CreateClient("Api");
+                var update = new { Name = _model.Name, Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId };
                 var resp = await http.PutAsJsonAsync($"/api/contacts/{Id}", update);
-                if (!resp.IsSuccessStatusCode) _error = "Save failed"; else Back();
+                if (!resp.IsSuccessStatusCode) { _error = "Save failed"; }
+                else { Back(); }
             }
             else
             {
-                var create = new { Name = _model.Name, Type = Enum.Parse<ContactType>(_model.Type), CategoryId = (Guid?)null };
-                var http = ClientFactory.CreateClient("Api");
+                var create = new { Name = _model.Name, Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId };
                 var resp = await http.PostAsJsonAsync("/api/contacts", create);
                 if (resp.IsSuccessStatusCode)
                 {
                     var dto = await resp.Content.ReadFromJsonAsync<ContactDto>();
                     if (dto != null) Navigation.NavigateTo($"/contacts/{dto.Id}", forceLoad: true);
                 }
-                else _error = "Create failed" + await resp.Content.ReadAsStringAsync();
+                else _error = "Create failed";
             }
         }
         catch (Exception ex)
@@ -144,7 +170,9 @@ else
     {
         [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = ContactType.Person.ToString();
+        public string CategoryId { get; set; } = string.Empty;
     }
 
-    private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Type { get; set; } = string.Empty; }
+    private sealed class CategoryVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+    private sealed class ContactCategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 }

@@ -17,6 +17,10 @@ else if (!CurrentUser.IsAuthenticated)
 }
 else
 {
+    <div class="actions" style="margin:0 0 1rem 0;display:flex;gap:.75rem;">
+        <button @onclick="CreateNew">New Contact</button>
+        <button @onclick="OpenCategories">Contact Groups</button>
+    </div>
     <div class="contact-list" @onscroll="OnScrollAsync" style="max-height:60vh;overflow:auto;border:1px solid #333;padding:.5rem;">
         @foreach (var c in _contacts)
         {
@@ -30,9 +34,6 @@ else
         {
             <div style="opacity:.7;">No contacts.</div>
         }
-    </div>
-    <div style="margin-top:1rem;">
-        <button @onclick="CreateNew">New Contact</button>
     </div>
 }
 
@@ -52,12 +53,9 @@ else
         _loaded = true;
     }
 
-    // Fix for CS0246: Use Microsoft.AspNetCore.Components.Web.UIEventArgs is obsolete, use EventArgs instead.
-    // Fix for CS1998: Add an await statement (simulate async work).
     private async Task OnScrollAsync(EventArgs args)
     {
-        await Task.Yield(); // Placeholder to satisfy async requirement
-        // JS interop would be better; placeholder for logic.
+        await Task.Yield();
     }
 
     private async Task LoadMoreAsync()
@@ -81,12 +79,12 @@ else
     }
 
     private void CreateNew() => OpenDetail(null);
-
     private void OpenDetail(Guid? id)
     {
         var url = id == null ? "/contacts/new" : $"/contacts/{id}";
         Navigation.NavigateTo(url);
     }
+    private void OpenCategories() => Navigation.NavigateTo("/contact-categories");
 
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Type { get; set; } = string.Empty; }
 }

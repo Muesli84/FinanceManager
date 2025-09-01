@@ -1,0 +1,107 @@
+@page "/contact-categories"
+@using System.ComponentModel.DataAnnotations
+@rendermode InteractiveServer
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+@inject FinanceManager.Application.ICurrentUserService CurrentUser
+
+<h1>Contact Groups</h1>
+
+@if (!_loaded)
+{
+    <p>Loading...</p>
+}
+else if (!CurrentUser.IsAuthenticated)
+{
+    <p>Please login.</p>
+}
+else
+{
+    <EditForm Model="_createModel" OnValidSubmit="CreateAsync">
+        <DataAnnotationsValidator />
+        <div style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:1rem;">
+            <InputText @bind-Value="_createModel.Name" placeholder="New group name" />
+            <button type="submit" disabled="@_busy">@(_busy?"Adding...":"Add")</button>
+        </div>
+        <ValidationSummary />
+    </EditForm>
+
+    <ul style="padding-left:1.2rem;">
+        @foreach (var c in _categories.OrderBy(c=>c.Name))
+        {
+            <li>@c.Name</li>
+        }
+        @if (_categories.Count == 0)
+        {
+            <li style="opacity:.7;">No groups yet.</li>
+        }
+    </ul>
+
+    <div style="margin-top:1rem;">
+        <button type="button" @onclick="Back">Back</button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div style="margin-top:.75rem;color:#b00;">@_error</div>
+    }
+}
+
+@code {
+    private List<CategoryVm> _categories = new();
+    private bool _loaded;
+    private bool _busy;
+    private string? _error;
+
+    private CreateCategoryModel _createModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CurrentUser.IsAuthenticated)
+        {
+            await LoadAsync();
+        }
+        _loaded = true;
+    }
+
+    private async Task LoadAsync()
+    {
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.GetAsync("/api/contact-categories");
+        if (resp.IsSuccessStatusCode)
+        {
+            var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new();
+            _categories = list.Select(l => new CategoryVm { Id = l.Id, Name = l.Name }).ToList();
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _busy = true; _error = null;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.PostAsJsonAsync("/api/contact-categories", new { Name = _createModel.Name });
+            if (resp.IsSuccessStatusCode)
+            {
+                _createModel.Name = string.Empty;
+                await LoadAsync();
+            }
+            else
+            {
+                _error = "Create failed";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busy = false;
+    }
+
+    private void Back() => Navigation.NavigateTo("/contacts");
+
+    private sealed class CategoryVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+    private sealed class CreateCategoryModel { [Required, MinLength(2)] public string Name { get; set; } = string.Empty; }
+    private sealed class ContactCategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+}

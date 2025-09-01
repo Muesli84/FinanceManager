@@ -200,11 +200,56 @@ namespace FinanceManager.Infrastructure.Migrations
                 table: "Users",
                 column: "Username",
                 unique: true);
+
+            migrationBuilder.CreateTable(
+                name: "ContactCategories",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    OwnerUserId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", maxLength: 150, nullable: false),
+                    CreatedUtc = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    ModifiedUtc = table.Column<DateTime>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ContactCategories", x => x.Id);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Contacts_CategoryId",
+                table: "Contacts",
+                column: "CategoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ContactCategories_OwnerUserId_Name",
+                table: "ContactCategories",
+                columns: new[] { "OwnerUserId", "Name" },
+                unique: true);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_Contacts_ContactCategories_CategoryId",
+                table: "Contacts",
+                column: "CategoryId",
+                principalTable: "ContactCategories",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_Contacts_ContactCategories_CategoryId",
+                table: "Contacts");
+
+            migrationBuilder.DropTable(
+                name: "ContactCategories");
+
+            migrationBuilder.DropIndex(
+                name: "IX_Contacts_CategoryId",
+                table: "Contacts");
+
             migrationBuilder.DropTable(
                 name: "Accounts");
 
