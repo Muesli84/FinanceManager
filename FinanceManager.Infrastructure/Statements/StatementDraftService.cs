@@ -1,4 +1,4 @@
-using FinanceManager.Application.Statements;
+ï»¿using FinanceManager.Application.Statements;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure.Statements.Reader;
@@ -183,7 +183,7 @@ public sealed class StatementDraftService : IStatementDraftService
         // Preload data needed for classification
         var contacts = await _db.Contacts.AsNoTracking()
             .Where(c => c.OwnerUserId == ownerUserId)
-            .Select(c => new { c.Id, c.Name })
+            .Select(c => c)
             .ToListAsync(ct);
         var aliasLookup = await _db.AliasNames.AsNoTracking()
             .Where(a => contacts.Select(c => c.Id).Contains(a.ContactId))
@@ -204,7 +204,7 @@ public sealed class StatementDraftService : IStatementDraftService
                 .ToList();
         }
 
-        // BankContactId für Fallback ermitteln
+        // BankContactId fÃ¼r Fallback ermitteln
         Guid? bankContactId = null;
         if (draft.DetectedAccountId != null)
         {
@@ -222,7 +222,7 @@ public sealed class StatementDraftService : IStatementDraftService
                 entry.ResetOpen();
             }
 
-            // Duplicate (already booked)? – naive match BookingDate+Amount+Subject
+            // Duplicate (already booked)? â€“ naive match BookingDate+Amount+Subject
             if (existing.Any(x => x.BookingDate == entry.BookingDate.Date && x.Amount == entry.Amount && string.Equals(x.Subject, entry.Subject, StringComparison.OrdinalIgnoreCase)))
             {
                 entry.MarkAlreadyBooked();
@@ -237,34 +237,64 @@ public sealed class StatementDraftService : IStatementDraftService
             // Contact resolution: match by exact name or alias contains in subject/counterparty
             var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant();
             var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant();
-
-            Guid? matchedContactId = contacts
-                .Where(c => string.Equals(c.Name, entry.RecipientName, StringComparison.OrdinalIgnoreCase) || string.Equals(c.Name, entry.Subject, StringComparison.OrdinalIgnoreCase))
-                .Select(c => c.Id)
-                .FirstOrDefault();
-            if (matchedContactId == Guid.Empty)
+            Guid? matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedRecipient);
+            var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
+            // Nach Zuordnung des Kontakts:
+            if (matchedContact != null && matchedContact.IsPaymentIntermediary)
             {
-                // alias match
-                foreach (var kvp in aliasLookup)
+                matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedSubject);
+            }
+            else if (matchedContact != null)
+            {
+                entry.MarkAccounted(matchedContact.Id);
+            }
+        }
+    }
+
+    private static Guid? AssignContact(
+        List<Domain.Contacts.Contact> contacts,
+        Dictionary<Guid, List<string>> aliasLookup,
+        Guid? bankContactId,
+        StatementDraftEntry entry,
+        string searchText)
+    {
+        Guid? matchedContactId = contacts
+            .Where(c => string.Equals(c.Name, searchText, StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.Id)
+            .FirstOrDefault();
+
+        if (matchedContactId == Guid.Empty)
+        {
+            foreach (var kvp in aliasLookup)
+            {
+                foreach (var pattern in kvp.Value)
                 {
-                    if (kvp.Value.Any(p => (!string.IsNullOrWhiteSpace(p)) && (normalizedSubject.Contains(p.ToLowerInvariant()) || normalizedRecipient.Contains(p.ToLowerInvariant()))))
+                    if (string.IsNullOrWhiteSpace(pattern)) { continue; }
+                    // Platzhalter in Regex umwandeln: * â†’ .*, ? â†’ .
+                    var regexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
+                        .Replace("\\*", ".*")
+                        .Replace("\\?", ".") + "$";
+                    if (System.Text.RegularExpressions.Regex.IsMatch(searchText, regexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
                     {
                         matchedContactId = kvp.Key;
                         break;
                     }
                 }
-            }
-
-            // Fallback: Wenn kein Empfängername angegeben ist, setze Bankkontakt als Empfänger
-            if (string.IsNullOrWhiteSpace(entry.RecipientName) && bankContactId != null && bankContactId != Guid.Empty)
-            {
-                entry.MarkAccounted(bankContactId.Value);
-            }
-            else if (matchedContactId != null && matchedContactId != Guid.Empty)
-            {
-                entry.MarkAccounted(matchedContactId.Value);
+                if (matchedContactId != Guid.Empty) { break; }
             }
         }
+
+        // Fallback: Wenn kein EmpfÃ¤ngername angegeben ist, setze Bankkontakt als EmpfÃ¤nger
+        if (string.IsNullOrWhiteSpace(entry.RecipientName) && bankContactId != null && bankContactId != Guid.Empty)
+        {
+            entry.MarkAccounted(bankContactId.Value);
+        }
+        else if (matchedContactId != null && matchedContactId != Guid.Empty)
+        {
+            entry.MarkAccounted(matchedContactId.Value);
+        }
+
+        return matchedContactId;
     }
 
     private static StatementDraftDto Map(StatementDraft draft) => new(

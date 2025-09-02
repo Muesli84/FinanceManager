@@ -14,6 +14,9 @@ else
     <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
         <button class="icon-btn" @onclick="Back" title="Back" aria-label="Back"><svg><use href="/icons/sprite.svg#back" /></svg></button>
         <button class="icon-btn" @onclick="Reclassify" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
+        <button class="icon-btn" disabled="@(_selectedContactId==null)" @onclick="OpenContactDetail" title="Kontakt anzeigen" aria-label="Kontakt anzeigen">
+            <svg><use href="/icons/sprite.svg#groups" /></svg>
+        </button>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
             <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrev" title="Previous Entry" aria-label="Previous Entry"><svg><use href="/icons/sprite.svg#back" /></svg></button>
             <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpen" title="Nächster offener Eintrag" aria-label="Nächster offener Eintrag">
@@ -201,6 +204,14 @@ else
         name ??= string.Empty;
         var url = $"/contacts/new?prefillName={Uri.EscapeDataString(name)}&draftId={DraftId}&entryId={EntryId}";
         Nav.NavigateTo(url);
+    }
+
+    private void OpenContactDetail()
+    {
+        if (_selectedContactId != null)
+        {
+            Nav.NavigateTo($"/contacts/{_selectedContactId}");
+        }
     }
 
     private void GoPrev()

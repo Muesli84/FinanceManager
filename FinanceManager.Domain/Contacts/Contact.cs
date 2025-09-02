@@ -3,19 +3,21 @@ namespace FinanceManager.Domain.Contacts;
 public sealed class Contact : Entity, IAggregateRoot
 {
     private Contact() { }
-    public Contact(Guid ownerUserId, string name, ContactType type, Guid? categoryId, string? description = null)
+    public Contact(Guid ownerUserId, string name, ContactType type, Guid? categoryId, string? description = null, bool? isPaymentIntermediary = false)
     {
         OwnerUserId = Guards.NotEmpty(ownerUserId, nameof(ownerUserId));
         Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
         Type = type;
         CategoryId = categoryId;
         Description = description;
+        IsPaymentIntermediary = isPaymentIntermediary ?? false;
     }
     public Guid OwnerUserId { get; private set; }
     public string Name { get; private set; } = null!;
     public ContactType Type { get; private set; }
     public Guid? CategoryId { get; private set; }
     public string? Description { get; private set; }
+    public bool IsPaymentIntermediary { get; private set; }
 
     public void Rename(string name)
     {
@@ -38,6 +40,12 @@ public sealed class Contact : Entity, IAggregateRoot
     public void SetDescription(string? description)
     {
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        Touch();
+    }
+
+    public void SetPaymentIntermediary(bool value)
+    {
+        IsPaymentIntermediary = value;
         Touch();
     }
 }

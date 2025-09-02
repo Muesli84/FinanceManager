@@ -63,7 +63,21 @@ else
                         <td style="text-align:right;">@e.Amount</td>
                         <td>@e.CurrencyCode</td>
                         <td class="wrap">@e.Subject</td>
-                        <td class="wrap">@(string.IsNullOrWhiteSpace(e.RecipientName) ? "-" : e.RecipientName)</td>
+                        <td class="wrap">
+                            @{
+                                string recipient = "-";
+                                if (e.ContactId != null)
+                                {
+                                    var contact = _contacts.FirstOrDefault(a => a.Id == e.ContactId);
+                                    recipient = contact?.Name ?? (string.IsNullOrWhiteSpace(e.RecipientName) ? "-" : e.RecipientName);
+                                }
+                                else
+                                {
+                                    recipient = string.IsNullOrWhiteSpace(e.RecipientName) ? "-" : e.RecipientName;
+                                }
+                            }
+                            @recipient
+                        </td>
                         <td class="wrap">@(string.IsNullOrWhiteSpace(e.BookingDescription) ? "-" : e.BookingDescription)</td>
                         <td>@(e.IsAnnounced ? "✓" : "")</td>
                         <td>@e.Status</td>
@@ -94,6 +108,7 @@ else
     private EntryForm _form = new() { BookingDate = DateTime.Today };
 
     private List<AccountVm> _accounts = new();
+    private List<ContactDto> _contacts = new();
     private Dictionary<string, List<AccountVm>> _groupedAccounts = new();
     private Guid? _selectedAccountId;
 
@@ -113,12 +128,12 @@ else
             _accounts = list.Select(a => new AccountVm { Id = a.Id, Name = a.Name, BankContactId = a.BankContactId }).ToList();
             // load contacts for grouping names
             var contactsResp = await Http.GetAsync("/api/contacts?skip=0&take=500");
-            var contacts = new List<ContactDto>();
+            _contacts = new List<ContactDto>();
             if (contactsResp.IsSuccessStatusCode)
             {
-                contacts = await contactsResp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
+                _contacts = await contactsResp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
             }
-            var bankContacts = contacts.Where(c => c.Type == ContactType.Bank).ToDictionary(c => c.Id, c => c.Name);
+            var bankContacts = _contacts.Where(c => c.Type == ContactType.Bank).ToDictionary(c => c.Id, c => c.Name);
             _groupedAccounts = _accounts
                 .GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)" )
                 .OrderBy(g => g.Key)

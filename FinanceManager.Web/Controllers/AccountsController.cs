@@ -91,7 +91,7 @@ public sealed class AccountsController : ControllerBase
             Guid bankContactId;
             if (!string.IsNullOrWhiteSpace(req.NewBankContactName))
             {
-                var createdContact = await _contacts.CreateAsync(_current.UserId, req.NewBankContactName.Trim(), ContactType.Bank, null, null, ct);
+                var createdContact = await _contacts.CreateAsync(_current.UserId, req.NewBankContactName.Trim(), ContactType.Bank, null, null, null, ct);
                 bankContactId = createdContact.Id;
             }
             else if (req.BankContactId.HasValue)
@@ -128,7 +128,7 @@ public sealed class AccountsController : ControllerBase
             Guid bankContactId;
             if (!string.IsNullOrWhiteSpace(req.NewBankContactName))
             {
-                var createdContact = await _contacts.CreateAsync(_current.UserId, req.NewBankContactName.Trim(), ContactType.Bank, null, null, ct);
+                var createdContact = await _contacts.CreateAsync(_current.UserId, req.NewBankContactName.Trim(), ContactType.Bank, null, null, null, ct);
                 bankContactId = createdContact.Id;
             }
             else if (req.BankContactId.HasValue)

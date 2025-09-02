@@ -22,8 +22,9 @@ public sealed class ContactsController : ControllerBase
     public ContactsController(IContactService contacts, ICurrentUserService current, ILogger<ContactsController> logger)
     { _contacts = contacts; _current = current; _logger = logger; }
 
-    public sealed record ContactCreateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description);
-    public sealed record ContactUpdateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description);
+    public sealed record ContactCreateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
+    public sealed record ContactUpdateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
+    public sealed record AliasCreateRequest([Required, MinLength(1)] string Pattern);
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactDto>), StatusCodes.Status200OK)]
@@ -67,7 +68,7 @@ public sealed class ContactsController : ControllerBase
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
         {
-            var created = await _contacts.CreateAsync(_current.UserId, req.Name, req.Type, req.CategoryId, req.Description, ct);
+            var created = await _contacts.CreateAsync(_current.UserId, req.Name, req.Type, req.CategoryId, req.Description, req.IsPaymentIntermediary, ct);
             return CreatedAtRoute("GetContact", new { id = created.Id }, created);
         }
         catch (ArgumentException ex)
@@ -89,7 +90,7 @@ public sealed class ContactsController : ControllerBase
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
         {
-            var updated = await _contacts.UpdateAsync(id, _current.UserId, req.Name, req.Type, req.CategoryId, req.Description, ct);
+            var updated = await _contacts.UpdateAsync(id, _current.UserId, req.Name, req.Type, req.CategoryId, req.Description, req.IsPaymentIntermediary, ct);
             return updated is null ? NotFound() : Ok(updated);
         }
         catch (ArgumentException ex)
@@ -116,6 +117,54 @@ public sealed class ContactsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Delete contact {ContactId} failed", id);
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+
+    [HttpGet("{id:guid}/aliases")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> GetAliasAsync(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var aliases = await _contacts.ListAliases(id, _current.UserId, ct);
+            return Ok(aliases);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Get contact {ContactId} aliases failed", id);
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+
+    [HttpPost("{id:guid}/aliases")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> AddAliasAsync(Guid id, [FromBody] AliasCreateRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await _contacts.AddAliasAsync(id, _current.UserId, req.Pattern, ct);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Add contact {ContactId} alias failed", id);
+            return Problem("Unexpected error", statusCode: 500);
+        }   
+    }
+
+    [HttpDelete("{id:guid}/aliases/{aliasId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeleteAliasAsync(Guid id, Guid aliasId, CancellationToken ct)
+    {
+        try
+        {
+            await _contacts.DeleteAliasAsync(id, _current.UserId, aliasId, ct);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Delete contact {ContactId} alias failed", id);
             return Problem("Unexpected error", statusCode: 500);
         }
     }

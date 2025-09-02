@@ -63,6 +63,33 @@ else
             <label>Description</label>
             <textarea @bind="_model.Description" rows="4" style="width:100%;max-width:520px;"></textarea>
         </div>
+        <div>
+            <label><input type="checkbox" @bind="_model.IsPaymentIntermediary" /> Zahlungsvermittler</label>
+        </div>
+        <div>
+            <label>Alternative Namen</label>
+            <ul style="margin-bottom:.5rem;">
+                @foreach (var alias in _aliases)
+                {
+                    <li style="display:flex;align-items:left;gap:.5rem;">
+                        <span>@alias.Pattern</span>
+                        <button type="button" class="icon-btn danger" title="Alias löschen" @onclick="() => DeleteAliasAsync(alias.Id)">
+                            <svg><use href="/icons/sprite.svg#clear" /></svg>
+                        </button>
+                    </li>
+                }
+            </ul>
+            <div style="display:flex;gap:.5rem;">
+                <InputText @bind-Value="_newAlias" placeholder="Neuer Alias" style="flex:1;" />
+                <button type="button" class="icon-btn" title="Alias hinzufügen" @onclick="AddAliasAsync">
+                    <svg><use href="/icons/sprite.svg#plus" /></svg>
+                </button>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_aliasError))
+            {
+                <div class="error" style="margin-top:.3rem;">@_aliasError</div>
+            }
+        </div>
         @if (!string.IsNullOrEmpty(_error))
         {
             <div class="error" style="margin-top:.75rem;">@_error</div>
@@ -103,6 +130,7 @@ else
                         _model.Name = dto.Name;
                         _model.Type = dto.Type.ToString();
                         _model.CategoryId = dto.CategoryId?.ToString() ?? string.Empty;
+                        _model.IsPaymentIntermediary = dto.IsPaymentIntermediary;
                     }
                 }
                 else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -113,6 +141,7 @@ else
                 {
                     _error = "Load failed";
                 }
+                await LoadAliasesAsync();
             }
             else if (!string.IsNullOrWhiteSpace(_pendingPrefillName))
             {
@@ -156,14 +185,14 @@ else
             var http = ClientFactory.CreateClient("Api");
             if (IsEdit)
             {
-                var update = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId, Description = _model.Description };
+                var update = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId, Description = _model.Description, IsPaymentIntermediary = _model.IsPaymentIntermediary };
                 var resp = await http.PutAsJsonAsync($"/api/contacts/{Id}", update);
                 if (!resp.IsSuccessStatusCode) { _error = "Save failed"; }
                 else { await AfterSaveAssignToDraftIfNeeded(Id!.Value); }
             }
             else
             {
-                var create = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId, Description = _model.Description };
+                var create = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId, Description = _model.Description, IsPaymentIntermediary = _model.IsPaymentIntermediary };
                 var resp = await http.PostAsJsonAsync("/api/contacts", create);
                 if (resp.IsSuccessStatusCode)
                 {
@@ -236,8 +265,60 @@ else
         public string Type { get; set; } = ContactType.Person.ToString();
         public string CategoryId { get; set; } = string.Empty;
         public string? Description { get; set; }
+        public bool IsPaymentIntermediary { get; set; }
     }
 
     private sealed class CategoryVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
     private sealed class ContactCategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+    private List<AliasVm> _aliases = new();
+    private string _newAlias = string.Empty;
+    private string? _aliasError;
+
+    private async Task LoadAliasesAsync()
+    {
+        if (!IsEdit) { _aliases.Clear(); return; }
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.GetAsync($"/api/contacts/{Id}/aliases");
+        if (resp.IsSuccessStatusCode)
+        {
+            var list = await resp.Content.ReadFromJsonAsync<List<AliasDto>>() ?? new();
+            _aliases = list.Select(a => new AliasVm { Id = a.Id, Pattern = a.Pattern }).ToList();
+        }
+    }
+
+    private async Task AddAliasAsync()
+    {
+        _aliasError = null;
+        var pattern = _newAlias.Trim();
+        if (string.IsNullOrWhiteSpace(pattern)) { _aliasError = "Alias darf nicht leer sein."; return; }
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.PostAsJsonAsync($"/api/contacts/{Id}/aliases", new { Pattern = pattern });
+        if (resp.IsSuccessStatusCode)
+        {
+            _newAlias = string.Empty;
+            await LoadAliasesAsync();
+        }
+        else
+        {
+            _aliasError = await resp.Content.ReadAsStringAsync();
+        }
+    }
+
+    private async Task DeleteAliasAsync(Guid aliasId)
+    {
+        _aliasError = null;
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.DeleteAsync($"/api/contacts/{Id}/aliases/{aliasId}");
+        if (resp.IsSuccessStatusCode)
+        {
+            await LoadAliasesAsync();
+        }
+        else
+        {
+            _aliasError = await resp.Content.ReadAsStringAsync();
+        }
+    }
+
+    private sealed class AliasVm { public Guid Id { get; set; } public string Pattern { get; set; } = string.Empty; }
+    private sealed class AliasDto { public Guid Id { get; set; } public string Pattern { get; set; } = string.Empty; }
 }
