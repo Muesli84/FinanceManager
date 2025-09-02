@@ -38,7 +38,7 @@ public sealed class StatementDraftService : IStatementDraftService
 
         foreach (var movement in parsedDraft.Movements)
         {
-            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview);
+            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview, false);
         }
 
         _db.StatementDrafts.Add(draft);
@@ -102,7 +102,8 @@ public sealed class StatementDraftService : IStatementDraftService
                 e.ValutaDate,
                 e.CurrencyCode,
                 e.BookingDescription,
-                e.IsAnnounced));
+                e.IsAnnounced,
+                e.IsCostNeutral));
         }
         import.GetType().GetProperty("TotalEntries")!.SetValue(import, draft.Entries.Count);
         draft.MarkCommitted();
@@ -161,6 +162,18 @@ public sealed class StatementDraftService : IStatementDraftService
             if (!contactExists) { return null; }
             entry.MarkAccounted(contactId.Value);
         }
+        await _db.SaveChangesAsync(ct);
+        return Map(draft);
+    }
+    public async Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+
+        entry.MarkCostNeutral(isCostNeutral ?? false);
         await _db.SaveChangesAsync(ct);
         return Map(draft);
     }
@@ -237,10 +250,13 @@ public sealed class StatementDraftService : IStatementDraftService
             }
             else if (matchedContact != null && matchedContact.Type == ContactType.Bank && bankContactId != null && matchedContact.Id != bankContactId)
             {
-                entry.MarkAccounted(selfContact.Id);
+                entry.MarkCostNeutral(true);
+                entry.MarkAccounted(selfContact.Id);                
             }
             else if (matchedContact != null)
             {
+                if (matchedContact.Id == selfContact.Id)
+                    entry.MarkCostNeutral(true);
                 entry.MarkAccounted(matchedContact.Id);
             }
         }
@@ -334,6 +350,7 @@ public sealed class StatementDraftService : IStatementDraftService
             e.RecipientName,
             e.BookingDescription,
             e.IsAnnounced,
+            e.IsCostNeutral,
             e.Status,
             e.ContactId)).ToList());
 }

@@ -60,7 +60,7 @@ public sealed class StatementDraftServiceTests
         db.Accounts.Add(new Account(ownerId, FinanceManager.Domain.AccountType.Giro, "Testkonto", null, Guid.NewGuid()));
         db.SaveChanges();
 
-        var draft = new FinanceManager.Domain.Statements.StatementDraft(ownerId, "file.csv");
+        var draft = new FinanceManager.Domain.Statements.StatementDraft(ownerId, "file.csv", "");
         draft.AddEntry(DateTime.UtcNow.Date.AddDays(-2), 123.45m, "Sample Payment A");
         draft.AddEntry(DateTime.UtcNow.Date.AddDays(-1), -49.99m, "Sample Debit B");
         db.StatementDrafts.Add(draft);

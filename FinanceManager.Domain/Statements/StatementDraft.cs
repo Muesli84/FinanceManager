@@ -30,7 +30,7 @@ public sealed class StatementDraft : Entity, IAggregateRoot
 
     // Existing simple variant (backwards compatibility)
     public StatementDraftEntry AddEntry(DateTime bookingDate, decimal amount, string subject)
-        => AddEntry(bookingDate, amount, subject, null, null, null, null, false);
+        => AddEntry(bookingDate, amount, subject, null, null, null, null, false, false);
 
     // Extended variant with additional data
     public StatementDraftEntry AddEntry(
@@ -41,7 +41,8 @@ public sealed class StatementDraft : Entity, IAggregateRoot
         DateTime? valutaDate,
         string? currencyCode,
         string? bookingDescription,
-        bool isAnnounced)
+        bool isAnnounced,
+        bool isCostNeutral = false)
     {
         var status = isAnnounced ? StatementDraftEntryStatus.Announced : StatementDraftEntryStatus.Open;
         var entry = new StatementDraftEntry(
@@ -54,6 +55,7 @@ public sealed class StatementDraft : Entity, IAggregateRoot
             currencyCode,
             bookingDescription,
             isAnnounced,
+            isCostNeutral,
             status);
         _entries.Add(entry);
         Touch();
@@ -76,6 +78,7 @@ public sealed class StatementDraftEntry : Entity
         string? currencyCode,
         string? bookingDescription,
         bool isAnnounced,
+        bool isCostNeutral,
         StatementDraftEntryStatus status)
     {
         DraftId = Guards.NotEmpty(draftId, nameof(draftId));
@@ -87,6 +90,7 @@ public sealed class StatementDraftEntry : Entity
         CurrencyCode = string.IsNullOrWhiteSpace(currencyCode) ? "EUR" : currencyCode!; // default EUR
         BookingDescription = bookingDescription;
         IsAnnounced = isAnnounced;
+        IsCostNeutral = isCostNeutral;
         Status = status;
     }
     public Guid DraftId { get; private set; }
@@ -100,6 +104,7 @@ public sealed class StatementDraftEntry : Entity
     public bool IsAnnounced { get; private set; }
     public StatementDraftEntryStatus Status { get; private set; }
     public Guid? ContactId { get; private set; }
+    public bool IsCostNeutral { get; private set; } = false;
 
     public void MarkAlreadyBooked() { Status = StatementDraftEntryStatus.AlreadyBooked; Touch(); }
     public void MarkAccounted(Guid contactId)
@@ -121,6 +126,12 @@ public sealed class StatementDraftEntry : Entity
     {
         if (Status == StatementDraftEntryStatus.AlreadyBooked) return; // don't downgrade duplicates
         Status = IsAnnounced ? StatementDraftEntryStatus.Announced : StatementDraftEntryStatus.Open;
+        MarkCostNeutral(false);
         Touch();
     }
+    public void MarkCostNeutral(bool isCostNeutral)
+    {
+        IsCostNeutral = isCostNeutral;
+    }
+
 }

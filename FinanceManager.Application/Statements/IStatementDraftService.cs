@@ -14,6 +14,7 @@ public interface IStatementDraftService
     Task<StatementDraftDto?> ClassifyAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftDto?> SetAccountAsync(Guid draftId, Guid ownerUserId, Guid accountId, CancellationToken ct);
     Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct);
+    Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(
@@ -26,6 +27,7 @@ public sealed record StatementDraftEntryDto(
     string? RecipientName,
     string? BookingDescription,
     bool IsAnnounced,
+    bool IsCostNeutral,
     StatementDraftEntryStatus Status,
     Guid? ContactId);
 

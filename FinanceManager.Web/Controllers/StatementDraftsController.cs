@@ -102,6 +102,15 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(entry);
     }
 
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/costneutral")]
+    public async Task<IActionResult> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, [FromBody] SetCostNeutralRequest body, CancellationToken ct)
+    {
+        var draft = await _drafts.SetEntryCostNeutralAsync(draftId, entryId, body.IsCostNeutral, _current.UserId, ct);
+        if (draft == null) { return NotFound(); }
+        var entry = draft.Entries.First(e => e.Id == entryId);
+        return Ok(entry);
+    }
+
     [HttpDelete("{draftId:guid}")]
     public async Task<IActionResult> CancelAsync(Guid draftId, CancellationToken ct)
     {
@@ -112,4 +121,5 @@ public sealed class StatementDraftsController : ControllerBase
     public sealed record AddEntryRequest([property:Required] DateTime BookingDate, [property:Required] decimal Amount, [property:Required, MaxLength(500)] string Subject);
     public sealed record CommitRequest(Guid AccountId, ImportFormat Format);
     public sealed record SetContactRequest(Guid? ContactId);
+    public sealed record SetCostNeutralRequest(bool? IsCostNeutral);
 }

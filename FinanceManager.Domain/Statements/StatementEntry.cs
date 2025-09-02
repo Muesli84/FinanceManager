@@ -3,7 +3,7 @@ namespace FinanceManager.Domain.Statements;
 public sealed class StatementEntry : Entity
 {
     private StatementEntry() { }
-    public StatementEntry(Guid statementImportId, DateTime bookingDate, decimal amount, string subject, string rawHash, string? recipientName, DateTime? valutaDate, string? currencyCode, string? bookingDescription, bool isAnnounced)
+    public StatementEntry(Guid statementImportId, DateTime bookingDate, decimal amount, string subject, string rawHash, string? recipientName, DateTime? valutaDate, string? currencyCode, string? bookingDescription, bool isAnnounced, bool isCostNeutral)
     {
         StatementImportId = Guards.NotEmpty(statementImportId, nameof(statementImportId));
         BookingDate = bookingDate;
@@ -15,6 +15,7 @@ public sealed class StatementEntry : Entity
         CurrencyCode = string.IsNullOrWhiteSpace(currencyCode) ? "EUR" : currencyCode!;
         BookingDescription = bookingDescription;
         IsAnnounced = isAnnounced;
+        IsCostNeutral = isCostNeutral;
         Status = StatementEntryStatus.Pending;
     }
     public Guid StatementImportId { get; private set; }
@@ -27,6 +28,7 @@ public sealed class StatementEntry : Entity
     public string CurrencyCode { get; private set; } = "EUR";
     public string? BookingDescription { get; private set; }
     public bool IsAnnounced { get; private set; }
+    public bool IsCostNeutral { get; private set; }
     public Guid? ContactId { get; private set; }
     public Guid? SavingsPlanId { get; private set; }
     public Guid? SecurityTransactionId { get; private set; }

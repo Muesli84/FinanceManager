@@ -56,8 +56,7 @@ public sealed class StatementDraftClassificationTests
     private static async Task<StatementDraft> CreateStatementDraftAsync(AppDbContext db, Account account, Action<StatementDraft> callback)
     {
         var owner = db.Users.First().Id;
-        var draft = new StatementDraft(owner, "file.csv");
-        draft.AccountName = account.Iban;
+        var draft = new StatementDraft(owner, "file.csv", account.Iban);
         callback(draft);
         db.StatementDrafts.Add(draft);
         await db.SaveChangesAsync();
@@ -247,6 +246,7 @@ public sealed class StatementDraftClassificationTests
     {
         var (sut, db, conn, owner) = Create();
         var account = await AddBankAccountAsync(db);
+        var ownerContact = db.Contacts.First(c => c.Type == ContactType.Self);
         var contact = db.Contacts.First(c => c.Id == account.BankContactId);
         var otherContact = await AddContact(db, owner, "Andere Bank", ContactType.Bank);
         var draft = await CreateStatementDraftAsync(db, account, (draft) =>
@@ -257,7 +257,8 @@ public sealed class StatementDraftClassificationTests
         await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
-        entry.ContactId.Should().Be(owner);
+        entry.ContactId.Should().Be(ownerContact.Id);
+        entry.IsCostNeutral.Should().BeTrue();
         conn.Dispose();
     }
 

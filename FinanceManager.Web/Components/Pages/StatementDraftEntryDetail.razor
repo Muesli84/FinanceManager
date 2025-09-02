@@ -71,6 +71,10 @@ else
                     </div>
                 </td>
             </tr>
+            <tr>
+                <th>Cost Neutral</th>
+                <td><InputCheckbox @bind-Value="IsCostNeutral" /></td>
+            </tr>
         </tbody>
     </table>
     <div style="margin-top:1rem;display:flex;gap:.6rem;align-items:center;">
@@ -98,6 +102,8 @@ else
     private bool _dropdownVisible;
     private bool _dirty; // any unsaved change
     private bool _pendingSave;
+    private bool _IsCostNeutral;
+    private bool IsCostNeutral { get => _IsCostNeutral; set { _IsCostNeutral = value; _dirty = true; } }
 
     private IEnumerable<ContactVm> FilteredContacts => string.IsNullOrWhiteSpace(_contactFilter)
         ? _allContacts
@@ -118,6 +124,7 @@ else
         if (resp.IsSuccessStatusCode)
         {
             _vm = await resp.Content.ReadFromJsonAsync<EntryDetailVm>();
+            _IsCostNeutral = _vm.Entry.IsCostNeutral;
         }
     }
 
@@ -160,20 +167,24 @@ else
         _pendingSave = true; _contactError = null;
         try
         {
-            // Persist contact selection (null allowed)
+            _contactError = "";
             var payload = new { ContactId = _selectedContactId };
             var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/contact", payload);
-            if (resp.IsSuccessStatusCode)
+            if (!resp.IsSuccessStatusCode)
+                throw new ApplicationException(await resp.Content.ReadAsStringAsync());
+
+            if (_vm.Entry.IsCostNeutral != _IsCostNeutral)
             {
-                await LoadEntryAsync();
-                _selectedContactId = _vm?.Entry.ContactId;
-                _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==_selectedContactId)?.Name ?? string.Empty;
-                _dirty = false;
+                var payload2 = new { IsCostNeutral = _IsCostNeutral };
+                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/costneutral", payload2);
+                if (!resp.IsSuccessStatusCode)
+                    throw new ApplicationException(await resp.Content.ReadAsStringAsync());
             }
-            else
-            {
-                _contactError = await resp.Content.ReadAsStringAsync();
-            }
+
+            await LoadEntryAsync();
+            _selectedContactId = _vm?.Entry.ContactId;
+            _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c => c.Id == _selectedContactId)?.Name ?? string.Empty;
+            _dirty = false;
         }
         catch (Exception ex)
         {
@@ -229,7 +240,7 @@ else
         }
     }
 
-    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, StatementDraftEntryStatus Status, Guid? ContactId);
+    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId);
     private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId, Guid? NextOpenEntryId);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
