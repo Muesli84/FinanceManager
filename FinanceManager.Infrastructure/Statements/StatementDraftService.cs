@@ -24,7 +24,7 @@ public sealed class StatementDraftService : IStatementDraftService
             throw new InvalidOperationException("No valid statement file reader found or no movements detected.");
         }
 
-        var draft = new StatementDraft(ownerUserId, originalFileName);
+        var draft = new StatementDraft(ownerUserId, originalFileName, parsedDraft.Header.AccountNumber);
 
         if (!string.IsNullOrWhiteSpace(parsedDraft.Header.IBAN))
         {
@@ -166,19 +166,8 @@ public sealed class StatementDraftService : IStatementDraftService
     }
 
     private async Task ClassifyInternalAsync(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
-    {
-        // Account detection fallback if still not set: pick single account if only one exists
-        if (draft.DetectedAccountId == null)
-        {
-            var singleAccountId = await _db.Accounts.AsNoTracking()
-                .Where(a => a.OwnerUserId == ownerUserId)
-                .Select(a => a.Id)
-                .ToListAsync(ct);
-            if (singleAccountId.Count == 1)
-            {
-                draft.SetDetectedAccount(singleAccountId[0]);
-            }
-        }
+    {        
+        await ClassifyHeader(draft, ownerUserId, ct);
 
         // Preload data needed for classification
         var contacts = await _db.Contacts.AsNoTracking()
@@ -214,6 +203,8 @@ public sealed class StatementDraftService : IStatementDraftService
                 .FirstOrDefaultAsync(ct);
         }
 
+        var selfContact = contacts.First(c => c.Type == ContactType.Self);
+
         foreach (var entry in draft.Entries)
         {
             // Reset to base status first (keep AlreadyBooked if previously flagged)
@@ -244,10 +235,41 @@ public sealed class StatementDraftService : IStatementDraftService
             {
                 matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedSubject);
             }
+            else if (matchedContact != null && matchedContact.Type == ContactType.Bank && bankContactId != null && matchedContact.Id != bankContactId)
+            {
+                entry.MarkAccounted(selfContact.Id);
+            }
             else if (matchedContact != null)
             {
                 entry.MarkAccounted(matchedContact.Id);
             }
+        }
+    }
+
+    private async Task ClassifyHeader(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
+    {
+        // Account detection fallback if still not set: pick single account if only one exists
+        if ((draft.DetectedAccountId == null) && (draft.AccountName != null))
+        {
+            var account = await _db.Accounts.AsNoTracking()
+                .Where(a => a.OwnerUserId == ownerUserId && (a.Iban == draft.AccountName))
+                .Select(a => new { a.Id })
+                .FirstOrDefaultAsync(ct);
+            if (account != null)
+            {
+                draft.SetDetectedAccount(account.Id);
+            }
+        }
+        if (draft.DetectedAccountId == null && draft.AccountName == null)
+        {
+            var singleAccountId = await _db.Accounts.AsNoTracking()
+                .Where(a => a.OwnerUserId == ownerUserId)
+                .Select(a => a.Id)
+                .ToListAsync(ct);
+                if (singleAccountId.Count == 1)
+                {
+                    draft.SetDetectedAccount(singleAccountId[0]);
+                }
         }
     }
 

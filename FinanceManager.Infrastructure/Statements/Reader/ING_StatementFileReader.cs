@@ -11,7 +11,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
 {
     public class ING_StatementFileReader : IStatementFileReader
     {
-        private string[] Templates = new string[]
+        private string[] OldTemplates = new string[]
         {
             @"
 <template>
@@ -25,6 +25,9 @@ namespace FinanceManager.Infrastructure.Statements.Reader
     <field name='Betrag' variable='Amount' type='decimal'/>    
   </section>
 </template>",
+        };
+        private string[] Templates = new string[]
+        {
             @"
 <template>
   <section name='Title' type='ignore'>
@@ -304,7 +307,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             switch (Name)
             {
                 case "BankAccountNo":
-                    GlobalDraftData.AccountNumber = Value.Replace(" ", string.Empty);
+                    GlobalDraftData.AccountNumber = (string.IsNullOrWhiteSpace(GlobalDraftData.AccountNumber) || mode == VariableMode.Always)? Value.Replace(" ", string.Empty): GlobalDraftData.AccountNumber;
                     break;
                 case "PostingDate":
                     line.BookingDate = DateTime.Parse(Value, new CultureInfo("de-DE"));

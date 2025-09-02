@@ -32,7 +32,7 @@ public sealed class ContactServiceTests
         var (sut, db) = Create();
         var owner = Guid.NewGuid();
 
-        var dto = await sut.CreateAsync(owner, "Alice", ContactType.Person, null, null, CancellationToken.None);
+        var dto = await sut.CreateAsync(owner, "Alice", ContactType.Person, null, null, null, CancellationToken.None);
 
         dto.Name.Should().Be("Alice");
         dto.Type.Should().Be(ContactType.Person);
@@ -44,7 +44,7 @@ public sealed class ContactServiceTests
     {
         var (sut, _) = Create();
         var owner = Guid.NewGuid();
-        Func<Task> act = () => sut.CreateAsync(owner, "Me", ContactType.Self, null, null, CancellationToken.None);
+        Func<Task> act = () => sut.CreateAsync(owner, "Me", ContactType.Self, null, null, null, CancellationToken.None);
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Self*");
     }
@@ -54,9 +54,9 @@ public sealed class ContactServiceTests
     {
         var (sut, db) = Create();
         var owner = Guid.NewGuid();
-        var created = await sut.CreateAsync(owner, "BankX", ContactType.Organization, null, null, CancellationToken.None);
+        var created = await sut.CreateAsync(owner, "BankX", ContactType.Organization, null, null, null, CancellationToken.None);
 
-        var updated = await sut.UpdateAsync(created.Id, owner, "BankY", ContactType.Bank, null, null, CancellationToken.None);
+        var updated = await sut.UpdateAsync(created.Id, owner, "BankY", ContactType.Bank, null, null, null, CancellationToken.None);
 
         updated.Should().NotBeNull();
         updated!.Name.Should().Be("BankY");
@@ -73,7 +73,7 @@ public sealed class ContactServiceTests
         db.Contacts.Add(self);
         await db.SaveChangesAsync();
 
-        Func<Task> act = () => sut.UpdateAsync(self.Id, owner, "Me2", ContactType.Person, null, null, CancellationToken.None);
+        Func<Task> act = () => sut.UpdateAsync(self.Id, owner, "Me2", ContactType.Person, null, null, null, CancellationToken.None);
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Self*");
     }
@@ -83,9 +83,9 @@ public sealed class ContactServiceTests
     {
         var (sut, db) = Create();
         var owner = Guid.NewGuid();
-        var created = await sut.CreateAsync(owner, "Org", ContactType.Organization, null, null, CancellationToken.None);
+        var created = await sut.CreateAsync(owner, "Org", ContactType.Organization, null, null, null, CancellationToken.None);
 
-        Func<Task> act = () => sut.UpdateAsync(created.Id, owner, "Org", ContactType.Self, null, null, CancellationToken.None);
+        Func<Task> act = () => sut.UpdateAsync(created.Id, owner, "Org", ContactType.Self, null, null, null, CancellationToken.None);
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*Self*");
     }
@@ -95,7 +95,7 @@ public sealed class ContactServiceTests
     {
         var (sut, db) = Create();
         var owner = Guid.NewGuid();
-        var c = await sut.CreateAsync(owner, "Temp", ContactType.Other, null, null, CancellationToken.None);
+        var c = await sut.CreateAsync(owner, "Temp", ContactType.Other, null, null, null, CancellationToken.None);
 
         var ok = await sut.DeleteAsync(c.Id, owner, CancellationToken.None);
 
