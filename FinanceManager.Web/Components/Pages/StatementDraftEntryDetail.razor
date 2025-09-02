@@ -16,7 +16,9 @@ else
         <button class="icon-btn" @onclick="Reclassify" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
             <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrev" title="Previous Entry" aria-label="Previous Entry"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-            <button class="icon-btn" disabled="@(_vm?.NextEntryId==null)" @onclick="GoNext" title="Next Entry" aria-label="Next Entry"><svg style="transform:rotate(180deg)"><use href="/icons/sprite.svg#back" /></svg></button>
+            <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpen" title="Nächster offener Eintrag" aria-label="Nächster offener Eintrag">
+                <svg><use href="/icons/sprite.svg#arrow-right" /></svg>
+            </button>
         </div>
     </div>
     <p><strong>Draft File:</strong> @_vm.OriginalFileName</p>
@@ -122,7 +124,7 @@ else
         if (resp.IsSuccessStatusCode)
         {
             var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
-            _allContacts = list.Where(c => c.Type != ContactType.Bank).Select(c => new ContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name).ToList();
+            _allContacts = list.Select(c => new ContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name).ToList();
         }
     }
 
@@ -208,16 +210,16 @@ else
             Nav.NavigateTo($"/statement-drafts/{DraftId}/entries/{_vm.PrevEntryId}");
         }
     }
-    private void GoNext()
+    private void GoNextOpen()
     {
-        if (_vm?.NextEntryId != null)
+        if (_vm?.NextOpenEntryId != null)
         {
-            Nav.NavigateTo($"/statement-drafts/{DraftId}/entries/{_vm.NextEntryId}");
+            Nav.NavigateTo($"/statement-drafts/{DraftId}/entries/{_vm.NextOpenEntryId}");
         }
     }
 
     private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, StatementDraftEntryStatus Status, Guid? ContactId);
-    private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId);
+    private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId, Guid? NextOpenEntryId);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }

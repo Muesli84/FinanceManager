@@ -6,6 +6,7 @@ using FinanceManager.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
+using FinanceManager.Domain.Statements;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -59,7 +60,8 @@ public sealed class StatementDraftsController : ControllerBase
         var index = ordered.FindIndex(e => e.Id == entryId);
         var prev = index > 0 ? ordered[index - 1].Id : (Guid?)null;
         var next = index < ordered.Count - 1 ? ordered[index + 1].Id : (Guid?)null;
-        return Ok(new { draft.DraftId, draft.OriginalFileName, Entry = entry, PrevEntryId = prev, NextEntryId = next });
+        var nextOpen = ordered.Skip(index + 1).FirstOrDefault(e => e.Status == StatementDraftEntryStatus.Open || e.Status == StatementDraftEntryStatus.Announced)?.Id;
+        return Ok(new { draft.DraftId, draft.OriginalFileName, Entry = entry, PrevEntryId = prev, NextEntryId = next, NextOpenEntryId = nextOpen });
     }
 
     [HttpPost("{draftId:guid}/entries")]

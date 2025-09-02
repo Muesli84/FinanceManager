@@ -204,6 +204,16 @@ public sealed class StatementDraftService : IStatementDraftService
                 .ToList();
         }
 
+        // BankContactId für Fallback ermitteln
+        Guid? bankContactId = null;
+        if (draft.DetectedAccountId != null)
+        {
+            bankContactId = await _db.Accounts
+                .Where(a => a.Id == draft.DetectedAccountId)
+                .Select(a => (Guid?)a.BankContactId)
+                .FirstOrDefaultAsync(ct);
+        }
+
         foreach (var entry in draft.Entries)
         {
             // Reset to base status first (keep AlreadyBooked if previously flagged)
@@ -245,7 +255,12 @@ public sealed class StatementDraftService : IStatementDraftService
                 }
             }
 
-            if (matchedContactId != null && matchedContactId != Guid.Empty)
+            // Fallback: Wenn kein Empfängername angegeben ist, setze Bankkontakt als Empfänger
+            if (string.IsNullOrWhiteSpace(entry.RecipientName) && bankContactId != null && bankContactId != Guid.Empty)
+            {
+                entry.MarkAccounted(bankContactId.Value);
+            }
+            else if (matchedContactId != null && matchedContactId != Guid.Empty)
             {
                 entry.MarkAccounted(matchedContactId.Value);
             }
