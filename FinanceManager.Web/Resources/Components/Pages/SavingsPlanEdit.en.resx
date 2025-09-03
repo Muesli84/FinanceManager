@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="TitleNew" xml:space="preserve">
+    <value>New Savings Plan</value>
+  </data>
+  <data name="TitleEdit" xml:space="preserve">
+    <value>Edit Savings Plan</value>
+  </data>
+  <data name="TitleList" xml:space="preserve">
+    <value>Savings Plans</value>
+  </data>
+  <data name="LabelName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="LabelType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="LabelTargetAmount" xml:space="preserve">
+    <value>Target Amount</value>
+  </data>
+  <data name="LabelTargetDate" xml:space="preserve">
+    <value>Target Date</value>
+  </data>
+  <data name="LabelInterval" xml:space="preserve">
+    <value>Interval</value>
+  </data>
+  <data name="LabelStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="BtnSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="BtnNew" xml:space="preserve">
+    <value>New</value>
+  </data>
+  <data name="BtnArchive" xml:space="preserve">
+    <value>Archive</value>
+  </data>
+  <data name="BtnDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="BtnBack" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="ErrorNotFound" xml:space="preserve">
+    <value>Savings plan not found.</value>
+  </data>
+  <data name="OnlyActive" xml:space="preserve">
+    <value>Show only active</value>
+  </data>
+  <data name="Type_OneTime" xml:space="preserve">
+    <value>One-time</value>
+  </data>
+  <data name="Type_Recurring" xml:space="preserve">
+    <value>Recurring</value>
+  </data>
+  <data name="Type_Open" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="Interval_Monthly" xml:space="preserve">
+    <value>Monthly</value>
+  </data>
+  <data name="Interval_BiMonthly" xml:space="preserve">
+    <value>Bi-monthly</value>
+  </data>
+  <data name="Interval_Quarterly" xml:space="preserve">
+    <value>Quarterly</value>
+  </data>
+  <data name="Interval_SemiAnnually" xml:space="preserve">
+    <value>Semi-annually</value>
+  </data>
+  <data name="Interval_Annually" xml:space="preserve">
+    <value>Annually</value>
+  </data>
+  <data name="StatusActive" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="StatusArchived" xml:space="preserve">
+    <value>Archived</value>
+  </data>
+</root>

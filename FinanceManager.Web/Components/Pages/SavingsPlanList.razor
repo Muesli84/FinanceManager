@@ -1,0 +1,67 @@
+@page "/savings-plans"
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+@using FinanceManager.Shared.Dtos
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Components.Pages.SavingsPlanEdit> Localizer
+
+<h3>@Localizer["TitleList"]</h3>
+
+<div class="action-bar">
+    <button @onclick="NewPlan" aria-label="@Localizer["BtnNew"]" title="@Localizer["BtnNew"]" class="icon-btn">
+        <svg><use href="/icons/sprite.svg#plus" /></svg>
+    </button>
+    <!-- Weitere Symbol-Buttons für Aktionen -->
+</div>
+<div style="margin-top:1rem;">
+    <label><input type="checkbox" @bind="ShowActiveOnly" /> @Localizer["OnlyActive"]</label>
+</div>
+<table class="fm-table wide" style="margin-top:1rem;">
+    <thead>
+        <tr>
+            <th>@Localizer["LabelName"]</th>
+            <th>@Localizer["LabelType"]</th>
+            <th>@Localizer["LabelTargetAmount"]</th>
+            <th>@Localizer["LabelTargetDate"]</th>
+            <th>@Localizer["LabelInterval"]</th>
+            <th>@Localizer["LabelStatus"]</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var plan in Plans)
+        {
+            <tr style="cursor:pointer;" @onclick="() => OpenDetail(plan.Id)">
+                <td>@plan.Name</td>
+                <td>@Localizer[$"Type_{plan.Type}"]</td>
+                <td>@(plan.TargetAmount?.ToString("N2") ?? "-")</td>
+                <td>@(plan.TargetDate?.ToShortDateString() ?? "-")</td>
+                <td>@(plan.Interval.HasValue ? Localizer[$"Interval_{plan.Interval}"] : "-")</td>
+                <td>@(plan.IsActive ? Localizer["StatusActive"] : Localizer["StatusArchived"])</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<SavingsPlanDto> Plans = new();
+    private bool ShowActiveOnly = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadPlansAsync();
+    }
+
+    private async Task LoadPlansAsync()
+    {
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.GetAsync($"/api/savings-plans?onlyActive={ShowActiveOnly}");
+        if (resp.IsSuccessStatusCode)
+        {
+            Plans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new();
+        }
+    }
+
+    private void NewPlan() => Navigation.NavigateTo("/savings-plans/new");
+    private void OpenDetail(Guid id) => Navigation.NavigateTo($"/savings-plans/{id}");
+}

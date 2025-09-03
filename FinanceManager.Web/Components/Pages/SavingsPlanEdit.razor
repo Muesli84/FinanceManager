@@ -1,0 +1,172 @@
+@page "/savings-plans/new"
+@page "/savings-plans/{Id:guid}"
+@rendermode InteractiveServer
+@using FinanceManager.Shared.Dtos
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.Extensions.Localization
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Components.Pages.SavingsPlanEdit> Localizer
+
+<h3>@(IsEdit ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
+<div class="action-bar" style="margin-bottom:1rem;">
+    <button class="icon-btn" type="submit" title="@Localizer["BtnSave"]">
+        <svg class="icon"><use href="icons/sprite.svg#save"></use></svg>
+    </button>
+    @if (IsEdit)
+    {
+        <button class="icon-btn" @onclick="ArchiveAsync" title="@Localizer["BtnArchive"]">
+            <svg class="icon"><use href="icons/sprite.svg#archive"></use></svg>
+        </button>
+        <button class="icon-btn danger" @onclick="DeleteAsync" title="@Localizer["BtnDelete"]">
+            <svg class="icon"><use href="icons/sprite.svg#delete"></use></svg>
+        </button>
+    }
+    <button class="icon-btn" @onclick="Back" title="@Localizer["BtnBack"]">
+        <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
+    </button>
+</div>
+
+<EditForm Model="_model" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div>
+        <label>@Localizer["LabelName"]</label>
+        <InputText @bind-Value="_model.Name" />
+        <ValidationMessage For="()=>_model.Name" />
+    </div>
+    <div>
+        <label>@Localizer["LabelType"]</label>
+        <InputSelect @bind-Value="_model.Type">
+            @foreach (var t in Enum.GetValues<SavingsPlanType>())
+            {
+                <option value="@t">@Localizer[$"Type_{t}"]</option>
+            }
+        </InputSelect>
+    </div>
+    <div>
+        <label>@Localizer["LabelTargetAmount"]</label>
+        <InputNumber @bind-Value="_model.TargetAmount" />
+    </div>
+    <div>
+        <label>@Localizer["LabelTargetDate"]</label>
+        <InputDate @bind-Value="_model.TargetDate" />
+    </div>
+    <div>
+        <label>@Localizer["LabelInterval"]</label>
+        <InputSelect @bind-Value="_model.Interval">
+            <option value="">--</option>
+            @foreach (var i in Enum.GetValues<SavingsPlanInterval>())
+            {
+                <option value="@i">@Localizer[$"Interval_{i}"]</option>
+            }
+        </InputSelect>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="error" style="margin-top:.5rem;">@Localizer["ErrorNotFound"]</div>
+    }
+</EditForm>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    private SavingsPlanEditModel _model = new();
+    private bool IsEdit => Id.HasValue;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsEdit)
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.GetAsync($"/api/savings-plans/{Id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                var dto = await resp.Content.ReadFromJsonAsync<SavingsPlanDto>();
+                if (dto != null)
+                {
+                    _model.Name = dto.Name;
+                    _model.Type = dto.Type;
+                    _model.TargetAmount = dto.TargetAmount;
+                    _model.TargetDate = dto.TargetDate;
+                    _model.Interval = dto.Interval;
+                }
+            }
+            else
+            {
+                _error = "Sparplan nicht gefunden.";
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        var http = ClientFactory.CreateClient("Api");
+        if (IsEdit)
+        {
+            var resp = await http.PutAsJsonAsync($"/api/savings-plans/{Id}", _model);
+            if (resp.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo($"/savings-plans/{Id}", true);
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        else
+        {
+            var resp = await http.PostAsJsonAsync("/api/savings-plans", _model);
+            if (resp.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/savings-plans", true);
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        if (!IsEdit || Id == null) return;
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.PostAsync($"/api/savings-plans/{Id}/archive", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/savings-plans", true);
+        }
+        else
+        {
+            _error = await resp.Content.ReadAsStringAsync();
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!IsEdit || Id == null) return;
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.DeleteAsync($"/api/savings-plans/{Id}");
+        if (resp.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/savings-plans", true);
+        }
+        else
+        {
+            _error = await resp.Content.ReadAsStringAsync();
+        }
+    }
+
+    private void Back() => Navigation.NavigateTo("/savings-plans");
+
+    private sealed class SavingsPlanEditModel
+    {
+        [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
+        public SavingsPlanType Type { get; set; } = SavingsPlanType.OneTime;
+        public decimal? TargetAmount { get; set; }
+        public DateTime? TargetDate { get; set; }
+        public SavingsPlanInterval? Interval { get; set; }
+    }
+}

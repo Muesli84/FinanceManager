@@ -229,5 +229,15 @@ public sealed class AccountImportService : IAccountImportService
 - Domain Events → Integration Events Architektur.
 - Feature Flags (z.B. für neue Importformate).
 
+
+## 15. Projektspezifisches
+- Die Funktionalität der verschiedenen Bereiche muss einheitlich sein.
+- Stammdatenverwaltungen bieten eine Übersichtsseite mit tabellarischer Auflistung der Daten.
+- Mit einem Klick auf einen Eintrag öffnet sich die Detailseite.
+- **Alle Aktionen, die nur einen einzelnen Eintrag betreffen (z.B. Bearbeiten, Archivieren, Löschen), sind ausschließlich auf der Detailseite verfügbar.**
+- In der Übersichtsseite dürfen nur Aktionen für die Neuanlage oder für Massenverarbeitungen angeboten werden.
+- Die Aktionen auf der Detailseite werden i.d.R. in einer Aktionsleiste als Schaltflächen mit Symbolen zwischen Überschrift und Inhalt angeboten.
+- Die Symbole für di Aktionen werden in einer sprite.svg-Datei bereitgestellt.
+
 ---
 Diese Richtlinien werden stetig weiterentwickelt; Änderungen über Pull Request dokumentieren.

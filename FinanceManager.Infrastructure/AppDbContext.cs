@@ -4,6 +4,7 @@ using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Domain.Postings;
 using Microsoft.EntityFrameworkCore;
+using FinanceManager.Domain.Savings;
 
 namespace FinanceManager.Infrastructure;
 
@@ -22,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<Posting> Postings => Set<Posting>();
     public DbSet<StatementDraft> StatementDrafts => Set<StatementDraft>();
     public DbSet<StatementDraftEntry> StatementDraftEntries => Set<StatementDraftEntry>();
+    public DbSet<SavingsPlan> SavingsPlans => Set<SavingsPlan>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,6 +97,15 @@ public class AppDbContext : DbContext
         {
             b.Property(x => x.Subject).HasMaxLength(500).IsRequired();
             b.HasIndex(x => new { x.DraftId, x.BookingDate });
+        });
+
+        modelBuilder.Entity<SavingsPlan>(b =>
+        {
+            b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
+            b.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            b.Property(x => x.TargetAmount).HasPrecision(18, 2);
+            b.Property(x => x.CreatedUtc).IsRequired();
+            b.Property(x => x.IsActive).IsRequired();
         });
     }
 }

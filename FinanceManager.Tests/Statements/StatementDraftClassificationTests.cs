@@ -175,7 +175,7 @@ public sealed class StatementDraftClassificationTests
         {
             draft.AddEntry(DateTime.Today, 100, "Test", "Empfänger", DateTime.Today, "EUR", "Buchung", false);
         });
-        db.StatementEntries.Add(new StatementEntry(Guid.NewGuid(), DateTime.Today, 100, "Test", "hash", "Empfänger", DateTime.Today, "EUR", "Buchung", false));
+        db.StatementEntries.Add(new StatementEntry(Guid.NewGuid(), DateTime.Today, 100, "Test", "hash", "Empfänger", DateTime.Today, "EUR", "Buchung", false, false));
         await db.SaveChangesAsync();
 
         await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);

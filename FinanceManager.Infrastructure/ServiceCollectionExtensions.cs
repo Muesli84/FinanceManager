@@ -9,6 +9,8 @@ using FinanceManager.Application.Accounts;
 using FinanceManager.Infrastructure.Accounts;
 using FinanceManager.Application.Statements;
 using FinanceManager.Infrastructure.Statements;
+using FinanceManager.Application.Savings;
+using FinanceManager.Infrastructure.Savings;
 
 namespace FinanceManager.Infrastructure;
 
@@ -31,6 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContactCategoryService, ContactCategoryService>();
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IStatementDraftService, StatementDraftService>();
+        services.AddScoped<ISavingsPlanService, SavingsPlanService>();
         return services;
     }
 }
