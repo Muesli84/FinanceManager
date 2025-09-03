@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection.Metadata.Ecma335;
 
 namespace FinanceManager.Application.Statements;
 
@@ -51,4 +52,5 @@ public sealed record StatementMovement()
     public string? PostingDescription { get; set; }
     public string? CurrencyCode { get; set; }
     public bool IsPreview { get; set; }
+    public bool IsError { get; set; }
 };

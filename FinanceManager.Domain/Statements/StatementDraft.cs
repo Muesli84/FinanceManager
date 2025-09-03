@@ -86,7 +86,7 @@ public sealed class StatementDraftEntry : Entity
         DraftId = Guards.NotEmpty(draftId, nameof(draftId));
         BookingDate = bookingDate;
         Amount = amount;
-        Subject = Guards.NotNullOrWhiteSpace(subject, nameof(subject));
+        Subject = subject ?? string.Empty;
         RecipientName = recipientName;
         ValutaDate = valutaDate;
         CurrencyCode = string.IsNullOrWhiteSpace(currencyCode) ? "EUR" : currencyCode!; // default EUR
