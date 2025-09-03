@@ -146,11 +146,10 @@ public class AppDbContext : DbContext
         StatementDrafts.RemoveRange(StatementDrafts.Where(d => d.OwnerUserId == userId));
         SavingsPlans.RemoveRange(SavingsPlans.Where(s => s.OwnerUserId == userId));
         SavingsPlanCategories.RemoveRange(SavingsPlanCategories.Where(c => c.OwnerUserId == userId));
-        Contacts.RemoveRange(Contacts.Where(c => c.OwnerUserId == userId));
+        Contacts.RemoveRange(Contacts.Where(c => c.OwnerUserId == userId && c.Type != Domain.ContactType.Self));
         ContactCategories.RemoveRange(ContactCategories.Where(c => c.OwnerUserId == userId));
         AliasNames.RemoveRange(AliasNames.Where(a => Contacts.Any(c => c.Id == a.ContactId && c.OwnerUserId == userId)));
         AccountShares.RemoveRange(AccountShares.Where(s => s.UserId == userId || Accounts.Any(a => a.OwnerUserId == userId && a.Id == s.AccountId)));
         Accounts.RemoveRange(Accounts.Where(a => a.OwnerUserId == userId));
-        
     }
 }
