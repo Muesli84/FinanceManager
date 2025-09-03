@@ -65,7 +65,7 @@ public sealed class ContactService : IContactService
         return true;
     }
 
-    public async Task<IReadOnlyList<ContactDto>> ListAsync(Guid ownerUserId, int skip, int take, ContactType? type, CancellationToken ct)
+    public async Task<IReadOnlyList<ContactDto>> ListAsync(Guid ownerUserId, int skip, int take, ContactType? type, string? nameFilter, CancellationToken ct)
     {
         var query = _db.Contacts.AsNoTracking()
             .Where(c => c.OwnerUserId == ownerUserId);
@@ -73,6 +73,13 @@ public sealed class ContactService : IContactService
         if (type.HasValue)
         {
             query = query.Where(c => c.Type == type.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(nameFilter))
+        {
+            var pattern = $"%{nameFilter.Trim()}%";
+            // EF.Functions.Like sorgt für serverseitiges Pattern Matching
+            query = query.Where(c => EF.Functions.Like(c.Name, pattern));
         }
 
         return await query

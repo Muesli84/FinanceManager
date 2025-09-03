@@ -20,39 +20,50 @@
     }
     else
     {
-        <div class="action-bar">
+        <div class="action-bar" style="gap:.5rem;align-items:center;">
             <button @onclick="CreateNew" aria-label="New Contact" title="New Contact" class="icon-btn">
                 <svg><use href="/icons/sprite.svg#plus" /></svg>
             </button>
+            <input class="filter-input"
+                   placeholder="Filter name..."
+                   @bind="_filter"
+                   @bind:after="OnFilterAfterChanged" />
         </div>
 
         <table class="fm-table contacts-table">
             <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                </tr>
+            <tr>
+                <th>Name</th>
+                <th>Group</th>
+                <th>Type</th>
+            </tr>
             </thead>
             <tbody>
-                @foreach (var c in _contacts)
-                {
-                    <tr style="cursor:pointer;" @onclick="() => OpenDetail(c.Id)">
-                        <td>@c.Name</td>
-                        <td>@c.Type</td>
-                    </tr>
-                }
-                @if (_contacts.Count == 0)
-                {
-                    <tr><td colspan="2" style="opacity:.6;">No contacts.</td></tr>
-                }
+            @foreach (var c in _contacts)
+            {
+                <tr style="cursor:pointer;" @onclick="() => OpenDetail(c.Id)">
+                    <td>@c.Name</td>
+                    <td>@(string.IsNullOrEmpty(c.CategoryName) ? "-" : c.CategoryName)</td>
+                    <td>@c.Type</td>
+                </tr>
+            }
+            @if (_contacts.Count == 0 && !_loadingMore)
+            {
+                <tr><td colspan="3" style="opacity:.6;">No contacts.</td></tr>
+            }
             </tbody>
         </table>
+
+        @if (_loadingMore)
+        {
+            <div style="opacity:.6; font-size:.8rem; margin-top:.5rem;">Loading...</div>
+        }
 
         @if (!_allLoaded)
         {
             <div @ref="_sentinel" class="infinite-sentinel" aria-hidden="true"></div>
         }
-        else
+        else if (_contacts.Count > 0)
         {
             <div class="end-of-list">Ende</div>
         }
@@ -70,13 +81,31 @@
     private DotNetObjectReference<Contacts>? _selfRef;
     private bool _observerAttached;
 
+    private string _filter = string.Empty;
+    private CancellationTokenSource? _filterCts;
+
+    // Kategorien
+    private Dictionary<Guid, string> _categoryNames = new();
+
     protected override async Task OnInitializedAsync()
     {
         if (CurrentUser.IsAuthenticated)
         {
+            await LoadCategoriesAsync();
             await LoadMoreAsync();
         }
         _loaded = true;
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        // Kategorien einmalig laden
+        var resp = await Http.GetAsync("/api/contact-categories");
+        if (resp.IsSuccessStatusCode)
+        {
+            var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new();
+            _categoryNames = list.ToDictionary(c => c.Id, c => c.Name);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -85,7 +114,10 @@
         {
             return;
         }
-
+        if (_sentinel.Context is null)
+        {
+            return;
+        }
         try
         {
             _selfRef ??= DotNetObjectReference.Create(this);
@@ -94,8 +126,6 @@
         }
         catch (JSException)
         {
-            // W‰hrend Prerender: JS noch nicht verf¸gbar -> beim n‰chsten Render erneut versuchen
-            // Optional erneutes Render anstoﬂen:
             await Task.Yield();
             StateHasChanged();
         }
@@ -123,7 +153,12 @@
         }
 
         _loadingMore = true;
-        var resp = await Http.GetAsync($"/api/contacts?skip={_contacts.Count}&take={PageSize}");
+
+        var filterPart = string.IsNullOrWhiteSpace(_filter)
+            ? string.Empty
+            : $"&q={Uri.EscapeDataString(_filter)}";
+
+        var resp = await Http.GetAsync($"/api/contacts?skip={_contacts.Count}&take={PageSize}{filterPart}");
         if (resp.IsSuccessStatusCode)
         {
             var more = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
@@ -132,15 +167,22 @@
                 _allLoaded = true;
             }
 
-            _contacts.AddRange(more.Select(dto => new ContactVm
+            foreach (var dto in more)
             {
-                Id = dto.Id,
-                Name = dto.Name,
-                Type = dto.Type.ToString()
-            }));
+                _contacts.Add(new ContactVm
+                {
+                    Id = dto.Id,
+                    Name = dto.Name,
+                    Type = dto.Type.ToString(),
+                    CategoryName = dto.CategoryId != null && _categoryNames.TryGetValue(dto.CategoryId.Value, out var catName)
+                        ? catName
+                        : string.Empty
+                });
+            }
         }
 
         _loadingMore = false;
+        StateHasChanged();
     }
 
     private void CreateNew() => OpenDetail(null);
@@ -151,10 +193,42 @@
     }
     private void OpenDetail(Guid id) => Navigation.NavigateTo($"/contacts/{id}");
 
+    private async void OnFilterAfterChanged()
+    {
+        _filterCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _filterCts = cts;
+        try
+        {
+            await Task.Delay(300, cts.Token); // debounce
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+        await ResetAndReloadAsync();
+    }
+
+    private async Task ResetAndReloadAsync()
+    {
+        _loadingMore = false;
+        _allLoaded = false;
+        _contacts.Clear();
+        _observerAttached = false;
+        await LoadMoreAsync();
+    }
+
     private sealed class ContactVm
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
+        public string CategoryName { get; set; } = string.Empty;
+    }
+
+    private sealed class ContactCategoryDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
     }
 }

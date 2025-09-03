@@ -39,22 +39,26 @@ public sealed class ContactsController : ControllerBase
         [FromQuery] int take = 50,
         [FromQuery] ContactType? type = null,
         [FromQuery] bool all = false,
+        [FromQuery(Name = "q")] string? nameFilter = null,
         CancellationToken ct = default)
     {
+        int hardMax = int.MaxValue;
         if (all)
         {
             skip = 0;
-            take = int.MaxValue;
+            take = hardMax;
         }
+        take = Math.Clamp(take, 1, hardMax);
 
         try
         {
-            var list = await _contacts.ListAsync(_current.UserId, skip, take, type, ct);
+            var list = await _contacts.ListAsync(_current.UserId, skip, take, type, nameFilter, ct);
             return Ok(list);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "List contacts failed (skip={Skip}, take={Take}, type={Type}, all={All})", skip, take, type, all);
+            _logger.LogError(ex, "List contacts failed (skip={Skip}, take={Take}, type={Type}, all={All}, q={Q})",
+                skip, take, type, all, nameFilter);
             return Problem("Unexpected error", statusCode: 500);
         }
     }
