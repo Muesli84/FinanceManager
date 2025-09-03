@@ -25,6 +25,8 @@ public class AppDbContext : DbContext
     public DbSet<StatementDraft> StatementDrafts => Set<StatementDraft>();
     public DbSet<StatementDraftEntry> StatementDraftEntries => Set<StatementDraftEntry>();
     public DbSet<SavingsPlan> SavingsPlans => Set<SavingsPlan>();
+    public DbSet<SavingsPlanCategory> SavingsPlanCategories { get; set; } = null!;
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,13 +107,28 @@ public class AppDbContext : DbContext
             b.HasIndex(x => new { x.DraftId, x.BookingDate });
         });
 
-        modelBuilder.Entity<SavingsPlan>(b =>
+        // SavingsPlanCategory
+        modelBuilder.Entity<SavingsPlanCategory>(entity =>
         {
-            b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
-            b.Property(x => x.Name).HasMaxLength(150).IsRequired();
-            b.Property(x => x.TargetAmount).HasPrecision(18, 2);
-            b.Property(x => x.CreatedUtc).IsRequired();
-            b.Property(x => x.IsActive).IsRequired();
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.OwnerUserId).IsRequired();
+        });
+
+        // SavingsPlan
+        modelBuilder.Entity<SavingsPlan>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(x => x.TargetAmount).HasPrecision(18, 2);
+            entity.Property(x => x.CreatedUtc).IsRequired();
+            entity.Property(x => x.IsActive).IsRequired();
+            entity.Property(e => e.OwnerUserId).IsRequired();
+            entity.HasOne<SavingsPlanCategory>()
+                  .WithMany()
+                  .HasForeignKey(e => e.CategoryId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
     }
 

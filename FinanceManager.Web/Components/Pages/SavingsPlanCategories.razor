@@ -1,0 +1,46 @@
+@page "/savings-plan-categories"
+@rendermode InteractiveServer
+@using FinanceManager.Shared.Dtos
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+
+<h3>Kategorien verwalten</h3>
+<div class="action-bar" style="margin-bottom:1rem;">
+    <button class="icon-btn" @onclick="NewCategory" title="Neue Kategorie">
+        <svg class="icon"><use href="icons/sprite.svg#plus"></use></svg>
+    </button>
+</div>
+<table class="fm-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var cat in _categories)
+        {
+            <tr style="cursor:pointer;" @onclick="() => EditCategory(cat.Id)">
+                <td>@cat.Name</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<SavingsPlanCategoryDto> _categories = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.GetAsync("/api/savings-plan-categories");
+        if (resp.IsSuccessStatusCode)
+        {
+            _categories = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>() ?? new();
+        }
+    }
+
+    private void NewCategory() => Navigation.NavigateTo("/savings-plan-categories/new");
+    private void EditCategory(Guid id) => Navigation.NavigateTo($"/savings-plan-categories/{id}");
+}

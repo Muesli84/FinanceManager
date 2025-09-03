@@ -1,0 +1,111 @@
+@page "/savings-plan-categories/new"
+@page "/savings-plan-categories/{Id:guid}"
+@rendermode InteractiveServer
+@using FinanceManager.Shared.Dtos
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+
+<h3>@(IsEdit ? "Kategorie bearbeiten" : "Neue Kategorie")</h3>
+<div class="action-bar" style="margin-bottom:1rem;">
+    <button class="icon-btn" type="submit" title="Speichern" @onclick="SaveAsync">
+        <svg class="icon"><use href="icons/sprite.svg#save"></use></svg>
+    </button>
+    @if (IsEdit)
+    {
+        <button class="icon-btn danger" @onclick="DeleteAsync" title="Löschen">
+            <svg class="icon"><use href="icons/sprite.svg#delete"></use></svg>
+        </button>
+    }
+    <button class="icon-btn" @onclick="Back" title="Zurück">
+        <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
+    </button>
+</div>
+
+<EditForm Model="_model" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div>
+        <label>Name</label>
+        <InputText @bind-Value="_model.Name" />
+        <ValidationMessage For="()=>_model.Name" />
+    </div>
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="error" style="margin-top:.5rem;">@_error</div>
+    }
+</EditForm>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    private SavingsPlanCategoryDto _model = new();
+    private bool IsEdit => Id.HasValue;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsEdit)
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.GetAsync($"/api/savings-plan-categories/{Id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                var dto = await resp.Content.ReadFromJsonAsync<SavingsPlanCategoryDto>();
+                if (dto != null)
+                {
+                    _model = dto;
+                }
+            }
+            else
+            {
+                _error = "Kategorie nicht gefunden.";
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        var http = ClientFactory.CreateClient("Api");
+        if (IsEdit)
+        {
+            var resp = await http.PutAsJsonAsync($"/api/savings-plan-categories/{Id}", _model);
+            if (resp.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/savings-plan-categories", true);
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        else
+        {
+            var resp = await http.PostAsJsonAsync("/api/savings-plan-categories", _model);
+            if (resp.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/savings-plan-categories", true);
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!IsEdit || Id == null) return;
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.DeleteAsync($"/api/savings-plan-categories/{Id}");
+        if (resp.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/savings-plan-categories", true);
+        }
+        else
+        {
+            _error = await resp.Content.ReadAsStringAsync();
+        }
+    }
+
+    private void Back() => Navigation.NavigateTo("/savings-plan-categories");
+}

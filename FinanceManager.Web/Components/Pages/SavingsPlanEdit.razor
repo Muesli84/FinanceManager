@@ -10,7 +10,7 @@
 
 <h3>@(IsEdit ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
 <div class="action-bar" style="margin-bottom:1rem;">
-    <button class="icon-btn" type="submit" title="@Localizer["BtnSave"]">
+    <button class="icon-btn" @onclick="SaveAsync" type="submit" title="@Localizer["BtnSave"]">
         <svg class="icon"><use href="icons/sprite.svg#save"></use></svg>
     </button>
     @if (IsEdit)
@@ -24,6 +24,9 @@
     }
     <button class="icon-btn" @onclick="Back" title="@Localizer["BtnBack"]">
         <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
+    </button>
+    <button class="icon-btn" @onclick="OpenCategoryList" title="@Localizer["BtnCategories"]">
+        <svg class="icon"><use href="icons/sprite.svg#groups"></use></svg>
     </button>
 </div>
 
@@ -62,6 +65,16 @@
             }
         </InputSelect>
     </div>
+    <div>
+        <label>@Localizer["LabelCategory"]</label>
+        <InputSelect @bind-Value="_model.CategoryId">
+            <option value="">--</option>
+            @foreach (var cat in _categories)
+            {
+                <option value="@cat.Id">@cat.Name</option>
+            }
+        </InputSelect>
+    </div>
     @if (!string.IsNullOrWhiteSpace(_error))
     {
         <div class="error" style="margin-top:.5rem;">@Localizer["ErrorNotFound"]</div>
@@ -73,6 +86,7 @@
     private SavingsPlanEditModel _model = new();
     private bool IsEdit => Id.HasValue;
     private string? _error;
+    private List<SavingsPlanCategoryDto> _categories = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -90,12 +104,24 @@
                     _model.TargetAmount = dto.TargetAmount;
                     _model.TargetDate = dto.TargetDate;
                     _model.Interval = dto.Interval;
+                    _model.CategoryId = dto.CategoryId;
                 }
             }
             else
             {
                 _error = "Sparplan nicht gefunden.";
             }
+        }
+        await LoadCategoriesAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.GetAsync("/api/savings-plan-categories");
+        if (resp.IsSuccessStatusCode)
+        {
+            _categories = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>() ?? new();
         }
     }
 
@@ -160,6 +186,7 @@
     }
 
     private void Back() => Navigation.NavigateTo("/savings-plans");
+    private void OpenCategoryList() => Navigation.NavigateTo("/savings-plan-categories");
 
     private sealed class SavingsPlanEditModel
     {
@@ -168,5 +195,6 @@
         public decimal? TargetAmount { get; set; }
         public DateTime? TargetDate { get; set; }
         public SavingsPlanInterval? Interval { get; set; }
+        public Guid? CategoryId { get; set; }
     }
 }
