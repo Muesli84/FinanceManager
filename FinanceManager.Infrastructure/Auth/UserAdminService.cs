@@ -3,7 +3,8 @@ using FinanceManager.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using FinanceManager.Domain.Contacts; // added
-using FinanceManager.Domain; // added for ContactType
+using FinanceManager.Domain;
+using FinanceManager.Shared.Dtos; // added for ContactType
 
 namespace FinanceManager.Infrastructure.Auth;
 

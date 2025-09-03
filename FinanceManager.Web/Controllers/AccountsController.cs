@@ -5,6 +5,7 @@ using FinanceManager.Application.Accounts;
 using FinanceManager.Application.Contacts;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts;
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

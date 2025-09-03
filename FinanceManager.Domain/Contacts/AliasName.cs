@@ -10,4 +10,9 @@ public sealed class AliasName : Entity
     }
     public Guid ContactId { get; private set; }
     public string Pattern { get; private set; } = null!;
+
+    public void ReassignTo(Guid newContactId)
+    {
+        ContactId = newContactId;
+    }
 }

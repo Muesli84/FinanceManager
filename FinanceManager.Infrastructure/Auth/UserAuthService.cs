@@ -3,6 +3,7 @@ using FinanceManager.Application.Users;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts; // added
 using FinanceManager.Domain.Users;
+using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

@@ -61,12 +61,12 @@ public sealed class SetupImportService : ISetupImportService
                 var contact = _db.Contacts.Where(c => c.OwnerUserId == userId && c.Name == instituteName).FirstOrDefault();
                 if (contact is null)
                 {
-                    contact = new Contact(userId, instituteName, FinanceManager.Domain.ContactType.Bank, null);
+                    contact = new Contact(userId, instituteName, ContactType.Bank, null);
                     _db.Contacts.Add(contact);
                 }
-                if (contact.Type != FinanceManager.Domain.ContactType.Bank)
+                if (contact.Type != ContactType.Bank)
                 {
-                    contact.ChangeType(FinanceManager.Domain.ContactType.Bank);
+                    contact.ChangeType(ContactType.Bank);
                     _db.Contacts.Update(contact);
                 }
 
@@ -156,7 +156,7 @@ public sealed class SetupImportService : ISetupImportService
             var name = contact.GetProperty("Name").GetString();
             var isPaymentProvider = contact.GetProperty("IsPaymentProvider").GetBoolean();
             if (string.IsNullOrWhiteSpace(name)) continue;
-            var newContact = new Contact(userId, name, FinanceManager.Domain.ContactType.Organization, null);
+            var newContact = new Contact(userId, name, ContactType.Organization, null);
             if (contact.TryGetProperty("Category", out var categoryProp))
                 if (categoryProp.TryGetProperty("Id", out var categoryIdProp) && categoryIdProp.ValueKind == JsonValueKind.Number)
                 {

@@ -4,6 +4,7 @@ using FinanceManager.Application;
 using FinanceManager.Application.Contacts;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts;
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,6 +30,7 @@ public sealed class ContactsController : ControllerBase
     public sealed record ContactCreateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
     public sealed record ContactUpdateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
     public sealed record AliasCreateRequest([Required, MinLength(1)] string Pattern);
+    public sealed record ContactMergeRequest([Required] Guid TargetContactId);
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactDto>), StatusCodes.Status200OK)]
@@ -179,6 +181,31 @@ public sealed class ContactsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Delete contact {ContactId} alias failed", id);
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+
+    [HttpPost("{id:guid}/merge")]
+    [ProducesResponseType(typeof(ContactDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> MergeAsync(Guid id, [FromBody] ContactMergeRequest req, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+        try
+        {
+            var dto = await _contacts.MergeAsync(_current.UserId, id, req.TargetContactId, ct);
+            return Ok(dto);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Merge contacts failed (source={Source}, target={Target})", id, req.TargetContactId);
             return Problem("Unexpected error", statusCode: 500);
         }
     }

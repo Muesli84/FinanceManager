@@ -1,3 +1,5 @@
+using FinanceManager.Shared.Dtos;
+
 namespace FinanceManager.Domain.Contacts;
 
 public sealed class Contact : Entity, IAggregateRoot

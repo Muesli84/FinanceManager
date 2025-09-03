@@ -59,4 +59,10 @@
       <path d="M5 7v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7" />
       <polyline points="10 12 12 14 14 12" />
     </symbol>
+	<symbol id="merge" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		<path d="M7 3v6a4 4 0 0 0 4 4h2" />
+		<path d="M17 21v-6a4 4 0 0 0 -4 -4h-2" />
+		<path d="M17 3h0" />
+		<path d="M7 21h0" />
+	</symbol>
 </svg>

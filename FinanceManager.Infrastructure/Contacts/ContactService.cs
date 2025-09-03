@@ -1,6 +1,7 @@
 using FinanceManager.Application.Contacts;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts;
+using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Contacts;
@@ -120,5 +121,95 @@ public sealed class ContactService : IContactService
             .OrderBy(c => c.Pattern)
             .Select(c => new AliasNameDto(c.Id, c.ContactId, c.Pattern))
             .ToListAsync(ct);
+    }
+
+    public async Task<ContactDto> MergeAsync(Guid ownerUserId, Guid sourceContactId, Guid targetContactId, CancellationToken ct)
+    {
+        if (sourceContactId == targetContactId)
+        {
+            throw new ArgumentException("Source and target contact must differ.");
+        }
+
+        var contacts = await _db.Contacts
+            .Where(c => (c.Id == sourceContactId || c.Id == targetContactId) && c.OwnerUserId == ownerUserId)
+            .ToListAsync(ct);
+
+        var source = contacts.FirstOrDefault(c => c.Id == sourceContactId);
+        var target = contacts.FirstOrDefault(c => c.Id == targetContactId);
+
+        if (source is null || target is null)
+        {
+            throw new ArgumentException("One or both contacts not found.");
+        }
+
+        if (source.Type == ContactType.Self && target.Type != ContactType.Self)
+        {
+            throw new ArgumentException("Merging involving a 'Self' contact is not allowed.");
+        }
+
+        bool bankInvolved = source.Type == ContactType.Bank || target.Type == ContactType.Bank;
+        if (bankInvolved && (source.Type != ContactType.Bank || target.Type != ContactType.Bank))
+        {
+            throw new ArgumentException("If one contact is of type 'Bank', both must be 'Bank' to merge.");
+        }
+
+        using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        // Aliase des Zielkontakts laden
+        var targetAliasPatterns = await _db.AliasNames
+            .Where(a => a.ContactId == target.Id)
+            .Select(a => a.Pattern.ToLower())
+            .ToListAsync(ct);
+
+        // Name des Quellkontakts als Alias hinzufügen (falls nicht schon vorhanden / identisch)
+        if (!string.Equals(source.Name, target.Name, StringComparison.OrdinalIgnoreCase)
+            && !targetAliasPatterns.Contains(source.Name.ToLower()))
+        {
+            _db.AliasNames.Add(new AliasName(target.Id, source.Name));
+        }
+
+        // Aliase des Quellkontakts übernehmen (umhängen) – Duplikate überspringen
+        var sourceAliases = await _db.AliasNames
+            .Where(a => a.ContactId == source.Id)
+            .ToListAsync(ct);
+        foreach (var alias in sourceAliases)
+        {
+            if (targetAliasPatterns.Contains(alias.Pattern.ToLower()) ||
+                string.Equals(alias.Pattern, target.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                // Duplikat -> löschen
+                _db.AliasNames.Remove(alias);
+            }
+            else
+            {
+                alias.ReassignTo(target.Id); // Falls es keine Methode gibt: alias.ContactId = target.Id;
+            }
+        }
+
+        // Statement Draft Entries (TODO: Tabellen-/Entity-Namen prüfen)
+        await _db.StatementDraftEntries
+            .Where(e => e.ContactId == source.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.ContactId, target.Id), ct);
+
+        // Committed Statement Entries
+        await _db.StatementEntries
+            .Where(e => e.ContactId == source.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.ContactId, target.Id), ct);
+
+        // Falls Bankkontakte: zugehörige Accounts umbuchen
+        if (bankInvolved)
+        {
+            await _db.Accounts
+                .Where(a => a.BankContactId == source.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.BankContactId, target.Id), ct);
+        }
+
+        // Quellkontakt entfernen
+        _db.Contacts.Remove(source);
+
+        await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return new ContactDto(target.Id, target.Name, target.Type, target.CategoryId, target.Description, target.IsPaymentIntermediary);
     }
 }

@@ -3,6 +3,7 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure.Statements.Reader;
+using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Statements;

@@ -3,6 +3,8 @@
 @using FinanceManager.Application.Contacts
 @using FinanceManager.Domain
 @using System.ComponentModel.DataAnnotations
+@using FinanceManager.Shared.Dtos
+@using FinanceManager.Web.Components.Shared
 @rendermode InteractiveServer
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
@@ -29,6 +31,17 @@ else
             @if (Enum.Parse<ContactType>(_model.Type) == ContactType.Bank)
             {
                 <button type="button" @onclick="OpenBankAccounts" disabled="@_busy" aria-label="Accounts" title="Accounts" class="icon-btn"><svg><use href="/icons/sprite.svg#accounts" /></svg></button>
+            }
+            @if (!IsSelfContact)
+            {
+                <button type="button"
+                        @onclick="OpenMergeDialog"
+                        disabled="@_busy"
+                        aria-label="Merge"
+                        title="Merge"
+                        class="icon-btn">
+                    <svg><use href="/icons/sprite.svg#merge" /></svg>
+                </button>
             }
         }
     </div>
@@ -95,6 +108,12 @@ else
             <div class="error" style="margin-top:.75rem;">@_error</div>
         }
     </EditForm>
+
+    <ContactMergeDialog Visible="@_showMergeDialog"
+                        CurrentContactId="@Id!.Value"
+                        CurrentContactType="@_model.Type"
+                        OnConfirm="PerformMergeAsync"
+                        OnCancel="CloseMergeDialog" />
 }
 
 @code {
@@ -321,4 +340,52 @@ else
 
     private sealed class AliasVm { public Guid Id { get; set; } public string Pattern { get; set; } = string.Empty; }
     private sealed class AliasDto { public Guid Id { get; set; } public string Pattern { get; set; } = string.Empty; }
+
+    private bool _showMergeDialog;
+    private bool IsSelfContact => Enum.Parse<ContactType>(_model.Type) == ContactType.Self;
+
+    private void OpenMergeDialog()
+    {
+        if (!IsEdit || IsSelfContact)
+        {
+            return;
+        }
+        _showMergeDialog = true;
+    }
+
+    private Task CloseMergeDialog()
+    {
+        _showMergeDialog = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task PerformMergeAsync(Guid targetId)
+    {
+        if (!Id.HasValue || targetId == Guid.Empty)
+        {
+            return;
+        }
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.PostAsJsonAsync($"/api/contacts/{Id}/merge", new { targetContactId = targetId });
+            if (resp.IsSuccessStatusCode)
+            {
+                _showMergeDialog = false;
+                // Zielkontakt anzeigen
+                Navigation.NavigateTo($"/contacts/{targetId}", forceLoad: true);
+            }
+            else
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                _error = $"Merge failed: {msg}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        StateHasChanged();
+    }
 }
