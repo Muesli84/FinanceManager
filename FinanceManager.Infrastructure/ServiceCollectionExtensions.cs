@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IStatementDraftService, StatementDraftService>();
         services.AddScoped<ISavingsPlanService, SavingsPlanService>();
         services.AddScoped<ISavingsPlanCategoryService, SavingsPlanCategoryService>();
+        services.AddScoped<ISetupImportService, SetupImportService>();
         return services;
     }
 }

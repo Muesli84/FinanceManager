@@ -1,0 +1,74 @@
+@page "/setup"
+@rendermode InteractiveServer
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Navigation
+
+<h3>Einrichtung / Datenimport</h3>
+<div class="action-bar" style="margin-bottom:1rem;">
+    <button class="icon-btn" @onclick="Back" title="Zurück">
+        <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
+    </button>
+</div>
+
+<InputFile OnChange="OnFileSelected" />
+@if (_fileName != null)
+{
+    <div style="margin-top:1rem;">
+        <p>Datei: @_fileName</p>
+        <label>
+            <input type="checkbox" @bind="_replaceExisting" />
+            Bestehende Daten löschen und ersetzen
+        </label>
+        <button class="icon-btn" @onclick="UploadAsync" disabled="@_busy">
+            <svg class="icon"><use href="icons/sprite.svg#save"></use></svg> Importieren
+        </button>
+    </div>
+}
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="error" style="margin-top:.5rem;">@_error</div>
+}
+
+@code {
+    private IBrowserFile? _file;
+    private string? _fileName;
+    private bool _replaceExisting;
+    private bool _busy;
+    private string? _error;
+
+    private void Back() => Navigation.NavigateTo("/");
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _file = e.File;
+        _fileName = _file?.Name;
+    }
+
+    private async Task UploadAsync()
+    {
+        if (_file == null) return;
+        _busy = true; _error = null;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            using var content = new MultipartFormDataContent();
+            var stream = _file.OpenReadStream(20 * 1024 * 1024);
+            content.Add(new StreamContent(stream), "file", _file.Name);
+            content.Add(new StringContent(_replaceExisting.ToString()), "replaceExisting");
+            var resp = await http.PostAsync("/api/setup/import", content);
+            if (resp.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _busy = false;
+    }
+}

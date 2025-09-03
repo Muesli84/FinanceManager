@@ -4,27 +4,28 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
+@inject IJSRuntime JS
 
-<h1>Contacts</h1>
+<div class="page-contacts-full">
+    <h1>Contacts</h1>
 
-@if (!_loaded)
-{
-    <p>Loading...</p>
-}
-else if (!CurrentUser.IsAuthenticated)
-{
-    <p>Please login.</p>
-}
-else
-{
-    <div class="action-bar">
-        <button @onclick="CreateNew" aria-label="New Contact" title="New Contact" class="icon-btn">
-            <svg><use href="/icons/sprite.svg#plus" /></svg>
-        </button>
-        <!-- Weitere Symbol-Buttons f¸r Aktionen -->
-    </div>
-    <div class="table-responsive">
-        <table class="fm-table">
+    @if (!_loaded)
+    {
+        <p>Loading...</p>
+    }
+    else if (!CurrentUser.IsAuthenticated)
+    {
+        <p>Please login.</p>
+    }
+    else
+    {
+        <div class="action-bar">
+            <button @onclick="CreateNew" aria-label="New Contact" title="New Contact" class="icon-btn">
+                <svg><use href="/icons/sprite.svg#plus" /></svg>
+            </button>
+        </div>
+
+        <table class="fm-table contacts-table">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -45,14 +46,28 @@ else
                 }
             </tbody>
         </table>
-    </div>
-}
+
+        @if (!_allLoaded)
+        {
+            <div @ref="_sentinel" class="infinite-sentinel" aria-hidden="true"></div>
+        }
+        else
+        {
+            <div class="end-of-list">Ende</div>
+        }
+    }
+</div>
+
 @code {
     private List<ContactVm> _contacts = new();
     private bool _loaded;
     private bool _loadingMore;
     private bool _allLoaded;
     private const int PageSize = 50;
+
+    private ElementReference _sentinel;
+    private DotNetObjectReference<Contacts>? _selfRef;
+    private bool _observerAttached;
 
     protected override async Task OnInitializedAsync()
     {
@@ -63,15 +78,59 @@ else
         _loaded = true;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_observerAttached || !_loaded || !CurrentUser.IsAuthenticated || _allLoaded)
+        {
+            return;
+        }
+
+        try
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("fmInfinite.observe", _sentinel, _selfRef, null);
+            _observerAttached = true;
+        }
+        catch (JSException)
+        {
+            // W‰hrend Prerender: JS noch nicht verf¸gbar -> beim n‰chsten Render erneut versuchen
+            // Optional erneutes Render anstoﬂen:
+            await Task.Yield();
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task LoadMoreFromJs()
+    {
+        await LoadMoreAsync();
+        if (_allLoaded)
+        {
+            StateHasChanged();
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("fmInfinite.refresh");
+        }
+    }
+
     private async Task LoadMoreAsync()
     {
-        if (_loadingMore || _allLoaded) { return; }
+        if (_loadingMore || _allLoaded)
+        {
+            return;
+        }
+
         _loadingMore = true;
         var resp = await Http.GetAsync($"/api/contacts?skip={_contacts.Count}&take={PageSize}");
         if (resp.IsSuccessStatusCode)
         {
             var more = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
-            if (more.Count < PageSize) { _allLoaded = true; }
+            if (more.Count < PageSize)
+            {
+                _allLoaded = true;
+            }
+
             _contacts.AddRange(more.Select(dto => new ContactVm
             {
                 Id = dto.Id,
@@ -79,8 +138,8 @@ else
                 Type = dto.Type.ToString()
             }));
         }
+
         _loadingMore = false;
-        StateHasChanged();
     }
 
     private void CreateNew() => OpenDetail(null);
@@ -89,8 +148,12 @@ else
         var url = id == null ? "/contacts/new" : $"/contacts/{id}";
         Navigation.NavigateTo(url);
     }
-
     private void OpenDetail(Guid id) => Navigation.NavigateTo($"/contacts/{id}");
 
-    private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Type { get; set; } = string.Empty; }
+    private sealed class ContactVm
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+    }
 }

@@ -136,4 +136,21 @@ public class AppDbContext : DbContext
     {
         optionsBuilder.ConfigureWarnings(w => w.Ignore(RelationalEventId.NonTransactionalMigrationOperationWarning));
     }
+
+    internal void ClearUserData(Guid userId)
+    {
+        Postings.RemoveRange(Postings.Where(p => Accounts.Any(a => a.Id == p.AccountId && a.OwnerUserId == userId)));
+        StatementEntries.RemoveRange(StatementEntries.Where(e => StatementImports.Any(i => Accounts.Any(a => a.Id == i.AccountId && a.OwnerUserId == userId) && e.StatementImportId == e.StatementImportId)));
+        StatementImports.RemoveRange(StatementImports.Where(i => Accounts.Any(a => a.Id == i.AccountId && a.OwnerUserId == userId)));
+        StatementDraftEntries.RemoveRange(StatementDraftEntries.Where(e => StatementDrafts.Any(d => d.Id == e.DraftId && d.OwnerUserId == userId)));
+        StatementDrafts.RemoveRange(StatementDrafts.Where(d => d.OwnerUserId == userId));
+        SavingsPlans.RemoveRange(SavingsPlans.Where(s => s.OwnerUserId == userId));
+        SavingsPlanCategories.RemoveRange(SavingsPlanCategories.Where(c => c.OwnerUserId == userId));
+        Contacts.RemoveRange(Contacts.Where(c => c.OwnerUserId == userId));
+        ContactCategories.RemoveRange(ContactCategories.Where(c => c.OwnerUserId == userId));
+        AliasNames.RemoveRange(AliasNames.Where(a => Contacts.Any(c => c.Id == a.ContactId && c.OwnerUserId == userId)));
+        AccountShares.RemoveRange(AccountShares.Where(s => s.UserId == userId || Accounts.Any(a => a.OwnerUserId == userId && a.Id == s.AccountId)));
+        Accounts.RemoveRange(Accounts.Where(a => a.OwnerUserId == userId));
+        
+    }
 }

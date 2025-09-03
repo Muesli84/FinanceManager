@@ -116,11 +116,15 @@ else
 
     private async Task LoadBankContactsAsync()
     {
-        var resp = await Http.GetAsync("/api/contacts?skip=0&take=500");
+        // Direkt nur Bankkontakte (alle)
+        var resp = await Http.GetAsync("/api/contacts?type=Bank&all=true");
         if (resp.IsSuccessStatusCode)
         {
             var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
-            _bankContacts = list.Where(c => c.Type == ContactType.Bank).Select(c => new BankContactVm { Id = c.Id, Name = c.Name }).ToList();
+            _bankContacts = list
+                .Select(c => new BankContactVm { Id = c.Id, Name = c.Name })
+                .OrderBy(c => c.Name)
+                .ToList();
         }
     }
 

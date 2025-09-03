@@ -20,7 +20,11 @@ public sealed class ContactsController : ControllerBase
     private readonly ILogger<ContactsController> _logger;
 
     public ContactsController(IContactService contacts, ICurrentUserService current, ILogger<ContactsController> logger)
-    { _contacts = contacts; _current = current; _logger = logger; }
+    {
+        _contacts = contacts;
+        _current = current;
+        _logger = logger;
+    }
 
     public sealed record ContactCreateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
     public sealed record ContactUpdateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
@@ -28,17 +32,27 @@ public sealed class ContactsController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> ListAsync([FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
+    public async Task<IActionResult> ListAsync(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 50,
+        [FromQuery] ContactType? type = null,
+        [FromQuery] bool all = false,
+        CancellationToken ct = default)
     {
-        take = Math.Clamp(take, 1, 200);
+        if (all)
+        {
+            skip = 0;
+            take = int.MaxValue;
+        }
+
         try
         {
-            var list = await _contacts.ListAsync(_current.UserId, skip, take, ct);
+            var list = await _contacts.ListAsync(_current.UserId, skip, take, type, ct);
             return Ok(list);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "List contacts failed");
+            _logger.LogError(ex, "List contacts failed (skip={Skip}, take={Take}, type={Type}, all={All})", skip, take, type, all);
             return Problem("Unexpected error", statusCode: 500);
         }
     }

@@ -1,0 +1,48 @@
+.page-contacts {
+    display: flex;
+    flex-direction: column;
+    height: 95dvh; /* volle Viewport-Höhe (dynamic viewport) */
+    gap: .5rem;
+}
+
+.page-contacts > h1 {
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+.page-contacts .action-bar {
+    flex: 0 0 auto;
+}
+
+.contacts-table-container {
+    flex: 1 1 auto;
+    min-height: 0; /* wichtig für korrektes Flex-Overflow */
+    overflow: auto;
+    border: 1px solid var(--border-color, #333);
+    border-radius: .25rem;
+    background: var(--panel-bg, #1e1e1e);
+}
+
+.page-contacts-full {
+    display: block;
+    /* Keine feste Höhe, Seite wächst natürlich und die Browser-Scrollbar übernimmt */
+}
+
+.contacts-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.infinite-sentinel {
+    width: 100%;
+    height: 1px;
+    margin-top: 1rem;
+    background: transparent;
+}
+
+.end-of-list {
+    margin: 1rem 0;
+    opacity: .6;
+    font-size: .85rem;
+    text-align: center;
+}

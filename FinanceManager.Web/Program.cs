@@ -1,17 +1,18 @@
-using FinanceManager.Web.Components;
-using FinanceManager.Infrastructure;
-using Serilog;
 using FinanceManager.Application;
-using FinanceManager.Web.Services;
-using System.Text;
-using System.IdentityModel.Tokens.Jwt;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.Sqlite;
-using System.Globalization;
-using Microsoft.AspNetCore.Localization;
+using FinanceManager.Infrastructure;
+using FinanceManager.Web.Components;
 using FinanceManager.Web.Infrastructure;
+using FinanceManager.Web.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer; // NEU
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Localization;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using System.Globalization;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +44,10 @@ builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("De
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 20 * 1024 * 1024; // z.B. 20 MB
+});
 
 // Named HttpClient (bleibt)
 builder.Services.AddTransient<AuthenticatedHttpClientHandler>();

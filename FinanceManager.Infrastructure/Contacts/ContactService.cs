@@ -64,12 +64,20 @@ public sealed class ContactService : IContactService
         return true;
     }
 
-    public async Task<IReadOnlyList<ContactDto>> ListAsync(Guid ownerUserId, int skip, int take, CancellationToken ct)
+    public async Task<IReadOnlyList<ContactDto>> ListAsync(Guid ownerUserId, int skip, int take, ContactType? type, CancellationToken ct)
     {
-        return await _db.Contacts.AsNoTracking()
-            .Where(c => c.OwnerUserId == ownerUserId)
+        var query = _db.Contacts.AsNoTracking()
+            .Where(c => c.OwnerUserId == ownerUserId);
+
+        if (type.HasValue)
+        {
+            query = query.Where(c => c.Type == type.Value);
+        }
+
+        return await query
             .OrderBy(c => c.Name)
-            .Skip(skip).Take(take)
+            .Skip(skip)
+            .Take(take)
             .Select(c => new ContactDto(c.Id, c.Name, c.Type, c.CategoryId, c.Description, c.IsPaymentIntermediary))
             .ToListAsync(ct);
     }
