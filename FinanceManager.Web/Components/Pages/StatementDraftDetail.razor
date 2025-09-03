@@ -4,6 +4,7 @@
 @inject NavigationManager Nav
 @using FinanceManager.Application.Statements
 @using FinanceManager.Domain.Statements
+@using FinanceManager.Shared.Dtos
 
 <h3>Statement Draft Detail</h3>
 @if (_draft == null)
@@ -49,9 +50,10 @@ else
                     <th style="width:6rem;">Currency</th>
                     <th>Subject</th>
                     <th style="width:14%;">Recipient</th>
+                    <th style="width:12%;">Sparplan</th>
                     <th>Description</th>
                     <th style="width:6rem;">Announced</th>
-                    <th style="width:9rem;">Status</th>
+                    <th style="width:9rem;">Status</th>                    
                 </tr>
             </thead>
             <tbody>
@@ -77,6 +79,17 @@ else
                                 }
                             }
                             @recipient
+                        </td>
+                        <td>
+                            @if (e.SavingsPlanId != null)
+                            {
+                                var plan = _savingsPlans.FirstOrDefault(p => p.Id == e.SavingsPlanId);
+                                @plan?.Name
+                            }
+                            else
+                            {
+                                <span>-</span>
+                            }
                         </td>
                         <td class="wrap">@(string.IsNullOrWhiteSpace(e.BookingDescription) ? "-" : e.BookingDescription)</td>
                         <td>@(e.IsAnnounced ? "✓" : "")</td>
@@ -111,12 +124,14 @@ else
     private List<ContactDto> _contacts = new();
     private Dictionary<string, List<AccountVm>> _groupedAccounts = new();
     private Guid? _selectedAccountId;
+    private List<SavingsPlanDto> _savingsPlans = new();
 
     protected override async Task OnParametersSetAsync()
     {
         _draft = await Http.GetFromJsonAsync<StatementDraftDto>($"api/statement-drafts/{Id}");
         await LoadAccountsAsync();
         _selectedAccountId = _draft?.DetectedAccountId;
+        await LoadSavingsPlansAsync();
     }
 
     private async Task LoadAccountsAsync()
@@ -138,6 +153,15 @@ else
                 .GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)" )
                 .OrderBy(g => g.Key)
                 .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
+        }
+    }
+
+    private async Task LoadSavingsPlansAsync()
+    {
+        var resp = await Http.GetAsync("/api/savings-plans?onlyActive=true");
+        if (resp.IsSuccessStatusCode)
+        {
+            _savingsPlans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new();
         }
     }
 
@@ -207,7 +231,8 @@ else
         string? BookingDescription,
         bool IsAnnounced,
         StatementDraftEntryStatus Status,
-        Guid? ContactId);
+        Guid? ContactId,
+        Guid? SavingsPlanId);
 
     private sealed record StatementDraftDto(
         Guid DraftId,

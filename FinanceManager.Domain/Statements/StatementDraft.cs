@@ -1,3 +1,5 @@
+using FinanceManager.Domain.Savings;
+
 namespace FinanceManager.Domain.Statements;
 
 public enum StatementDraftEntryStatus
@@ -104,6 +106,7 @@ public sealed class StatementDraftEntry : Entity
     public bool IsAnnounced { get; private set; }
     public StatementDraftEntryStatus Status { get; private set; }
     public Guid? ContactId { get; private set; }
+    public Guid? SavingsPlanId { get; private set; }
     public bool IsCostNeutral { get; private set; } = false;
 
     public void MarkAlreadyBooked() { Status = StatementDraftEntryStatus.AlreadyBooked; Touch(); }
@@ -134,4 +137,5 @@ public sealed class StatementDraftEntry : Entity
         IsCostNeutral = isCostNeutral;
     }
 
+    public void AssignSavingsPlan(Guid? savingsPlanId) => SavingsPlanId = savingsPlanId;
 }

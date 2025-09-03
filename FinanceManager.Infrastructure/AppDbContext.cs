@@ -5,6 +5,7 @@ using FinanceManager.Domain.Statements;
 using FinanceManager.Domain.Postings;
 using Microsoft.EntityFrameworkCore;
 using FinanceManager.Domain.Savings;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace FinanceManager.Infrastructure;
 
@@ -76,6 +77,11 @@ public class AppDbContext : DbContext
             b.HasIndex(x => x.RawHash).IsUnique();
             b.Property(x => x.Subject).HasMaxLength(500).IsRequired();
             b.Property(x => x.RawHash).HasMaxLength(128).IsRequired();
+            b.Property(x => x.SavingsPlanId);
+            b.HasOne<SavingsPlan>()
+             .WithMany()
+             .HasForeignKey(x => x.SavingsPlanId)
+             .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Posting>(b =>
@@ -107,5 +113,10 @@ public class AppDbContext : DbContext
             b.Property(x => x.CreatedUtc).IsRequired();
             b.Property(x => x.IsActive).IsRequired();
         });
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.ConfigureWarnings(w => w.Ignore(RelationalEventId.NonTransactionalMigrationOperationWarning));
     }
 }

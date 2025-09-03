@@ -1,5 +1,6 @@
 using FinanceManager.Domain;
 using FinanceManager.Domain.Statements;
+using System.Threading.Tasks;
 
 namespace FinanceManager.Application.Statements;
 
@@ -15,6 +16,7 @@ public interface IStatementDraftService
     Task<StatementDraftDto?> SetAccountAsync(Guid draftId, Guid ownerUserId, Guid accountId, CancellationToken ct);
     Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct);
+    Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(
@@ -29,7 +31,8 @@ public sealed record StatementDraftEntryDto(
     bool IsAnnounced,
     bool IsCostNeutral,
     StatementDraftEntryStatus Status,
-    Guid? ContactId);
+    Guid? ContactId,
+    Guid? SavingsPlanId);
 
 public sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, StatementDraftStatus Status, IReadOnlyList<StatementDraftEntryDto> Entries);
 public sealed record CommitResult(Guid StatementImportId, int TotalEntries);

@@ -1,5 +1,6 @@
 ﻿using FinanceManager.Application.Statements;
 using FinanceManager.Domain;
+using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure.Statements.Reader;
 using Microsoft.EntityFrameworkCore;
@@ -144,6 +145,48 @@ public sealed class StatementDraftService : IStatementDraftService
         return Map(draft);
     }
 
+    public void TryAutoAssignSavingsPlan(StatementDraftEntry entry, IEnumerable<SavingsPlan> userPlans, Domain.Contacts.Contact selfContact)
+    {
+        if (entry.ContactId is null) { return; }
+        if (entry.ContactId != selfContact.Id) { return; }
+
+        // Hilfsfunktion zur Normalisierung von Umlauten
+        static string NormalizeUmlauts(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            return text
+                .Replace("ä", "ae", StringComparison.OrdinalIgnoreCase)
+                .Replace("ö", "oe", StringComparison.OrdinalIgnoreCase)
+                .Replace("ü", "ue", StringComparison.OrdinalIgnoreCase)
+                .Replace("ß", "ss", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var normalizedSubject = NormalizeUmlauts(entry.Subject).ToLowerInvariant();
+
+        foreach (var plan in userPlans)
+        {
+            if (string.IsNullOrWhiteSpace(plan.Name)) { continue; }
+            var normalizedPlanName = NormalizeUmlauts(plan.Name).ToLowerInvariant();
+            if (normalizedSubject.Contains(normalizedPlanName))
+            {
+                entry.AssignSavingsPlan(plan.Id);
+                break;
+            }
+        }
+    }
+
+    public async Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) return null;
+        entry.AssignSavingsPlan(savingsPlanId);
+        await _db.SaveChangesAsync(ct);
+        return Map(draft);
+    }
+
     public async Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -187,10 +230,14 @@ public sealed class StatementDraftService : IStatementDraftService
             .Where(c => c.OwnerUserId == ownerUserId)
             .Select(c => c)
             .ToListAsync(ct);
+        var selfContact = contacts.First(c => c.Type == ContactType.Self);
         var aliasLookup = await _db.AliasNames.AsNoTracking()
             .Where(a => contacts.Select(c => c.Id).Contains(a.ContactId))
             .GroupBy(a => a.ContactId)
             .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.Pattern).ToList(), ct);
+        var savingPlans = await _db.SavingsPlans.AsNoTracking()
+            .Where(sp => sp.OwnerUserId == ownerUserId && sp.IsActive)
+            .ToListAsync(ct);
 
         // Duplicate check basis: existing statement entries for detected account (last 180 days)
         List<(DateTime BookingDate, decimal Amount, string Subject)> existing = new();
@@ -216,8 +263,6 @@ public sealed class StatementDraftService : IStatementDraftService
                 .FirstOrDefaultAsync(ct);
         }
 
-        var selfContact = contacts.First(c => c.Type == ContactType.Self);
-
         foreach (var entry in draft.Entries)
         {
             // Reset to base status first (keep AlreadyBooked if previously flagged)
@@ -238,27 +283,33 @@ public sealed class StatementDraftService : IStatementDraftService
                 // Announced stays unless we can fully account it with a contact
             }
 
-            // Contact resolution: match by exact name or alias contains in subject/counterparty
-            var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant();
-            var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant();
-            Guid? matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedRecipient);
-            var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
-            // Nach Zuordnung des Kontakts:
-            if (matchedContact != null && matchedContact.IsPaymentIntermediary)
-            {
-                matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedSubject);
-            }
-            else if (matchedContact != null && matchedContact.Type == ContactType.Bank && bankContactId != null && matchedContact.Id != bankContactId)
-            {
+            TryAutoAssignContact(contacts, aliasLookup, bankContactId, selfContact, entry);
+            TryAutoAssignSavingsPlan(entry, savingPlans, selfContact);
+        }
+    }
+
+    private static void TryAutoAssignContact(List<Domain.Contacts.Contact> contacts, Dictionary<Guid, List<string>> aliasLookup, Guid? bankContactId, Domain.Contacts.Contact selfContact, StatementDraftEntry entry)
+    {
+        // Contact resolution: match by exact name or alias contains in subject/counterparty
+        var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant();
+        var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant();
+        Guid? matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedRecipient);
+        var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
+        // Nach Zuordnung des Kontakts:
+        if (matchedContact != null && matchedContact.IsPaymentIntermediary)
+        {
+            matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedSubject);
+        }
+        else if (matchedContact != null && matchedContact.Type == ContactType.Bank && bankContactId != null && matchedContact.Id != bankContactId)
+        {
+            entry.MarkCostNeutral(true);
+            entry.MarkAccounted(selfContact.Id);
+        }
+        else if (matchedContact != null)
+        {
+            if (matchedContact.Id == selfContact.Id)
                 entry.MarkCostNeutral(true);
-                entry.MarkAccounted(selfContact.Id);                
-            }
-            else if (matchedContact != null)
-            {
-                if (matchedContact.Id == selfContact.Id)
-                    entry.MarkCostNeutral(true);
-                entry.MarkAccounted(matchedContact.Id);
-            }
+            entry.MarkAccounted(matchedContact.Id);
         }
     }
 
@@ -352,5 +403,8 @@ public sealed class StatementDraftService : IStatementDraftService
             e.IsAnnounced,
             e.IsCostNeutral,
             e.Status,
-            e.ContactId)).ToList());
+            e.ContactId,
+            e.SavingsPlanId)).ToList());
+
+    
 }

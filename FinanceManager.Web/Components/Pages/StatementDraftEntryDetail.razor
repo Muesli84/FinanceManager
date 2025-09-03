@@ -13,6 +13,7 @@ else
 {
     <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
         <button class="icon-btn" @onclick="Back" title="Back" aria-label="Back"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+        <button class="icon-btn" disabled="@(_pendingSave)" @onclick="SaveAll" title="Save Changes" aria-label="Save Changes"><svg><use href="/icons/sprite.svg#save" /></svg></button>
         <button class="icon-btn" @onclick="Reclassify" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
         <button class="icon-btn" disabled="@(_selectedContactId==null)" @onclick="OpenContactDetail" title="Kontakt anzeigen" aria-label="Kontakt anzeigen">
             <svg><use href="/icons/sprite.svg#groups" /></svg>
@@ -56,10 +57,6 @@ else
                                     }
                                 </ul>
                             }
-                            @if(_dirty)
-                            {
-                                <div style="margin-top:.3rem;font-size:.7rem;opacity:.7;">Unsaved change</div>
-                            }
                             @if(!string.IsNullOrEmpty(_contactError))
                             {
                                 <div style="color:#e66;font-size:.8rem;margin-top:.3rem;">@_contactError</div>
@@ -75,19 +72,33 @@ else
                 <th>Cost Neutral</th>
                 <td><InputCheckbox @bind-Value="IsCostNeutral" /></td>
             </tr>
+            <tr>
+                <th>Sparplan</th>
+                <td>
+                    <div class="savingsplan-combobox" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:420px;margin-bottom:1rem;">
+                        <div style="position:relative;min-width:0;">
+                            <input type="text" style="width:95%;" @bind="_savingsPlanFilter" @bind:event="oninput" @bind:after="(()=>OnSavingsPlanFilterAfterChanged())" placeholder="Sparplan suchen..." @onfocus="ShowSavingsPlanDropdown" />
+                            <input type="hidden" value="@_selectedSavingsPlanId" />
+                            @if (_savingsPlanDropdownVisible)
+                            {
+                                <ul class="combo-list" style="list-style:none;margin:0;padding:.25rem .25rem;position:absolute;z-index:10;left:0;right:0;max-height:9.5rem;overflow:auto;background:#222;border:1px solid #444;border-radius:4px;box-shadow:0 3px 12px #0005;">
+                                    <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectSavingsPlan(null))" class="@( _selectedSavingsPlanId==null?"active":string.Empty)">-- none --</li>
+                                    @foreach(var plan in FilteredSavingsPlans)
+                                    {
+                                        <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectSavingsPlan(plan.Id))" class="@( _selectedSavingsPlanId==plan.Id?"active":string.Empty)" title="@plan.Name">@plan.Name</li>
+                                    }
+                                    @if(!FilteredSavingsPlans.Any())
+                                    {
+                                        <li style="padding:.3rem .4rem;opacity:.6;">No matches</li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    </div>
+                </td>
+            </tr>
         </tbody>
-    </table>
-    <div style="margin-top:1rem;display:flex;gap:.6rem;align-items:center;">
-        <button class="icon-btn" disabled="@(!_dirty || _pendingSave)" @onclick="SaveAll" title="Save Changes" aria-label="Save Changes"><svg><use href="/icons/sprite.svg#save" /></svg></button>
-        @if(_pendingSave)
-        {
-            <span style="font-size:.8rem;opacity:.7;">Saving...</span>
-        }
-        else if(_dirty)
-        {
-            <span style="font-size:.75rem;opacity:.65;">There are unsaved changes.</span>
-        }
-    </div>
+    </table>   
 }
 
 @code {
@@ -100,22 +111,53 @@ else
     private Guid? _selectedContactId;
     private string? _contactError;
     private bool _dropdownVisible;
-    private bool _dirty; // any unsaved change
     private bool _pendingSave;
     private bool _IsCostNeutral;
-    private bool IsCostNeutral { get => _IsCostNeutral; set { _IsCostNeutral = value; _dirty = true; } }
+    private bool IsCostNeutral { get => _IsCostNeutral; set { _IsCostNeutral = value; } }
 
     private IEnumerable<ContactVm> FilteredContacts => string.IsNullOrWhiteSpace(_contactFilter)
         ? _allContacts
         : _allContacts.Where(c => c.Name.Contains(_contactFilter, StringComparison.OrdinalIgnoreCase));
 
+    private Guid? _selectedSavingsPlanId;
+    private string _savingsPlanFilter = string.Empty;
+    private bool _savingsPlanDropdownVisible;
+    private List<SavingsPlanDto> _userSavingsPlans = new();
+
+    private IEnumerable<SavingsPlanDto> FilteredSavingsPlans => string.IsNullOrWhiteSpace(_savingsPlanFilter)
+        ? _userSavingsPlans
+        : _userSavingsPlans.Where(p => p.Name.Contains(_savingsPlanFilter, StringComparison.OrdinalIgnoreCase));
+
     protected override async Task OnParametersSetAsync()
     {
         await LoadEntryAsync();
         await LoadContactsAsync();
+        await LoadUserSavingsPlansAsync();
         _selectedContactId = _vm?.Entry.ContactId;
         _contactFilter = _vm?.Entry.ContactId != null ? _allContacts.FirstOrDefault(c=>c.Id==_vm.Entry.ContactId)?.Name ?? string.Empty : string.Empty;
-        _dirty = false;
+        _selectedSavingsPlanId = _vm?.Entry.SavingsPlanId;
+        _savingsPlanFilter = _selectedSavingsPlanId != null ? _userSavingsPlans.FirstOrDefault(p=>p.Id==_selectedSavingsPlanId)?.Name ?? string.Empty : string.Empty;
+    }
+
+    private void ShowSavingsPlanDropdown(FocusEventArgs _) => _savingsPlanDropdownVisible = true;
+
+    private void SelectSavingsPlan(Guid? id)
+    {
+        if (_selectedSavingsPlanId != id)
+        {
+            _selectedSavingsPlanId = id;
+        }
+        _savingsPlanFilter = id == null ? string.Empty : _userSavingsPlans.FirstOrDefault(p => p.Id == id)?.Name ?? string.Empty;
+        _savingsPlanDropdownVisible = false;
+    }
+
+    private void OnSavingsPlanFilterAfterChanged()
+    {
+        _savingsPlanDropdownVisible = true;
+        if (_selectedSavingsPlanId != null && !_userSavingsPlans.Any(p => string.Equals(p.Name, _savingsPlanFilter, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedSavingsPlanId = null;
+        }
     }
 
     private async Task LoadEntryAsync()
@@ -125,6 +167,8 @@ else
         {
             _vm = await resp.Content.ReadFromJsonAsync<EntryDetailVm>();
             _IsCostNeutral = _vm.Entry.IsCostNeutral;
+            _selectedSavingsPlanId = _vm.Entry.SavingsPlanId;
+            _selectedContactId = _vm.Entry.ContactId;
         }
     }
 
@@ -138,6 +182,15 @@ else
         }
     }
 
+    private async Task LoadUserSavingsPlansAsync()
+    {
+        var resp = await Http.GetAsync("/api/savings-plans?onlyActive=true");
+        if (resp.IsSuccessStatusCode)
+        {
+            _userSavingsPlans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new();
+        }
+    }
+
     private void ShowDropdown(FocusEventArgs _) => _dropdownVisible = true;
 
     private void SelectContact(Guid? id)
@@ -145,7 +198,6 @@ else
         if (_selectedContactId != id)
         {
             _selectedContactId = id;
-            _dirty = true;
         }
         _contactFilter = id == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==id)?.Name ?? string.Empty;
         _dropdownVisible = false;
@@ -154,7 +206,6 @@ else
     private void OnContactFilterAfterChanged()
     {
         _dropdownVisible = true;
-        _dirty = true;
         if (_selectedContactId != null && !_allContacts.Any(c => string.Equals(c.Name, _contactFilter, StringComparison.OrdinalIgnoreCase)))
         {
             _selectedContactId = null;
@@ -163,7 +214,7 @@ else
 
     private async Task SaveAll()
     {
-        if (!_dirty || _vm == null) { return; }
+        if (_vm == null) { return; }
         _pendingSave = true; _contactError = null;
         try
         {
@@ -181,10 +232,17 @@ else
                     throw new ApplicationException(await resp.Content.ReadAsStringAsync());
             }
 
+            if (_vm.Entry.SavingsPlanId != _selectedSavingsPlanId)
+            {
+                var payload3 = new { SavingsPlanId = _selectedSavingsPlanId };
+                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/savingsplan", payload3);
+                if (!resp.IsSuccessStatusCode)
+                    throw new ApplicationException(await resp.Content.ReadAsStringAsync());
+            }
+
             await LoadEntryAsync();
             _selectedContactId = _vm?.Entry.ContactId;
             _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c => c.Id == _selectedContactId)?.Name ?? string.Empty;
-            _dirty = false;
         }
         catch (Exception ex)
         {
@@ -201,7 +259,6 @@ else
             await LoadEntryAsync();
             _selectedContactId = _vm?.Entry.ContactId;
             _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==_selectedContactId)?.Name ?? string.Empty;
-            _dirty = false;
             StateHasChanged();
         }
     }
@@ -240,9 +297,10 @@ else
         }
     }
 
-    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId);
+    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId);
     private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId, Guid? NextOpenEntryId);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+    private sealed record SavingsPlanDto(Guid Id, string Name);
 }
