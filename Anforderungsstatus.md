@@ -41,7 +41,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-SPAR-010 | Sparplan aus Rückzahlung/Kredit                                 | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-011 | Sparplanposten bei Buchung                                      | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-012 | Umschalten aktive/archivierte Sparpläne                         | Noch nicht implementiert                                                             | ✖      |
-| FA-WERT-001 | Wertpapiere verwalten                                           | Noch nicht implementiert                                                             | ✖      |
+| FA-WERT-001 | Wertpapiere verwalten                                           | Noch nicht implementiert                                                             | ✔      |
 | FA-WERT-002 | Wertpapiertransaktionen                                         | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-003 | Wertpapierposten bei Buchung                                    | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-004 | Kursabruf AlphaVantage API                                      | Noch nicht implementiert                                                             | ✖      |
@@ -112,5 +112,9 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-AUSZ-013 Status-Logik für Zahlungsintermediäre (offen bis vollständige Aufteilung).
 - Neu: FA-AUSZ-014 Speicherung & Download/Inline-Anzeige der Original-Importdatei.
 - Erweiterung: FA-AUSZ-003 jetzt inkl. Editiermodus für Kerndaten (BookingDate, Amount, Subject etc.).
+- Neu: FA-UI-001 Suchfeld in Listen (Kontakte-Liste + Merge-Dialog umgesetzt, andere Listen teils offen).
+- Neu: FA-WERT-001 Grundlegende Wertpapierverwaltung (CRUD) implementiert.
+- Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
+- Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
 *Letzte Aktualisierung: 04.09.2025*
