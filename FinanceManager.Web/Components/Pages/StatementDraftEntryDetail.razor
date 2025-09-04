@@ -41,6 +41,50 @@ else
         }
     </div>
     <p><strong>Draft File:</strong> @_vm.OriginalFileName</p>
+    <div style="margin-bottom:1rem;">
+        <label><input type="checkbox" @bind="_editMode" /> Editiermodus</label>
+        @if (_editMode && _vm != null)
+        {
+            <div class="edit-core" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin-top:.5rem;max-width:960px;">
+                <div>
+                    <label>Buchungsdatum</label>
+                    <InputDate @bind-Value="_editBookingDate" />
+                </div>
+                <div>
+                    <label>Valuta</label>
+                    <InputDate @bind-Value="_editValutaDate" />
+                </div>
+                <div>
+                    <label>Betrag</label>
+                    <InputNumber @bind-Value="_editAmount" />
+                </div>
+                <div>
+                    <label>Währung</label>
+                    <InputText @bind-Value="_editCurrency" />
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label>Betreff</label>
+                    <InputText @bind-Value="_editSubject" style="width:100%;" />
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label>Empfänger</label>
+                    <InputText @bind-Value="_editRecipient" style="width:100%;" />
+                </div>
+                <div style="grid-column:1/-1;">
+                    <label>Beschreibung</label>
+                    <textarea @bind="_editDescription" rows="3" style="width:100%;"></textarea>
+                </div>
+                <div style="grid-column:1/-1;display:flex;gap:.5rem;">
+                    <button class="icon-btn" disabled="@_savingCore" @onclick="SaveCoreAsync"><svg><use href="/icons/sprite.svg#save" /></svg>&nbsp;Speichern</button>
+                    <button type="button" class="icon-btn" disabled="@_savingCore" @onclick="ResetCoreEdits">Zurücksetzen</button>
+                </div>
+                @if(!string.IsNullOrEmpty(_coreError))
+                {
+                    <div style="grid-column:1/-1;color:#f77;font-size:.8rem;">@_coreError</div>
+                }
+            </div>
+        }
+    </div>
     <table class="fm-table" style="max-width:960px;">
         <tbody>
             <tr><th style="width:180px;">Booking Date</th><td>@_vm.Entry.BookingDate.ToShortDateString()</td></tr>
@@ -200,6 +244,21 @@ else
 
     private sealed record SplitDraftOption(Guid DraftId, string OriginalFileName, int EntriesCount, decimal TotalAmount);
 
+    private bool _editMode; private bool _savingCore; private string? _coreError;
+    private DateTime _editBookingDate; private DateTime? _editValutaDate; private decimal _editAmount; private string _editSubject=""; private string? _editRecipient; private string? _editDescription; private string _editCurrency="EUR";
+
+    private void InitCoreEdit()
+    {
+        if (_vm == null) return;
+        _editBookingDate = _vm.Entry.BookingDate;
+        _editValutaDate = _vm.Entry.ValutaDate;
+        _editAmount = _vm.Entry.Amount;
+        _editSubject = _vm.Entry.Subject;
+        _editRecipient = _vm.Entry.RecipientName;
+        _editDescription = _vm.Entry.BookingDescription;
+        _editCurrency = _vm.Entry.CurrencyCode;
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         await LoadEntryAsync();
@@ -209,6 +268,7 @@ else
         _contactFilter = _vm?.Entry.ContactId != null ? _allContacts.FirstOrDefault(c=>c.Id==_vm.Entry.ContactId)?.Name ?? string.Empty : string.Empty;
         _selectedSavingsPlanId = _vm?.Entry.SavingsPlanId;
         _savingsPlanFilter = _selectedSavingsPlanId != null ? _userSavingsPlans.FirstOrDefault(p=>p.Id==_selectedSavingsPlanId)?.Name ?? string.Empty : string.Empty;
+        InitCoreEdit();
     }
 
     private void ShowSavingsPlanDropdown(FocusEventArgs _) => _savingsPlanDropdownVisible = true;
@@ -445,6 +505,33 @@ else
             Nav.NavigateTo($"/statement-drafts/{_vm.Entry.SplitDraftId}");
         }
     }
+
+    private async Task SaveCoreAsync()
+    {
+        if (_vm == null) return;
+        _savingCore = true; _coreError = null;
+        try
+        {
+            var payload = new { BookingDate = _editBookingDate, ValutaDate = _editValutaDate, Amount = _editAmount, Subject = _editSubject, RecipientName = _editRecipient, CurrencyCode = _editCurrency, BookingDescription = _editDescription };
+            var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/edit-core", payload);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _coreError = await resp.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                await LoadEntryAsync();
+                InitCoreEdit();
+            }
+        }
+        catch(Exception ex)
+        {
+            _coreError = ex.Message;
+        }
+        _savingCore = false;
+    }
+
+    private void ResetCoreEdits() => InitCoreEdit();
 
     private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, Guid? SplitDraftId);
     private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId, Guid? NextOpenEntryId);

@@ -28,6 +28,7 @@ public sealed class StatementDraftService : IStatementDraftService
         }
 
         var draft = new StatementDraft(ownerUserId, originalFileName, parsedDraft.Header.AccountNumber);
+        draft.SetOriginalFile(fileBytes, null);
 
         if (!string.IsNullOrWhiteSpace(parsedDraft.Header.IBAN))
         {
@@ -302,6 +303,19 @@ public sealed class StatementDraftService : IStatementDraftService
 
         await _db.SaveChangesAsync(ct);
         return await GetDraftAsync(draftId, ownerUserId, ct);
+    }
+
+    public async Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? validaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+        if (draft.Status != StatementDraftStatus.Draft) { return null; }
+        entry.UpdateCore(bookingDate, validaDate, amount, subject, recipientName, currencyCode, bookingDescription);
+        await _db.SaveChangesAsync(ct);
+        return new StatementDraftEntryDto(entry.Id, entry.BookingDate, entry.ValutaDate, entry.Amount, entry.CurrencyCode, entry.Subject, entry.RecipientName, entry.BookingDescription, entry.IsAnnounced, entry.IsCostNeutral, entry.Status, entry.ContactId, entry.SavingsPlanId, entry.SplitDraftId);
     }
 
     private async Task ClassifyInternalAsync(StatementDraft draft, Guid ownerUserId, CancellationToken ct)

@@ -20,6 +20,12 @@ else
                 <svg><use href="/icons/sprite.svg#back" /></svg>
             </button>
         }
+        <button @onclick="ToggleViewer" class="icon-btn" disabled="@(!_hasFile)" title="Originaldatei anzeigen" aria-label="Original anzeigen">
+            <svg><use href="/icons/sprite.svg#external" /></svg>
+        </button>
+        <button @onclick="DownloadFile" class="icon-btn" disabled="@(!_hasFile)" title="Originaldatei herunterladen" aria-label="Download">
+            <svg><use href="/icons/sprite.svg#save" /></svg>
+        </button>
         <button @onclick="DeleteDraftAsync" class="icon-btn" title="Delete Draft" aria-label="Delete Draft">
             <svg><use href="/icons/sprite.svg#delete" /></svg>
         </button>
@@ -28,6 +34,10 @@ else
         </button>        
     </div>
     <p><strong>File:</strong> @_draft.OriginalFileName</p>
+    @if (_hasFile)
+    {
+        <p style="margin-top:-.6rem;font-size:.65rem;opacity:.6;">Originaldatei gespeichert</p>
+    }
     <p><strong>Status:</strong> @_draft.Status</p>
     <p>
         <strong>Account:</strong> 
@@ -135,6 +145,22 @@ else
     }
 }
 
+<div style="display:flex;align-items:flex-start;gap:1rem;">
+    <div style="flex:1;min-width:0;">
+        <!-- existing entries table stays here -->
+    </div>
+    @if (_showViewer && _hasFile)
+    {
+        <div style="width:420px;max-width:45%;height:70vh;position:sticky;top:1rem;border:1px solid var(--border);border-radius:var(--radius);background:#111;display:flex;flex-direction:column;">
+            <div style="padding:.35rem .6rem;font-size:.7rem;letter-spacing:.05em;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+                <span>Originaldatei</span>
+                <button class="icon-btn" style="padding:.25rem .4rem;" @onclick="ToggleViewer" title="Schließen" aria-label="Schließen"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+            </div>
+            <iframe src="@_fileUrl" style="flex:1;border:0;width:100%;"></iframe>
+        </div>
+    }
+</div>
+
 @code {
     [Parameter] public Guid Id { get; set; }
     private StatementDraftDto? _draft;
@@ -147,12 +173,19 @@ else
     private Guid? _selectedAccountId;
     private List<SavingsPlanDto> _savingsPlans = new();
 
+    private bool _hasFile; private bool _showViewer; private string? _fileUrl;
+
     protected override async Task OnParametersSetAsync()
     {
         _draft = await Http.GetFromJsonAsync<StatementDraftDto>($"api/statement-drafts/{Id}");
+        _hasFile = _draft != null; // presence implies we can query file endpoint; refine via flag if added later
         await LoadAccountsAsync();
         _selectedAccountId = _draft?.DetectedAccountId;
         await LoadSavingsPlansAsync();
+        if (_showViewer && _hasFile)
+        {
+            _fileUrl = $"/api/statement-drafts/{Id}/file";
+        }
     }
 
     private async Task LoadAccountsAsync()
@@ -240,6 +273,20 @@ else
         {
             Nav.NavigateTo($"/statement-drafts/{_draft.ParentDraftId}/entries/{_draft.ParentEntryId}");
         }
+    }
+
+    private void ToggleViewer()
+    {
+        if (!_hasFile) return;
+        _showViewer = !_showViewer;
+        _fileUrl = _showViewer ? $"/api/statement-drafts/{Id}/file" : null;
+    }
+
+    private async Task DownloadFile()
+    {
+        if (!_hasFile) return;
+        var url = $"/api/statement-drafts/{Id}/file";
+        Nav.NavigateTo(url, forceLoad:true);
     }
 
     private sealed class EntryForm

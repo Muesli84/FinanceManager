@@ -28,6 +28,19 @@ public sealed class StatementDraft : Entity, IAggregateRoot
     public StatementDraftStatus Status { get; private set; }
     public ICollection<StatementDraftEntry> Entries => _entries;
 
+    // Newly stored original uploaded file (optional). Large files should be limited by controller upload limit.
+    public byte[]? OriginalFileContent { get; private set; }
+    public string? OriginalFileContentType { get; private set; }
+
+    public void SetOriginalFile(byte[] bytes, string? contentType)
+    {
+        OriginalFileContent = bytes ?? throw new ArgumentNullException(nameof(bytes));
+        OriginalFileContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType;
+        Touch();
+    }
+
+    public bool HasOriginalFile => OriginalFileContent != null && OriginalFileContent.Length > 0;
+
     public void SetDetectedAccount(Guid accountId) { DetectedAccountId = accountId; Touch(); }
 
     // Existing simple variant (backwards compatibility)
@@ -110,6 +123,17 @@ public sealed class StatementDraftEntry : Entity
     public bool IsCostNeutral { get; private set; } = false;
     public Guid? SplitDraftId { get; private set; }
 
+    public void UpdateCore(DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription)
+    {
+        BookingDate = bookingDate;
+        ValutaDate = valutaDate;
+        Amount = amount;
+        Subject = subject ?? string.Empty;
+        RecipientName = string.IsNullOrWhiteSpace(recipientName) ? null : recipientName!.Trim();
+        if (!string.IsNullOrWhiteSpace(currencyCode)) { CurrencyCode = currencyCode!; }
+        BookingDescription = string.IsNullOrWhiteSpace(bookingDescription) ? null : bookingDescription!.Trim();
+        Touch();
+    }
     public void MarkAlreadyBooked() { Status = StatementDraftEntryStatus.AlreadyBooked; Touch(); }
     public void MarkAccounted(Guid contactId)
     {

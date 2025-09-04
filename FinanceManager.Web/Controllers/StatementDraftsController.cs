@@ -131,42 +131,40 @@ public sealed class StatementDraftsController : ControllerBase
 
     public sealed record SetSplitDraftRequest(Guid? SplitDraftId);
 
-[HttpPost("{draftId:guid}/entries/{entryId:guid}/split")]
-public async Task<IActionResult> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, [FromBody] SetSplitDraftRequest body, CancellationToken ct)
-{
-    try
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/split")]
+    public async Task<IActionResult> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, [FromBody] SetSplitDraftRequest body, CancellationToken ct)
     {
-        var draft = await _drafts.SetEntrySplitDraftAsync(draftId, entryId, body.SplitDraftId, _current.UserId, ct);
-        if (draft == null) { return NotFound(); }
-        var entry = draft.Entries.First(e => e.Id == entryId);
-
-        // Summen nur bei gesetztem SplitDraftId berechnen
-        decimal? splitSum = null;
-        decimal? diff = null;
-        if (entry.SplitDraftId != null)
+        try
         {
-            splitSum = await HttpContext.RequestServices
-                .GetRequiredService<AppDbContext>()
-                .StatementDraftEntries
-                .Where(e => e.DraftId == entry.SplitDraftId)
-                .SumAsync(e => e.Amount, ct);
-            diff = entry.Amount - splitSum;
+            var draft = await _drafts.SetEntrySplitDraftAsync(draftId, entryId, body.SplitDraftId, _current.UserId, ct);
+            if (draft == null) { return NotFound(); }
+            var entry = draft.Entries.First(e => e.Id == entryId);
+
+            // Summen nur bei gesetztem SplitDraftId berechnen
+            decimal? splitSum = null;
+            decimal? diff = null;
+            if (entry.SplitDraftId != null)
+            {
+                splitSum = await HttpContext.RequestServices
+                    .GetRequiredService<AppDbContext>()
+                    .StatementDraftEntries
+                    .Where(e => e.DraftId == entry.SplitDraftId)
+                    .SumAsync(e => e.Amount, ct);
+                diff = entry.Amount - splitSum;
+            }
+
+            return Ok(new
+            {
+                Entry = entry,
+                SplitSum = splitSum,
+                Difference = diff
+            });
         }
-
-        return Ok(new
+        catch (InvalidOperationException ex)
         {
-            Entry = entry,
-            SplitSum = splitSum,
-            Difference = diff
-        });
+            return BadRequest(new { error = ex.Message });
+        }
     }
-    catch (InvalidOperationException ex)
-    {
-        return BadRequest(new { error = ex.Message });
-    }
-}
-
-
 
     [HttpDelete("{draftId:guid}")]
     public async Task<IActionResult> CancelAsync(Guid draftId, CancellationToken ct)
@@ -176,9 +174,30 @@ public async Task<IActionResult> SetEntrySplitDraftAsync(Guid draftId, Guid entr
     }
 
 
+    [HttpGet("{draftId:guid}/file")]
+    public async Task<IActionResult> DownloadOriginalAsync(Guid draftId, CancellationToken ct)
+    {
+        var draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
+        if (draft == null) { return NotFound(); }
+        // need raw bytes -> load from db directly for now
+        var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var entity = await db.StatementDrafts.AsNoTracking().FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == _current.UserId, ct);
+        if (entity == null || entity.OriginalFileContent == null) { return NotFound(); }
+        var contentType = string.IsNullOrWhiteSpace(entity.OriginalFileContentType) ? MediaTypeNames.Application.Octet : entity.OriginalFileContentType;
+        return File(entity.OriginalFileContent, contentType, entity.OriginalFileName);
+    }
+
     public sealed record AddEntryRequest([property:Required] DateTime BookingDate, [property:Required] decimal Amount, [property:Required, MaxLength(500)] string Subject);
     public sealed record CommitRequest(Guid AccountId, ImportFormat Format);
     public sealed record SetContactRequest(Guid? ContactId);
     public sealed record SetCostNeutralRequest(bool? IsCostNeutral);
     public sealed record SetSavingsPlanRequest(Guid? SavingsPlanId);
+    public sealed record UpdateEntryCoreRequest(DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string Subject, string? RecipientName, string? CurrencyCode, string? BookingDescription);
+
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/edit-core")]
+    public async Task<IActionResult> UpdateEntryCoreAsync(Guid draftId, Guid entryId, [FromBody] UpdateEntryCoreRequest body, CancellationToken ct)
+    {
+        var updated = await _drafts.UpdateEntryCoreAsync(draftId, entryId, _current.UserId, body.BookingDate, body.ValutaDate, body.Amount, body.Subject, body.RecipientName, body.CurrencyCode, body.BookingDescription, ct);
+        return updated == null ? NotFound() : Ok(updated);
+    }
 }
