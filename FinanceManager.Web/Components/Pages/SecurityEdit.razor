@@ -1,0 +1,200 @@
+@page "/securities/new"
+@page "/securities/{Id:guid}"
+@rendermode InteractiveServer
+@inject IHttpClientFactory ClientFactory
+@inject NavigationManager Nav
+@using FinanceManager.Shared.Dtos
+@using System.ComponentModel.DataAnnotations
+
+<h3>@(IsEdit?"Wertpapier bearbeiten":"Neues Wertpapier")</h3>
+<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
+    <button class="icon-btn" @onclick="SaveAsync" title="Speichern" aria-label="Speichern"><svg><use href="/icons/sprite.svg#save" /></svg></button>
+    @if(IsEdit)
+    {
+        <button class="icon-btn" @onclick="ArchiveAsync" disabled="@(!_loaded || !_model.IsActive)" title="Archivieren" aria-label="Archivieren"><svg><use href="/icons/sprite.svg#archive" /></svg></button>
+        <button class="icon-btn danger" @onclick="DeleteAsync" disabled="@(!_loaded || _model.IsActive)" title="Löschen" aria-label="Löschen"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
+    }
+    <button class="icon-btn" @onclick="Back" title="Zurück" aria-label="Zurück"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+</div>
+
+<EditForm Model="_edit" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;max-width:860px;">
+        <div>
+            <label>Name</label>
+            <InputText @bind-Value="_edit.Name" />
+            <ValidationMessage For="()=>_edit.Name" />
+        </div>
+        <div>
+            <label>Identifikation (WKN/ISIN)</label>
+            <InputText @bind-Value="_edit.Identifier" />
+            <ValidationMessage For="()=>_edit.Identifier" />
+        </div>
+        <div>
+            <label>Currency Code</label>
+            <InputText @bind-Value="_edit.CurrencyCode" />
+            <ValidationMessage For="() => _edit.CurrencyCode" />
+        </div>
+        <div>
+            <label>AlphaVantage Code</label>
+            <InputText @bind-Value="_edit.AlphaVantageCode" />
+        </div>
+        <div>
+            <label>Kategorie</label>
+            <InputSelect @bind-Value="_edit.CategoryId">
+                <option value="">--</option>
+                @foreach(var c in _categories)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </InputSelect>
+        </div>
+        <div style="grid-column:1/-1;">
+            <label>Beschreibung</label>
+            <textarea rows="4" style="width:100%;" @bind="_edit.Description"></textarea>
+        </div>
+        <div style="grid-column:1/-1;font-size:.8rem;opacity:.6;">
+            Status: @(_model.IsActive?"Aktiv":"Archiviert")
+        </div>
+        @if(!string.IsNullOrEmpty(_error))
+        {
+            <div style="grid-column:1/-1;color:#e66;font-size:.8rem;">@_error</div>
+        }
+    </div>
+</EditForm>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    private bool IsEdit => Id.HasValue;
+    private SecurityVm _model = new();
+    private SecurityEditModel _edit = new();
+    private string? _error; private bool _loaded;
+    private List<SecurityCategoryDto> _categories = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadCategoriesAsync();
+        if (IsEdit)
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.GetAsync($"/api/securities/{Id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                var dto = await resp.Content.ReadFromJsonAsync<SecurityDto>();
+                if (dto != null)
+                {
+                    _model = new SecurityVm(dto);
+                    _edit.Name = dto.Name; _edit.Identifier = dto.Identifier; _edit.Description = dto.Description; _edit.AlphaVantageCode = dto.AlphaVantageCode; _edit.CurrencyCode = dto.CurrencyCode;
+                    _edit.CategoryId = dto.CategoryId;
+                    _loaded = true;
+                }
+            }
+            else
+            {
+                _error = "Nicht gefunden"; _loaded = false;
+            }
+        }
+        else
+        {
+            _model = new SecurityVm(); _loaded = true;
+        }
+    }
+    private async Task LoadCategoriesAsync()
+    {
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.GetAsync("/api/security-categories");
+        if (resp.IsSuccessStatusCode)
+        {
+            _categories = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>() ?? new();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null; var http = ClientFactory.CreateClient("Api");
+        if (IsEdit)
+        {
+            var resp = await http.PutAsJsonAsync($"/api/securities/{Id}", _edit);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                Nav.NavigateTo($"/securities/{Id}", true);
+            }
+        }
+        else
+        {
+            var resp = await http.PostAsJsonAsync("/api/securities", _edit);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                Nav.NavigateTo("/securities", true);
+            }
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        if (!IsEdit || !_model.IsActive || Id==null) { return; }
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.PostAsync($"/api/securities/{Id}/archive", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            Nav.NavigateTo($"/securities/{Id}", true);
+        }
+        else
+        {
+            _error = await resp.Content.ReadAsStringAsync();
+        }
+    }
+    private async Task DeleteAsync()
+    {
+        if (!IsEdit || _model.IsActive || Id==null) { return; }
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.DeleteAsync($"/api/securities/{Id}");
+        if (resp.IsSuccessStatusCode)
+        {
+            Nav.NavigateTo("/securities", true);
+        }
+        else
+        {
+            _error = await resp.Content.ReadAsStringAsync();
+        }
+    }
+    private void Back() => Nav.NavigateTo("/securities");
+
+    private sealed class SecurityEditModel
+    {
+        [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
+        [Required, MinLength(3)] public string Identifier { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? AlphaVantageCode { get; set; }
+        public string CurrencyCode { get; set; } = "EUR";
+        public Guid? CategoryId { get; set; }
+    }
+    private sealed class SecurityVm
+    {
+        public SecurityVm() { }
+        public SecurityVm(SecurityDto dto)
+        {
+            Id = dto.Id; Name = dto.Name; Description = dto.Description; Identifier = dto.Identifier;
+            AlphaVantageCode = dto.AlphaVantageCode; IsActive = dto.IsActive; CurrencyCode = dto.CurrencyCode;
+            CategoryId = dto.CategoryId; CategoryName = dto.CategoryName;
+        }
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string Identifier { get; set; } = string.Empty;
+        public string? AlphaVantageCode { get; set; }
+        public string CurrencyCode { get; set; } = "EUR";
+        public bool IsActive { get; set; } = true;
+        public Guid? CategoryId { get; set; }
+        public string? CategoryName { get; set; }
+    }
+}

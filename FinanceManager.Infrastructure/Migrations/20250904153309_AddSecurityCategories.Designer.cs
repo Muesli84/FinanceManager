@@ -3,6 +3,7 @@ using System;
 using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FinanceManager.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250904153309_AddSecurityCategories")]
+    partial class AddSecurityCategories
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0-rc.1.24451.1");
@@ -311,15 +314,11 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<DateTime?>("ArchivedUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("CategoryId")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("CurrencyCode")
                         .IsRequired()
-                        .HasMaxLength(10)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Description")
@@ -342,8 +341,6 @@ namespace FinanceManager.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
 
                     b.HasIndex("OwnerUserId", "Identifier");
 
@@ -651,14 +648,6 @@ namespace FinanceManager.Infrastructure.Migrations
             modelBuilder.Entity("FinanceManager.Domain.Savings.SavingsPlan", b =>
                 {
                     b.HasOne("FinanceManager.Domain.Savings.SavingsPlanCategory", null)
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("FinanceManager.Domain.Securities.Security", b =>
-                {
-                    b.HasOne("FinanceManager.Domain.Securities.SecurityCategory", null)
                         .WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.SetNull);

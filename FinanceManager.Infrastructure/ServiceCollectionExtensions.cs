@@ -1,16 +1,18 @@
+using FinanceManager.Application;
+using FinanceManager.Application.Accounts;
+using FinanceManager.Application.Contacts;
+using FinanceManager.Application.Savings;
+using FinanceManager.Application.Securities;
+using FinanceManager.Application.Statements;
 using FinanceManager.Domain;
+using FinanceManager.Infrastructure.Accounts;
+using FinanceManager.Infrastructure.Auth;
+using FinanceManager.Infrastructure.Contacts;
+using FinanceManager.Infrastructure.Savings;
+using FinanceManager.Infrastructure.Securities;
+using FinanceManager.Infrastructure.Statements;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using FinanceManager.Application;
-using FinanceManager.Infrastructure.Auth;
-using FinanceManager.Application.Contacts;
-using FinanceManager.Infrastructure.Contacts;
-using FinanceManager.Application.Accounts;
-using FinanceManager.Infrastructure.Accounts;
-using FinanceManager.Application.Statements;
-using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Application.Savings;
-using FinanceManager.Infrastructure.Savings;
 
 namespace FinanceManager.Infrastructure;
 
@@ -36,6 +38,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISavingsPlanService, SavingsPlanService>();
         services.AddScoped<ISavingsPlanCategoryService, SavingsPlanCategoryService>();
         services.AddScoped<ISetupImportService, SetupImportService>();
+        services.AddScoped<ISecurityService, SecurityService>();
+        services.AddScoped<ISecurityCategoryService, SecurityCategoryService>();
         return services;
     }
 }

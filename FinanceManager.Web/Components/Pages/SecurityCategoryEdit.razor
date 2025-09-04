@@ -1,0 +1,109 @@
+@page "/security-categories/new"
+@page "/security-categories/{Id:guid}"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using FinanceManager.Shared.Dtos
+@using System.ComponentModel.DataAnnotations
+
+<h3>@(IsEdit ? "Kategorie bearbeiten" : "Neue Kategorie")</h3>
+<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;">
+    <button class="icon-btn" @onclick="SaveAsync" title="Speichern" aria-label="Speichern"><svg><use href="/icons/sprite.svg#save" /></svg></button>
+    @if(IsEdit)
+    {
+        <button class="icon-btn danger" @onclick="DeleteAsync" title="Löschen" aria-label="Löschen"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
+    }
+    <button class="icon-btn" @onclick="Back" title="Zurück" aria-label="Zurück"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+</div>
+
+<EditForm Model="_model" OnValidSubmit="SaveAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div style="max-width:400px;">
+        <label>Name</label>
+        <InputText @bind-Value="_model.Name" />
+        <ValidationMessage For="()=>_model.Name" />
+    </div>
+    @if(!string.IsNullOrEmpty(_error))
+    {
+        <div style="margin-top:.5rem;color:#e66;font-size:.8rem;">@_error</div>
+    }
+</EditForm>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    private bool IsEdit => Id.HasValue;
+    private CategoryEditModel _model = new();
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsEdit)
+        {
+            var resp = await Http.GetAsync($"/api/security-categories/{Id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                var dto = await resp.Content.ReadFromJsonAsync<SecurityCategoryDto>();
+                if (dto != null)
+                {
+                    _model.Name = dto.Name;
+                }
+            }
+            else
+            {
+                _error = "Kategorie nicht gefunden.";
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        if (IsEdit)
+        {
+            var resp = await Http.PutAsJsonAsync($"/api/security-categories/{Id}", _model);
+            if (resp.IsSuccessStatusCode)
+            {
+                Nav.NavigateTo("/security-categories", true);
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        else
+        {
+            var resp = await Http.PostAsJsonAsync("/api/security-categories", _model);
+            if (resp.IsSuccessStatusCode)
+            {
+                Nav.NavigateTo("/security-categories", true);
+            }
+            else
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+            }
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!IsEdit || Id == null) { return; }
+        var resp = await Http.DeleteAsync($"/api/security-categories/{Id}");
+        if (resp.IsSuccessStatusCode)
+        {
+            Nav.NavigateTo("/security-categories", true);
+        }
+        else
+        {
+            _error = await resp.Content.ReadAsStringAsync();
+        }
+    }
+
+    private void Back() => Nav.NavigateTo("/security-categories");
+
+    private sealed class CategoryEditModel
+    {
+        [Required, MinLength(2)]
+        public string Name { get; set; } = string.Empty;
+    }
+}

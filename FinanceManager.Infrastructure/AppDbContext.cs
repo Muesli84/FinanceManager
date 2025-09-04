@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using FinanceManager.Domain.Savings;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using FinanceManager.Shared.Dtos;
+using FinanceManager.Domain.Securities;
 
 namespace FinanceManager.Infrastructure;
 
@@ -27,6 +28,8 @@ public class AppDbContext : DbContext
     public DbSet<StatementDraftEntry> StatementDraftEntries => Set<StatementDraftEntry>();
     public DbSet<SavingsPlan> SavingsPlans => Set<SavingsPlan>();
     public DbSet<SavingsPlanCategory> SavingsPlanCategories { get; set; } = null!;
+    public DbSet<Security> Securities => Set<Security>();
+    public DbSet<SecurityCategory> SecurityCategories => Set<SecurityCategory>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -146,6 +149,29 @@ public class AppDbContext : DbContext
                 .HasForeignKey("SplitDraftId")
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<Security>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
+            b.HasIndex(x => new { x.OwnerUserId, x.Identifier });
+            b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            b.Property(x => x.Identifier).HasMaxLength(50).IsRequired();
+            b.Property(x => x.CurrencyCode).HasMaxLength(10).IsRequired();
+            b.Property(x => x.AlphaVantageCode).HasMaxLength(50);
+            b.HasOne<SecurityCategory>()
+                .WithMany()
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<SecurityCategory>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
+            b.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            b.Property(x => x.OwnerUserId).IsRequired();
+        });
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -167,5 +193,6 @@ public class AppDbContext : DbContext
         AliasNames.RemoveRange(AliasNames.Where(a => Contacts.Any(c => c.Id == a.ContactId && c.OwnerUserId == userId)));
         AccountShares.RemoveRange(AccountShares.Where(s => s.UserId == userId || Accounts.Any(a => a.OwnerUserId == userId && a.Id == s.AccountId)));
         Accounts.RemoveRange(Accounts.Where(a => a.OwnerUserId == userId));
+        Securities.RemoveRange(Securities.Where(s => s.OwnerUserId == userId));
     }
 }

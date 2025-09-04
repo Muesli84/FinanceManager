@@ -1,0 +1,61 @@
+@page "/securities"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using FinanceManager.Shared.Dtos
+
+<h3>Wertpapiere</h3>
+<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
+    <button class="icon-btn" @onclick="NewSecurity" title="Neu" aria-label="Neu"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
+    <button class="icon-btn" @onclick="OpenCategories" title="Kategorien verwalten" aria-label="Kategorien verwalten"><svg><use href="/icons/sprite.svg#groups" /></svg></button>
+    <label style="margin-left:1rem;font-size:.8rem;display:flex;gap:.35rem;align-items:center;">
+        <input type="checkbox" @bind="_onlyActive" @bind:after="(()=>LoadAsync())" /> nur aktive
+    </label>
+</div>
+<table class="fm-table wide">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Identifikation</th>
+            <th>AlphaVantage</th>
+            <th>Kategorie</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var s in _items)
+        {
+            <tr style="cursor:pointer;" @onclick="(()=>OpenDetail(s.Id))">
+                <td>@s.Name</td>
+                <td>@s.Identifier</td>
+                <td>@(string.IsNullOrWhiteSpace(s.AlphaVantageCode)?"-":s.AlphaVantageCode)</td>
+                <td>@(string.IsNullOrWhiteSpace(s.CategoryName)?"-":s.CategoryName)</td>
+                <td>@(s.IsActive?"Aktiv":"Archiviert")</td>
+            </tr>
+        }
+        @if(_items.Count==0)
+        {
+            <tr><td colspan="5" style="opacity:.6;">Keine Einträge</td></tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<SecurityDto> _items = new();
+    private bool _onlyActive = true;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var resp = await Http.GetAsync($"/api/securities?onlyActive={_onlyActive}");
+        if (resp.IsSuccessStatusCode)
+        {
+            _items = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>() ?? new();
+        }
+    }
+
+    private void NewSecurity() => Nav.NavigateTo("/securities/new");
+    private void OpenDetail(Guid id) => Nav.NavigateTo($"/securities/{id}");
+    private void OpenCategories() => Nav.NavigateTo("/security-categories");
+}

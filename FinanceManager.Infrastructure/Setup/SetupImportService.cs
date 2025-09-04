@@ -1,6 +1,7 @@
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Savings;
+using FinanceManager.Domain.Securities;
 using FinanceManager.Infrastructure;
 using FinanceManager.Shared.Dtos;
 using System.Diagnostics.Metrics;
@@ -42,7 +43,27 @@ public sealed class SetupImportService : ISetupImportService
         var accounts = ImportAccounts(backupData.BankAccounts, userId).ToList();
         var savingsPlanCategories = ImportSavingsPlanCategories(backupData.FixedAssetCategories, userId).ToList();
         var savingsPlans = ImportSavingsPlans(backupData.FixedAssets, savingsPlanCategories, userId).ToList();
+        var stocks = ImportStocks(backupData.Stocks, userId).ToList();
         await _db.SaveChangesAsync();
+    }
+
+    private IEnumerable<KeyValuePair<int, Guid>> ImportStocks(JsonElement stocks, Guid userId)
+    {
+        foreach (var stock in stocks.EnumerateArray())
+        {
+            var dataId = stock.GetProperty("Id").GetInt32();
+            var name = stock.GetProperty("Name").GetString();
+            var description = stock.GetProperty("Description").GetString();
+            var symbol = stock.GetProperty("Symbol").GetString();
+            var avCode = stock.GetProperty("AlphaVantageSymbol").GetString();
+            var currencyCode = stock.GetProperty("CurrencyCode").GetString();
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            var newStock = new Security(userId, name, symbol, description, avCode, currencyCode ?? string.Empty, null);
+            _db.Securities.Add(newStock);
+            _db.SaveChanges();
+            yield return new KeyValuePair<int, Guid>(dataId, newStock.Id);
+        }
+        
     }
 
     private IEnumerable<KeyValuePair<string, Guid>> ImportAccounts(JsonElement bankAccounts, Guid userId)
@@ -199,6 +220,7 @@ public sealed class SetupImportService : ISetupImportService
         public JsonElement ContactCategories { get; set; }
         public JsonElement FixedAssetCategories { get; set; }
         public JsonElement FixedAssets { get; set; }
+        public JsonElement Stocks { get; set; }
         // Weitere Properties nach Bedarf
     }
 }

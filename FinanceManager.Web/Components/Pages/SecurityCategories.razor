@@ -1,0 +1,48 @@
+@page "/security-categories"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using FinanceManager.Shared.Dtos
+
+<h3>Wertpapierkategorien</h3>
+<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;">
+    <button class="icon-btn" @onclick="NewCategory" title="Neu" aria-label="Neu"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
+    <button class="icon-btn" @onclick="Back" title="Zurück" aria-label="Zurück"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+</div>
+
+<table class="fm-table wide">
+    <thead>
+        <tr>
+            <th>Name</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var c in _items)
+        {
+            <tr style="cursor:pointer;" @onclick="(()=>OpenDetail(c.Id))">
+                <td>@c.Name</td>
+            </tr>
+        }
+        @if(!_items.Any())
+        {
+            <tr><td style="opacity:.6;">Keine Kategorien</td></tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private List<SecurityCategoryDto> _items = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var resp = await Http.GetAsync("/api/security-categories");
+        if (resp.IsSuccessStatusCode)
+        {
+            _items = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>() ?? new();
+        }
+    }
+
+    private void NewCategory() => Nav.NavigateTo("/security-categories/new");
+    private void OpenDetail(Guid id) => Nav.NavigateTo($"/security-categories/{id}");
+    private void Back() => Nav.NavigateTo("/securities");
+}
