@@ -48,7 +48,7 @@ public sealed class SavingsPlansController : ControllerBase
     public async Task<IActionResult> CreateAsync([FromBody] SavingsPlanCreateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
-        var dto = await _service.CreateAsync(_current.UserId, req.Name, req.Type, req.TargetAmount, req.TargetDate, req.Interval, ct);
+        var dto = await _service.CreateAsync(_current.UserId, req.Name, req.Type, req.TargetAmount, req.TargetDate, req.Interval, req.CategoryId, ct);
         return CreatedAtAction("GetSavingsPlans", new { id = dto.Id }, dto);
     }
 

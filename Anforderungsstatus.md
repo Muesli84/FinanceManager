@@ -17,7 +17,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-007 | Kontaktposten beim Buchen entstehen                             | Noch nicht implementiert                                                             | ✖      |
 | FA-AUSZ-008 | Empfänger muss Kontakt zugeordnet werden                        | StatementDraftService, UI                                                            | ✔      |
 | FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | (Wertpapierlogik noch offen)                                                         | ✖      |
-| FA-AUSZ-010 | PDF-Parsing mit Tabellenextraktion                              | ING_StatementFileReader, Barclays_StatementFileReader, erweiterbar                  | ✔      |
+| FA-AUSZ-010 | PDF-Parsing mit Tabellenextraktion                              | ING_StatementFileReader, Barclays_StatementFileReader, erweiterbar                   | ✔      |
 | FA-AUSZ-011 | Import-Pipeline mit Format-Strategie                            | StatementDraftService, Reader-Interface                                              | ✔      |
 | FA-AUSZ-012 | Anzeige Gesamtbetrag verknüpfter Aufteilungs-Auszüge im Eintrag | StatementDraftsController GetEntry: SplitSum/Difference; EntryDetail UI Amount-Zeile | ✔      |
 | FA-AUSZ-013 | Status offen bei Zahlungsintermediär bis vollständig gesplittet | StatementDraftService: TryAutoAssignContact & ReevaluateParentEntryStatusAsync       | ✔      |
@@ -29,7 +29,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-KON-005  | Kontakte verschmelzen (Merge)                                   | ContactService.MergeAsync, ContactsController, ContactMergeDialog                    | ✔      |
 | FA-AUTO-001 | Aliasnamen für automatische Kontaktzuordnung                    | StatementDraftService: Alias-Matching                                                | ✔      |
 | FA-AUTO-002 | Duplikate werden ausgelassen                                    | StatementDraftService: Duplikatprüfung                                               | ✔      |
-| FA-SPAR-001 | Sparpläne verwalten (CRUD)                                      | (Grundstruktur DTOs vorhanden, Service/CRUD offen)                                   | ✖      |
+| FA-SPAR-001 | Sparpläne verwalten (CRUD)                                      | SavingsPlanService, SavingPlanController, IO                                         | ✔      |
 | FA-SPAR-002 | Sparplan-Typen                                                  | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-003 | Wiederkehrende Intervalle                                       | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-004 | Automatische Sparplanvorschläge                                 | Noch nicht implementiert                                                             | ✖      |

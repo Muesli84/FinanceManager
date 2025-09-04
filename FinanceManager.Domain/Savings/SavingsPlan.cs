@@ -17,7 +17,7 @@ public sealed class SavingsPlan
     public DateTime? ArchivedUtc { get; private set; }
     public Guid? CategoryId { get; private set; }
 
-    public SavingsPlan(Guid ownerUserId, string name, SavingsPlanType type, decimal? targetAmount, DateTime? targetDate, SavingsPlanInterval? interval)
+    public SavingsPlan(Guid ownerUserId, string name, SavingsPlanType type, decimal? targetAmount, DateTime? targetDate, SavingsPlanInterval? interval, Guid? categoryId = null)
     {
         Id = Guid.NewGuid();
         OwnerUserId = ownerUserId;
@@ -26,6 +26,7 @@ public sealed class SavingsPlan
         TargetAmount = targetAmount;
         TargetDate = targetDate;
         Interval = interval;
+        CategoryId = categoryId;
         IsActive = true;
         CreatedUtc = DateTime.UtcNow;
     }
