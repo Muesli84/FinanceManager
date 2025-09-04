@@ -56,14 +56,39 @@ public sealed class StatementDraftsController : ControllerBase
     {
         var draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
         if (draft is null) { return NotFound(); }
+
         var ordered = draft.Entries.OrderBy(e => e.BookingDate).ThenBy(e => e.Id).ToList();
         var entry = ordered.FirstOrDefault(e => e.Id == entryId);
         if (entry is null) { return NotFound(); }
+
         var index = ordered.FindIndex(e => e.Id == entryId);
         var prev = index > 0 ? ordered[index - 1].Id : (Guid?)null;
         var next = index < ordered.Count - 1 ? ordered[index + 1].Id : (Guid?)null;
-        var nextOpen = ordered.Skip(index + 1).FirstOrDefault(e => e.Status == StatementDraftEntryStatus.Open || e.Status == StatementDraftEntryStatus.Announced)?.Id;
-        return Ok(new { draft.DraftId, draft.OriginalFileName, Entry = entry, PrevEntryId = prev, NextEntryId = next, NextOpenEntryId = nextOpen });
+        var nextOpen = ordered.Skip(index + 1)
+            .FirstOrDefault(e => e.Status == StatementDraftEntryStatus.Open || e.Status == StatementDraftEntryStatus.Announced)?.Id;
+
+        decimal? splitSum = null;
+        decimal? diff = null;
+        if (entry.SplitDraftId != null)
+        {
+            var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            splitSum = await db.StatementDraftEntries
+                .Where(e => e.DraftId == entry.SplitDraftId)
+                .SumAsync(e => e.Amount, ct);
+            diff = entry.Amount - splitSum;
+        }
+
+        return Ok(new
+        {
+            draft.DraftId,
+            draft.OriginalFileName,
+            Entry = entry,
+            PrevEntryId = prev,
+            NextEntryId = next,
+            NextOpenEntryId = nextOpen,
+            SplitSum = splitSum,
+            Difference = diff
+        });
     }
 
     [HttpPost("{draftId:guid}/entries")]

@@ -104,6 +104,11 @@ public sealed class StatementDraftService : IStatementDraftService
         _db.Entry(draft.AddEntry(bookingDate, amount, subject)).State = EntityState.Added;
         await ClassifyInternalAsync(draft, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
+        // If this draft is used as a split draft for a parent entry -> reevaluate parent status
+        if (await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == draft.Id, ct))
+        {
+            await ReevaluateParentEntryStatusAsync(ownerUserId, draft.Id, ct);
+        }
         return await GetDraftAsync(draftId, ownerUserId, ct); // Sicherstellen, dass Mapping mit evtl. SplitRefs erfolgt
     }
 
@@ -260,52 +265,37 @@ public sealed class StatementDraftService : IStatementDraftService
         if (entry == null) { return null; }
         if (draft.Status != StatementDraftStatus.Draft) { return null; }
 
-        // Nur wenn bereits ein Kontakt gesetzt und dieser Zahlungs­vermittler ist
         if (splitDraftId != null)
         {
             if (entry.ContactId == null)
             {
                 throw new InvalidOperationException("Contact required for split.");
             }
-            var contact = await _db.Contacts
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == entry.ContactId && c.OwnerUserId == ownerUserId, ct);
+            var contact = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == entry.ContactId && c.OwnerUserId == ownerUserId, ct);
             if (contact == null || !contact.IsPaymentIntermediary)
             {
                 throw new InvalidOperationException("Contact is not a payment intermediary.");
             }
-
-            // Ziel Split-Draft laden
-            var splitDraft = await _db.StatementDrafts
-                .FirstOrDefaultAsync(d => d.Id == splitDraftId && d.OwnerUserId == ownerUserId, ct);
-            if (splitDraft == null)
-            {
-                throw new InvalidOperationException("Split draft not found.");
-            }
-            if (splitDraft.DetectedAccountId != null)
-            {
-                throw new InvalidOperationException("Split draft must not have an account assigned.");
-            }
-            // Sicherstellen, dass dieser SplitDraft nicht schon benutzt wird
-            bool inUse = await _db.StatementDraftEntries
-                .AnyAsync(e => e.SplitDraftId == splitDraftId, ct);
-            if (inUse)
-            {
-                throw new InvalidOperationException("Split draft already linked.");
-            }
-
+            var splitDraft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == splitDraftId && d.OwnerUserId == ownerUserId, ct);
+            if (splitDraft == null) { throw new InvalidOperationException("Split draft not found."); }
+            if (splitDraft.DetectedAccountId != null) { throw new InvalidOperationException("Split draft must not have an account assigned."); }
+            bool inUse = await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == splitDraftId, ct);
+            if (inUse) { throw new InvalidOperationException("Split draft already linked."); }
             entry.AssignSplitDraft(splitDraftId.Value);
         }
         else
         {
             entry.ClearSplitDraft();
         }
-
         await _db.SaveChangesAsync(ct);
+        if (splitDraftId != null)
+        {
+            await ReevaluateParentEntryStatusAsync(ownerUserId, splitDraftId.Value, ct);
+        }
         return await GetDraftAsync(draftId, ownerUserId, ct);
     }
 
-    public async Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? validaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct)
+    public async Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
@@ -313,9 +303,39 @@ public sealed class StatementDraftService : IStatementDraftService
         var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
         if (entry == null) { return null; }
         if (draft.Status != StatementDraftStatus.Draft) { return null; }
-        entry.UpdateCore(bookingDate, validaDate, amount, subject, recipientName, currencyCode, bookingDescription);
+        entry.UpdateCore(bookingDate, valutaDate, amount, subject, recipientName, currencyCode, bookingDescription);
         await _db.SaveChangesAsync(ct);
+        if (await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == draft.Id, ct))
+        {
+            await ReevaluateParentEntryStatusAsync(ownerUserId, draft.Id, ct);
+        }
+        if (entry.SplitDraftId != null)
+        {
+            await ReevaluateParentEntryStatusAsync(ownerUserId, entry.SplitDraftId.Value, ct);
+        }
         return new StatementDraftEntryDto(entry.Id, entry.BookingDate, entry.ValutaDate, entry.Amount, entry.CurrencyCode, entry.Subject, entry.RecipientName, entry.BookingDescription, entry.IsAnnounced, entry.IsCostNeutral, entry.Status, entry.ContactId, entry.SavingsPlanId, entry.SplitDraftId);
+    }
+
+    private async Task ReevaluateParentEntryStatusAsync(Guid ownerUserId, Guid splitDraftId, CancellationToken ct)
+    {
+        var parentEntry = await _db.StatementDraftEntries.FirstOrDefaultAsync(e => e.SplitDraftId == splitDraftId, ct);
+        if (parentEntry == null) { return; }
+        var parentDraft = await _db.StatementDrafts.Include(d => d.Entries).FirstOrDefaultAsync(d => d.Id == parentEntry.DraftId && d.OwnerUserId == ownerUserId, ct);
+        if (parentDraft == null) { return; }
+        var total = await _db.StatementDraftEntries.Where(e => e.DraftId == splitDraftId).SumAsync(e => e.Amount, ct);
+        if (total == parentEntry.Amount && parentEntry.ContactId != null && parentEntry.Status != StatementDraftEntryStatus.Accounted)
+        {
+            parentEntry.MarkAccounted(parentEntry.ContactId.Value);
+        }
+        else if (total != parentEntry.Amount && parentEntry.Status == StatementDraftEntryStatus.Accounted)
+        {
+            parentEntry.ResetOpen();
+            if (parentEntry.ContactId != null)
+            {
+                parentEntry.AssignContactWithoutAccounting(parentEntry.ContactId.Value);
+            }
+        }
+        await _db.SaveChangesAsync(ct);
     }
 
     private async Task ClassifyInternalAsync(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
@@ -386,11 +406,9 @@ public sealed class StatementDraftService : IStatementDraftService
 
     private static void TryAutoAssignContact(List<Domain.Contacts.Contact> contacts, Dictionary<Guid, List<string>> aliasLookup, Guid? bankContactId, Domain.Contacts.Contact selfContact, StatementDraftEntry entry)
     {
-        // Contact resolution: match by exact name or alias contains in subject/counterparty
         var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant();
         Guid? matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedRecipient);
         var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
-        // Nach Zuordnung des Kontakts:
         if (matchedContact != null && matchedContact.IsPaymentIntermediary)
         {
             var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant();
@@ -470,7 +488,7 @@ public sealed class StatementDraftService : IStatementDraftService
                 if (matchedContactId != Guid.Empty) { break; }
             }
         }
-
+        var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
         // Fallback: Wenn kein Empfängername angegeben ist, setze Bankkontakt als Empfänger
         if (string.IsNullOrWhiteSpace(entry.RecipientName) && bankContactId != null && bankContactId != Guid.Empty)
         {
@@ -478,7 +496,10 @@ public sealed class StatementDraftService : IStatementDraftService
         }
         else if (matchedContactId != null && matchedContactId != Guid.Empty)
         {
-            entry.MarkAccounted(matchedContactId.Value);
+            if (matchedContact != null && matchedContact.IsPaymentIntermediary)
+                entry.AssignContactWithoutAccounting(matchedContact.Id);
+            else
+                entry.MarkAccounted(matchedContactId.Value);
         }
 
         return matchedContactId;

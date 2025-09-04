@@ -182,4 +182,11 @@ public sealed class StatementDraftEntry : Entity
             Touch();
         }
     }
+
+    public void AssignContactWithoutAccounting(Guid contactId)
+    {
+        ContactId = contactId;
+        // Keep existing status (stay Open/Announced) – do not mark accounted yet.
+        Touch();
+    }
 }

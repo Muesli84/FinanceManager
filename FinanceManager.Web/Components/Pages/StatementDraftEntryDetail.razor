@@ -89,7 +89,21 @@ else
         <tbody>
             <tr><th style="width:180px;">Booking Date</th><td>@_vm.Entry.BookingDate.ToShortDateString()</td></tr>
             <tr><th>Valuta Date</th><td>@(_vm.Entry.ValutaDate?.ToShortDateString() ?? "-")</td></tr>
-            <tr><th>Amount</th><td>@_vm.Entry.Amount @_vm.Entry.CurrencyCode</td></tr>
+            <tr>
+                <th>Amount</th>
+                <td>
+                    @_vm.Entry.Amount @_vm.Entry.CurrencyCode
+                    @if(_vm.SplitSum != null)
+                    {
+                        <span style="opacity:.7;"> (Summe Aufteilung: @_vm.SplitSum
+                            @if(_vm.Difference is decimal d && d != 0)
+                            {
+                                <text>; Diff: @d</text>
+                            }
+                            )</span>
+                    }
+                </td>
+            </tr>
             <tr><th>Subject</th><td class="wrap">@_vm.Entry.Subject</td></tr>
             <tr><th>Recipient</th><td class="wrap">@(_vm.Entry.RecipientName ?? "-")</td></tr>
             <tr><th>Description</th><td class="wrap">@(_vm.Entry.BookingDescription ?? "-")</td></tr>
@@ -532,9 +546,16 @@ else
     }
 
     private void ResetCoreEdits() => InitCoreEdit();
-
     private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, Guid? SplitDraftId);
-    private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId, Guid? NextOpenEntryId);
+    private sealed record EntryDetailVm(
+        Guid DraftId,
+        string OriginalFileName,
+        EntryDto Entry,
+        Guid? PrevEntryId,
+        Guid? NextEntryId,
+        Guid? NextOpenEntryId,
+        decimal? SplitSum,
+        decimal? Difference);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
