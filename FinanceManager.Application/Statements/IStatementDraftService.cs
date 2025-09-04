@@ -17,6 +17,7 @@ public interface IStatementDraftService
     Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct);
+    Task<StatementDraftDto?> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, Guid? splitDraftId, Guid ownerUserId, CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(
@@ -32,7 +33,26 @@ public sealed record StatementDraftEntryDto(
     bool IsCostNeutral,
     StatementDraftEntryStatus Status,
     Guid? ContactId,
-    Guid? SavingsPlanId);
+    Guid? SavingsPlanId,
+    Guid? SplitDraftId); // Falls dieser Eintrag einen Split-Draft (Aufteilungs-Auszug) referenziert
 
-public sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, StatementDraftStatus Status, IReadOnlyList<StatementDraftEntryDto> Entries);
+/// <summary>
+/// Repräsentiert einen Statement Draft (Import-Entwurf) inkl. optionaler Split-Informationen.
+/// Neue Felder (ab Split-Feature):
+///  - TotalAmount: Summe aller Eintragsbeträge (immer gefüllt)
+///  - IsSplitDraft: True, wenn dieser Draft selbst als Split-Draft (Aufteilungs-Auszug) verknüpft ist (ParentDraftId != null)
+///  - ParentDraftId / ParentEntryId / ParentEntryAmount: Referenz auf den Ursprungs-Draft und -Eintrag, falls verknüpft
+/// </summary>
+public sealed record StatementDraftDto(
+    Guid DraftId,
+    string OriginalFileName,
+    Guid? DetectedAccountId,
+    StatementDraftStatus Status,
+    decimal TotalAmount,
+    bool IsSplitDraft,
+    Guid? ParentDraftId,
+    Guid? ParentEntryId,
+    decimal? ParentEntryAmount,
+    IReadOnlyList<StatementDraftEntryDto> Entries);
+
 public sealed record CommitResult(Guid StatementImportId, int TotalEntries);

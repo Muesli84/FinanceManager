@@ -4,6 +4,8 @@
 @inject NavigationManager Nav
 @using FinanceManager.Domain.Statements
 
+@code { enum StatementDraftStatus { Draft=0, Committed=1, Expired=2 } }
+
 <h3>Statement Draft Entry</h3>
 @if (_vm == null)
 {
@@ -24,6 +26,19 @@ else
                 <svg><use href="/icons/sprite.svg#arrow-right" /></svg>
             </button>
         </div>
+        <!-- Neue Buttons für Split-Funktionalität -->
+        <button class="icon-btn" @onclick="OpenSplitDialog" title="Split-Auszug zuordnen" aria-label="Split-Auszug zuordnen">
+            <svg><use href="/icons/sprite.svg#link" /></svg>
+        </button>
+        @if(_vm?.Entry.SplitDraftId != null)
+        {
+            <button class="icon-btn" @onclick="OpenAssignedSplitDraft" title="Verknüpften Auszug öffnen" aria-label="Verknüpften Auszug öffnen">
+                <svg><use href="/icons/sprite.svg#external" /></svg>
+            </button>
+            <button class="icon-btn" @onclick="RemoveSplit" title="Zuordnung entfernen" aria-label="Zuordnung entfernen">
+                <svg><use href="/icons/sprite.svg#unlink" /></svg>
+            </button>
+        }
     </div>
     <p><strong>Draft File:</strong> @_vm.OriginalFileName</p>
     <table class="fm-table" style="max-width:960px;">
@@ -99,6 +114,49 @@ else
             </tr>
         </tbody>
     </table>   
+
+    @if (_showSplitDialog)
+    {
+        <div class="modal-backdrop split-center">
+            <div class="modal split-dialog" role="dialog" aria-modal="true" aria-label="Split-Auszug auswählen">
+                <h3 style="margin-top:0;">Split-Auszug auswählen</h3>
+                @if(_vm?.Entry.SplitDraftId != null)
+                {
+                    <p style="margin:.15rem 0 .4rem 0;font-size:.7rem;opacity:.7;">Aktuell verknüpft mit Draft <strong>@_vm.Entry.SplitDraftId</strong>. Wähle einen anderen Auszug um die Verknüpfung zu ändern oder klicke auf Abbrechen.</p>
+                }
+                <p style="margin-top:.2rem;opacity:.8;font-size:.85rem;">Wähle einen unzugeordneten Auszug ohne Konto.</p>
+                <input type="text" @bind="_splitFilter" placeholder="Filter..." style="width:100%;margin:.5rem 0  .75rem 0;" />
+                <div class="split-scroll">
+                    @if(_loadingSplits)
+                    {
+                        <div class="split-hint">Lade...</div>
+                    }
+                    else
+                    {
+                        @foreach(var d in FilteredSplitDrafts)
+                        {
+                            <div class="split-row @(d.DraftId==_selectedSplitDraftId? "active" : string.Empty)" @onclick="(()=>SelectSplit(d.DraftId))">
+                                <div class="name">@d.OriginalFileName</div>
+                                <div class="meta">@d.EntriesCount Einträge · Summe @d.TotalAmount</div>
+                            </div>
+                        }
+                        @if(!FilteredSplitDrafts.Any())
+                        {
+                            <div class="split-hint">Keine Treffer</div>
+                        }
+                    }
+                </div>
+                @if(!string.IsNullOrEmpty(_splitError))
+                {
+                    <div class="split-error">@_splitError</div>
+                }
+                <div class="split-actions">
+                    <button class="icon-btn" disabled="@(_selectedSplitDraftId==null)" @onclick="ConfirmSplit" title="Übernehmen" aria-label="Übernehmen"><svg><use href="/icons/sprite.svg#check" /></svg></button>
+                    <button class="icon-btn" @onclick="CloseSplitDialog" title="Abbrechen" aria-label="Abbrechen"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 @code {
@@ -127,6 +185,20 @@ else
     private IEnumerable<SavingsPlanDto> FilteredSavingsPlans => string.IsNullOrWhiteSpace(_savingsPlanFilter)
         ? _userSavingsPlans
         : _userSavingsPlans.Where(p => p.Name.Contains(_savingsPlanFilter, StringComparison.OrdinalIgnoreCase));
+
+    // Split UI State
+    private bool _showSplitDialog;
+    private bool _loadingSplits;
+    private string _splitFilter = string.Empty;
+    private Guid? _selectedSplitDraftId;
+    private string? _splitError;
+    private List<SplitDraftOption> _candidateSplits = new();
+
+    private IEnumerable<SplitDraftOption> FilteredSplitDrafts => string.IsNullOrWhiteSpace(_splitFilter)
+        ? _candidateSplits
+        : _candidateSplits.Where(d => d.OriginalFileName.Contains(_splitFilter, StringComparison.OrdinalIgnoreCase));
+
+    private sealed record SplitDraftOption(Guid DraftId, string OriginalFileName, int EntriesCount, decimal TotalAmount);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -218,18 +290,22 @@ else
         _pendingSave = true; _contactError = null;
         try
         {
-            _contactError = "";
+            _contactError = string.Empty;
             var payload = new { ContactId = _selectedContactId };
             var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/contact", payload);
             if (!resp.IsSuccessStatusCode)
+            {
                 throw new ApplicationException(await resp.Content.ReadAsStringAsync());
+            }
 
             if (_vm.Entry.IsCostNeutral != _IsCostNeutral)
             {
                 var payload2 = new { IsCostNeutral = _IsCostNeutral };
                 resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/costneutral", payload2);
                 if (!resp.IsSuccessStatusCode)
+                {
                     throw new ApplicationException(await resp.Content.ReadAsStringAsync());
+                }
             }
 
             if (_vm.Entry.SavingsPlanId != _selectedSavingsPlanId)
@@ -237,7 +313,9 @@ else
                 var payload3 = new { SavingsPlanId = _selectedSavingsPlanId };
                 resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/savingsplan", payload3);
                 if (!resp.IsSuccessStatusCode)
+                {
                     throw new ApplicationException(await resp.Content.ReadAsStringAsync());
+                }
             }
 
             await LoadEntryAsync();
@@ -266,7 +344,6 @@ else
     private void Back() => Nav.NavigateTo($"/statement-drafts/{DraftId}");
     private void OpenCreateContact()
     {
-        // prefill with recipient or current filter text
         var name = _vm?.Entry.RecipientName;
         if (string.IsNullOrWhiteSpace(name)) { name = string.IsNullOrWhiteSpace(_contactFilter) ? _vm?.Entry.Subject : _contactFilter; }
         name ??= string.Empty;
@@ -297,10 +374,83 @@ else
         }
     }
 
-    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId);
+    // Split Handling
+    private void OpenSplitDialog()
+    {
+        _splitError = null;
+        _selectedSplitDraftId = null;
+        _showSplitDialog = true;
+        _ = LoadSplitCandidates();
+    }
+
+    private void CloseSplitDialog() => _showSplitDialog = false;
+
+    private async Task LoadSplitCandidates()
+    {
+        _loadingSplits = true;
+        try
+        {
+            var list = await Http.GetFromJsonAsync<List<StatementDraftListDto>>("/api/statement-drafts");
+            if (list != null)
+            {
+                _candidateSplits = list
+                    .Where(d => d.DraftId != DraftId && d.DetectedAccountId == null && !d.IsSplitDraft && d.Status == StatementDraftStatus.Draft)
+                    .Select(d => new SplitDraftOption(d.DraftId, d.OriginalFileName, d.Entries.Count, d.TotalAmount))
+                    .OrderBy(d => d.OriginalFileName)
+                    .ToList();
+            }
+        }
+        finally
+        {
+            _loadingSplits = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectSplit(Guid id) => _selectedSplitDraftId = id;
+
+    private async Task ConfirmSplit()
+    {
+        if (_selectedSplitDraftId == null) { return; }
+        try
+        {
+            var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/split", new { SplitDraftId = _selectedSplitDraftId });
+            if (!resp.IsSuccessStatusCode)
+            {
+                _splitError = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+            _showSplitDialog = false;
+            await LoadEntryAsync();
+        }
+        catch (Exception ex)
+        {
+            _splitError = ex.Message;
+        }
+    }
+
+    private async Task RemoveSplit()
+    {
+        var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/split", new { SplitDraftId = (Guid?)null });
+        if (resp.IsSuccessStatusCode)
+        {
+            await LoadEntryAsync();
+        }
+    }
+
+    private void OpenAssignedSplitDraft()
+    {
+        if (_vm?.Entry.SplitDraftId != null)
+        {
+            Nav.NavigateTo($"/statement-drafts/{_vm.Entry.SplitDraftId}");
+        }
+    }
+
+    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, Guid? SplitDraftId);
     private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId, Guid? NextOpenEntryId);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
     private sealed record SavingsPlanDto(Guid Id, string Name);
+    private sealed record StatementDraftListDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, StatementDraftStatus Status, decimal TotalAmount, bool IsSplitDraft, IReadOnlyList<EntryDto> Entries);
 }

@@ -28,7 +28,6 @@ public sealed class ContactService : IContactService
         var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
         if (contact == null) return null;
 
-        // Prevent changing type to or from Self.
         bool isSelf = contact.Type == ContactType.Self;
         if (isSelf && type != ContactType.Self)
         {
@@ -40,7 +39,6 @@ public sealed class ContactService : IContactService
         }
 
         contact.Rename(name);
-        // Only apply type change if not self (guard above ensures validity)
         if (!isSelf)
         {
             contact.ChangeType(type);
@@ -78,7 +76,6 @@ public sealed class ContactService : IContactService
         if (!string.IsNullOrWhiteSpace(nameFilter))
         {
             var pattern = $"%{nameFilter.Trim()}%";
-            // EF.Functions.Like sorgt für serverseitiges Pattern Matching
             query = query.Where(c => EF.Functions.Like(c.Name, pattern));
         }
 
@@ -162,20 +159,17 @@ public sealed class ContactService : IContactService
 
         using var tx = await _db.Database.BeginTransactionAsync(ct);
 
-        // Aliase des Zielkontakts laden
         var targetAliasPatterns = await _db.AliasNames
             .Where(a => a.ContactId == target.Id)
             .Select(a => a.Pattern.ToLower())
             .ToListAsync(ct);
 
-        // Name des Quellkontakts als Alias hinzufügen (falls nicht schon vorhanden / identisch)
         if (!string.Equals(source.Name, target.Name, StringComparison.OrdinalIgnoreCase)
             && !targetAliasPatterns.Contains(source.Name.ToLower()))
         {
             _db.AliasNames.Add(new AliasName(target.Id, source.Name));
         }
 
-        // Aliase des Quellkontakts übernehmen (umhängen) – Duplikate überspringen
         var sourceAliases = await _db.AliasNames
             .Where(a => a.ContactId == source.Id)
             .ToListAsync(ct);
@@ -184,26 +178,22 @@ public sealed class ContactService : IContactService
             if (targetAliasPatterns.Contains(alias.Pattern.ToLower()) ||
                 string.Equals(alias.Pattern, target.Name, StringComparison.OrdinalIgnoreCase))
             {
-                // Duplikat -> löschen
                 _db.AliasNames.Remove(alias);
             }
             else
             {
-                alias.ReassignTo(target.Id); // Falls es keine Methode gibt: alias.ContactId = target.Id;
+                alias.ReassignTo(target.Id);
             }
         }
 
-        // Statement Draft Entries (TODO: Tabellen-/Entity-Namen prüfen)
         await _db.StatementDraftEntries
             .Where(e => e.ContactId == source.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.ContactId, target.Id), ct);
 
-        // Committed Statement Entries
         await _db.StatementEntries
             .Where(e => e.ContactId == source.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.ContactId, target.Id), ct);
 
-        // Falls Bankkontakte: zugehörige Accounts umbuchen
         if (bankInvolved)
         {
             await _db.Accounts
@@ -211,7 +201,6 @@ public sealed class ContactService : IContactService
                 .ExecuteUpdateAsync(s => s.SetProperty(a => a.BankContactId, target.Id), ct);
         }
 
-        // Quellkontakt entfernen
         _db.Contacts.Remove(source);
 
         await _db.SaveChangesAsync(ct);

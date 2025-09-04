@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using FinanceManager.Domain.Statements;
+using FinanceManager.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -127,7 +129,44 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(entry);
     }
 
-    
+    public sealed record SetSplitDraftRequest(Guid? SplitDraftId);
+
+[HttpPost("{draftId:guid}/entries/{entryId:guid}/split")]
+public async Task<IActionResult> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, [FromBody] SetSplitDraftRequest body, CancellationToken ct)
+{
+    try
+    {
+        var draft = await _drafts.SetEntrySplitDraftAsync(draftId, entryId, body.SplitDraftId, _current.UserId, ct);
+        if (draft == null) { return NotFound(); }
+        var entry = draft.Entries.First(e => e.Id == entryId);
+
+        // Summen nur bei gesetztem SplitDraftId berechnen
+        decimal? splitSum = null;
+        decimal? diff = null;
+        if (entry.SplitDraftId != null)
+        {
+            splitSum = await HttpContext.RequestServices
+                .GetRequiredService<AppDbContext>()
+                .StatementDraftEntries
+                .Where(e => e.DraftId == entry.SplitDraftId)
+                .SumAsync(e => e.Amount, ct);
+            diff = entry.Amount - splitSum;
+        }
+
+        return Ok(new
+        {
+            Entry = entry,
+            SplitSum = splitSum,
+            Difference = diff
+        });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return BadRequest(new { error = ex.Message });
+    }
+}
+
+
 
     [HttpDelete("{draftId:guid}")]
     public async Task<IActionResult> CancelAsync(Guid draftId, CancellationToken ct)

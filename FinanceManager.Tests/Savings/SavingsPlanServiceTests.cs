@@ -42,7 +42,7 @@ public sealed class SavingsPlanServiceTests
         var (sut, db, conn) = Create();
         var owner = Guid.NewGuid();
         var dto = await sut.CreateAsync(owner, "Testplan", SavingsPlanType.OneTime, 1000, DateTime.Today.AddMonths(6), null, CancellationToken.None);
-        var updated = await sut.UpdateAsync(dto.Id, owner, "Neu", SavingsPlanType.Recurring, 200, null, SavingsPlanInterval.Monthly, CancellationToken.None);
+        var updated = await sut.UpdateAsync(dto.Id, owner, "Neu", SavingsPlanType.Recurring, 200, null, SavingsPlanInterval.Monthly, null, CancellationToken.None);
         updated.Should().NotBeNull();
         updated!.Name.Should().Be("Neu");
         updated.Type.Should().Be(SavingsPlanType.Recurring);

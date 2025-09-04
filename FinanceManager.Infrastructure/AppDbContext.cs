@@ -131,6 +131,21 @@ public class AppDbContext : DbContext
                   .HasForeignKey(e => e.CategoryId)
                   .OnDelete(DeleteBehavior.SetNull);
         });
+
+        modelBuilder.Entity<StatementDraftEntry>(b =>
+        {
+            b.Property<Guid?>("SplitDraftId")
+                .HasColumnType("uniqueidentifier");
+
+            b.HasIndex("SplitDraftId")
+                .IsUnique()
+                .HasFilter("[SplitDraftId] IS NOT NULL");
+
+            b.HasOne<StatementDraft>()
+                .WithMany()
+                .HasForeignKey("SplitDraftId")
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

@@ -3,8 +3,9 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure.Statements.Reader;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
+using FinanceManager.Domain.Contacts;
+using FinanceManager.Shared.Dtos; // added
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -49,15 +50,7 @@ public sealed class StatementDraftService : IStatementDraftService
         // Auto classify after creation
         await ClassifyInternalAsync(draft, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
-        return Map(draft);
-    }
-
-    public async Task<StatementDraftDto?> GetDraftAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
-    {
-        var draft = await _db.StatementDrafts
-            .Include(d => d.Entries)
-            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        return draft == null ? null : Map(draft);
+        return Map(draft); // einfache Variante ohne SplitLookup
     }
 
     public async Task<IReadOnlyList<StatementDraftDto>> GetOpenDraftsAsync(Guid ownerUserId, CancellationToken ct)
@@ -67,7 +60,39 @@ public sealed class StatementDraftService : IStatementDraftService
             .Where(d => d.OwnerUserId == ownerUserId && d.Status == StatementDraftStatus.Draft)
             .OrderByDescending(d => d.CreatedUtc)
             .ToListAsync(ct);
-        return drafts.Select(Map).ToList();
+
+        // Lookup: welche Drafts sind als SplitDraft verknüpft
+        var splitLinks = await _db.StatementDraftEntries
+            .Where(e => e.SplitDraftId != null)
+            .Select(e => new { e.Id, e.DraftId, e.SplitDraftId, e.Amount })
+            .ToListAsync(ct);
+
+        var bySplitId = splitLinks
+            .GroupBy(x => x.SplitDraftId!.Value)
+            .ToDictionary(g => g.Key, g => (dynamic)g.First()); // Eintrag pro SplitDraftId
+
+        return drafts.Select(d => Map(d, bySplitId)).ToList();
+    }
+
+    public async Task<StatementDraftDto?> GetDraftAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts
+            .Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+
+        var splitRef = await _db.StatementDraftEntries
+            .Where(e => e.SplitDraftId == draft.Id)
+            .Select(e => new { e.DraftId, e.Id, e.Amount })
+            .FirstOrDefaultAsync(ct);
+
+        if (splitRef == null)
+        {
+            return Map(draft); // keine Parent-Referenz
+        }
+
+        var dict = new Dictionary<Guid, dynamic> { { draft.Id, (dynamic)splitRef } };
+        return Map(draft, dict);
     }
 
     public async Task<StatementDraftDto?> AddEntryAsync(Guid draftId, Guid ownerUserId, DateTime bookingDate, decimal amount, string subject, CancellationToken ct)
@@ -78,7 +103,7 @@ public sealed class StatementDraftService : IStatementDraftService
         _db.Entry(draft.AddEntry(bookingDate, amount, subject)).State = EntityState.Added;
         await ClassifyInternalAsync(draft, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
-        return Map(draft);
+        return await GetDraftAsync(draftId, ownerUserId, ct); // Sicherstellen, dass Mapping mit evtl. SplitRefs erfolgt
     }
 
     public async Task<CommitResult?> CommitAsync(Guid draftId, Guid ownerUserId, Guid accountId, ImportFormat format, CancellationToken ct)
@@ -130,7 +155,7 @@ public sealed class StatementDraftService : IStatementDraftService
         if (draft == null) { return null; }
         await ClassifyInternalAsync(draft, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
-        return Map(draft);
+        return await GetDraftAsync(draftId, ownerUserId, ct);
     }
 
     public async Task<StatementDraftDto?> SetAccountAsync(Guid draftId, Guid ownerUserId, Guid accountId, CancellationToken ct)
@@ -143,7 +168,7 @@ public sealed class StatementDraftService : IStatementDraftService
         draft.SetDetectedAccount(accountId);
         await ClassifyInternalAsync(draft, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
-        return Map(draft);
+        return await GetDraftAsync(draftId, ownerUserId, ct);
     }
 
     public void TryAutoAssignSavingsPlan(StatementDraftEntry entry, IEnumerable<SavingsPlan> userPlans, Domain.Contacts.Contact selfContact)
@@ -154,7 +179,7 @@ public sealed class StatementDraftService : IStatementDraftService
         // Hilfsfunktion zur Normalisierung von Umlauten
         static string NormalizeUmlauts(string text)
         {
-            if (string.IsNullOrEmpty(text)) return string.Empty;
+            if (string.IsNullOrEmpty(text)) { return string.Empty; }
             return text
                 .Replace("ä", "ae", StringComparison.OrdinalIgnoreCase)
                 .Replace("ö", "oe", StringComparison.OrdinalIgnoreCase)
@@ -180,12 +205,12 @@ public sealed class StatementDraftService : IStatementDraftService
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        if (draft == null) { return null; }
+        if (draft == null) { return null!; }
         var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
-        if (entry == null) return null;
+        if (entry == null) { return null!; }
         entry.AssignSavingsPlan(savingsPlanId);
         await _db.SaveChangesAsync(ct);
-        return Map(draft);
+        return (await GetDraftAsync(draftId, ownerUserId, ct))!;
     }
 
     public async Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct)
@@ -207,8 +232,9 @@ public sealed class StatementDraftService : IStatementDraftService
             entry.MarkAccounted(contactId.Value);
         }
         await _db.SaveChangesAsync(ct);
-        return Map(draft);
+        return await GetDraftAsync(draftId, ownerUserId, ct);
     }
+
     public async Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -219,17 +245,72 @@ public sealed class StatementDraftService : IStatementDraftService
 
         entry.MarkCostNeutral(isCostNeutral ?? false);
         await _db.SaveChangesAsync(ct);
-        return Map(draft);
+        return await GetDraftAsync(draftId, ownerUserId, ct);
+    }
+
+    public async Task<StatementDraftDto?> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, Guid? splitDraftId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts
+            .Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+        if (draft.Status != StatementDraftStatus.Draft) { return null; }
+
+        // Nur wenn bereits ein Kontakt gesetzt und dieser Zahlungs­vermittler ist
+        if (splitDraftId != null)
+        {
+            if (entry.ContactId == null)
+            {
+                throw new InvalidOperationException("Contact required for split.");
+            }
+            var contact = await _db.Contacts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == entry.ContactId && c.OwnerUserId == ownerUserId, ct);
+            if (contact == null || !contact.IsPaymentIntermediary)
+            {
+                throw new InvalidOperationException("Contact is not a payment intermediary.");
+            }
+
+            // Ziel Split-Draft laden
+            var splitDraft = await _db.StatementDrafts
+                .FirstOrDefaultAsync(d => d.Id == splitDraftId && d.OwnerUserId == ownerUserId, ct);
+            if (splitDraft == null)
+            {
+                throw new InvalidOperationException("Split draft not found.");
+            }
+            if (splitDraft.DetectedAccountId != null)
+            {
+                throw new InvalidOperationException("Split draft must not have an account assigned.");
+            }
+            // Sicherstellen, dass dieser SplitDraft nicht schon benutzt wird
+            bool inUse = await _db.StatementDraftEntries
+                .AnyAsync(e => e.SplitDraftId == splitDraftId, ct);
+            if (inUse)
+            {
+                throw new InvalidOperationException("Split draft already linked.");
+            }
+
+            entry.AssignSplitDraft(splitDraftId.Value);
+        }
+        else
+        {
+            entry.ClearSplitDraft();
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return await GetDraftAsync(draftId, ownerUserId, ct);
     }
 
     private async Task ClassifyInternalAsync(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
-    {        
+    {
         await ClassifyHeader(draft, ownerUserId, ct);
 
         // Preload data needed for classification
         var contacts = await _db.Contacts.AsNoTracking()
             .Where(c => c.OwnerUserId == ownerUserId)
-            .Select(c => c)
             .ToListAsync(ct);
         var selfContact = contacts.First(c => c.Type == ContactType.Self);
         var aliasLookup = await _db.AliasNames.AsNoTracking()
@@ -292,13 +373,13 @@ public sealed class StatementDraftService : IStatementDraftService
     private static void TryAutoAssignContact(List<Domain.Contacts.Contact> contacts, Dictionary<Guid, List<string>> aliasLookup, Guid? bankContactId, Domain.Contacts.Contact selfContact, StatementDraftEntry entry)
     {
         // Contact resolution: match by exact name or alias contains in subject/counterparty
-        var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant();
         var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant();
         Guid? matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedRecipient);
         var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
         // Nach Zuordnung des Kontakts:
         if (matchedContact != null && matchedContact.IsPaymentIntermediary)
         {
+            var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant();
             matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedSubject);
         }
         else if (matchedContact != null && matchedContact.Type == ContactType.Bank && bankContactId != null && matchedContact.Id != bankContactId)
@@ -309,7 +390,9 @@ public sealed class StatementDraftService : IStatementDraftService
         else if (matchedContact != null)
         {
             if (matchedContact.Id == selfContact.Id)
+            {
                 entry.MarkCostNeutral(true);
+            }
             entry.MarkAccounted(matchedContact.Id);
         }
     }
@@ -334,10 +417,10 @@ public sealed class StatementDraftService : IStatementDraftService
                 .Where(a => a.OwnerUserId == ownerUserId)
                 .Select(a => a.Id)
                 .ToListAsync(ct);
-                if (singleAccountId.Count == 1)
-                {
-                    draft.SetDetectedAccount(singleAccountId[0]);
-                }
+            if (singleAccountId.Count == 1)
+            {
+                draft.SetDetectedAccount(singleAccountId[0]);
+            }
         }
     }
 
@@ -387,25 +470,71 @@ public sealed class StatementDraftService : IStatementDraftService
         return matchedContactId;
     }
 
-    private static StatementDraftDto Map(StatementDraft draft) => new(
-        draft.Id,
-        draft.OriginalFileName,
-        draft.DetectedAccountId,
-        draft.Status,
-        draft.Entries.Select(e => new StatementDraftEntryDto(
-            e.Id,
-            e.BookingDate,
-            e.ValutaDate,
-            e.Amount,
-            e.CurrencyCode,
-            e.Subject,
-            e.RecipientName,
-            e.BookingDescription,
-            e.IsAnnounced,
-            e.IsCostNeutral,
-            e.Status,
-            e.ContactId,
-            e.SavingsPlanId)).ToList());
+    // Einfaches Mapping ohne Split-Infos (für frühe Aufrufe wie Create)
+    private static StatementDraftDto Map(StatementDraft draft)
+    {
+        var total = draft.Entries.Sum(e => e.Amount);
+        return new StatementDraftDto(
+            draft.Id,
+            draft.OriginalFileName,
+            draft.DetectedAccountId,
+            draft.Status,
+            total,
+            false,
+            null,
+            null,
+            null,
+            draft.Entries.Select(e => new StatementDraftEntryDto(
+                e.Id,
+                e.BookingDate,
+                e.ValutaDate,
+                e.Amount,
+                e.CurrencyCode,
+                e.Subject,
+                e.RecipientName,
+                e.BookingDescription,
+                e.IsAnnounced,
+                e.IsCostNeutral,
+                e.Status,
+                e.ContactId,
+                e.SavingsPlanId,
+                e.SplitDraftId)).ToList());
+    }
 
-    
+    // Mapping mit Split-Infos
+    private static StatementDraftDto Map(StatementDraft draft, IDictionary<Guid, dynamic> splitRefLookup)
+    {
+        var total = draft.Entries.Sum(e => e.Amount);
+        dynamic? refInfo = null;
+        splitRefLookup.TryGetValue(draft.Id, out refInfo);
+        Guid? parentDraftId = refInfo?.DraftId;
+        Guid? parentEntryId = refInfo?.Id;
+        decimal? parentEntryAmount = refInfo?.Amount;
+
+        return new StatementDraftDto(
+            draft.Id,
+            draft.OriginalFileName,
+            draft.DetectedAccountId,
+            draft.Status,
+            total,
+            parentDraftId != null,
+            parentDraftId,
+            parentEntryId,
+            parentEntryAmount,
+            draft.Entries.Select(e => new StatementDraftEntryDto(
+                e.Id,
+                e.BookingDate,
+                e.ValutaDate,
+                e.Amount,
+                e.CurrencyCode,
+                e.Subject,
+                e.RecipientName,
+                e.BookingDescription,
+                e.IsAnnounced,
+                e.IsCostNeutral,
+                e.Status,
+                e.ContactId,
+                e.SavingsPlanId,
+                e.SplitDraftId)).ToList());
+    }
 }

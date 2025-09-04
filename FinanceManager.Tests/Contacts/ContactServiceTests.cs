@@ -7,6 +7,7 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Contacts;
+using FinanceManager.Shared.Dtos;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -68,7 +69,6 @@ public sealed class ContactServiceTests
     {
         var (sut, db) = Create();
         var owner = Guid.NewGuid();
-        // Seed self contact directly (service prevents creation)
         var self = new Contact(owner, "Me", ContactType.Self, null);
         db.Contacts.Add(self);
         await db.SaveChangesAsync();
@@ -129,7 +129,7 @@ public sealed class ContactServiceTests
             new Contact(owner1, "C", ContactType.Person, null));
         await db.SaveChangesAsync();
 
-        var list = await sut.ListAsync(owner1, 0, 50, CancellationToken.None);
+        var list = await sut.ListAsync(owner1, 0, 50, null, null, CancellationToken.None);
 
         list.Should().HaveCount(2);
         list.Select(c => c.Name).Should().BeEquivalentTo(new[] { "A", "C" });

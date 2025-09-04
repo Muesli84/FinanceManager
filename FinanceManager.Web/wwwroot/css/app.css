@@ -84,3 +84,16 @@ button.danger:hover:not(:disabled) { filter:brightness(1.15); }
     border-radius: 6px;
     box-shadow: 0 2px 8px #0002;
 }
+
+/* Split Dialog Styles */
+.split-center { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:1000; padding:1.5rem; }
+.split-dialog { width:100%; max-width:560px; background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.35rem 1rem 1.35rem; box-shadow:0 6px 28px #000a, 0 0 0 1px #000 inset; }
+.split-scroll { max-height:300px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius); background:#141519; padding:.35rem .25rem; }
+.split-row { padding:.55rem .65rem; border-radius:4px; cursor:pointer; display:flex; flex-direction:column; gap:.25rem; font-size:.8rem; background:transparent; border:1px solid transparent; transition:background .15s,border-color .15s; }
+.split-row:hover { background:#1f2227; }
+.split-row.active { background:#253041; border-color:var(--accent); }
+.split-row .name { font-size:.85rem; font-weight:600; letter-spacing:.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.split-row .meta { font-size:.65rem; opacity:.7; }
+.split-hint { padding:.6rem .4rem; font-size:.7rem; opacity:.7; text-align:center; }
+.split-error { margin-top:.6rem; background:var(--danger); color:#000; padding:.45rem .6rem; border-radius:4px; font-size:.7rem; }
+.split-actions { display:flex; gap:.6rem; justify-content:flex-end; margin-top:1rem; }

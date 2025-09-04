@@ -108,6 +108,7 @@ public sealed class StatementDraftEntry : Entity
     public Guid? ContactId { get; private set; }
     public Guid? SavingsPlanId { get; private set; }
     public bool IsCostNeutral { get; private set; } = false;
+    public Guid? SplitDraftId { get; private set; }
 
     public void MarkAlreadyBooked() { Status = StatementDraftEntryStatus.AlreadyBooked; Touch(); }
     public void MarkAccounted(Guid contactId)
@@ -138,4 +139,23 @@ public sealed class StatementDraftEntry : Entity
     }
 
     public void AssignSavingsPlan(Guid? savingsPlanId) => SavingsPlanId = savingsPlanId;
+
+    public void AssignSplitDraft(Guid splitDraftId)
+    {
+        if (SplitDraftId != null)
+        {
+            throw new InvalidOperationException("Split draft already assigned.");
+        }
+        SplitDraftId = splitDraftId;
+        Touch();
+    }
+
+    public void ClearSplitDraft()
+    {
+        if (SplitDraftId != null)
+        {
+            SplitDraftId = null;
+            Touch();
+        }
+    }
 }

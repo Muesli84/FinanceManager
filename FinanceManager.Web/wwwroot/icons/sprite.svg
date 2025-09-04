@@ -65,4 +65,23 @@
 		<path d="M17 3h0" />
 		<path d="M7 21h0" />
 	</symbol>
+	<symbol id="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		<path d="M20 6L9 17l-5-5" />
+	</symbol>
+	<symbol id="link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		<path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.4 1.4" />
+		<path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.4-1.4" />
+	</symbol>
+	<symbol id="unlink" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		<path d="M4 9l2-2a5 5 0 0 1 7.07 0l1.05 1.05" />
+		<path d="M20 15l-2 2a5 5 0 0 1-7.07 0L9.88 15.95" />
+		<path d="M15 9l2-2" />
+		<path d="M9 15l-2 2" />
+		<path d="M3 3l18 18" />
+	</symbol>
+	<symbol id="external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+		<path d="M14 3h7v7" />
+		<path d="M10 14L21 3" />
+		<path d="M5 7v11a1 1 0 0 0 1 1h11" />
+	</symbol>
 </svg>
