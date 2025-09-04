@@ -10,23 +10,26 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-KTO-004  | Konto teilen mit anderen Benutzern                              | (Teilen-Logik noch offen)                                                            | ✖      |
 | FA-AUSZ-001 | Kontoauszugdateien einlesen (CSV, PDF)                          | StatementDraftService, FileReader                                                    | ✔      |
 | FA-AUSZ-002 | Für jeden Import wird ein Buch.-Blatt erzeugt                   | StatementDraftService, Domain.StatementDraft                                         | ✔      |
-| FA-AUSZ-003 | Buch.-Blatt Einträge bearbeiten, ergänzen, löschen              | StatementDraftService, UI                                                            | ✔      |
+| FA-AUSZ-003 | Buch.-Blatt Einträge bearbeiten, ergänzen, löschen              | StatementDraftService, UI (Detail + Editiermodus)                                    | ✔      |
 | FA-AUSZ-004 | Beim Buchen entstehen Bankposten                                | Noch nicht implementiert                                                             | ✖      |
 | FA-AUSZ-005 | Duplikatserkennung beim Import                                  | StatementDraftService: Duplikatprüfung                                               | ✔      |
-| FA-AUSZ-006 | Kostenneutral bei eigenen Kontakten                             | StatementDraftService: Status-Logik                                                  | ✔      |
+| FA-AUSZ-006 | Kostenneutral bei eigenen Kontakten                             | StatementDraftService: Status-/CostNeutral-Logik                                     | ✔      |
 | FA-AUSZ-007 | Kontaktposten beim Buchen entstehen                             | Noch nicht implementiert                                                             | ✖      |
 | FA-AUSZ-008 | Empfänger muss Kontakt zugeordnet werden                        | StatementDraftService, UI                                                            | ✔      |
 | FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | (Wertpapierlogik noch offen)                                                         | ✖      |
-| FA-AUSZ-010 | PDF-Parsing mit Tabellenextraktion                              | ING_StatementFileReader, Erweiterbar                                                 | ✔      |
+| FA-AUSZ-010 | PDF-Parsing mit Tabellenextraktion                              | ING_StatementFileReader, Barclays_StatementFileReader, erweiterbar                  | ✔      |
 | FA-AUSZ-011 | Import-Pipeline mit Format-Strategie                            | StatementDraftService, Reader-Interface                                              | ✔      |
+| FA-AUSZ-012 | Anzeige Gesamtbetrag verknüpfter Aufteilungs-Auszüge im Eintrag | StatementDraftsController GetEntry: SplitSum/Difference; EntryDetail UI Amount-Zeile | ✔      |
+| FA-AUSZ-013 | Status offen bei Zahlungsintermediär bis vollständig gesplittet | StatementDraftService: TryAutoAssignContact & ReevaluateParentEntryStatusAsync       | ✔      |
+| FA-AUSZ-014 | Originaldatei speichern & Download / Inline-Ansicht             | StatementDraft: OriginalFileContent; Controller /file Endpoint; Detail-Viewer        | ✔      |
 | FA-KON-001  | Kontakte verwalten (CRUD)                                       | ContactService, ContactsController, UI                                               | ✔      |
 | FA-KON-002  | Kontakte können Kategorie zugeordnet werden                     | ContactService, UI                                                                   | ✔      |
 | FA-KON-003  | Anwender als Kontakt angelegt                                   | ContactService, Initialisierung                                                      | ✔      |
 | FA-KON-004  | Aliasnamen mit Wildcards pflegen                                | ContactService, UI, StatementDraftService                                            | ✔      |
-| FA-KON-005  | Kontakte verschmelzen (Merge)                                   | ContactService.MergeAsync, ContactsController POST /merge, ContactDetail + Dialog    | ✔      |
+| FA-KON-005  | Kontakte verschmelzen (Merge)                                   | ContactService.MergeAsync, ContactsController, ContactMergeDialog                    | ✔      |
 | FA-AUTO-001 | Aliasnamen für automatische Kontaktzuordnung                    | StatementDraftService: Alias-Matching                                                | ✔      |
 | FA-AUTO-002 | Duplikate werden ausgelassen                                    | StatementDraftService: Duplikatprüfung                                               | ✔      |
-| FA-SPAR-001 | Sparpläne verwalten (CRUD)                                      | Noch nicht implementiert                                                             | ✖      |
+| FA-SPAR-001 | Sparpläne verwalten (CRUD)                                      | (Grundstruktur DTOs vorhanden, Service/CRUD offen)                                   | ✖      |
 | FA-SPAR-002 | Sparplan-Typen                                                  | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-003 | Wiederkehrende Intervalle                                       | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-004 | Automatische Sparplanvorschläge                                 | Noch nicht implementiert                                                             | ✖      |
@@ -104,10 +107,10 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
-Änderungen (03.09.2025):
-- Neu: FA-KON-005 „Kontakte verschmelzen“ (Merge) implementiert.
-- Kontakte-API um Filter (q, type) erweitert → Fortschritt FA-API-002.
-- Kontakte-Liste: Suchfeld + Live-Debounce-Filter → Fortschritt FA-UI-001 / FA-UI-002.
-- Anzeige der Kontaktkategorie in Liste (Verbesserung UI, keine eigene Anforderung).
+Änderungen (04.09.2025):
+- Neu: FA-AUSZ-012 Anzeige des Gesamtbetrags eines verknüpften Aufteilungs-Auszugs im Eintrag.
+- Neu: FA-AUSZ-013 Status-Logik für Zahlungsintermediäre (offen bis vollständige Aufteilung).
+- Neu: FA-AUSZ-014 Speicherung & Download/Inline-Anzeige der Original-Importdatei.
+- Erweiterung: FA-AUSZ-003 jetzt inkl. Editiermodus für Kerndaten (BookingDate, Amount, Subject etc.).
 
-*Letzte Aktualisierung: 03.09.2025*
+*Letzte Aktualisierung: 04.09.2025*
