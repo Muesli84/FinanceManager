@@ -660,6 +660,27 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
 
         var messages = new List<DraftValidationMessageDto>();
 
+        // Determine if this draft is used as a split draft (referenced by a parent entry)
+        var isSplitDraft = await _db.StatementDraftEntries.AsNoTracking().AnyAsync(e => e.SplitDraftId == draft.Id, ct);
+
+        // Account assignment rules differ for split drafts
+        if (isSplitDraft)
+        {
+            // Split draft MUST NOT have an account
+            if (draft.DetectedAccountId != null)
+            {
+                messages.Add(new("SPLIT_DRAFT_HAS_ACCOUNT","Error","Ein zugeordneter Aufteilungs-Kontoauszug darf keinem Bankkonto zugeordnet sein.", draft.Id, null));
+            }
+        }
+        else
+        {
+            // Normal draft MUST have an account
+            if (draft.DetectedAccountId == null)
+            {
+                messages.Add(new("NO_ACCOUNT","Error","Dem Kontoauszug ist kein Bankkonto zugeordnet.", draft.Id, null));
+            }
+        }
+
         // Preload supporting data
         var accounts = await _db.Accounts.AsNoTracking().ToListAsync(ct);
         var contacts = await _db.Contacts.AsNoTracking().Where(c => c.OwnerUserId == ownerUserId).ToListAsync(ct);
@@ -674,12 +695,6 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
             {
                 bankContact = contacts.FirstOrDefault(c => c.Id == account.BankContactId);
             }
-        }
-
-        // Rule: Draft must have assigned bank account
-        if (draft.DetectedAccountId == null)
-        {
-            messages.Add(new("NO_ACCOUNT","Error","Dem Kontoauszug ist kein Bankkonto zugeordnet.", draft.Id, null));
         }
 
         // For quick split draft totals
