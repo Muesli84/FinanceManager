@@ -1,4 +1,5 @@
 using FinanceManager.Domain.Savings;
+using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Domain.Statements;
 
@@ -122,6 +123,11 @@ public sealed class StatementDraftEntry : Entity
     public Guid? SavingsPlanId { get; private set; }
     public bool IsCostNeutral { get; private set; } = false;
     public Guid? SplitDraftId { get; private set; }
+    public Guid? SecurityId { get; private set; }
+    public SecurityTransactionType? SecurityTransactionType { get; private set; }
+    public decimal? SecurityQuantity { get; private set; }
+    public decimal? SecurityFeeAmount { get; private set; }
+    public decimal? SecurityTaxAmount { get; private set; }
 
     public void UpdateCore(DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription)
     {
@@ -189,4 +195,13 @@ public sealed class StatementDraftEntry : Entity
         // Keep existing status (stay Open/Announced) – do not mark accounted yet.
         Touch();
     }
+    public void SetSecurity(Guid? securityId, SecurityTransactionType? txType, decimal? quantity, decimal? fee, decimal? tax)
+    {
+        SecurityId = securityId;
+        SecurityTransactionType = securityId == null ? null : txType;
+        SecurityQuantity = securityId == null ? null : quantity;
+        SecurityFeeAmount = securityId == null ? null : fee;
+        SecurityTaxAmount = securityId == null ? null : tax;
+    }
 }
+

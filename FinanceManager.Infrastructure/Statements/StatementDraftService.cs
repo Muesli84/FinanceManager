@@ -295,6 +295,87 @@ public sealed class StatementDraftService : IStatementDraftService
         return await GetDraftAsync(draftId, ownerUserId, ct);
     }
 
+    // Die Konstruktor-Signatur von StatementDraftEntryDto verlangt zusätzliche Parameter für Security-Informationen.
+    // Füge die fehlenden Argumente (SecurityId, SecurityTransactionType, SecurityQuantity, SecurityFeeAmount, SecurityTaxAmount) überall dort hinzu, wo StatementDraftEntryDto instanziiert wird.
+
+    private static StatementDraftDto Map(StatementDraft draft)
+    {
+        var total = draft.Entries.Sum(e => e.Amount);
+        return new StatementDraftDto(
+            draft.Id,
+            draft.OriginalFileName,
+            draft.DetectedAccountId,
+            draft.Status,
+            total,
+            false,
+            null,
+            null,
+            null,
+            draft.Entries.Select(e => new StatementDraftEntryDto(
+                e.Id,
+                e.BookingDate,
+                e.ValutaDate,
+                e.Amount,
+                e.CurrencyCode,
+                e.Subject,
+                e.RecipientName,
+                e.BookingDescription,
+                e.IsAnnounced,
+                e.IsCostNeutral,
+                e.Status,
+                e.ContactId,
+                e.SavingsPlanId,
+                e.SplitDraftId,
+                e.SecurityId,
+                e.SecurityTransactionType,
+                e.SecurityQuantity,
+                e.SecurityFeeAmount,
+                e.SecurityTaxAmount)).ToList());
+    }
+
+    // Mapping mit Split-Infos
+    private static StatementDraftDto Map(StatementDraft draft, IDictionary<Guid, dynamic> splitRefLookup)
+    {
+        var total = draft.Entries.Sum(e => e.Amount);
+        dynamic? refInfo = null;
+        splitRefLookup.TryGetValue(draft.Id, out refInfo);
+        Guid? parentDraftId = refInfo?.DraftId;
+        Guid? parentEntryId = refInfo?.Id;
+        decimal? parentEntryAmount = refInfo?.Amount;
+
+        return new StatementDraftDto(
+            draft.Id,
+            draft.OriginalFileName,
+            draft.DetectedAccountId,
+            draft.Status,
+            total,
+            parentDraftId != null,
+            parentDraftId,
+            parentEntryId,
+            parentEntryAmount,
+            draft.Entries.Select(e => new StatementDraftEntryDto(
+                e.Id,
+                e.BookingDate,
+                e.ValutaDate,
+                e.Amount,
+                e.CurrencyCode,
+                e.Subject,
+                e.RecipientName,
+                e.BookingDescription,
+                e.IsAnnounced,
+                e.IsCostNeutral,
+                e.Status,
+                e.ContactId,
+                e.SavingsPlanId,
+                e.SplitDraftId,
+                e.SecurityId,
+                e.SecurityTransactionType,
+                e.SecurityQuantity,
+                e.SecurityFeeAmount,
+                e.SecurityTaxAmount)).ToList());
+    }
+
+    // UpdateEntryCoreAsync: StatementDraftEntryDto Konstruktor anpassen
     public async Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -313,7 +394,26 @@ public sealed class StatementDraftService : IStatementDraftService
         {
             await ReevaluateParentEntryStatusAsync(ownerUserId, entry.SplitDraftId.Value, ct);
         }
-        return new StatementDraftEntryDto(entry.Id, entry.BookingDate, entry.ValutaDate, entry.Amount, entry.CurrencyCode, entry.Subject, entry.RecipientName, entry.BookingDescription, entry.IsAnnounced, entry.IsCostNeutral, entry.Status, entry.ContactId, entry.SavingsPlanId, entry.SplitDraftId);
+        return new StatementDraftEntryDto(
+            entry.Id,
+            entry.BookingDate,
+            entry.ValutaDate,
+            entry.Amount,
+            entry.CurrencyCode,
+            entry.Subject,
+            entry.RecipientName,
+            entry.BookingDescription,
+            entry.IsAnnounced,
+            entry.IsCostNeutral,
+            entry.Status,
+            entry.ContactId,
+            entry.SavingsPlanId,
+            entry.SplitDraftId,
+            entry.SecurityId,
+            entry.SecurityTransactionType,
+            entry.SecurityQuantity,
+            entry.SecurityFeeAmount,
+            entry.SecurityTaxAmount);
     }
 
     private async Task ReevaluateParentEntryStatusAsync(Guid ownerUserId, Guid splitDraftId, CancellationToken ct)
@@ -505,71 +605,46 @@ public sealed class StatementDraftService : IStatementDraftService
         return matchedContactId;
     }
 
-    // Einfaches Mapping ohne Split-Infos (für frühe Aufrufe wie Create)
-    private static StatementDraftDto Map(StatementDraft draft)
-    {
-        var total = draft.Entries.Sum(e => e.Amount);
-        return new StatementDraftDto(
-            draft.Id,
-            draft.OriginalFileName,
-            draft.DetectedAccountId,
-            draft.Status,
-            total,
-            false,
-            null,
-            null,
-            null,
-            draft.Entries.Select(e => new StatementDraftEntryDto(
-                e.Id,
-                e.BookingDate,
-                e.ValutaDate,
-                e.Amount,
-                e.CurrencyCode,
-                e.Subject,
-                e.RecipientName,
-                e.BookingDescription,
-                e.IsAnnounced,
-                e.IsCostNeutral,
-                e.Status,
-                e.ContactId,
-                e.SavingsPlanId,
-                e.SplitDraftId)).ToList());
-    }
 
-    // Mapping mit Split-Infos
-    private static StatementDraftDto Map(StatementDraft draft, IDictionary<Guid, dynamic> splitRefLookup)
+    // Beispielhafte Implementierungsergänzung (Ausschnitt)
+    public async Task<StatementDraft?> SetEntrySecurityAsync(
+        Guid draftId,
+        Guid entryId,
+        Guid? securityId,
+        SecurityTransactionType? transactionType,
+        decimal? quantity,
+        decimal? feeAmount,
+        decimal? taxAmount,
+        Guid userId,
+        CancellationToken ct)
     {
-        var total = draft.Entries.Sum(e => e.Amount);
-        dynamic? refInfo = null;
-        splitRefLookup.TryGetValue(draft.Id, out refInfo);
-        Guid? parentDraftId = refInfo?.DraftId;
-        Guid? parentEntryId = refInfo?.Id;
-        decimal? parentEntryAmount = refInfo?.Amount;
+        var draft = await _db.StatementDrafts
+            .Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == userId, ct);
 
-        return new StatementDraftDto(
-            draft.Id,
-            draft.OriginalFileName,
-            draft.DetectedAccountId,
-            draft.Status,
-            total,
-            parentDraftId != null,
-            parentDraftId,
-            parentEntryId,
-            parentEntryAmount,
-            draft.Entries.Select(e => new StatementDraftEntryDto(
-                e.Id,
-                e.BookingDate,
-                e.ValutaDate,
-                e.Amount,
-                e.CurrencyCode,
-                e.Subject,
-                e.RecipientName,
-                e.BookingDescription,
-                e.IsAnnounced,
-                e.IsCostNeutral,
-                e.Status,
-                e.ContactId,
-                e.SavingsPlanId,
-                e.SplitDraftId)).ToList());
+        if (draft == null) { return null; }
+
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+
+        // Optional: Validierung – nur wenn Empfänger = Bankkontakt
+        var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId, ct);
+        if (draft.DetectedAccountId is null)
+        {
+            // Entfernen falls unzulässig
+            entry.SetSecurity(null, null, null, null, null);
+        }
+        else if (account.BankContactId == null || entry.ContactId != account.BankContactId)
+        {
+            // Entfernen falls unzulässig
+            entry.SetSecurity(null, null, null, null, null);
+        }
+        else
+        {
+            entry.SetSecurity(securityId, transactionType, quantity, feeAmount, taxAmount);
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return draft;
     }
 }

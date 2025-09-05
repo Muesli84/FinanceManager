@@ -38,7 +38,7 @@ public sealed class SetupImportService : ISetupImportService
             _db.ClearUserData(userId);
         }
 
-        var contactCategories = ImportContactCategories(backupData.ContactCategories, userId).ToList();        
+        var contactCategories = ImportContactCategories(backupData.ContactCategories, userId).ToList();
         var contacts = ImportContacts(backupData.Contacts, contactCategories, userId).ToList();
         var accounts = ImportAccounts(backupData.BankAccounts, userId).ToList();
         var savingsPlanCategories = ImportSavingsPlanCategories(backupData.FixedAssetCategories, userId).ToList();
@@ -49,26 +49,26 @@ public sealed class SetupImportService : ISetupImportService
 
     private IEnumerable<KeyValuePair<int, Guid>> ImportStocks(JsonElement stocks, Guid userId)
     {
-        foreach (var stock in stocks.EnumerateArray())
-        {
-            var dataId = stock.GetProperty("Id").GetInt32();
-            var name = stock.GetProperty("Name").GetString();
-            var description = stock.GetProperty("Description").GetString();
-            var symbol = stock.GetProperty("Symbol").GetString();
-            var avCode = stock.GetProperty("AlphaVantageSymbol").GetString();
-            var currencyCode = stock.GetProperty("CurrencyCode").GetString();
-            if (string.IsNullOrWhiteSpace(name)) continue;
-            var newStock = new Security(userId, name, symbol, description, avCode, currencyCode ?? string.Empty, null);
-            _db.Securities.Add(newStock);
-            _db.SaveChanges();
-            yield return new KeyValuePair<int, Guid>(dataId, newStock.Id);
-        }
-        
+        if (stocks.ValueKind != JsonValueKind.Undefined)
+            foreach (var stock in stocks.EnumerateArray())
+            {
+                var dataId = stock.GetProperty("Id").GetInt32();
+                var name = stock.GetProperty("Name").GetString();
+                var description = stock.GetProperty("Description").GetString();
+                var symbol = stock.GetProperty("Symbol").GetString();
+                var avCode = stock.GetProperty("AlphaVantageSymbol").GetString();
+                var currencyCode = stock.GetProperty("CurrencyCode").GetString();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                var newStock = new Security(userId, name, symbol, description, avCode, currencyCode ?? "EUR", null);
+                _db.Securities.Add(newStock);
+                _db.SaveChanges();
+                yield return new KeyValuePair<int, Guid>(dataId, newStock.Id);
+            }
     }
 
     private IEnumerable<KeyValuePair<string, Guid>> ImportAccounts(JsonElement bankAccounts, Guid userId)
-    {        
-            var isEmpty = !_db.Accounts.Any(acc => acc.OwnerUserId == userId);
+    {
+        var isEmpty = !_db.Accounts.Any(acc => acc.OwnerUserId == userId);
         if (bankAccounts.ValueKind != JsonValueKind.Undefined)
             foreach (var account in bankAccounts.EnumerateArray())
             {
@@ -111,100 +111,100 @@ public sealed class SetupImportService : ISetupImportService
     {
         if (fixedAssets.ValueKind != JsonValueKind.Undefined)
             foreach (var fixedAsset in fixedAssets.EnumerateArray())
-        {
-            var dataId = fixedAsset.GetProperty("Id").GetInt32();
-            var name = fixedAsset.GetProperty("Name").GetString();
-            var expectedPurchaseActive = fixedAsset.GetProperty("ExpectedPurchaseActive").GetBoolean();
-            var amount = fixedAsset.GetProperty("ExpectedPurchaseAmount").GetDecimal();
-            var dueDate = fixedAsset.GetProperty("ExpectedPurchaseDate").GetDateTime();
-            var interval = fixedAsset.GetProperty("PurchaseInterval").GetInt32();
-            var status = fixedAsset.GetProperty("Status").GetInt32();
-            if (string.IsNullOrWhiteSpace(name)) continue;
-            var savingsPlanName = name;
-            var nameExists = _db.SavingsPlans.Any(p => p.OwnerUserId == userId && p.Name == savingsPlanName);
-            var counter = 1;
-            while (nameExists)
             {
-                savingsPlanName = $"{name} ({++counter})";
-                nameExists = _db.SavingsPlans.Any(p => p.OwnerUserId == userId && p.Name == savingsPlanName);
-            }
-            var newSavingsPlan = new SavingsPlan(
-                userId,
-                savingsPlanName,
-                expectedPurchaseActive ? (interval == 0 ? SavingsPlanType.OneTime : SavingsPlanType.Recurring) : SavingsPlanType.Open,
-                amount,
-                expectedPurchaseActive ? dueDate : null,
-                interval == 0 ? null : (SavingsPlanInterval)(interval - 1));
-            if (status == 3)
-                newSavingsPlan.Archive();
-
-            if (fixedAsset.TryGetProperty("Category", out var categoryProp))
-                if (categoryProp.TryGetProperty("Id", out var categoryIdProp) && categoryIdProp.ValueKind == JsonValueKind.Number)
+                var dataId = fixedAsset.GetProperty("Id").GetInt32();
+                var name = fixedAsset.GetProperty("Name").GetString();
+                var expectedPurchaseActive = fixedAsset.GetProperty("ExpectedPurchaseActive").GetBoolean();
+                var amount = fixedAsset.GetProperty("ExpectedPurchaseAmount").GetDecimal();
+                var dueDate = fixedAsset.GetProperty("ExpectedPurchaseDate").GetDateTime();
+                var interval = fixedAsset.GetProperty("PurchaseInterval").GetInt32();
+                var status = fixedAsset.GetProperty("Status").GetInt32();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                var savingsPlanName = name;
+                var nameExists = _db.SavingsPlans.Any(p => p.OwnerUserId == userId && p.Name == savingsPlanName);
+                var counter = 1;
+                while (nameExists)
                 {
-                    var categoryId = categoryIdProp.GetInt32();
-                    var matchingCategory = savingsPlanCategories.FirstOrDefault(c => c.Key == categoryId);
-                    if (matchingCategory.Value != Guid.Empty)
-                    {
-                        newSavingsPlan.SetCategory(matchingCategory.Value);
-                    }
+                    savingsPlanName = $"{name} ({++counter})";
+                    nameExists = _db.SavingsPlans.Any(p => p.OwnerUserId == userId && p.Name == savingsPlanName);
                 }
-            _db.SavingsPlans.Add(newSavingsPlan);
-            _db.SaveChanges();
-            yield return new KeyValuePair<int, Guid>(dataId, newSavingsPlan.Id);
-        }
+                var newSavingsPlan = new SavingsPlan(
+                    userId,
+                    savingsPlanName,
+                    expectedPurchaseActive ? (interval == 0 ? SavingsPlanType.OneTime : SavingsPlanType.Recurring) : SavingsPlanType.Open,
+                    amount,
+                    expectedPurchaseActive ? dueDate : null,
+                    interval == 0 ? null : (SavingsPlanInterval)(interval - 1));
+                if (status == 3)
+                    newSavingsPlan.Archive();
+
+                if (fixedAsset.TryGetProperty("Category", out var categoryProp))
+                    if (categoryProp.TryGetProperty("Id", out var categoryIdProp) && categoryIdProp.ValueKind == JsonValueKind.Number)
+                    {
+                        var categoryId = categoryIdProp.GetInt32();
+                        var matchingCategory = savingsPlanCategories.FirstOrDefault(c => c.Key == categoryId);
+                        if (matchingCategory.Value != Guid.Empty)
+                        {
+                            newSavingsPlan.SetCategory(matchingCategory.Value);
+                        }
+                    }
+                _db.SavingsPlans.Add(newSavingsPlan);
+                _db.SaveChanges();
+                yield return new KeyValuePair<int, Guid>(dataId, newSavingsPlan.Id);
+            }
     }
 
     private IEnumerable<KeyValuePair<int, Guid>> ImportSavingsPlanCategories(JsonElement fixedAssetCategories, Guid userId)
     {
         if (fixedAssetCategories.ValueKind != JsonValueKind.Undefined)
             foreach (var category in fixedAssetCategories.EnumerateArray())
-        {
-            var dataId = category.GetProperty("Id").GetInt32();
-            var name = category.GetProperty("Name").GetString();
-            if (string.IsNullOrWhiteSpace(name)) continue;
-            var newCategory = new SavingsPlanCategory(userId, name);
-            _db.SavingsPlanCategories.Add(newCategory);
-            yield return new KeyValuePair<int, Guid>(dataId, newCategory.Id);
-        }
+            {
+                var dataId = category.GetProperty("Id").GetInt32();
+                var name = category.GetProperty("Name").GetString();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                var newCategory = new SavingsPlanCategory(userId, name);
+                _db.SavingsPlanCategories.Add(newCategory);
+                yield return new KeyValuePair<int, Guid>(dataId, newCategory.Id);
+            }
     }
 
     private IEnumerable<KeyValuePair<int, Guid>> ImportContacts(JsonElement contacts, IEnumerable<KeyValuePair<int, Guid>> contactCategories, Guid userId)
     {
         if (contacts.ValueKind != JsonValueKind.Undefined)
-        foreach (var contact in contacts.EnumerateArray())
-        {
-            var dataId = contact.GetProperty("Id").GetInt32();
-            var name = contact.GetProperty("Name").GetString();
-            var isPaymentProvider = contact.GetProperty("IsPaymentProvider").GetBoolean();
-            if (string.IsNullOrWhiteSpace(name)) continue;
-            var newContact = new Contact(userId, name, ContactType.Organization, null);
-            if (contact.TryGetProperty("Category", out var categoryProp))
-                if (categoryProp.TryGetProperty("Id", out var categoryIdProp) && categoryIdProp.ValueKind == JsonValueKind.Number)
-                {
-                    var categoryId = categoryIdProp.GetInt32();
-                    var matchingCategory = contactCategories.FirstOrDefault(c => c.Key == categoryId);
-                    if (matchingCategory.Value != Guid.Empty)
+            foreach (var contact in contacts.EnumerateArray())
+            {
+                var dataId = contact.GetProperty("Id").GetInt32();
+                var name = contact.GetProperty("Name").GetString();
+                var isPaymentProvider = contact.GetProperty("IsPaymentProvider").GetBoolean();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                var newContact = new Contact(userId, name, ContactType.Organization, null);
+                if (contact.TryGetProperty("Category", out var categoryProp))
+                    if (categoryProp.TryGetProperty("Id", out var categoryIdProp) && categoryIdProp.ValueKind == JsonValueKind.Number)
                     {
-                        newContact.SetCategory(matchingCategory.Value);
+                        var categoryId = categoryIdProp.GetInt32();
+                        var matchingCategory = contactCategories.FirstOrDefault(c => c.Key == categoryId);
+                        if (matchingCategory.Value != Guid.Empty)
+                        {
+                            newContact.SetCategory(matchingCategory.Value);
+                        }
                     }
-                }
-            _db.Contacts.Add(newContact);
-            yield return new KeyValuePair<int, Guid>(dataId, newContact.Id);
-        }
+                _db.Contacts.Add(newContact);
+                yield return new KeyValuePair<int, Guid>(dataId, newContact.Id);
+            }
     }
 
-    private IEnumerable<KeyValuePair<int,Guid>> ImportContactCategories(JsonElement contactCategories, Guid userId)
+    private IEnumerable<KeyValuePair<int, Guid>> ImportContactCategories(JsonElement contactCategories, Guid userId)
     {
         if (contactCategories.ValueKind != JsonValueKind.Undefined)
-        foreach (var category in contactCategories.EnumerateArray())
-        {
-            var dataId = category.GetProperty("Id").GetInt32();
-            var name = category.GetProperty("Name").GetString();
-            if (string.IsNullOrWhiteSpace(name)) continue;
-            var newCategory = new ContactCategory(userId, name);
-            _db.ContactCategories.Add(newCategory);
-            yield return new KeyValuePair<int, Guid>(dataId, newCategory.Id);
-        }
+            foreach (var category in contactCategories.EnumerateArray())
+            {
+                var dataId = category.GetProperty("Id").GetInt32();
+                var name = category.GetProperty("Name").GetString();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                var newCategory = new ContactCategory(userId, name);
+                _db.ContactCategories.Add(newCategory);
+                yield return new KeyValuePair<int, Guid>(dataId, newCategory.Id);
+            }
     }
 
     private sealed class BackupMeta

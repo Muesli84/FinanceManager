@@ -16,7 +16,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-006 | Kostenneutral bei eigenen Kontakten                             | StatementDraftService: Status-/CostNeutral-Logik                                     | ✔      |
 | FA-AUSZ-007 | Kontaktposten beim Buchen entstehen                             | Noch nicht implementiert                                                             | ✖      |
 | FA-AUSZ-008 | Empfänger muss Kontakt zugeordnet werden                        | StatementDraftService, UI                                                            | ✔      |
-| FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | (Wertpapierlogik noch offen)                                                         | ✖      |
+| FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | UI & API: Auswahl, Neuanlage und Zuordnung in StatementDraftEntryDetail; Persistierung via /security Endpoint. Buchungs-/Transaktionslogik (Positions-/Depotbuchungen) noch offen. | ~      |
 | FA-AUSZ-010 | PDF-Parsing mit Tabellenextraktion                              | ING_StatementFileReader, Barclays_StatementFileReader, erweiterbar                   | ✔      |
 | FA-AUSZ-011 | Import-Pipeline mit Format-Strategie                            | StatementDraftService, Reader-Interface                                              | ✔      |
 | FA-AUSZ-012 | Anzeige Gesamtbetrag verknüpfter Aufteilungs-Auszüge im Eintrag | StatementDraftsController GetEntry: SplitSum/Difference; EntryDetail UI Amount-Zeile | ✔      |
@@ -41,7 +41,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-SPAR-010 | Sparplan aus Rückzahlung/Kredit                                 | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-011 | Sparplanposten bei Buchung                                      | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-012 | Umschalten aktive/archivierte Sparpläne                         | Noch nicht implementiert                                                             | ✖      |
-| FA-WERT-001 | Wertpapiere verwalten                                           | Noch nicht implementiert                                                             | ✔      |
+| FA-WERT-001 | Wertpapiere verwalten                                           | SecurityService, SecuritiesController, UI (Liste, Detail, Kategorien), Erstellung & Rücksprung aus Kontoauszug | ✔      |
 | FA-WERT-002 | Wertpapiertransaktionen                                         | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-003 | Wertpapierposten bei Buchung                                    | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-004 | Kursabruf AlphaVantage API                                      | Noch nicht implementiert                                                             | ✖      |
@@ -107,6 +107,11 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
+Änderungen (05.09.2025):
+- FA-AUSZ-009 von ✖ auf ~: UI & API für Wertpapierauswahl, direkte Neuanlage und Zuordnung aus Kontoauszugseintrag implementiert. Depot-/Transaktionsverbuchung noch offen.
+- FA-WERT-001 Beschreibung präzisiert (Liste, Detail, Kategorien, Rücksprung aus Kontoauszug).
+- Neuer Aktionsbutton in Kontoauszugseintrag zum Öffnen der Wertpapierdetailseite + SVG-Symbol (security) ergänzt.
+
 Änderungen (04.09.2025):
 - Neu: FA-AUSZ-012 Anzeige des Gesamtbetrags eines verknüpften Aufteilungs-Auszugs im Eintrag.
 - Neu: FA-AUSZ-013 Status-Logik für Zahlungsintermediäre (offen bis vollständige Aufteilung).
@@ -117,4 +122,4 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
 - Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
-*Letzte Aktualisierung: 04.09.2025*
+*Letzte Aktualisierung: 05.09.2025*

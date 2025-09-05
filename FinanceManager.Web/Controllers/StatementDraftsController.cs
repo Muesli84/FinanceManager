@@ -1,14 +1,18 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Mime;
 using FinanceManager.Application;
+using FinanceManager.Application.Accounts;
 using FinanceManager.Application.Statements;
 using FinanceManager.Domain;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using System.Linq;
+using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Accounts;
+using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -78,6 +82,14 @@ public sealed class StatementDraftsController : ControllerBase
             diff = entry.Amount - splitSum;
         }
 
+        Guid? bankContactId = null;
+        if (draft.DetectedAccountId.HasValue)
+        {
+            var accountService = HttpContext.RequestServices.GetRequiredService<IAccountService>();
+            var account = await accountService.GetAsync(draft.DetectedAccountId.Value, _current.UserId, ct);
+            bankContactId = account?.BankContactId;
+        }
+
         return Ok(new
         {
             draft.DraftId,
@@ -87,7 +99,8 @@ public sealed class StatementDraftsController : ControllerBase
             NextEntryId = next,
             NextOpenEntryId = nextOpen,
             SplitSum = splitSum,
-            Difference = diff
+            Difference = diff,
+            BankContactId = bankContactId
         });
     }
 
@@ -224,5 +237,41 @@ public sealed class StatementDraftsController : ControllerBase
     {
         var updated = await _drafts.UpdateEntryCoreAsync(draftId, entryId, _current.UserId, body.BookingDate, body.ValutaDate, body.Amount, body.Subject, body.RecipientName, body.CurrencyCode, body.BookingDescription, ct);
         return updated == null ? NotFound() : Ok(updated);
+    }
+
+    public sealed record SetEntrySecurityRequest(
+        Guid? SecurityId,
+        SecurityTransactionType? TransactionType,
+        decimal? Quantity,
+        decimal? FeeAmount,
+        decimal? TaxAmount);
+
+
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/security")]
+    public async Task<IActionResult> SetEntrySecurityAsync(
+        Guid draftId,
+        Guid entryId,
+        [FromBody] SetEntrySecurityRequest body,
+        CancellationToken ct)
+    {
+        // Service-Aufruf / Persistenz: hier exemplarisch direkt über Draft-Service
+        var draft = await _drafts.SetEntrySecurityAsync(
+            draftId,
+            entryId,
+            body.SecurityId,
+            body.TransactionType,
+            body.Quantity,
+            body.FeeAmount,
+            body.TaxAmount,
+            _current.UserId,
+            ct);
+
+        if (draft == null)
+        {
+            return NotFound();
+        }
+
+        var entry = draft.Entries.First(e => e.Id == entryId);
+        return Ok(entry);
     }
 }

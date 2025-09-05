@@ -16,3 +16,11 @@ public sealed class SecurityDto
     public DateTime CreatedUtc { get; set; }
     public DateTime? ArchivedUtc { get; set; }
 }
+
+public enum SecurityTransactionType
+{
+    Buy = 0,
+    Sell = 1,
+    Dividend = 2,
+    // Weitere Typen nach Bedarf ergänzen
+}

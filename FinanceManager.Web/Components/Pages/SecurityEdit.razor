@@ -8,13 +8,13 @@
 
 <h3>@(IsEdit?"Wertpapier bearbeiten":"Neues Wertpapier")</h3>
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
+    <button class="icon-btn" @onclick="Back" title="Zurück" aria-label="Zurück"><svg><use href="/icons/sprite.svg#back" /></svg></button>
     <button class="icon-btn" @onclick="SaveAsync" title="Speichern" aria-label="Speichern"><svg><use href="/icons/sprite.svg#save" /></svg></button>
     @if(IsEdit)
     {
         <button class="icon-btn" @onclick="ArchiveAsync" disabled="@(!_loaded || !_model.IsActive)" title="Archivieren" aria-label="Archivieren"><svg><use href="/icons/sprite.svg#archive" /></svg></button>
         <button class="icon-btn danger" @onclick="DeleteAsync" disabled="@(!_loaded || _model.IsActive)" title="Löschen" aria-label="Löschen"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
-    }
-    <button class="icon-btn" @onclick="Back" title="Zurück" aria-label="Zurück"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+    }    
 </div>
 
 <EditForm Model="_edit" OnValidSubmit="SaveAsync">
@@ -72,8 +72,11 @@
     private string? _error; private bool _loaded;
     private List<SecurityCategoryDto> _categories = new();
 
+    private Guid? _prefillDraftId; private Guid? _prefillEntryId; private string? _pendingPrefillName;
+
     protected override async Task OnParametersSetAsync()
     {
+        ParseQueryParams();
         await LoadCategoriesAsync();
         if (IsEdit)
         {
@@ -98,6 +101,22 @@
         else
         {
             _model = new SecurityVm(); _loaded = true;
+            if (!string.IsNullOrWhiteSpace(_pendingPrefillName))
+            {
+                _edit.Name = _pendingPrefillName!;
+            }
+        }
+    }
+    private void ParseQueryParams()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (!string.IsNullOrEmpty(uri.Query))
+        {
+            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+            if (Guid.TryParse(query.Get("draftId"), out var did)) { _prefillDraftId = did; }
+            if (Guid.TryParse(query.Get("entryId"), out var eid)) { _prefillEntryId = eid; }
+            var prefillName = query.Get("prefillName");
+            if (!string.IsNullOrWhiteSpace(prefillName)) { _pendingPrefillName = prefillName; }
         }
     }
     private async Task LoadCategoriesAsync()
@@ -122,7 +141,7 @@
             }
             else
             {
-                Nav.NavigateTo($"/securities/{Id}", true);
+                Reload();
             }
         }
         else
@@ -134,8 +153,36 @@
             }
             else
             {
-                Nav.NavigateTo("/securities", true);
+                var created = await resp.Content.ReadFromJsonAsync<SecurityDto>();
+                if (created != null)
+                {
+                    await AssignToDraftEntryIfRequestedAsync(created.Id);
+                }
+                else
+                {
+                    Nav.NavigateTo("/securities", true);
+                }
             }
+        }
+    }
+
+
+    private async Task AssignToDraftEntryIfRequestedAsync(Guid securityId)
+    {
+        if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
+        {
+            try
+            {
+                var http = ClientFactory.CreateClient("Api");
+                var payload = new { SecurityId = (Guid?)securityId, TransactionType = (string?)null, Quantity = (decimal?)null, FeeAmount = (decimal?)null, TaxAmount = (decimal?)null };
+                await http.PostAsJsonAsync($"/api/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}/security", payload);
+            }
+            catch { }
+            Back();
+        }
+        else
+        {
+            Nav.NavigateTo("/securities", true);
         }
     }
 
@@ -146,7 +193,7 @@
         var resp = await http.PostAsync($"/api/securities/{Id}/archive", null);
         if (resp.IsSuccessStatusCode)
         {
-            Nav.NavigateTo($"/securities/{Id}", true);
+            Reload();
         }
         else
         {
@@ -167,7 +214,22 @@
             _error = await resp.Content.ReadAsStringAsync();
         }
     }
-    private void Back() => Nav.NavigateTo("/securities");
+    private void Back()
+    {
+        if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
+            Nav.NavigateTo($"/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}", forceLoad: true);
+        else
+            Nav.NavigateTo("/securities", true);
+    }
+
+    private void Reload()
+    {
+        if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
+            Nav.NavigateTo($"/securities/{Id}?draftId={_prefillDraftId}&entryId={_prefillEntryId}", true);
+        else
+            Nav.NavigateTo($"/securities/{Id}", true);
+    }
+
 
     private sealed class SecurityEditModel
     {

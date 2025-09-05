@@ -172,6 +172,16 @@ public class AppDbContext : DbContext
             b.Property(x => x.Name).HasMaxLength(150).IsRequired();
             b.Property(x => x.OwnerUserId).IsRequired();
         });
+
+        modelBuilder.Entity<StatementDraftEntry>(b =>
+        {
+            b.Property<Guid?>("SecurityId");
+            b.Property<SecurityTransactionType?>("SecurityTransactionType");
+            b.Property<decimal?>("SecurityQuantity").HasPrecision(18,6);
+            b.Property<decimal?>("SecurityFeeAmount").HasPrecision(18,2);
+            b.Property<decimal?>("SecurityTaxAmount").HasPrecision(18,2);
+            b.HasIndex("SecurityId");
+        });
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

@@ -33,7 +33,7 @@ public sealed class SecuritiesController : ControllerBase
     public async Task<IActionResult> ListAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
         => Ok(await _service.ListAsync(_current.UserId, onlyActive, ct));
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = "GetSecurityAsync")]
     public async Task<IActionResult> GetAsync(Guid id, CancellationToken ct = default)
     {
         var dto = await _service.GetAsync(id, _current.UserId, ct);
@@ -45,7 +45,8 @@ public sealed class SecuritiesController : ControllerBase
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
         var dto = await _service.CreateAsync(_current.UserId, req.Name, req.Identifier, req.Description, req.AlphaVantageCode, req.CurrencyCode, req.CategoryId, ct);
-        return CreatedAtAction(nameof(GetAsync), new { id = dto.Id }, dto);
+        // FIX: Use CreatedAtRoute because we referenced the named route (not the action method name) before.
+        return CreatedAtRoute("GetSecurityAsync", new { id = dto.Id }, dto);
     }
 
     [HttpPut("{id:guid}")]

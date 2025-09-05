@@ -20,13 +20,15 @@ else
         <button class="icon-btn" disabled="@(_selectedContactId==null)" @onclick="OpenContactDetail" title="Kontakt anzeigen" aria-label="Kontakt anzeigen">
             <svg><use href="/icons/sprite.svg#groups" /></svg>
         </button>
+        <button class="icon-btn" disabled="@(_selectedSecurityId == null)" title="Wertpapier anzeigen" aria-label="Wertpapier anzeigen" @onclick="OpenSecurityDetail">
+            <svg><use href="/icons/sprite.svg#security" /></svg>
+        </button>    
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
             <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrev" title="Previous Entry" aria-label="Previous Entry"><svg><use href="/icons/sprite.svg#back" /></svg></button>
             <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpen" title="Nächster offener Eintrag" aria-label="Nächster offener Eintrag">
                 <svg><use href="/icons/sprite.svg#arrow-right" /></svg>
             </button>
         </div>
-        <!-- Neue Buttons für Split-Funktionalität -->
         <button class="icon-btn" @onclick="OpenSplitDialog" title="Split-Auszug zuordnen" aria-label="Split-Auszug zuordnen">
             <svg><use href="/icons/sprite.svg#link" /></svg>
         </button>
@@ -170,8 +172,80 @@ else
                     </div>
                 </td>
             </tr>
+            @if(ShowSecuritySection)
+            {
+                <tr>
+                    <th>Wertpapier</th>
+                    <td>
+                        <div style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:480px;margin-bottom:.75rem;">
+                            <div style="position:relative;min-width:0;">
+                                <input type="text"
+                                       style="width:95%;"
+                                       @bind="_securityFilter"
+                                       @bind:event="oninput"
+                                       @bind:after="(()=>OnSecurityFilterChanged())"
+                                       placeholder="Wertpapier suchen..."
+                                       @onfocus="ShowSecurityDropdown" />
+                                <input type="hidden" value="@_selectedSecurityId" />
+                                @if (_securityDropdownVisible)
+                                {
+                                    <ul class="combo-list" style="list-style:none;margin:0;padding:.25rem .25rem;position:absolute;z-index:10;left:0;right:0;max-height:9.5rem;overflow:auto;background:#222;border:1px solid #444;border-radius:4px;box-shadow:0 3px 12px #0005;">
+                                        <li style="padding:.3rem .4rem;cursor:pointer;"
+                                            @onclick="(()=>SelectSecurity(null))"
+                                            class="@(_selectedSecurityId==null?"active":string.Empty)">-- none --</li>
+                                        @foreach(var s in FilteredSecurities)
+                                        {
+                                            <li style="padding:.3rem .4rem;cursor:pointer;"
+                                                @onclick="(()=>SelectSecurity(s.Id))"
+                                                class="@(_selectedSecurityId==s.Id?"active":string.Empty)"
+                                                title="@s.Name">@s.Name (@s.Identifier)</li>
+                                        }
+                                        @if(!FilteredSecurities.Any())
+                                        {
+                                            <li style="padding:.3rem .4rem;opacity:.6;">Keine Treffer</li>
+                                        }
+                                    </ul>
+                                }
+                                @if(!string.IsNullOrEmpty(_securityError))
+                                {
+                                    <div style="margin-top:.3rem;color:#e66;font-size:.75rem;">@_securityError</div>
+                                }
+                            </div>
+                            <div>
+                                <button class="icon-btn" title="Neues Wertpapier" aria-label="Neues Wertpapier" @onclick="OpenCreateSecurity"><svg><use href="/icons/sprite.svg#plus" /></svg></button>                                
+                            </div>
+                        </div>
+                        @if (_selectedSecurityId != null)
+                        {
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;max-width:720px;margin-top:.25rem;">
+                                <div>
+                                    <label>Art</label>
+                                    <select @bind="_securityTxType">
+                                        <option value="">--</option>
+                                        <option value="Buy">Kauf</option>
+                                        <option value="Sell">Verkauf</option>
+                                        <option value="DividendOrInterest">Zins/Dividende</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Menge</label>
+                                    <InputNumber @bind-Value="_securityQuantity" />
+                                </div>
+                                <div>
+                                    <label>Gebühr (enthalten)</label>
+                                    <InputNumber @bind-Value="_securityFee" />
+                                </div>
+                                <div>
+                                    <label>Steuer (enthalten)</label>
+                                    <InputNumber @bind-Value="_securityTax" />
+                                </div>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
         </tbody>
-    </table>   
+    </table>
 
     @if (_showSplitDialog)
     {
@@ -180,10 +254,10 @@ else
                 <h3 style="margin-top:0;">Split-Auszug auswählen</h3>
                 @if(_vm?.Entry.SplitDraftId != null)
                 {
-                    <p style="margin:.15rem 0 .4rem 0;font-size:.7rem;opacity:.7;">Aktuell verknüpft mit Draft <strong>@_vm.Entry.SplitDraftId</strong>. Wähle einen anderen Auszug um die Verknüpfung zu ändern oder klicke auf Abbrechen.</p>
+                    <p style="margin:.15rem 0 .4rem 0;font-size:.7rem;opacity:.7;">Aktuell verknüpft mit Draft <strong>@_vm.Entry.SplitDraftId</strong>. Wähle einen anderen Auszug oder Abbrechen.</p>
                 }
                 <p style="margin-top:.2rem;opacity:.8;font-size:.85rem;">Wähle einen unzugeordneten Auszug ohne Konto.</p>
-                <input type="text" @bind="_splitFilter" placeholder="Filter..." style="width:100%;margin:.5rem 0  .75rem 0;" />
+                <input type="text" @bind="_splitFilter" placeholder="Filter..." style="width:100%;margin:.5rem 0 .75rem 0;" />
                 <div class="split-scroll">
                     @if(_loadingSplits)
                     {
@@ -244,7 +318,7 @@ else
         ? _userSavingsPlans
         : _userSavingsPlans.Where(p => p.Name.Contains(_savingsPlanFilter, StringComparison.OrdinalIgnoreCase));
 
-    // Split UI State
+    // Split UI
     private bool _showSplitDialog;
     private bool _loadingSplits;
     private string _splitFilter = string.Empty;
@@ -258,12 +332,40 @@ else
 
     private sealed record SplitDraftOption(Guid DraftId, string OriginalFileName, int EntriesCount, decimal TotalAmount);
 
+    // Core edit
     private bool _editMode; private bool _savingCore; private string? _coreError;
     private DateTime _editBookingDate; private DateTime? _editValutaDate; private decimal _editAmount; private string _editSubject=""; private string? _editRecipient; private string? _editDescription; private string _editCurrency="EUR";
 
+    // Securities UI State
+    private List<SecurityVm> _securities = new();
+    private string _securityFilter = string.Empty;
+    private bool _securityDropdownVisible;
+    private Guid? _selectedSecurityId;
+    private string? _securityError;
+    private SecurityTransactionType? _securityTxType;
+    private decimal? _securityQuantity;
+    private decimal? _securityFee;
+    private decimal? _securityTax;
+
+    private IEnumerable<SecurityVm> FilteredSecurities => string.IsNullOrWhiteSpace(_securityFilter)
+        ? _securities
+        : _securities.Where(s => s.Name.Contains(_securityFilter, StringComparison.OrdinalIgnoreCase) || s.Identifier.Contains(_securityFilter, StringComparison.OrdinalIgnoreCase));
+
+    // Sichtbar wenn:
+    // - Bankkontakt = Empfänger (ursprüngliche Bedingung) ODER
+    // - bereits ein Wertpapier zugeordnet ist (sonst würde es beim erneuten Öffnen verschwinden)
+    private bool ShowSecuritySection =>
+        _vm != null &&
+        (
+            _vm.Entry.SecurityId != null ||
+            (_vm.BankContactId != null &&
+             _vm.Entry.ContactId != null &&
+             _vm.Entry.ContactId == _vm.BankContactId)
+        );
+
     private void InitCoreEdit()
     {
-        if (_vm == null) return;
+        if (_vm == null) { return; }
         _editBookingDate = _vm.Entry.BookingDate;
         _editValutaDate = _vm.Entry.ValutaDate;
         _editAmount = _vm.Entry.Amount;
@@ -278,32 +380,35 @@ else
         await LoadEntryAsync();
         await LoadContactsAsync();
         await LoadUserSavingsPlansAsync();
+
         _selectedContactId = _vm?.Entry.ContactId;
         _contactFilter = _vm?.Entry.ContactId != null ? _allContacts.FirstOrDefault(c=>c.Id==_vm.Entry.ContactId)?.Name ?? string.Empty : string.Empty;
+
         _selectedSavingsPlanId = _vm?.Entry.SavingsPlanId;
-        _savingsPlanFilter = _selectedSavingsPlanId != null ? _userSavingsPlans.FirstOrDefault(p=>p.Id==_selectedSavingsPlanId)?.Name ?? string.Empty : string.Empty;
+        _savingsPlanFilter = _selectedSavingsPlanId != null
+            ? _userSavingsPlans.FirstOrDefault(p=>p.Id==_selectedSavingsPlanId)?.Name ?? string.Empty
+            : string.Empty;
+
+        // Securities initialisieren
+        if (_vm?.Entry != null)
+        {
+            _selectedSecurityId = _vm.Entry.SecurityId;
+            _securityTxType = _vm.Entry.SecurityTransactionType;
+            _securityQuantity = _vm.Entry.SecurityQuantity;
+            _securityFee = _vm.Entry.SecurityFeeAmount;
+            _securityTax = _vm.Entry.SecurityTaxAmount;
+        }
+
+        // Securities laden falls nötig (jetzt auch falls bereits SecurityId gesetzt, selbst wenn Bankkontakt-Bedingung nicht erfüllt)
+        await LoadSecuritiesIfNeededAsync();
+
+        // Eingabefeld vorbefüllen wenn Security bekannt (erst nach Laden der Liste sinnvoll)
+        if (_selectedSecurityId != null && string.IsNullOrEmpty(_securityFilter))
+        {
+            _securityFilter = _securities.FirstOrDefault(s => s.Id == _selectedSecurityId)?.Name ?? string.Empty;
+        }
+
         InitCoreEdit();
-    }
-
-    private void ShowSavingsPlanDropdown(FocusEventArgs _) => _savingsPlanDropdownVisible = true;
-
-    private void SelectSavingsPlan(Guid? id)
-    {
-        if (_selectedSavingsPlanId != id)
-        {
-            _selectedSavingsPlanId = id;
-        }
-        _savingsPlanFilter = id == null ? string.Empty : _userSavingsPlans.FirstOrDefault(p => p.Id == id)?.Name ?? string.Empty;
-        _savingsPlanDropdownVisible = false;
-    }
-
-    private void OnSavingsPlanFilterAfterChanged()
-    {
-        _savingsPlanDropdownVisible = true;
-        if (_selectedSavingsPlanId != null && !_userSavingsPlans.Any(p => string.Equals(p.Name, _savingsPlanFilter, StringComparison.OrdinalIgnoreCase)))
-        {
-            _selectedSavingsPlanId = null;
-        }
     }
 
     private async Task LoadEntryAsync()
@@ -312,7 +417,7 @@ else
         if (resp.IsSuccessStatusCode)
         {
             _vm = await resp.Content.ReadFromJsonAsync<EntryDetailVm>();
-            _IsCostNeutral = _vm.Entry.IsCostNeutral;
+            _IsCostNeutral = _vm!.Entry.IsCostNeutral;
             _selectedSavingsPlanId = _vm.Entry.SavingsPlanId;
             _selectedContactId = _vm.Entry.ContactId;
         }
@@ -337,18 +442,48 @@ else
         }
     }
 
-    private void ShowDropdown(FocusEventArgs _) => _dropdownVisible = true;
+    private async Task LoadSecuritiesIfNeededAsync()
+    {
+        // Laden wenn Section gezeigt werden soll ODER wenn bereits SecurityId gesetzt (damit Anzeige möglich)
+        if (!ShowSecuritySection && _vm?.Entry.SecurityId == null) { return; }
+        if (_securities.Count > 0) { return; }
 
+        var resp = await Http.GetAsync("/api/securities?onlyActive=true");
+        if (!resp.IsSuccessStatusCode)
+        {
+            _securityError = await resp.Content.ReadAsStringAsync();
+            return;
+        }
+        var list = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>() ?? new();
+        _securities = list
+            .Select(s => new SecurityVm { Id = s.Id, Name = s.Name, Identifier = s.Identifier })
+            .OrderBy(s => s.Name)
+            .ToList();
+    }
+
+    private void ShowSavingsPlanDropdown(FocusEventArgs _) => _savingsPlanDropdownVisible = true;
+    private void SelectSavingsPlan(Guid? id)
+    {
+        if (_selectedSavingsPlanId != id) { _selectedSavingsPlanId = id; }
+        _savingsPlanFilter = id == null ? string.Empty : _userSavingsPlans.FirstOrDefault(p => p.Id == id)?.Name ?? string.Empty;
+        _savingsPlanDropdownVisible = false;
+    }
+    private void OnSavingsPlanFilterAfterChanged()
+    {
+        _savingsPlanDropdownVisible = true;
+        if (_selectedSavingsPlanId != null && !_userSavingsPlans.Any(p => string.Equals(p.Name, _savingsPlanFilter, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedSavingsPlanId = null;
+        }
+    }
+
+    private void ShowDropdown(FocusEventArgs _) => _dropdownVisible = true;
     private void SelectContact(Guid? id)
     {
-        if (_selectedContactId != id)
-        {
-            _selectedContactId = id;
-        }
+        if (_selectedContactId != id) { _selectedContactId = id; }
         _contactFilter = id == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==id)?.Name ?? string.Empty;
         _dropdownVisible = false;
     }
-
     private void OnContactFilterAfterChanged()
     {
         _dropdownVisible = true;
@@ -358,43 +493,110 @@ else
         }
     }
 
+    // Security combobox
+    private void ShowSecurityDropdown(FocusEventArgs _) => _securityDropdownVisible = true;
+    private void OnSecurityFilterChanged()
+    {
+        _securityDropdownVisible = true;
+        if (_selectedSecurityId != null &&
+            !_securities.Any(s => string.Equals(s.Name, _securityFilter, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedSecurityId = null;
+        }
+    }
+    private void SelectSecurity(Guid? id)
+    {
+        if (_selectedSecurityId != id) { _selectedSecurityId = id; }
+        _securityFilter = id == null ? string.Empty : _securities.FirstOrDefault(s => s.Id == id)?.Name ?? string.Empty;
+        _securityDropdownVisible = false;
+    }
+    private void OpenCreateSecurity()
+    {
+        var name = _securityFilter;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            name = _vm?.Entry.Subject;
+        }
+        name ??= string.Empty;
+        var url = $"/securities/new?prefillName={Uri.EscapeDataString(name)}&draftId={DraftId}&entryId={EntryId}";
+        Nav.NavigateTo(url);
+    }
+    private void OpenSecurityDetail()
+    {
+        if (_selectedSecurityId != null)
+        {
+            Nav.NavigateTo($"/securities/{_selectedSecurityId}?draftId={DraftId}&entryId={EntryId}");
+        }
+    }
+
+    private async Task PersistSecurityChangesIfNeededAsync()
+    {
+        if (_vm == null) { return; }
+        if (!ShowSecuritySection && _vm.Entry.SecurityId == null)
+        {
+            return;
+        }
+        var e = _vm.Entry;
+        var changed =
+            e.SecurityId != _selectedSecurityId ||
+            e.SecurityTransactionType != _securityTxType ||
+            e.SecurityQuantity != _securityQuantity ||
+            e.SecurityFeeAmount != _securityFee ||
+            e.SecurityTaxAmount != _securityTax;
+
+        if (!changed) { return; }
+
+        var payload = new
+        {
+            SecurityId = _selectedSecurityId,
+            TransactionType = _securityTxType,
+            Quantity = _securityQuantity,
+            FeeAmount = _securityFee,
+            TaxAmount = _securityTax
+        };
+
+        var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/security", payload);
+        if (!resp.IsSuccessStatusCode)
+        {
+            _securityError = await resp.Content.ReadAsStringAsync();
+        }
+        else
+        {
+            await LoadEntryAsync();
+        }
+    }
+
     private async Task SaveAll()
     {
         if (_vm == null) { return; }
         _pendingSave = true; _contactError = null;
         try
         {
-            _contactError = string.Empty;
             var payload = new { ContactId = _selectedContactId };
             var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/contact", payload);
-            if (!resp.IsSuccessStatusCode)
-            {
-                throw new ApplicationException(await resp.Content.ReadAsStringAsync());
-            }
+            if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
 
             if (_vm.Entry.IsCostNeutral != _IsCostNeutral)
             {
                 var payload2 = new { IsCostNeutral = _IsCostNeutral };
                 resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/costneutral", payload2);
-                if (!resp.IsSuccessStatusCode)
-                {
-                    throw new ApplicationException(await resp.Content.ReadAsStringAsync());
-                }
+                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
             }
 
             if (_vm.Entry.SavingsPlanId != _selectedSavingsPlanId)
             {
                 var payload3 = new { SavingsPlanId = _selectedSavingsPlanId };
                 resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/savingsplan", payload3);
-                if (!resp.IsSuccessStatusCode)
-                {
-                    throw new ApplicationException(await resp.Content.ReadAsStringAsync());
-                }
+                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
             }
+
+            await PersistSecurityChangesIfNeededAsync();
 
             await LoadEntryAsync();
             _selectedContactId = _vm?.Entry.ContactId;
-            _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c => c.Id == _selectedContactId)?.Name ?? string.Empty;
+            _contactFilter = _selectedContactId == null
+                ? string.Empty
+                : _allContacts.FirstOrDefault(c => c.Id == _selectedContactId)?.Name ?? string.Empty;
         }
         catch (Exception ex)
         {
@@ -410,7 +612,7 @@ else
         {
             await LoadEntryAsync();
             _selectedContactId = _vm?.Entry.ContactId;
-            _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==_selectedContactId)?.Name ?? string.Empty;
+            _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==_vm.Entry.ContactId)?.Name ?? string.Empty;
             StateHasChanged();
         }
     }
@@ -424,15 +626,10 @@ else
         var url = $"/contacts/new?prefillName={Uri.EscapeDataString(name)}&draftId={DraftId}&entryId={EntryId}";
         Nav.NavigateTo(url);
     }
-
     private void OpenContactDetail()
     {
-        if (_selectedContactId != null)
-        {
-            Nav.NavigateTo($"/contacts/{_selectedContactId}");
-        }
+        if (_selectedContactId != null) { Nav.NavigateTo($"/contacts/{_selectedContactId}"); }
     }
-
     private void GoPrev()
     {
         if (_vm?.PrevEntryId != null)
@@ -448,7 +645,7 @@ else
         }
     }
 
-    // Split Handling
+    // Split
     private void OpenSplitDialog()
     {
         _splitError = null;
@@ -456,9 +653,7 @@ else
         _showSplitDialog = true;
         _ = LoadSplitCandidates();
     }
-
     private void CloseSplitDialog() => _showSplitDialog = false;
-
     private async Task LoadSplitCandidates()
     {
         _loadingSplits = true;
@@ -480,9 +675,7 @@ else
             StateHasChanged();
         }
     }
-
     private void SelectSplit(Guid id) => _selectedSplitDraftId = id;
-
     private async Task ConfirmSplit()
     {
         if (_selectedSplitDraftId == null) { return; }
@@ -502,16 +695,11 @@ else
             _splitError = ex.Message;
         }
     }
-
     private async Task RemoveSplit()
     {
         var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/split", new { SplitDraftId = (Guid?)null });
-        if (resp.IsSuccessStatusCode)
-        {
-            await LoadEntryAsync();
-        }
+        if (resp.IsSuccessStatusCode) { await LoadEntryAsync(); }
     }
-
     private void OpenAssignedSplitDraft()
     {
         if (_vm?.Entry.SplitDraftId != null)
@@ -520,9 +708,10 @@ else
         }
     }
 
+    // Core save
     private async Task SaveCoreAsync()
     {
-        if (_vm == null) return;
+        if (_vm == null) { return; }
         _savingCore = true; _coreError = null;
         try
         {
@@ -544,9 +733,31 @@ else
         }
         _savingCore = false;
     }
-
     private void ResetCoreEdits() => InitCoreEdit();
-    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, Guid? SplitDraftId);
+
+    // Records / DTO shapes
+    private sealed record EntryDto(
+        Guid Id,
+        DateTime BookingDate,
+        DateTime? ValutaDate,
+        decimal Amount,
+        string CurrencyCode,
+        string Subject,
+        string? RecipientName,
+        string? BookingDescription,
+        bool IsAnnounced,
+        bool IsCostNeutral,
+        StatementDraftEntryStatus Status,
+        Guid? ContactId,
+        Guid? SavingsPlanId,
+        Guid? SplitDraftId,
+        Guid? SecurityId,
+        SecurityTransactionType? SecurityTransactionType,
+        decimal? SecurityQuantity,
+        decimal? SecurityFeeAmount,
+        decimal? SecurityTaxAmount
+    );
+
     private sealed record EntryDetailVm(
         Guid DraftId,
         string OriginalFileName,
@@ -555,10 +766,17 @@ else
         Guid? NextEntryId,
         Guid? NextOpenEntryId,
         decimal? SplitSum,
-        decimal? Difference);
+        decimal? Difference,
+        Guid? BankContactId
+    );
+
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
     private sealed record SavingsPlanDto(Guid Id, string Name);
     private sealed record StatementDraftListDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, StatementDraftStatus Status, decimal TotalAmount, bool IsSplitDraft, IReadOnlyList<EntryDto> Entries);
+
+    private sealed record SecurityDto(Guid Id, string Name, string Identifier);
+    private sealed class SecurityVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Identifier { get; set; } = string.Empty; }
+    private enum SecurityTransactionType { Buy=0, Sell=1, DividendOrInterest=2 }
 }

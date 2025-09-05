@@ -1,5 +1,6 @@
 using FinanceManager.Domain;
 using FinanceManager.Domain.Statements;
+using FinanceManager.Shared.Dtos;
 using System.Threading.Tasks;
 
 namespace FinanceManager.Application.Statements;
@@ -19,6 +20,15 @@ public interface IStatementDraftService
     Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftDto?> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, Guid? splitDraftId, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct);
+    Task<StatementDraft?> SetEntrySecurityAsync(Guid draftId,
+        Guid entryId,
+        Guid? securityId,
+        SecurityTransactionType? transactionType,
+        decimal? quantity,
+        decimal? feeAmount,
+        decimal? taxAmount,
+        Guid userId,
+        CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(
@@ -35,7 +45,13 @@ public sealed record StatementDraftEntryDto(
     StatementDraftEntryStatus Status,
     Guid? ContactId,
     Guid? SavingsPlanId,
-    Guid? SplitDraftId); // Falls dieser Eintrag einen Split-Draft (Aufteilungs-Auszug) referenziert
+    Guid? SplitDraftId,
+    Guid? SecurityId,
+    SecurityTransactionType? SecurityTransactionType,
+    decimal? SecurityQuantity,
+    decimal? SecurityFeeAmount,
+    decimal? SecurityTaxAmount
+);
 
 /// <summary>
 /// Repräsentiert einen Statement Draft (Import-Entwurf) inkl. optionaler Split-Informationen.
