@@ -734,6 +734,10 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
                     {
                         messages.Add(new("SECURITY_MISSING_TXTYPE","Error","Für ein zugewiesenes Wertpapier muss eine Buchungsart angegeben sein.", draft.Id, entry.Id));
                     }
+                    if (entry.SecurityQuantity == null)
+                    {
+                        messages.Add(new("SECURITY_MISSING_QUANTITY","Error","Für ein zugewiesenes Wertpapier muss eine Menge angegeben sein.", draft.Id, entry.Id));
+                    }
                 }
             }
 
