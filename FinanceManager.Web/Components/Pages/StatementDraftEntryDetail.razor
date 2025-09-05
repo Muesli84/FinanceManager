@@ -22,7 +22,10 @@ else
         </button>
         <button class="icon-btn" disabled="@(_selectedSecurityId == null)" title="Wertpapier anzeigen" aria-label="Wertpapier anzeigen" @onclick="OpenSecurityDetail">
             <svg><use href="/icons/sprite.svg#security" /></svg>
-        </button>    
+        </button>
+        <button class="icon-btn" @onclick="ValidateEntry" title="Eintrag prüfen" aria-label="Eintrag prüfen">
+            <svg><use href="/icons/sprite.svg#check" /></svg>
+        </button>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
             <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrev" title="Previous Entry" aria-label="Previous Entry"><svg><use href="/icons/sprite.svg#back" /></svg></button>
             <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpen" title="Nächster offener Eintrag" aria-label="Nächster offener Eintrag">
@@ -43,6 +46,26 @@ else
         }
     </div>
     <p><strong>Draft File:</strong> @_vm.OriginalFileName</p>
+    @if(_entryValidation != null)
+    {
+        <div style="margin-bottom:1rem;padding:.5rem .75rem;border:1px solid #444;border-radius:4px;background:#181818;max-width:960px;">
+            <h4 style="margin:.2rem 0 .4rem 0;font-size:.8rem;">Prüfung Eintrag</h4>
+            @if(!_entryValidation.Messages.Any())
+            {
+                <p style="margin:0;font-size:.7rem;color:#6c6;">Keine Hinweise oder Fehler.</p>
+            }
+            else
+            {
+                <ul style="margin:.25rem 0 0 1rem;padding:0;font-size:.65rem;">
+                    @foreach(var m in _entryValidation.Messages)
+                    {
+                        var c = m.Severity=="Error"?"#e66":"#cc6";
+                        <li style="margin:.2rem 0;color:@c;">@m.Message</li>
+                    }
+                </ul>
+            }
+        </div>
+    }
     <div style="margin-bottom:1rem;">
         <label><input type="checkbox" @bind="_editMode" /> Editiermodus</label>
         @if (_editMode && _vm != null)
@@ -779,4 +802,15 @@ else
     private sealed record SecurityDto(Guid Id, string Name, string Identifier);
     private sealed class SecurityVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Identifier { get; set; } = string.Empty; }
     private enum SecurityTransactionType { Buy=0, Sell=1, DividendOrInterest=2 }
+
+    private DraftValidationResultDto? _entryValidation;
+
+    private async Task ValidateEntry()
+    {
+        _entryValidation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{DraftId}/entries/{EntryId}/validate");
+        StateHasChanged();
+    }
+
+    private sealed record DraftValidationMessageDto(string Code, string Severity, string Message, Guid DraftId, Guid? EntryId);
+    private sealed record DraftValidationResultDto(Guid DraftId, bool IsValid, IReadOnlyList<DraftValidationMessageDto> Messages);
 }

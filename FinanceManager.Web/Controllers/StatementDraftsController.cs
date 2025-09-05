@@ -274,4 +274,18 @@ public sealed class StatementDraftsController : ControllerBase
         var entry = draft.Entries.First(e => e.Id == entryId);
         return Ok(entry);
     }
+
+    [HttpGet("{draftId:guid}/validate")]
+    public async Task<IActionResult> ValidateAsync(Guid draftId, CancellationToken ct)
+    {
+        var result = await _drafts.ValidateAsync(draftId, _current.UserId, ct);
+        return Ok(result);
+    }
+
+    [HttpGet("{draftId:guid}/entries/{entryId:guid}/validate")]
+    public async Task<IActionResult> ValidateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
+    {
+        var result = await _drafts.ValidateEntryAsync(draftId, entryId, _current.UserId, ct);
+        return Ok(result);
+    }
 }

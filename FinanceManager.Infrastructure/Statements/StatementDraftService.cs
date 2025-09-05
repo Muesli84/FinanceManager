@@ -9,7 +9,7 @@ using FinanceManager.Shared.Dtos; // added
 
 namespace FinanceManager.Infrastructure.Statements;
 
-public sealed class StatementDraftService : IStatementDraftService
+public sealed partial class StatementDraftService : IStatementDraftService // partial now for clarity if split later
 {
     private readonly AppDbContext _db;
     private readonly IReadOnlyList<IStatementFileReader> _statementFileReaders;
@@ -646,5 +646,130 @@ public sealed class StatementDraftService : IStatementDraftService
 
         await _db.SaveChangesAsync(ct);
         return draft;
+    }
+
+    public async Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts
+            .Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null)
+        {
+            return new DraftValidationResultDto(draftId, false, new List<DraftValidationMessageDto>{ new("DRAFT_NOT_FOUND","Error","Draft not found", draftId, null) });
+        }
+
+        var messages = new List<DraftValidationMessageDto>();
+
+        // Preload supporting data
+        var accounts = await _db.Accounts.AsNoTracking().ToListAsync(ct);
+        var contacts = await _db.Contacts.AsNoTracking().Where(c => c.OwnerUserId == ownerUserId).ToListAsync(ct);
+        var selfContact = contacts.FirstOrDefault(c => c.Type == ContactType.Self);
+        var savingsPlans = await _db.SavingsPlans.AsNoTracking().Where(sp => sp.OwnerUserId == ownerUserId).ToListAsync(ct);
+
+        Domain.Contacts.Contact? bankContact = null;
+        if (draft.DetectedAccountId is Guid accId)
+        {
+            var account = accounts.FirstOrDefault(a => a.Id == accId);
+            if (account != null)
+            {
+                bankContact = contacts.FirstOrDefault(c => c.Id == account.BankContactId);
+            }
+        }
+
+        // Rule: Draft must have assigned bank account
+        if (draft.DetectedAccountId == null)
+        {
+            messages.Add(new("NO_ACCOUNT","Error","Dem Kontoauszug ist kein Bankkonto zugeordnet.", draft.Id, null));
+        }
+
+        // For quick split draft totals
+        Dictionary<Guid, decimal> draftTotalsCache = new();
+        async Task<decimal> GetDraftTotal(Guid id)
+        {
+            if (draftTotalsCache.TryGetValue(id, out var total)) { return total; }
+            total = await _db.StatementDraftEntries.AsNoTracking().Where(e => e.DraftId == id).SumAsync(e => e.Amount, ct);
+            draftTotalsCache[id] = total; return total;
+        }
+
+        foreach (var entry in draft.Entries)
+        {
+            // Entry must have contact
+            if (entry.ContactId == null)
+            {
+                messages.Add(new("ENTRY_NO_CONTACT","Error","Dem Eintrag ist kein Empfängerkontakt zugeordnet.", draft.Id, entry.Id));
+            }
+            else
+            {
+                var contact = contacts.FirstOrDefault(c => c.Id == entry.ContactId);
+                if (contact != null && contact.IsPaymentIntermediary)
+                {
+                    // If payment intermediary -> split draft must be assigned
+                    if (entry.SplitDraftId == null)
+                    {
+                        messages.Add(new("INTERMEDIARY_NO_SPLIT","Error","Empfängerkontakt ist Zahlungsvermittler – Aufteilungs-Auszug oder tatsächlicher Empfänger erforderlich.", draft.Id, entry.Id));
+                    }
+                }
+
+                // Savings plan rules
+                if (entry.SavingsPlanId != null)
+                {
+                    if (contact != null && contact.Type != ContactType.Self)
+                    {
+                        messages.Add(new("SAVINGSPLAN_INVALID_CONTACT","Error","Sparplan darf nur bei eigenem (Self) Kontakt zugeordnet sein.", draft.Id, entry.Id));
+                    }
+                }
+                else if (contact != null && selfContact != null && contact.Id == selfContact.Id)
+                {
+                    messages.Add(new("SAVINGSPLAN_MISSING_FOR_SELF","Warning","Beim eigenen Kontakt ist kein Sparplan ausgewählt (Hinweis).", draft.Id, entry.Id));
+                }
+
+                // Security rules
+                if (entry.SecurityId != null)
+                {
+                    if (bankContact == null || contact == null || contact.Id != bankContact.Id)
+                    {
+                        messages.Add(new("SECURITY_INVALID_CONTACT","Error","Wertpapiere dürfen nur beim Bankkontakt des Kontoauszugs zugewiesen sein.", draft.Id, entry.Id));
+                    }
+                    if (entry.SecurityTransactionType == null)
+                    {
+                        messages.Add(new("SECURITY_MISSING_TXTYPE","Error","Für ein zugewiesenes Wertpapier muss eine Buchungsart angegeben sein.", draft.Id, entry.Id));
+                    }
+                }
+            }
+
+            // Split draft constraints
+            if (entry.SplitDraftId != null)
+            {
+                var splitTotal = await GetDraftTotal(entry.SplitDraftId.Value);
+                if (splitTotal != entry.Amount)
+                {
+                    messages.Add(new("SPLIT_AMOUNT_MISMATCH","Error","Summe des Aufteilungs-Auszugs entspricht nicht dem Betrag des Originaleintrags.", draft.Id, entry.Id));
+                }
+
+                // Validate split draft recursively (single level per spec; still run validation to reuse rules)
+                var splitValidation = await ValidateAsync(entry.SplitDraftId.Value, ownerUserId, ct);
+                foreach (var m in splitValidation.Messages)
+                {
+                    // propagate but mark as from split
+                    messages.Add(new DraftValidationMessageDto(
+                        m.Code,
+                        m.Severity,
+                        "[Split] " + m.Message,
+                        m.DraftId,
+                        m.EntryId));
+                }
+            }
+        }
+
+        var isValid = messages.All(m => m.Severity != "Error");
+        return new DraftValidationResultDto(draft.Id, isValid, messages);
+    }
+
+    public async Task<DraftValidationResultDto> ValidateEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct)
+    {
+        var full = await ValidateAsync(draftId, ownerUserId, ct);
+        var filtered = full.Messages.Where(m => m.EntryId == entryId).ToList();
+        var isValid = filtered.All(m => m.Severity != "Error");
+        return new DraftValidationResultDto(draftId, isValid, filtered);
     }
 }

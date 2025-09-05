@@ -29,6 +29,8 @@ public interface IStatementDraftService
         decimal? taxAmount,
         Guid userId,
         CancellationToken ct);
+    Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
+    Task<DraftValidationResultDto> ValidateEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(
@@ -73,3 +75,16 @@ public sealed record StatementDraftDto(
     IReadOnlyList<StatementDraftEntryDto> Entries);
 
 public sealed record CommitResult(Guid StatementImportId, int TotalEntries);
+
+// Validation DTOs
+public sealed record DraftValidationMessageDto(
+    string Code,
+    string Severity, // Error | Warning
+    string Message,
+    Guid DraftId,
+    Guid? EntryId);
+
+public sealed record DraftValidationResultDto(
+    Guid DraftId,
+    bool IsValid,
+    IReadOnlyList<DraftValidationMessageDto> Messages);

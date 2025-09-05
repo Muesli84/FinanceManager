@@ -31,7 +31,19 @@ else
         </button>
         <button @onclick="ClassifyAsync" class="icon-btn" title="Reclassify" aria-label="Reclassify">
             <svg><use href="/icons/sprite.svg#refresh" /></svg>
-        </button>        
+        </button>
+        <button @onclick="ValidateDraft" class="icon-btn" title="Prüfung ausführen" aria-label="Validieren">
+            <svg><use href="/icons/sprite.svg#check" /></svg>
+        </button>
+        @if(_validation != null)
+        {
+            var errorCount = _validation.Messages.Count(m=>m.Severity=="Error");
+            var warnCount = _validation.Messages.Count(m=>m.Severity=="Warning");
+            <span style="margin-left:.75rem;font-size:.75rem;display:flex;gap:.6rem;align-items:center;">
+                <span style="color:#e66;">Fehler: @errorCount</span>
+                <span style="color:#cc6;">Hinweise: @warnCount</span>
+            </span>
+        }
     </div>
     <p><strong>File:</strong> @_draft.OriginalFileName</p>
     @if (_hasFile)
@@ -76,12 +88,15 @@ else
                     <th style="width:12%;">Sparplan</th>
                     <th>Description</th>
                     <th style="width:6rem;">Announced</th>
-                    <th style="width:9rem;">Status</th>                    
+                    <th style="width:9rem;">Status</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var e in _draft.Entries.OrderBy(e => e.BookingDate))
                 {
+                    var entryMessages = _validation?.Messages.Where(m => m.EntryId == e.Id).ToList() ?? new();
+                    var entryErrors = entryMessages.Count(m=>m.Severity=="Error");
+                    var entryWarnings = entryMessages.Count(m=>m.Severity=="Warning");
                     <tr style="cursor:pointer;" @onclick="(() => OpenEntry(e.Id))">
                         <td>
                             @if (e.SplitDraftId != null)
@@ -126,6 +141,26 @@ else
                         <td>@(e.IsAnnounced ? "✓" : "")</td>
                         <td>@e.Status</td>
                     </tr>
+                    @if(entryMessages.Any())
+                    {
+                        <tr class="validation-row" style="background:#181818;">
+                            <td colspan="11" style="padding:.4rem .75rem;">
+                                <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
+                                    <div style="display:flex;gap:.6rem;font-size:.65rem;">
+                                        @if(entryErrors>0){<span style="color:#e66;">Fehler: @entryErrors</span>}
+                                        @if(entryWarnings>0){<span style="color:#cc6;">Hinweise: @entryWarnings</span>}
+                                    </div>
+                                    <ul style="margin:0;padding-left:1rem;flex:1;list-style:disc;">
+                                        @foreach(var m in entryMessages)
+                                        {
+                                            var c = m.Severity=="Error"?"#e66":"#cc6";
+                                            <li style="margin:.2rem 0;color:@c;font-size:.65rem;">@m.Message</li>
+                                        }
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>
@@ -174,6 +209,7 @@ else
     private List<SavingsPlanDto> _savingsPlans = new();
 
     private bool _hasFile; private bool _showViewer; private string? _fileUrl;
+    private DraftValidationResultDto? _validation; // NEW STATE
 
     protected override async Task OnParametersSetAsync()
     {
@@ -186,6 +222,12 @@ else
         {
             _fileUrl = $"/api/statement-drafts/{Id}/file";
         }
+    }
+
+    private async Task ValidateDraft()
+    {
+        _validation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{Id}/validate");
+        StateHasChanged();
     }
 
     private async Task LoadAccountsAsync()
@@ -322,6 +364,9 @@ else
         Guid? ParentDraftId,
         Guid? ParentEntryId,
         decimal? ParentEntryAmount);
+
+    private sealed record DraftValidationMessageDto(string Code, string Severity, string Message, Guid DraftId, Guid? EntryId);
+    private sealed record DraftValidationResultDto(Guid DraftId, bool IsValid, IReadOnlyList<DraftValidationMessageDto> Messages);
 
     private sealed record AccountDto(Guid Id, string Name, int Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
