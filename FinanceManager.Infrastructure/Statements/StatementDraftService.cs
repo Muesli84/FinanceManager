@@ -791,4 +791,114 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         var isValid = filtered.All(m => m.Severity != "Error");
         return new DraftValidationResultDto(draftId, isValid, filtered);
     }
+
+
+    public async Task<BookingResult> BookAsync(Guid draftId, Guid ownerUserId, bool forceWarnings, CancellationToken ct)
+    {
+        var validation = await ValidateAsync(draftId, ownerUserId, ct);
+        var hasErrors = validation.Messages.Any(m => m.Severity == "Error");
+        var hasWarnings = validation.Messages.Any(m => m.Severity == "Warning");
+        if (hasErrors) { return new BookingResult(false, hasWarnings, validation, null, null); }
+        if (hasWarnings && !forceWarnings) { return new BookingResult(false, true, validation, null, null); }
+
+        var draft = await _db.StatementDrafts.Include(d=>d.Entries)
+            .FirstOrDefaultAsync(d=>d.Id==draftId && d.OwnerUserId==ownerUserId, ct);
+        if (draft == null) { return new BookingResult(false, false, validation, null, null); }
+        if (draft.DetectedAccountId == null) { return new BookingResult(false, false, validation, null, null); }
+
+        // Create StatementImport similar to CommitAsync but enriched postings
+        var import = new StatementImport(draft.DetectedAccountId.Value, ImportFormat.Csv, draft.OriginalFileName);
+        _db.StatementImports.Add(import);
+        await _db.SaveChangesAsync(ct);
+
+        // Track created postings per entry (future linking if needed)
+        foreach (var e in draft.Entries)
+        {
+            var groupId = Guid.NewGuid();
+            // If entry has split draft assigned: amount moves to child entries; original becomes zero-based container
+            decimal baseAmount = e.SplitDraftId != null ? 0m : e.Amount;
+
+            // Common metadata
+            var subj = e.Subject;
+            var recip = e.RecipientName;
+            var desc = e.BookingDescription;
+
+            // Bank posting (always if account assigned)
+            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Bank, draft.DetectedAccountId, null, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
+
+            // Contact posting
+            if (e.ContactId != null)
+            {
+                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
+            }
+
+            // SavingsPlan posting
+            if (e.SavingsPlanId != null)
+            {
+                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
+            }
+
+            // Security posting + fee/tax adjustments
+            if (e.SecurityId != null)
+            {
+                var securityGroupId = Guid.NewGuid();
+                var tradeNet = baseAmount;
+                if (e.SecurityFeeAmount is decimal f) { tradeNet -= f; }
+                if (e.SecurityTaxAmount is decimal t) { tradeNet -= t; }
+                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tradeNet, subj, recip, desc, Domain.Postings.SecurityPostingSubType.Trade).SetGroup(securityGroupId));
+                if (e.SecurityFeeAmount is decimal fee && fee != 0)
+                {
+                    _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, fee, subj, recip, "Fee", Domain.Postings.SecurityPostingSubType.Fee).SetGroup(securityGroupId));
+                }
+                if (e.SecurityTaxAmount is decimal tax && tax != 0)
+                {
+                    _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tax, subj, recip, "Tax", Domain.Postings.SecurityPostingSubType.Tax).SetGroup(securityGroupId));
+                }
+            }
+
+            // If split draft: recursively add child postings
+            if (e.SplitDraftId != null)
+            {
+                var childDraft = await _db.StatementDrafts.Include(x=>x.Entries).FirstOrDefaultAsync(x=>x.Id==e.SplitDraftId, ct);
+                if (childDraft != null)
+                {
+                    foreach(var ce in childDraft.Entries)
+                    {
+                        var childAmount = ce.Amount;
+                        var cSubj = ce.Subject; var cRecip = ce.RecipientName; var cDesc = ce.BookingDescription;
+                        var childGroupId = Guid.NewGuid();
+                        _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Bank, draft.DetectedAccountId, null, null, null, ce.BookingDate, childAmount, cSubj, cRecip, cDesc, null).SetGroup(childGroupId));
+                        if (ce.ContactId != null)
+                        {
+                            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Contact, null, ce.ContactId, null, null, ce.BookingDate, childAmount, cSubj, cRecip, cDesc, null).SetGroup(childGroupId));
+                        }
+                        if (ce.SavingsPlanId != null)
+                        {
+                            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, ce.SavingsPlanId, null, ce.BookingDate, childAmount, cSubj, cRecip, cDesc, null).SetGroup(childGroupId));
+                        }
+                        if (ce.SecurityId != null)
+                        {
+                            var childSecurityGroupId = Guid.NewGuid();
+                            var childNet = childAmount;
+                            if (ce.SecurityFeeAmount is decimal cf) { childNet -= cf; }
+                            if (ce.SecurityTaxAmount is decimal ctax) { childNet -= ctax; }
+                            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, ce.SecurityId, ce.BookingDate, childNet, cSubj, cRecip, cDesc, Domain.Postings.SecurityPostingSubType.Trade).SetGroup(childSecurityGroupId));
+                            if (ce.SecurityFeeAmount is decimal cfee && cfee != 0)
+                            {
+                                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, ce.SecurityId, ce.BookingDate, cfee, cSubj, cRecip, "Fee", Domain.Postings.SecurityPostingSubType.Fee).SetGroup(childSecurityGroupId));
+                            }
+                            if (ce.SecurityTaxAmount is decimal ctax2 && ctax2 != 0)
+                            {
+                                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, ce.SecurityId, ce.BookingDate, ctax2, cSubj, cRecip, "Tax", Domain.Postings.SecurityPostingSubType.Tax).SetGroup(childSecurityGroupId));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        draft.MarkCommitted();
+        await _db.SaveChangesAsync(ct);
+        return new BookingResult(true, hasWarnings, validation, import.Id, draft.Entries.Count);
+    }
 }

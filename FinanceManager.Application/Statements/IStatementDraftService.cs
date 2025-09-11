@@ -31,6 +31,7 @@ public interface IStatementDraftService
         CancellationToken ct);
     Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
     Task<DraftValidationResultDto> ValidateEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct);
+    Task<BookingResult> BookAsync(Guid draftId, Guid ownerUserId, bool forceWarnings, CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(
@@ -88,3 +89,10 @@ public sealed record DraftValidationResultDto(
     Guid DraftId,
     bool IsValid,
     IReadOnlyList<DraftValidationMessageDto> Messages);
+
+public sealed record BookingResult(
+    bool Success,
+    bool HasWarnings,
+    DraftValidationResultDto Validation,
+    Guid? StatementImportId,
+    int? TotalEntries);

@@ -288,4 +288,19 @@ public sealed class StatementDraftsController : ControllerBase
         var result = await _drafts.ValidateEntryAsync(draftId, entryId, _current.UserId, ct);
         return Ok(result);
     }
+
+    [HttpPost("{draftId:guid}/book")]
+    public async Task<IActionResult> BookAsync(Guid draftId, [FromQuery] bool forceWarnings = false, CancellationToken ct = default)
+    {
+        var result = await _drafts.BookAsync(draftId, _current.UserId, forceWarnings, ct);
+        if (!result.Success && result.Validation.Messages.Any(m=>m.Severity=="Error"))
+        {
+            return BadRequest(result);
+        }
+        if (!result.Success && result.HasWarnings)
+        {
+            return StatusCode(StatusCodes.Status428PreconditionRequired, result); // 428 indicates client needs confirmation
+        }
+        return Ok(result);
+    }
 }

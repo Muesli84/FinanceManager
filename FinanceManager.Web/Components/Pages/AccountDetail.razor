@@ -25,6 +25,7 @@ else
         {
             <button type="button" @onclick="DeleteAsync" disabled="@_busy" aria-label="Delete" title="Delete" class="icon-btn danger"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
             <button type="button" @onclick="OpenBankContact" disabled="@_busy" aria-label="Bank Contact" title="Bank Contact" class="icon-btn"><svg><use href="/icons/sprite.svg#bank" /></svg></button>
+            <button type="button" @onclick="OpenPostings" aria-label="Postings" title="Postings" class="icon-btn"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
         }
     </div>
     <EditForm Model="_model" OnValidSubmit="@SaveAsync">
@@ -116,7 +117,6 @@ else
 
     private async Task LoadBankContactsAsync()
     {
-        // Direkt nur Bankkontakte (alle)
         var resp = await Http.GetAsync("/api/contacts?type=Bank&all=true");
         if (resp.IsSuccessStatusCode)
         {
@@ -151,13 +151,13 @@ else
                     var dto = await resp.Content.ReadFromJsonAsync<AccountDto>();
                     if (dto != null) Nav.NavigateTo($"/accounts/{dto.Id}", forceLoad: true);
                 }
-                else _error = await resp.Content.ReadAsStringAsync();
+                else { _error = await resp.Content.ReadAsStringAsync(); }
             }
             else
             {
                 var payload = new { Name = _model.Name, Iban = _model.Iban, BankContactId = bankContactId, NewBankContactName = _newBankContactName };
                 var resp = await Http.PutAsJsonAsync($"/api/accounts/{Id}", payload);
-                if (!resp.IsSuccessStatusCode) _error = await resp.Content.ReadAsStringAsync();
+                if (!resp.IsSuccessStatusCode) { _error = await resp.Content.ReadAsStringAsync(); }
             }
         }
         catch (Exception ex)
@@ -169,7 +169,7 @@ else
 
     private async Task DeleteAsync()
     {
-        if (Id == null) return;
+        if (Id == null) { return; }
         _busy = true; _error = null;
         try
         {
@@ -178,7 +178,7 @@ else
             {
                 Back();
             }
-            else _error = await resp.Content.ReadAsStringAsync();
+            else { _error = await resp.Content.ReadAsStringAsync(); }
         }
         catch (Exception ex)
         {
@@ -188,12 +188,18 @@ else
     }
 
     private void Back() => Nav.NavigateTo("/accounts", forceLoad: true);
-
     private void OpenBankContact()
     {
         if (!string.IsNullOrWhiteSpace(_model.BankContactId))
         {
             Nav.NavigateTo($"/contacts/{_model.BankContactId}");
+        }
+    }
+    private void OpenPostings()
+    {
+        if (Id != null)
+        {
+            Nav.NavigateTo($"/postings/account/{Id}");
         }
     }
 

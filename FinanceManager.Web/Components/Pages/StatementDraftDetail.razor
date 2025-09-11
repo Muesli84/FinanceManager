@@ -35,6 +35,9 @@ else
         <button @onclick="ValidateDraft" class="icon-btn" title="Prüfung ausführen" aria-label="Validieren">
             <svg><use href="/icons/sprite.svg#check" /></svg>
         </button>
+        <button class="icon-btn" @onclick="BookDraft" disabled="@_booking" title="Buchen" aria-label="Buchen">
+            <svg><use href="/icons/sprite.svg#save" /></svg>
+        </button>
         @if(_validation != null)
         {
             var errorCount = _validation.Messages.Count(m=>m.Severity=="Error");
@@ -45,6 +48,20 @@ else
             </span>
         }
     </div>
+    @if(!string.IsNullOrEmpty(_bookingError))
+    {
+        <div style="margin:.5rem 0;color:#e66;font-size:.75rem;">@_bookingError</div>
+    }
+    @if(_pendingWarningConfirmation && _lastValidation != null)
+    {
+        <div style="margin:.75rem 0;padding:.6rem .8rem;border:1px solid #665500;background:#221e00;font-size:.7rem;max-width:960px;">
+            <strong>@_lastValidation.Messages.Count(m=>m.Severity=="Warning") Warnungen gefunden.</strong> Soll trotzdem gebucht werden?
+            <div style="margin-top:.5rem;display:flex;gap:.5rem;">
+                <button class="icon-btn" @onclick="ForceBook">Ja</button>
+                <button class="icon-btn" @onclick="(()=>{_pendingWarningConfirmation=false;})">Abbrechen</button>
+            </div>
+        </div>
+    }
     <p><strong>File:</strong> @_draft.OriginalFileName</p>
     @if (_hasFile)
     {
@@ -66,6 +83,24 @@ else
             }
         </select>
     </p>
+
+    @if(_validation != null)
+    {
+        var globalMessages = _validation.Messages.Where(m=>m.EntryId==null).ToList();
+        if(globalMessages.Any())
+        {
+            <div style="margin:.5rem 0 1rem 0;padding:.6rem .75rem;border:1px solid #444;border-radius:4px;background:#181818;max-width:960px;">
+                <h4 style="margin:.1rem 0 .4rem 0;font-size:.75rem;">Allgemeine Meldungen</h4>
+                <ul style="margin:0;padding-left:1.1rem;font-size:.65rem;">
+                    @foreach(var gm in globalMessages)
+                    {
+                        var c = gm.Severity=="Error"?"#e66":"#cc6";
+                        <li style="margin:.2rem 0;color:@c;">@gm.Message</li>
+                    }
+                </ul>
+            </div>
+        }
+    }
 
     <p><strong>Gesamtsumme:</strong> @_draft.Entries.Sum(e => e.Amount)</p>
     @if (_draft.ParentEntryAmount != null)
@@ -209,12 +244,15 @@ else
     private List<SavingsPlanDto> _savingsPlans = new();
 
     private bool _hasFile; private bool _showViewer; private string? _fileUrl;
-    private DraftValidationResultDto? _validation; // NEW STATE
+    private DraftValidationResultDto? _validation; // Validation state
+    private bool _booking; private bool _pendingWarningConfirmation; private DraftValidationResultDto? _lastValidation; private string? _bookingError;
+
+    private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries);
 
     protected override async Task OnParametersSetAsync()
     {
         _draft = await Http.GetFromJsonAsync<StatementDraftDto>($"api/statement-drafts/{Id}");
-        _hasFile = _draft != null; // presence implies we can query file endpoint; refine via flag if added later
+        _hasFile = _draft != null;
         await LoadAccountsAsync();
         _selectedAccountId = _draft?.DetectedAccountId;
         await LoadSavingsPlansAsync();
@@ -230,6 +268,76 @@ else
         StateHasChanged();
     }
 
+    private async Task BookDraft()
+    {
+        _bookingError = null; _pendingWarningConfirmation = false; _lastValidation = null; _booking = true;
+        try
+        {
+            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book", null);
+            if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
+            {
+                var res = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                _lastValidation = res?.Validation; _validation = res?.Validation; // show counts + per entry
+                _pendingWarningConfirmation = true;
+            }
+            else if (!resp.IsSuccessStatusCode)
+            {
+                BookingResultDto? resObj = null;
+                try { resObj = await resp.Content.ReadFromJsonAsync<BookingResultDto>(); } catch { }
+                if (resObj?.Validation != null)
+                {
+                    _validation = resObj.Validation;
+                    _bookingError = "Es liegen Fehler vor. Bitte korrigieren.";
+                }
+                else
+                {
+                    _bookingError = await resp.Content.ReadAsStringAsync();
+                }
+            }
+            else
+            {
+                var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                if (ok != null && ok.Success)
+                {
+                    Nav.NavigateTo("/statement-drafts", true);
+                }
+            }
+        }
+        finally { _booking = false; }
+    }
+
+    private async Task ForceBook()
+    {
+        _booking = true; _bookingError = null;
+        try
+        {
+            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book?forceWarnings=true", null);
+            if (!resp.IsSuccessStatusCode)
+            {
+                BookingResultDto? resObj = null;
+                try { resObj = await resp.Content.ReadFromJsonAsync<BookingResultDto>(); } catch { }
+                if (resObj?.Validation != null)
+                {
+                    _validation = resObj.Validation;
+                    _bookingError = "Es liegen Fehler vor. Bitte korrigieren.";
+                }
+                else
+                {
+                    _bookingError = await resp.Content.ReadAsStringAsync();
+                }
+            }
+            else
+            {
+                var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                if (ok != null && ok.Success)
+                {
+                    Nav.NavigateTo("/statement-drafts", true);
+                }
+            }
+        }
+        finally { _booking = false; _pendingWarningConfirmation = false; }
+    }
+
     private async Task LoadAccountsAsync()
     {
         var resp = await Http.GetAsync("/api/accounts?skip=0&take=500");
@@ -237,7 +345,6 @@ else
         {
             var list = await resp.Content.ReadFromJsonAsync<List<AccountDto>>() ?? new();
             _accounts = list.Select(a => new AccountVm { Id = a.Id, Name = a.Name, BankContactId = a.BankContactId }).ToList();
-            // load contacts for grouping names
             var contactsResp = await Http.GetAsync("/api/contacts?skip=0&take=500");
             _contacts = new List<ContactDto>();
             if (contactsResp.IsSuccessStatusCode)
@@ -246,7 +353,7 @@ else
             }
             var bankContacts = _contacts.Where(c => c.Type == ContactType.Bank).ToDictionary(c => c.Id, c => c.Name);
             _groupedAccounts = _accounts
-                .GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)" )
+                .GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)")
                 .OrderBy(g => g.Key)
                 .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
         }
@@ -308,7 +415,6 @@ else
     }
 
     private void OpenEntry(Guid entryId) => Nav.NavigateTo($"/statement-drafts/{Id}/entries/{entryId}");
-
     private void BackToParent()
     {
         if (_draft?.ParentDraftId != null && _draft.ParentEntryId != null)
@@ -316,17 +422,15 @@ else
             Nav.NavigateTo($"/statement-drafts/{_draft.ParentDraftId}/entries/{_draft.ParentEntryId}");
         }
     }
-
     private void ToggleViewer()
     {
-        if (!_hasFile) return;
+        if (!_hasFile) { return; }
         _showViewer = !_showViewer;
         _fileUrl = _showViewer ? $"/api/statement-drafts/{Id}/file" : null;
     }
-
     private async Task DownloadFile()
     {
-        if (!_hasFile) return;
+        if (!_hasFile) { return; }
         var url = $"/api/statement-drafts/{Id}/file";
         Nav.NavigateTo(url, forceLoad:true);
     }
