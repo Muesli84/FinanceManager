@@ -10,6 +10,7 @@ using FinanceManager.Infrastructure.Auth;
 using FinanceManager.Infrastructure.Contacts;
 using FinanceManager.Infrastructure.Savings;
 using FinanceManager.Infrastructure.Securities;
+using FinanceManager.Infrastructure.Setup;
 using FinanceManager.Infrastructure.Statements;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +41,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISetupImportService, SetupImportService>();
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<ISecurityCategoryService, SecurityCategoryService>();
+        services.AddScoped< IAutoInitializationService , AutoInitializationService>();
         return services;
     }
 }

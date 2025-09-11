@@ -1,5 +1,6 @@
 using FinanceManager.Application;
 using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Setup;
 using FinanceManager.Web.Components;
 using FinanceManager.Web.Infrastructure;
 using FinanceManager.Web.Services;
@@ -133,6 +134,13 @@ using (var scope = app.Services.CreateScope())
         throw;
     }
 }
+
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<IAutoInitializationService>();
+    initializer.Run();
+}
+
 
 if (!app.Environment.IsDevelopment())
 {
