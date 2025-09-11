@@ -367,3 +367,5 @@ FodyWeavers.xsd
 /coverage/
 /FinanceManager.Web/financemanager.db-shm
 /FinanceManager.Web/financemanager.db-wal
+/init
+/FinanceManager.Web/init
