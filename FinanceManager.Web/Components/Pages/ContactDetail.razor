@@ -43,6 +43,7 @@ else
                     <svg><use href="/icons/sprite.svg#merge" /></svg>
                 </button>
             }
+            <button type="button" @onclick="OpenPostings" disabled="@_busy" aria-label="Postings" title="Postings" class="icon-btn"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
         }
     </div>
     <EditForm Model="_model" OnValidSubmit="SaveAsync">
@@ -275,6 +276,13 @@ else
         if (Id.HasValue)
         {
             Navigation.NavigateTo($"/accounts?bankContactId={Id}");
+        }
+    }
+    private void OpenPostings()
+    {
+        if (Id.HasValue)
+        {
+            Navigation.NavigateTo($"/postings/contact/{Id}");
         }
     }
 

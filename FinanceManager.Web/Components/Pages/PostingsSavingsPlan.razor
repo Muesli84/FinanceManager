@@ -1,0 +1,173 @@
+@page "/postings/savings-plan/{PlanId:guid}"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<h3>Sparplanposten</h3>
+<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
+    <button class="icon-btn" @onclick="Back" title="Zurück" aria-label="Zurück"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+    <input placeholder="Suche (Empfänger / Betreff / Zweck / Datum / Betrag)" @bind="_search" @bind:after="OnSearchChanged" style="min-width:260px;" />
+</div>
+@if(_loading && _items.Count==0)
+{
+    <p>Lade...</p>
+}
+else
+{
+    <table class="fm-table wide">
+        <thead>
+            <tr>
+                <th style="width:7rem;">Datum</th>
+                <th style="width:7rem;text-align:right;">Betrag</th>
+                <th style="width:6rem;">Postenart</th>
+                <th style="width:18%;">Empfänger</th>
+                <th style="width:22%;">Verwendungszweck</th>
+                <th>Buchungsbeschreibung</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var p in _items)
+            {
+                <tr>
+                    <td>@p.BookingDate.ToShortDateString()</td>
+                    <td style="text-align:right;">@p.Amount</td>
+                    <td>@(p.Kind == PostingKind.Security && p.SecuritySubType!=null ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
+                    <td class="wrap">@(string.IsNullOrWhiteSpace(p.RecipientName)?"-":p.RecipientName)</td>
+                    <td class="wrap">@(string.IsNullOrWhiteSpace(p.Subject)?"-":p.Subject)</td>
+                    <td class="wrap">@(string.IsNullOrWhiteSpace(p.Description)?"-":p.Description)</td>
+                </tr>
+            }
+            @if(_loading)
+            {
+                <tr><td colspan="6" style="opacity:.6;">Lade...</td></tr>
+            }
+        </tbody>
+    </table>
+    <div style="margin-top:.5rem;">
+        @if(_canLoadMore)
+        {
+            <div @ref="_sentinel" class="infinite-sentinel" aria-hidden="true"></div>
+        }
+        else if(_items.Count==0 && !_loading)
+        {
+            <span style="opacity:.6;font-size:.75rem;">Keine Posten vorhanden.</span>
+        }
+        else if(!_canLoadMore)
+        {
+            <div class="end-of-list" style="opacity:.6;font-size:.65rem;">Ende erreicht.</div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Guid PlanId { get; set; }
+    private const int PageSize = 50;
+    private bool _loading; private bool _canLoadMore = true; private int _skip;
+    private List<PostingDto> _items = new();
+
+    private ElementReference _sentinel;
+    private DotNetObjectReference<PostingsSavingsPlan>? _selfRef;
+    private bool _observerAttached;
+    private string _search = string.Empty;
+    private CancellationTokenSource? _searchCts;
+
+    private enum PostingKind { Bank=0, Contact=1, SavingsPlan=2, Security=3 }
+    private enum SecurityPostingSubType { Trade=0, Fee=1, Tax=2, Dividend=3 }
+    private sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if(_items.Count==0)
+        {
+            await LoadMoreAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_observerAttached || !_canLoadMore || _loading)
+        {
+            return;
+        }
+        if (_sentinel.Context is null)
+        {
+            return;
+        }
+        try
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("fmInfinite.observe", _sentinel, _selfRef, null);
+            _observerAttached = true;
+        }
+        catch (JSException)
+        {
+            await Task.Yield();
+            StateHasChanged();
+        }
+    }
+
+    private void OnSearchChanged()
+    {
+        _searchCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _searchCts = cts;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(350, cts.Token); // debounce
+                if (cts.IsCancellationRequested) { return; }
+                await InvokeAsync(async () =>
+                {
+                    ResetAndSearch();
+                    await LoadMoreAsync();
+                });
+            }
+            catch (TaskCanceledException) { }
+        });
+    }
+
+    private void ResetAndSearch()
+    {
+        _items.Clear();
+        _skip = 0;
+        _canLoadMore = true;
+        _observerAttached = false; // reattach for new sentinel
+    }
+
+    [JSInvokable]
+    public async Task LoadMoreFromJs()
+    {
+        await LoadMoreAsync();
+        if (_canLoadMore)
+        {
+            await JS.InvokeVoidAsync("fmInfinite.refresh");
+        }
+        else
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if(_loading || !_canLoadMore) return;
+        _loading = true;
+        try
+        {
+            var query = string.IsNullOrWhiteSpace(_search) ? string.Empty : $"&q={Uri.EscapeDataString(_search)}";
+            var resp = await Http.GetAsync($"/api/postings/savings-plan/{PlanId}?skip={_skip}&take={PageSize}{query}");
+            if(resp.IsSuccessStatusCode)
+            {
+                var chunk = await resp.Content.ReadFromJsonAsync<List<PostingDto>>() ?? new();
+                _items.AddRange(chunk);
+                _skip += chunk.Count;
+                if(chunk.Count < PageSize) _canLoadMore = false;
+            }
+        }
+        finally { _loading=false; StateHasChanged(); }
+    }
+
+    private void Back() => Nav.NavigateTo($"/savings-plans/{PlanId}");
+}
