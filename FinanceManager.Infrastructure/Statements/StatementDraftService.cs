@@ -190,7 +190,8 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
                 .Replace("ä", "ae", StringComparison.OrdinalIgnoreCase)
                 .Replace("ö", "oe", StringComparison.OrdinalIgnoreCase)
                 .Replace("ü", "ue", StringComparison.OrdinalIgnoreCase)
-                .Replace("ß", "ss", StringComparison.OrdinalIgnoreCase);
+                .Replace("ß", "ss", StringComparison.OrdinalIgnoreCase)
+                .Replace(" ", "", StringComparison.OrdinalIgnoreCase);
         }
 
         var normalizedSubject = NormalizeUmlauts(entry.Subject).ToLowerInvariant();
@@ -506,7 +507,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
 
     private static void TryAutoAssignContact(List<Domain.Contacts.Contact> contacts, Dictionary<Guid, List<string>> aliasLookup, Guid? bankContactId, Domain.Contacts.Contact selfContact, StatementDraftEntry entry)
     {
-        var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant();
+        var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant().TrimEnd();
         Guid? matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedRecipient);
         var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
         if (matchedContact != null && matchedContact.IsPaymentIntermediary)
@@ -572,7 +573,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         {
             foreach (var kvp in aliasLookup)
             {
-                foreach (var pattern in kvp.Value)
+                foreach (var pattern in kvp.Value.Select(val => val.ToLowerInvariant()))
                 {
                     if (string.IsNullOrWhiteSpace(pattern)) { continue; }
                     // Platzhalter in Regex umwandeln: * → .*, ? → .

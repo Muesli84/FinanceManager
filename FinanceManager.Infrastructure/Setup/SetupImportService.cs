@@ -4,6 +4,7 @@ using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Securities;
 using FinanceManager.Infrastructure;
 using FinanceManager.Shared.Dtos;
+using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.Metrics;
 using System.IO;
 using System.Security.Principal;
@@ -79,11 +80,19 @@ public sealed class SetupImportService : ISetupImportService
                 if (string.IsNullOrWhiteSpace(name)) continue;
                 if (string.IsNullOrWhiteSpace(instituteName)) continue;
 
-                var contact = _db.Contacts.Where(c => c.OwnerUserId == userId && c.Name == instituteName).FirstOrDefault();
+                var contacts = _db.Contacts.Where(c => c.OwnerUserId == userId && c.Name == instituteName).ToArray();
+                var contact = contacts.FirstOrDefault();
                 if (contact is null)
                 {
                     contact = new Contact(userId, instituteName, ContactType.Bank, null);
                     _db.Contacts.Add(contact);
+
+                    var contactNames = account.GetProperty("Institute").GetProperty("Names");
+                    if (contactNames.ValueKind != JsonValueKind.Null)
+                    foreach (var contactName in contactNames.EnumerateArray().Select(n => n.GetString()).Where(n => !string.IsNullOrWhiteSpace(n)))
+                    {
+                        _db.AliasNames.Add(new AliasName(contact.Id, contactName ?? instituteName));
+                    }
                 }
                 if (contact.Type != ContactType.Bank)
                 {
@@ -104,6 +113,7 @@ public sealed class SetupImportService : ISetupImportService
                     _db.Accounts.Add(newAccount);
                     yield return new KeyValuePair<string, Guid>(iban, newAccount.Id);
                 }
+                _db.SaveChanges();
             }
     }
 
@@ -177,7 +187,7 @@ public sealed class SetupImportService : ISetupImportService
                 var name = contact.GetProperty("Name").GetString();
                 var isPaymentProvider = contact.GetProperty("IsPaymentProvider").GetBoolean();
                 if (string.IsNullOrWhiteSpace(name)) continue;
-                var newContact = new Contact(userId, name, ContactType.Organization, null);
+                var newContact = new Contact(userId, name, ContactType.Organization, null, null, isPaymentProvider);
                 if (contact.TryGetProperty("Category", out var categoryProp))
                     if (categoryProp.TryGetProperty("Id", out var categoryIdProp) && categoryIdProp.ValueKind == JsonValueKind.Number)
                     {
@@ -188,7 +198,17 @@ public sealed class SetupImportService : ISetupImportService
                             newContact.SetCategory(matchingCategory.Value);
                         }
                     }
-                _db.Contacts.Add(newContact);
+
+                var existing = _db.Contacts.FirstOrDefault(c => c.Name == newContact.Name && c.OwnerUserId == userId);
+                if (existing is not null)
+                    newContact = existing;
+                else
+                    _db.Contacts.Add(newContact);
+
+                var contactNames = contact.GetProperty("Names");
+                if (contactNames.ValueKind != JsonValueKind.Null)
+                    foreach (var alias in contactNames.EnumerateArray().Select(n => n.GetString()).Where(n => !string.IsNullOrWhiteSpace(n)))
+                        _db.AliasNames.Add(new AliasName(newContact.Id, alias));
                 yield return new KeyValuePair<int, Guid>(dataId, newContact.Id);
             }
     }
