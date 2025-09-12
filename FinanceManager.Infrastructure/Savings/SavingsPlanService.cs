@@ -1,4 +1,5 @@
 using FinanceManager.Application.Savings;
+using FinanceManager.Domain;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
@@ -90,5 +91,42 @@ public sealed class SavingsPlanService : ISavingsPlanService
         _db.SavingsPlans.Remove(plan);
         await _db.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task<SavingsPlanAnalysisDto> AnalyzeAsync(Guid id, Guid ownerUserId, CancellationToken ct)
+    {
+        var plan = await _db.SavingsPlans.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id && p.OwnerUserId == ownerUserId, ct);
+        if (plan == null)
+        {
+            return new SavingsPlanAnalysisDto(id, false, null, null, 0m, 0m, 0);
+        }
+
+        // If no target defined, cannot analyze meaningful reachability
+        if (plan.TargetAmount is null || plan.TargetDate is null)
+        {
+            return new SavingsPlanAnalysisDto(id, true, plan.TargetAmount, plan.TargetDate, 0m, 0m, 0);
+        }
+
+        var today = DateTime.Today;
+        var endDate = plan.TargetDate.Value.Date;
+        var monthsRemaining = Math.Max(0, ((endDate.Year - today.Year) * 12 + endDate.Month - today.Month));
+
+        // Sum of postings for this savings plan in past months (positive contributions)
+        var accumulated = await _db.Postings.AsNoTracking()
+            .Where(p => p.SavingsPlanId == id && p.Kind == PostingKind.SavingsPlan && p.BookingDate <= today)
+            .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
+
+        var target = plan.TargetAmount.Value;
+        var remaining = Math.Max(0m, target - accumulated);
+        decimal requiredMonthly = monthsRemaining > 0 ? Math.Ceiling((remaining / monthsRemaining) * 100) / 100 : remaining;
+
+        var reachable = monthsRemaining == 0 ? remaining == 0 : accumulated + monthsRemaining * 10_000_000m >= target ? remaining <= requiredMonthly * monthsRemaining : remaining <= requiredMonthly * monthsRemaining; // trivial check, replaced below
+
+        // Practical reachability: assume average of last n months, else require equal distribution
+        // For now simple rule: if remaining <= monthsRemaining * lastAvg then reachable, else not.
+        // But without past average, use equal distribution from now on => remaining == 0 or monthsRemaining>0.
+        reachable = monthsRemaining > 0 ? remaining <= requiredMonthly * monthsRemaining : remaining == 0;
+
+        return new SavingsPlanAnalysisDto(id, reachable, target, endDate, accumulated, requiredMonthly, monthsRemaining);
     }
 }

@@ -44,6 +44,13 @@ public sealed class SavingsPlansController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
+    [HttpGet("{id:guid}/analysis")]
+    public async Task<IActionResult> AnalyzeAsync(Guid id, CancellationToken ct)
+    {
+        var dto = await _service.AnalyzeAsync(id, _current.UserId, ct);
+        return Ok(dto);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateAsync([FromBody] SavingsPlanCreateRequest req, CancellationToken ct)
     {
