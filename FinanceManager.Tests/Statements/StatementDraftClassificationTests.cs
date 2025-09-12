@@ -88,7 +88,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Test", "Empfänger", DateTime.Today, "EUR", "Buchung", false);
         });
 
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         draft.DetectedAccountId.Should().Be(account.Id);
         conn.Dispose();
@@ -106,7 +106,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Test", "Empfänger", DateTime.Today, "EUR", "Buchung", false);
         });
 
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         draft.DetectedAccountId.Should().Be(account.Id);
         conn.Dispose();
@@ -127,7 +127,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Test", "Empfänger", DateTime.Today, "EUR", "Buchung", false);
         });
         
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         draft.DetectedAccountId.Should().BeNull();
         conn.Dispose();
@@ -144,7 +144,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Test", "Empfänger", DateTime.Today, "EUR", "Buchung", false);
         });
 
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         draft.DetectedAccountId.Should().BeNull();
         conn.Dispose();
@@ -160,7 +160,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Test", "Empfänger", DateTime.Today, "EUR", "Buchung", true);
         });
 
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
         entry.Status.Should().Be(StatementDraftEntryStatus.Announced);
@@ -179,7 +179,7 @@ public sealed class StatementDraftClassificationTests
         db.StatementEntries.Add(new StatementEntry(Guid.NewGuid(), DateTime.Today, 100, "Test", "hash", "Empfänger", DateTime.Today, "EUR", "Buchung", false, false));
         await db.SaveChangesAsync();
 
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
         entry.Status.Should().Be(StatementDraftEntryStatus.AlreadyBooked);
@@ -197,7 +197,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Test", contact.Name, DateTime.Today, "EUR", "Buchung", false);
         });
         
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
         entry.ContactId.Should().Be(contact.Id);
@@ -217,7 +217,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Test", contact.Name, DateTime.Today, "EUR", "Buchung", false);
         });
 
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
         entry.ContactId.Should().Be(contact.Id);
@@ -235,7 +235,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Test", "", DateTime.Today, "EUR", "Buchung", false);
         });
 
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
         entry.ContactId.Should().Be(contact.Id);
@@ -255,7 +255,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Test", otherContact.Name, DateTime.Today, "EUR", "Buchung", false);
         });
         
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
         entry.ContactId.Should().Be(ownerContact.Id);
@@ -276,7 +276,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Rechnung 123", "PayPal", DateTime.Today, "EUR", "Buchung", false);
         });
         
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
         entry.ContactId.Should().Be(recipient.Id);
@@ -296,7 +296,7 @@ public sealed class StatementDraftClassificationTests
             draft.AddEntry(DateTime.Today, 100, "Unbekannt", "PayPal", DateTime.Today, "EUR", "Buchung", false);
         });
 
-        await sut.ClassifyAsync(draft.Id, owner, CancellationToken.None);
+        await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
         entry.ContactId.Should().Be(intermediary.Id);

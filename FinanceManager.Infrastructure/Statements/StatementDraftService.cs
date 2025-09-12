@@ -643,7 +643,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
                 draft.SetDetectedAccount(account.Id);
             }
         }
-        if (draft.DetectedAccountId == null && draft.AccountName == null)
+        if (draft.DetectedAccountId == null && string.IsNullOrWhiteSpace(draft.AccountName))
         {
             var singleAccountId = await _db.Accounts.AsNoTracking()
                 .Where(a => a.OwnerUserId == ownerUserId)
