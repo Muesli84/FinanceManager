@@ -720,4 +720,130 @@ public sealed class StatementDraftBookingTests
         res.Validation.Messages.Any(m => m.Code == "SPLIT_CYCLE_DETECTED").Should().BeTrue();
         conn.Dispose();
     }
+
+    [Fact]
+    public async Task Booking_SavingsPlanGoalReached_WithExactSingleEntry_ShouldShowInformation_AndBookWithoutConfirmation()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var selfContact = await db.Contacts.FirstOrDefaultAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+        var plan = new SavingsPlan(owner, "Plan R", SavingsPlanType.OneTime, 100m, null, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        // existing accumulated = 60
+        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-5), 60m, null, null, null, null));
+        await db.SaveChangesAsync();
+
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var e = draft.AddEntry(DateTime.Today, 40m, "Save", bank.Name, DateTime.Today, "EUR", null, false);
+        db.Entry(e).State = EntityState.Added;
+        e.MarkAccounted(selfContact.Id);
+        e.AssignSavingsPlan(plan.Id);
+        await db.SaveChangesAsync();
+
+        var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
+        validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO" && m.Severity == "Information").Should().BeTrue();
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_SavingsPlanGoalReached_WithTwoEntriesSumExact_ShouldShowInformation_AndBookWithoutConfirmation_AndReturnInfo()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var selfContact = await db.Contacts.FirstOrDefaultAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+        var plan = new SavingsPlan(owner, "Plan R2", SavingsPlanType.OneTime, 200m, null, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        // existing accumulated = 150
+        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-10), 150m, null, null, null, null));
+        await db.SaveChangesAsync();
+
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var e1 = draft.AddEntry(DateTime.Today, 25m, "Save1", bank.Name, DateTime.Today, "EUR", null, false);
+        var e2 = draft.AddEntry(DateTime.Today, 25m, "Save2", bank.Name, DateTime.Today, "EUR", null, false);
+        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
+        e1.MarkAccounted(selfContact.Id); e2.MarkAccounted(selfContact.Id);
+        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
+        await db.SaveChangesAsync();
+
+        var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
+        validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO" && m.Severity == "Information").Should().BeTrue();
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+        // Booking result should include the same validation for UI display
+        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO").Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_SavingsPlanGoalExceeded_ShouldWarn_AndRequireConfirmation()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var selfContact = await db.Contacts.FirstOrDefaultAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+        var plan = new SavingsPlan(owner, "Plan W", SavingsPlanType.OneTime, 100m, null, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        // existing accumulated = 90
+        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-2), 90m, null, null, null, null));
+        await db.SaveChangesAsync();
+
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var e1 = draft.AddEntry(DateTime.Today, 8m, "A", bank.Name, DateTime.Today, "EUR", null, false);
+        var e2 = draft.AddEntry(DateTime.Today, 5m, "B", bank.Name, DateTime.Today, "EUR", null, false);
+        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
+        e1.MarkAccounted(selfContact.Id); e2.MarkAccounted(selfContact.Id);
+        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
+        await db.SaveChangesAsync();
+
+        var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
+        validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_EXCEEDED" && m.Severity == "Warning").Should().BeTrue();
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeFalse();
+        res.HasWarnings.Should().BeTrue();
+
+        var forced = await sut.BookAsync(draft.Id, owner, true, CancellationToken.None);
+        forced.Success.Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_SavingsPlanGoalReached_FromNegativeBalanceToZeroTarget_ShouldShowInformation_AndBookWithoutConfirmation_InResult()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var selfContact = await db.Contacts.FirstOrDefaultAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+        var plan = new SavingsPlan(owner, "Plan Z", SavingsPlanType.OneTime, 0m, null, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        // existing accumulated = -30 (debt)
+        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-7), -30m, null, null, null, null));
+        await db.SaveChangesAsync();
+
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var e1 = draft.AddEntry(DateTime.Today, 10m, "A", bank.Name, DateTime.Today, "EUR", null, false);
+        var e2 = draft.AddEntry(DateTime.Today, 20m, "B", bank.Name, DateTime.Today, "EUR", null, false);
+        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
+        e1.MarkAccounted(selfContact.Id); e2.MarkAccounted(selfContact.Id);
+        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
+        await db.SaveChangesAsync();
+
+        var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
+        validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO" && m.Severity == "Information").Should().BeTrue();
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO").Should().BeTrue();
+        conn.Dispose();
+    }
 }
