@@ -8,6 +8,7 @@ using FinanceManager.Domain;
 using FinanceManager.Application;
 using System.Globalization;
 using FinanceManager.Domain.Postings;
+using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -25,7 +26,7 @@ public sealed class PostingsController : ControllerBase
         _db = db; _current = current;
     }
 
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, FinanceManager.Domain.Postings.SecurityPostingSubType? SecuritySubType);
+    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
 
     [HttpGet("account/{accountId:guid}")]
     public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, CancellationToken ct = default)

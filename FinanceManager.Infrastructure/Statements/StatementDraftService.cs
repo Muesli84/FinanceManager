@@ -8,6 +8,7 @@ using FinanceManager.Shared.Dtos; // added
 using iText.StyledXmlParser.Jsoup.Internal;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using static FinanceManager.Infrastructure.Statements.StatementDraftService;
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -750,6 +751,15 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
 
     public async Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
+        return await InternalValidateAsync(draftId, entryId, ownerUserId, ct, new HashSet<Guid>());
+    }
+
+    public async Task<DraftValidationResultDto> InternalValidateAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct, HashSet<Guid> draftIds)
+    {
+        if (!draftIds.Add(draftId))
+        {             
+            return new DraftValidationResultDto(draftId, false, new List<DraftValidationMessageDto> { new("SPLIT_CYCLE_DETECTED", "Error", "Zirkuläre Referenz bei Aufteilungs-Auszügen erkannt.", draftId, null) });
+        }
         var draft = await _db.StatementDrafts
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         if (draft == null)
@@ -853,6 +863,10 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
                     {
                         messages.Add(new("SECURITY_MISSING_QUANTITY","Error","Für ein zugewiesenes Wertpapier muss eine Menge angegeben sein.", draft.Id, entry.Id));
                     }
+                    if (entry.SecurityTaxAmount + entry.SecurityFeeAmount > entry.Amount)
+                    {
+                        messages.Add(new("SECURITY_FEE_TAX_EXCEEDS_AMOUNT", "Error", "Für ein zugewiesenes Wertpapier dürfen Steuer und Gebühr nicht größer sein, als der gebuchte Betrag.", draft.Id, entry.Id));                        
+                    }
                 }
             }
 
@@ -866,7 +880,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
                 }
 
                 // Validate split draft recursively (single level per spec; still run validation to reuse rules)
-                var splitValidation = await ValidateAsync(entry.SplitDraftId.Value, null, ownerUserId, ct);
+                var splitValidation = await InternalValidateAsync(entry.SplitDraftId.Value, null, ownerUserId, ct, draftIds);
                 foreach (var m in splitValidation.Messages)
                 {
                     // propagate but mark as from split
@@ -902,99 +916,85 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         _db.StatementImports.Add(import);
         await _db.SaveChangesAsync(ct);
 
+        List<StatementDraft> bookedDrafts = new();
         // Track created postings per entry (future linking if needed)
         foreach (var e in draft.Entries)
         {
-            var groupId = Guid.NewGuid();
-            // If entry has split draft assigned: amount moves to child entries; original becomes zero-based container
-            decimal baseAmount = e.SplitDraftId != null ? 0m : e.Amount;
-
-            // Common metadata
-            var subj = e.Subject;
-            var recip = e.RecipientName;
-            var desc = e.BookingDescription;
-
-            // Bank posting (always if account assigned)
-            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Bank, draft.DetectedAccountId, null, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
-
-            // Contact posting
-            if (e.ContactId != null)
-            {
-                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
-            }
-
-            // SavingsPlan posting
-            if (e.SavingsPlanId != null)
-            {
-                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
-            }
-
-            // Security posting + fee/tax adjustments
-            if (e.SecurityId != null)
-            {
-                var securityGroupId = Guid.NewGuid();
-                var tradeNet = baseAmount;
-                if (e.SecurityFeeAmount is decimal f) { tradeNet -= f; }
-                if (e.SecurityTaxAmount is decimal t) { tradeNet -= t; }
-                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tradeNet, subj, recip, desc, Domain.Postings.SecurityPostingSubType.Trade).SetGroup(securityGroupId));
-                if (e.SecurityFeeAmount is decimal fee && fee != 0)
-                {
-                    _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, fee, subj, recip, "Fee", Domain.Postings.SecurityPostingSubType.Fee).SetGroup(securityGroupId));
-                }
-                if (e.SecurityTaxAmount is decimal tax && tax != 0)
-                {
-                    _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tax, subj, recip, "Tax", Domain.Postings.SecurityPostingSubType.Tax).SetGroup(securityGroupId));
-                }
-            }
-
-            // If split draft: recursively add child postings
-            if (e.SplitDraftId != null)
-            {
-                var childDraft = await _db.StatementDrafts.Include(x=>x.Entries).FirstOrDefaultAsync(x=>x.Id==e.SplitDraftId, ct);
-                if (childDraft != null)
-                {
-                    foreach(var ce in childDraft.Entries)
-                    {
-                        var childAmount = ce.Amount;
-                        var cSubj = ce.Subject; var cRecip = ce.RecipientName; var cDesc = ce.BookingDescription;
-                        var childGroupId = Guid.NewGuid();
-                        _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Bank, draft.DetectedAccountId, null, null, null, ce.BookingDate, childAmount, cSubj, cRecip, cDesc, null).SetGroup(childGroupId));
-                        if (ce.ContactId != null)
-                        {
-                            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Contact, null, ce.ContactId, null, null, ce.BookingDate, childAmount, cSubj, cRecip, cDesc, null).SetGroup(childGroupId));
-                        }
-                        if (ce.SavingsPlanId != null)
-                        {
-                            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, ce.SavingsPlanId, null, ce.BookingDate, childAmount, cSubj, cRecip, cDesc, null).SetGroup(childGroupId));
-                        }
-                        if (ce.SecurityId != null)
-                        {
-                            var childSecurityGroupId = Guid.NewGuid();
-                            var childNet = childAmount;
-                            if (ce.SecurityFeeAmount is decimal cf) { childNet -= cf; }
-                            if (ce.SecurityTaxAmount is decimal ctax) { childNet -= ctax; }
-                            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, ce.SecurityId, ce.BookingDate, childNet, cSubj, cRecip, cDesc, Domain.Postings.SecurityPostingSubType.Trade).SetGroup(childSecurityGroupId));
-                            if (ce.SecurityFeeAmount is decimal cfee && cfee != 0)
-                            {
-                                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, ce.SecurityId, ce.BookingDate, cfee, cSubj, cRecip, "Fee", Domain.Postings.SecurityPostingSubType.Fee).SetGroup(childSecurityGroupId));
-                            }
-                            if (ce.SecurityTaxAmount is decimal ctax2 && ctax2 != 0)
-                            {
-                                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, ce.SecurityId, ce.BookingDate, ctax2, cSubj, cRecip, "Tax", Domain.Postings.SecurityPostingSubType.Tax).SetGroup(childSecurityGroupId));
-                            }
-                        }
-                    }
-                }
-            }
+            bookedDrafts.AddRange(await BookEntryAsync(draft, import, e, ct));
         }
 
         draft.MarkCommitted();
+        foreach (var bd in bookedDrafts)
+        {
+            bd.MarkCommitted();
+        }
         await _db.SaveChangesAsync(ct);
 
-        var nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Id > draftId).FirstOrDefaultAsync();
+        var nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Id > draftId && d.Status == StatementDraftStatus.Draft).FirstOrDefaultAsync();
         if (nextJournal is null)
-            nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).LastOrDefaultAsync();
+            nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Status == StatementDraftStatus.Draft).LastOrDefaultAsync();
 
         return new BookingResult(true, hasWarnings, validation, import.Id, draft.Entries.Count, nextJournal?.Id);
+    }
+
+    private async Task<IEnumerable<StatementDraft>> BookEntryAsync(StatementDraft draft, StatementImport import, StatementDraftEntry e, CancellationToken ct)
+    {
+        var groupId = Guid.NewGuid();
+        // If entry has split draft assigned: amount moves to child entries; original becomes zero-based container
+        decimal baseAmount = e.SplitDraftId != null ? 0m : e.Amount;
+
+        // Common metadata
+        var subj = e.Subject;
+        var recip = e.RecipientName;
+        var desc = e.BookingDescription;
+
+        // Bank posting (always if account assigned)
+        _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Bank, draft.DetectedAccountId, null, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
+
+        // Contact posting
+        if (e.ContactId != null)
+        {
+            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
+        }
+
+        // SavingsPlan posting
+        if (e.SavingsPlanId != null)
+        {
+            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
+        }
+
+        // Security posting + fee/tax adjustments
+        if (e.SecurityId != null)
+        {
+            var securityGroupId = Guid.NewGuid();
+            var tradeNet = baseAmount;
+            if (e.SecurityFeeAmount is decimal f) { tradeNet -= f; }
+            if (e.SecurityTaxAmount is decimal t) { tradeNet -= t; }
+            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tradeNet, subj, recip, desc, SecurityPostingSubType.Trade).SetGroup(securityGroupId));
+            if (e.SecurityFeeAmount is decimal fee && fee != 0)
+            {
+                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, fee, subj, recip, "Fee", SecurityPostingSubType.Fee).SetGroup(securityGroupId));
+            }
+            if (e.SecurityTaxAmount is decimal tax && tax != 0)
+            {
+                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tax, subj, recip, "Tax", SecurityPostingSubType.Tax).SetGroup(securityGroupId));
+            }
+        }
+
+        // If split draft: recursively add child postings
+        List<StatementDraft> bookedDrafts = new();
+        if (e.SplitDraftId != null)
+        {
+            var childDraft = await _db.StatementDrafts.Include(x => x.Entries).FirstOrDefaultAsync(x => x.Id == e.SplitDraftId, ct);
+            if (childDraft != null)
+            {
+                foreach (var ce in childDraft.Entries)
+                {
+                    bookedDrafts.AddRange(await BookEntryAsync(childDraft, import, ce, ct));
+                }
+                bookedDrafts.Add(childDraft);
+            }
+        }
+        return bookedDrafts;
     }
 }

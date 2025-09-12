@@ -1,12 +1,8 @@
+using FinanceManager.Shared.Dtos;
+
 namespace FinanceManager.Domain.Postings;
 
-public enum SecurityPostingSubType
-{
-    Trade = 0,
-    Fee = 1,
-    Tax = 2,
-    Dividend = 3
-}
+
 
 public sealed class Posting : Entity, IAggregateRoot
 {

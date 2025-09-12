@@ -24,3 +24,10 @@ public enum SecurityTransactionType
     Dividend = 2,
     // Weitere Typen nach Bedarf ergänzen
 }
+public enum SecurityPostingSubType
+{
+    Trade = 0,
+    Fee = 1,
+    Tax = 2,
+    Dividend = 3
+}
