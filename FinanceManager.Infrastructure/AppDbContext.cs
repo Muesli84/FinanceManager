@@ -129,6 +129,7 @@ public class AppDbContext : DbContext
             entity.Property(x => x.CreatedUtc).IsRequired();
             entity.Property(x => x.IsActive).IsRequired();
             entity.Property(e => e.OwnerUserId).IsRequired();
+            entity.Property(e => e.ContractNumber).HasMaxLength(100);
             entity.HasOne<SavingsPlanCategory>()
                   .WithMany()
                   .HasForeignKey(e => e.CategoryId)

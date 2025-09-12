@@ -129,7 +129,7 @@ namespace FinanceManager.Infrastructure.Setup
                         _logger.LogInformation("AutoInit: Importiere Draft-Datei '{File}'.", Path.GetFileName(file));
                         var bytes = await File.ReadAllBytesAsync(file, ct);
                         await foreach(var draft in _statementDraftService.CreateDraftAsync(admin.Id, Path.GetFileName(file), bytes, ct))
-                        drafts.Add(draft);
+                            drafts.Add(draft);
                     }
                     catch (Exception ex)
                     {
@@ -150,12 +150,12 @@ namespace FinanceManager.Infrastructure.Setup
                             {
                                 case "statement-entry-assignent":
                                     {
-                                        var offset = draftFiles.Select(f => Path.GetFileName(f)).ToList().IndexOf(action[1]);
+                                        var offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[1]);
                                         var draft = drafts[offset];
                                         var contact = (await _contactService.ListAsync(admin.Id, 0, int.MaxValue, null, action[2], ct)).FirstOrDefault();
                                         if (action.Length > 3)
                                         {
-                                            offset = draftFiles.Select(f => Path.GetFileName(f)).ToList().IndexOf(action[3]);
+                                            offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[3]);
                                             var destDraft = drafts[offset];
                                             await AssignDraftAsync(drafts, draft, destDraft, contact, admin.Id, ct);
                                         }
@@ -168,9 +168,17 @@ namespace FinanceManager.Infrastructure.Setup
                                     break;
                                 case "statement-posting":
                                     {
-                                        var offset = draftFiles.Select(f => Path.GetFileName(f)).ToList().IndexOf(action[1]);
-                                        var draft = drafts[offset];
-                                        await PostDraftAsync(draft, admin.Id, ct);
+                                        var offset = 0;
+                                        do
+                                        {
+                                            offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[1]);
+                                            if (offset >= 0)
+                                            {
+                                                var draft = drafts[offset];
+                                                await PostDraftAsync(draft, admin.Id, ct);
+                                                drafts.RemoveAt(offset);
+                                            }
+                                        } while (offset >= 0);
                                         break;
                                     }
                             }
@@ -193,7 +201,14 @@ namespace FinanceManager.Infrastructure.Setup
 
         private async Task PostDraftAsync(StatementDraftDto draft, Guid ownerId, CancellationToken ct)
         {
-            await _statementDraftService.BookAsync(draft.DraftId, ownerId, true, ct);
+            try
+            {
+                await _statementDraftService.BookAsync(draft.DraftId, ownerId, true, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AutoInit: Fehler beim Buchen eines Kontoauszugs. ({file})", draft.OriginalFileName);
+            }
         }
 
         private async Task RemoveDraftEntryAsync(List<StatementDraftDto> drafts, string text, Guid ownerId, CancellationToken ct)

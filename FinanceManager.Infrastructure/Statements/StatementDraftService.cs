@@ -5,7 +5,9 @@ using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure.Statements.Reader;
 using FinanceManager.Shared.Dtos; // added
+using iText.StyledXmlParser.Jsoup.Internal;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -14,6 +16,16 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
     private readonly AppDbContext _db;
     private readonly IReadOnlyList<IStatementFileReader> _statementFileReaders;
     public StatementDraftService(AppDbContext db) { _db = db; _statementFileReaders = new List<IStatementFileReader>() { new ING_StatementFileReader(), new Barclays_StatementFileReader(), new BackupStatementFileReader() }; }
+
+    private static string NormalizeUmlauts(string text)
+    {
+        if (string.IsNullOrEmpty(text)) { return string.Empty; }
+        return text
+            .Replace("ä", "ae", StringComparison.OrdinalIgnoreCase)
+            .Replace("ö", "oe", StringComparison.OrdinalIgnoreCase)
+            .Replace("ü", "ue", StringComparison.OrdinalIgnoreCase)
+            .Replace("ß", "ss", StringComparison.OrdinalIgnoreCase);
+    }
 
     public async IAsyncEnumerable<StatementDraftDto> CreateDraftAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct)
     {
@@ -64,7 +76,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         await _db.SaveChangesAsync(ct);
 
         // Auto classify after creation
-        await ClassifyInternalAsync(draft, ownerUserId, ct);
+        await ClassifyInternalAsync(draft, null, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
         return Map(draft); // einfache Variante ohne SplitLookup
     }
@@ -178,7 +190,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         if (draft == null || draft.Status != StatementDraftStatus.Draft) { return null; }
         _db.Entry(draft.AddEntry(bookingDate, amount, subject)).State = EntityState.Added;
-        await ClassifyInternalAsync(draft, ownerUserId, ct);
+        await ClassifyInternalAsync(draft, null, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
         // If this draft is used as a split draft for a parent entry -> reevaluate parent status
         if (await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == draft.Id, ct))
@@ -230,12 +242,12 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         return true;
     }
 
-    public async Task<StatementDraftDto?> ClassifyAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
+    public async Task<StatementDraftDto?> ClassifyAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
-        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+        var draft = await _db.StatementDrafts
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         if (draft == null) { return null; }
-        await ClassifyInternalAsync(draft, ownerUserId, ct);
+        await ClassifyInternalAsync(draft, entryId, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
         return await GetDraftAsync(draftId, ownerUserId, ct);
     }
@@ -248,7 +260,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         var accountExists = await _db.Accounts.AnyAsync(a => a.Id == accountId && a.OwnerUserId == ownerUserId, ct);
         if (!accountExists) { return null; }
         draft.SetDetectedAccount(accountId);
-        await ClassifyInternalAsync(draft, ownerUserId, ct);
+        await ClassifyInternalAsync(draft, null, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
         return await GetDraftAsync(draftId, ownerUserId, ct);
     }
@@ -258,25 +270,30 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         if (entry.ContactId is null) { return; }
         if (entry.ContactId != selfContact.Id) { return; }
 
-        // Hilfsfunktion zur Normalisierung von Umlauten
-        static string NormalizeUmlauts(string text)
-        {
-            if (string.IsNullOrEmpty(text)) { return string.Empty; }
-            return text
-                .Replace("ä", "ae", StringComparison.OrdinalIgnoreCase)
-                .Replace("ö", "oe", StringComparison.OrdinalIgnoreCase)
-                .Replace("ü", "ue", StringComparison.OrdinalIgnoreCase)
-                .Replace("ß", "ss", StringComparison.OrdinalIgnoreCase)
-                .Replace(" ", "", StringComparison.OrdinalIgnoreCase);
-        }
+        // Clean subject for matching (remove spaces for name matching only)
+        string Clean(string s) => Regex.Replace(s ?? string.Empty, "\\s+", string.Empty);
 
         var normalizedSubject = NormalizeUmlauts(entry.Subject).ToLowerInvariant();
+        var normalizedSubjectNoSpaces = Clean(normalizedSubject);
 
         foreach (var plan in userPlans)
         {
             if (string.IsNullOrWhiteSpace(plan.Name)) { continue; }
-            var normalizedPlanName = NormalizeUmlauts(plan.Name).ToLowerInvariant();
-            if (normalizedSubject.Contains(normalizedPlanName))
+            var normalizedPlanName = Clean(NormalizeUmlauts(plan.Name).ToLowerInvariant());
+
+            bool nameMatches = normalizedSubjectNoSpaces.Contains(normalizedPlanName);
+            bool contractMatches = false;
+
+            if (!nameMatches && !string.IsNullOrWhiteSpace(plan.ContractNumber))
+            {
+                var cn = plan.ContractNumber.Trim();
+                // contract number may appear with spaces or hyphens; do a flexible contains check ignoring spaces/hyphens
+                var subjectForContract = Regex.Replace(entry.Subject ?? string.Empty, "[\\s-]", string.Empty, RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+                var cnNormalized = Regex.Replace(cn, "[\\s-]", string.Empty, RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+                contractMatches = subjectForContract.Contains(cnNormalized, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (nameMatches || contractMatches)
             {
                 entry.AssignSavingsPlan(plan.Id);
                 break;
@@ -519,9 +536,11 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         await _db.SaveChangesAsync(ct);
     }
 
-    private async Task ClassifyInternalAsync(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
+    private async Task ClassifyInternalAsync(StatementDraft draft, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
         await ClassifyHeader(draft, ownerUserId, ct);
+
+        var entries = await _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || e.Id == entryId)).ToListAsync();
 
         // Preload data needed for classification
         var contacts = await _db.Contacts.AsNoTracking()
@@ -560,7 +579,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
                 .FirstOrDefaultAsync(ct);
         }
 
-        foreach (var entry in draft.Entries)
+        foreach (var entry in entries)
         {
             // Reset to base status first (keep AlreadyBooked if previously flagged)
             if (entry.Status != StatementDraftEntryStatus.AlreadyBooked)
@@ -592,7 +611,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
         if (matchedContact != null && matchedContact.IsPaymentIntermediary)
         {
-            var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant();
+            var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant().TrimEnd();
             matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedSubject);
         }
         else if (matchedContact != null && matchedContact.Type == ContactType.Bank && bankContactId != null && matchedContact.Id != bankContactId)
@@ -645,7 +664,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         string searchText)
     {
         Guid? matchedContactId = contacts
-            .Where(c => string.Equals(c.Name, searchText, StringComparison.OrdinalIgnoreCase))
+            .Where(c => string.Equals(NormalizeUmlauts(c.Name), searchText, StringComparison.OrdinalIgnoreCase))
             .Select(c => c.Id)
             .FirstOrDefault();
 
@@ -870,13 +889,13 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         var validation = await ValidateAsync(draftId, null, ownerUserId, ct);
         var hasErrors = validation.Messages.Any(m => m.Severity == "Error");
         var hasWarnings = validation.Messages.Any(m => m.Severity == "Warning");
-        if (hasErrors) { return new BookingResult(false, hasWarnings, validation, null, null); }
-        if (hasWarnings && !forceWarnings) { return new BookingResult(false, true, validation, null, null); }
+        if (hasErrors) { return new BookingResult(false, hasWarnings, validation, null, null, null); }
+        if (hasWarnings && !forceWarnings) { return new BookingResult(false, true, validation, null, null, null); }
 
         var draft = await _db.StatementDrafts.Include(d=>d.Entries)
             .FirstOrDefaultAsync(d=>d.Id==draftId && d.OwnerUserId==ownerUserId, ct);
-        if (draft == null) { return new BookingResult(false, false, validation, null, null); }
-        if (draft.DetectedAccountId == null) { return new BookingResult(false, false, validation, null, null); }
+        if (draft == null) { return new BookingResult(false, false, validation, null, null, null); }
+        if (draft.DetectedAccountId == null) { return new BookingResult(false, false, validation, null, null, null); }
 
         // Create StatementImport similar to CommitAsync but enriched postings
         var import = new StatementImport(draft.DetectedAccountId.Value, ImportFormat.Csv, draft.OriginalFileName);
@@ -971,6 +990,11 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
 
         draft.MarkCommitted();
         await _db.SaveChangesAsync(ct);
-        return new BookingResult(true, hasWarnings, validation, import.Id, draft.Entries.Count);
+
+        var nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Id > draftId).FirstOrDefaultAsync();
+        if (nextJournal is null)
+            nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).LastOrDefaultAsync();
+
+        return new BookingResult(true, hasWarnings, validation, import.Id, draft.Entries.Count, nextJournal?.Id);
     }
 }

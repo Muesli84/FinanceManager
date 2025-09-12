@@ -443,6 +443,9 @@ else
             _IsCostNeutral = _vm!.Entry.IsCostNeutral;
             _selectedSavingsPlanId = _vm.Entry.SavingsPlanId;
             _selectedContactId = _vm.Entry.ContactId;
+            _savingsPlanFilter = _selectedSavingsPlanId != null
+                ? _userSavingsPlans.FirstOrDefault(p => p.Id == _selectedSavingsPlanId)?.Name ?? string.Empty
+                : string.Empty;
         }
     }
 
@@ -630,7 +633,7 @@ else
 
     private async Task Reclassify()
     {
-        var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/classify", null);
+        var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/classify/{_vm?.Entry.Id}", null);
         if (resp.IsSuccessStatusCode)
         {
             await LoadEntryAsync();

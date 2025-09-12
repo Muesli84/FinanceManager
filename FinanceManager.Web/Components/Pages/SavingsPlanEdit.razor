@@ -39,7 +39,7 @@
     <div>
         <label>@Localizer["LabelName"]</label>
         <InputText @bind-Value="_model.Name" />
-        <ValidationMessage For="()=>_model.Name" />
+        <ValidationMessage For="() => _model.Name" />
     </div>
     <div>
         <label>@Localizer["LabelType"]</label>
@@ -77,6 +77,10 @@
                 <option value="@cat.Id">@cat.Name</option>
             }
         </InputSelect>
+    </div>
+    <div>
+        <label>Vertragsnummer</label>
+        <InputText @bind-Value="_model.ContractNumber" />
     </div>
     @if (!string.IsNullOrWhiteSpace(_error))
     {
@@ -135,6 +139,7 @@
                     _model.TargetDate = dto.TargetDate;
                     _model.Interval = dto.Interval;
                     _model.CategoryId = dto.CategoryId;
+                    _model.ContractNumber = dto.ContractNumber;
                     await LoadAnalysis();
                 }
             }
@@ -246,5 +251,6 @@
         public DateTime? TargetDate { get; set; }
         public SavingsPlanInterval? Interval { get; set; }
         public Guid? CategoryId { get; set; }
+        public string? ContractNumber { get; set; }
     }
 }

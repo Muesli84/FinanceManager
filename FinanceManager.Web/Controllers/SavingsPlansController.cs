@@ -27,7 +27,8 @@ public sealed class SavingsPlansController : ControllerBase
         decimal? TargetAmount,
         DateTime? TargetDate,
         SavingsPlanInterval? Interval,
-        Guid? CategoryId
+        Guid? CategoryId,
+        string? ContractNumber
     );
 
     [HttpGet]
@@ -55,7 +56,7 @@ public sealed class SavingsPlansController : ControllerBase
     public async Task<IActionResult> CreateAsync([FromBody] SavingsPlanCreateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
-        var dto = await _service.CreateAsync(_current.UserId, req.Name, req.Type, req.TargetAmount, req.TargetDate, req.Interval, req.CategoryId, ct);
+        var dto = await _service.CreateAsync(_current.UserId, req.Name, req.Type, req.TargetAmount, req.TargetDate, req.Interval, req.CategoryId, req.ContractNumber, ct);
         return CreatedAtAction("GetSavingsPlans", new { id = dto.Id }, dto);
     }
 
@@ -63,7 +64,7 @@ public sealed class SavingsPlansController : ControllerBase
     public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] SavingsPlanCreateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
-        var dto = await _service.UpdateAsync(id, _current.UserId, req.Name, req.Type, req.TargetAmount, req.TargetDate, req.Interval, req.CategoryId, ct);
+        var dto = await _service.UpdateAsync(id, _current.UserId, req.Name, req.Type, req.TargetAmount, req.TargetDate, req.Interval, req.CategoryId, req.ContractNumber, ct);
         return dto == null ? NotFound() : Ok(dto);
     }
 

@@ -134,6 +134,9 @@ public sealed class SetupImportService : ISetupImportService
                 var dueDate = fixedAsset.GetProperty("ExpectedPurchaseDate").GetDateTime();
                 var interval = fixedAsset.GetProperty("PurchaseInterval").GetInt32();
                 var status = fixedAsset.GetProperty("Status").GetInt32();
+                var contractNo = "";
+                if (fixedAsset.TryGetProperty("ContractNo", out var contract))
+                    contractNo = contract.ValueKind == JsonValueKind.String ? contract.GetString() : null;
                 if (string.IsNullOrWhiteSpace(name)) continue;
                 var savingsPlanName = name;
                 var nameExists = _db.SavingsPlans.Any(p => p.OwnerUserId == userId && p.Name == savingsPlanName);
@@ -150,6 +153,7 @@ public sealed class SetupImportService : ISetupImportService
                     amount,
                     expectedPurchaseActive ? dueDate : null,
                     interval == 0 ? null : (SavingsPlanInterval)(interval - 1));
+                newSavingsPlan.SetContractNumber(contractNo);
                 //if (status == 3)
                   //  newSavingsPlan.Archive();
 

@@ -8,7 +8,7 @@ public sealed class SavingsPlanDto
     {
 
     }
-    public SavingsPlanDto(Guid id, string name, SavingsPlanType type, decimal? targetAmount, DateTime? targetDate, SavingsPlanInterval? interval, bool isActive, DateTime createdUtc, DateTime? archivedUtc, Guid? categoryId)
+    public SavingsPlanDto(Guid id, string name, SavingsPlanType type, decimal? targetAmount, DateTime? targetDate, SavingsPlanInterval? interval, bool isActive, DateTime createdUtc, DateTime? archivedUtc, Guid? categoryId, string? contractNumber = null)
         : this()
     {
         Id = id;
@@ -21,6 +21,7 @@ public sealed class SavingsPlanDto
         ArchivedUtc = archivedUtc;
         Interval = interval;
         CategoryId = categoryId;
+        ContractNumber = contractNumber;
     }
 
     public Guid Id { get; set; }
@@ -33,6 +34,7 @@ public sealed class SavingsPlanDto
     public DateTime CreatedUtc { get; set; }
     public DateTime? ArchivedUtc { get; set; }
     public Guid? CategoryId { get; set; }
+    public string? ContractNumber { get; set; }
 }
 
 public enum SavingsPlanType

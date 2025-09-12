@@ -49,7 +49,8 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     IsPreview = false,
                     IsError = false
                 };
-                yield return movement;
+                if (movement.Amount != 0)
+                    yield return movement;
             }
 
             foreach (var entry in _BackupData.BankAccountJournalLines.EnumerateArray())
@@ -66,7 +67,8 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     IsPreview = false,
                     IsError = false
                 };
-                yield return movement;
+                if (movement.Amount != 0)
+                    yield return movement;
             }
         }
         public StatementParseResult? Parse(string fileName, byte[] fileBytes)

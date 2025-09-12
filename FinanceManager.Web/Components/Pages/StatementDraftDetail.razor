@@ -247,7 +247,7 @@ else
     private DraftValidationResultDto? _validation; // Validation state
     private bool _booking; private bool _pendingWarningConfirmation; private DraftValidationResultDto? _lastValidation; private string? _bookingError;
 
-    private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries);
+    private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -299,7 +299,10 @@ else
                 var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
                 if (ok != null && ok.Success)
                 {
-                    Nav.NavigateTo("/statement-drafts", true);
+                    if (ok.nextDraftId is not null)
+                        Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true);
+                    else
+                        Nav.NavigateTo("/statement-drafts", true);
                 }
             }
         }
@@ -331,7 +334,10 @@ else
                 var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
                 if (ok != null && ok.Success)
                 {
-                    Nav.NavigateTo("/statement-drafts", true);
+                    if (ok.nextDraftId is not null)
+                        Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true);
+                    else
+                        Nav.NavigateTo("/statement-drafts", true);
                 }
             }
         }
@@ -411,6 +417,11 @@ else
         if (resp.IsSuccessStatusCode || resp.StatusCode == System.Net.HttpStatusCode.NoContent)
         {
             Nav.NavigateTo("/statement-drafts");
+        }
+        else
+        {
+            _bookingError = await resp.Content.ReadAsStringAsync();
+            StateHasChanged();
         }
     }
 
