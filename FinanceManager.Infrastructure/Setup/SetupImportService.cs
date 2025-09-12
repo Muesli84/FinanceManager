@@ -38,6 +38,7 @@ public sealed class SetupImportService : ISetupImportService
         if (replaceExisting)
         {
             _db.ClearUserData(userId);
+            await _db.SaveChangesAsync();
         }
 
         var contactCategories = ImportContactCategories(backupData.ContactCategories, userId).ToList();

@@ -111,16 +111,35 @@ public sealed class SavingsPlanService : ISavingsPlanService
         var endDate = plan.TargetDate.Value.Date;
         var monthsRemaining = Math.Max(0, ((endDate.Year - today.Year) * 12 + endDate.Month - today.Month));
 
-        // Sum of postings for this savings plan in past months (positive contributions)
-        var accumulated = await _db.Postings.AsNoTracking()
+        // Past contributions up to today for this plan
+        var history = await _db.Postings.AsNoTracking()
             .Where(p => p.SavingsPlanId == id && p.Kind == PostingKind.SavingsPlan && p.BookingDate <= today)
-            .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
+            .Select(p => new { p.BookingDate, p.Amount })
+            .ToListAsync(ct);
+
+        var accumulated = history.Sum(x => x.Amount);
 
         var target = plan.TargetAmount.Value;
-        var remaining = Math.Max(0m, target - accumulated);
-        decimal requiredMonthly = monthsRemaining > 0 ? Math.Ceiling((remaining / monthsRemaining) * 100) / 100 : remaining;
 
-        var reachable = monthsRemaining > 0 ? remaining <= requiredMonthly * monthsRemaining : remaining == 0;
+        if (monthsRemaining <= 0)
+        {
+            var reached = accumulated >= target;
+            return new SavingsPlanAnalysisDto(id, reached, target, endDate, accumulated, 0m, 0);
+        }
+
+        // Average monthly saving based on history grouped by month
+        var monthlyTotals = history
+            .GroupBy(x => new { x.BookingDate.Year, x.BookingDate.Month })
+            .Select(g => g.Sum(x => x.Amount))
+            .ToList();
+        var averagePerMonth = monthlyTotals.Count > 0 ? monthlyTotals.Average() : 0m;
+
+        var forecast = averagePerMonth * monthsRemaining;
+        var totalExpected = accumulated + forecast;
+        var reachable = totalExpected >= target;
+
+        var remaining = Math.Max(0m, target - accumulated);
+        var requiredMonthly = monthsRemaining > 0 ? remaining / monthsRemaining : 0m;
 
         return new SavingsPlanAnalysisDto(id, reachable, target, endDate, accumulated, requiredMonthly, monthsRemaining);
     }
