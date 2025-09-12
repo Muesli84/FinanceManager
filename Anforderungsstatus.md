@@ -11,12 +11,12 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-001 | Kontoauszugdateien einlesen (CSV, PDF)                          | StatementDraftService, FileReader                                                    | ✔      |
 | FA-AUSZ-002 | Für jeden Import wird ein Buch.-Blatt erzeugt                   | StatementDraftService, Domain.StatementDraft                                         | ✔      |
 | FA-AUSZ-003 | Buch.-Blatt Einträge bearbeiten, ergänzen, löschen              | StatementDraftService, UI (Detail + Editiermodus)                                    | ✔      |
-| FA-AUSZ-004 | Beim Buchen entstehen Bankposten                                | Noch nicht implementiert                                                             | ✖      |
+| FA-AUSZ-004 | Beim Buchen entstehen Bankposten                                | StatementDraftService.BookAsync → `PostingKind.Bank`                                 | ✔      |
 | FA-AUSZ-005 | Duplikatserkennung beim Import                                  | StatementDraftService: Duplikatprüfung                                               | ✔      |
 | FA-AUSZ-006 | Kostenneutral bei eigenen Kontakten                             | StatementDraftService: Status-/CostNeutral-Logik                                     | ✔      |
-| FA-AUSZ-007 | Kontaktposten beim Buchen entstehen                             | Noch nicht implementiert                                                             | ✖      |
+| FA-AUSZ-007 | Kontaktposten beim Buchen entstehen                             | StatementDraftService.BookAsync → `PostingKind.Contact`                              | ✔      |
 | FA-AUSZ-008 | Empfänger muss Kontakt zugeordnet werden                        | StatementDraftService, UI                                                            | ✔      |
-| FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | UI & API: Auswahl, Neuanlage und Zuordnung in StatementDraftEntryDetail; Persistierung via /security Endpoint. Buchungs-/Transaktionslogik (Positions-/Depotbuchungen) noch offen. | ~      |
+| FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | UI & API: Auswahl, Neuanlage und Zuordnung in StatementDraftEntryDetail; Persistierung via `/security` Endpoint. Buchungs-/Transaktionslogik (Positions-/Depotbuchungen) noch offen; Security-Postings (Trade/Fee/Tax) werden erzeugt. | ~      |
 | FA-AUSZ-010 | PDF-Parsing mit Tabellenextraktion                              | ING_StatementFileReader, Barclays_StatementFileReader, erweiterbar                   | ✔      |
 | FA-AUSZ-011 | Import-Pipeline mit Format-Strategie                            | StatementDraftService, Reader-Interface                                              | ✔      |
 | FA-AUSZ-012 | Anzeige Gesamtbetrag verknüpfter Aufteilungs-Auszüge im Eintrag | StatementDraftsController GetEntry: SplitSum/Difference; EntryDetail UI Amount-Zeile | ✔      |
@@ -34,16 +34,16 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-SPAR-003 | Wiederkehrende Intervalle                                       | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-004 | Automatische Sparplanvorschläge                                 | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-005 | Manuelle Änderung Sparplanvorschlag                             | Noch nicht implementiert                                                             | ✖      |
-| FA-SPAR-006 | Statusanzeige Sparziel erreicht                                 | Noch nicht implementiert                                                             | ✖      |
+| FA-SPAR-006 | Statusanzeige Sparziel erreicht                                 | SavingsPlanService.AnalyzeAsync liefert Kennzahlen; Info-Meldung bei Kontoauszugs‑Prüfung (Ziel erreicht) | ~      |
 | FA-SPAR-007 | Anzeige fehlender Buchungen zum Ziel                            | Noch nicht implementiert                                                             | ✖      |
-| FA-SPAR-008 | Prognose Zielverfehlung                                         | Noch nicht implementiert                                                             | ✖      |
+| FA-SPAR-008 | Prognose Zielverfehlung                                         | SavingsPlanService.AnalyzeAsync (Durchschnitt/Erfordernis)                           | ✔      |
 | FA-SPAR-009 | Archivierung bei Ausbuchung                                     | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-010 | Sparplan aus Rückzahlung/Kredit                                 | Noch nicht implementiert                                                             | ✖      |
-| FA-SPAR-011 | Sparplanposten bei Buchung                                      | Noch nicht implementiert                                                             | ✖      |
+| FA-SPAR-011 | Sparplanposten bei Buchung                                      | StatementDraftService.BookAsync → `PostingKind.SavingsPlan`                          | ✔      |
 | FA-SPAR-012 | Umschalten aktive/archivierte Sparpläne                         | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-001 | Wertpapiere verwalten                                           | SecurityService, SecuritiesController, UI (Liste, Detail, Kategorien), Erstellung & Rücksprung aus Kontoauszug | ✔      |
 | FA-WERT-002 | Wertpapiertransaktionen                                         | Noch nicht implementiert                                                             | ✖      |
-| FA-WERT-003 | Wertpapierposten bei Buchung                                    | Noch nicht implementiert                                                             | ✖      |
+| FA-WERT-003 | Wertpapierposten bei Buchung                                    | StatementDraftService.BookAsync → `PostingKind.Security` (Trade/Fee/Tax)             | ✔      |
 | FA-WERT-004 | Kursabruf AlphaVantage API                                      | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-005 | Historische Kurse nachholen                                     | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-006 | API-Limit erkennen/beachten                                     | Noch nicht implementiert                                                             | ✖      |
@@ -107,6 +107,14 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
+Änderungen (12.09.2025):
+- FA-AUSZ-004 von ✖ auf ✔: Bankposten werden beim Buchen erzeugt (`PostingKind.Bank`).
+- FA-AUSZ-007 von ✖ auf ✔: Kontaktposten werden beim Buchen erzeugt (`PostingKind.Contact`).
+- FA-WERT-003 von ✖ auf ✔: Wertpapier-Postings (Trade/Fee/Tax) beim Buchen (`PostingKind.Security`).
+- FA-SPAR-011 von ✖ auf ✔: Sparplan-Postings beim Buchen (`PostingKind.SavingsPlan`).
+- FA-AUSZ-009 Beschreibung ergänzt: Security-Postings werden erzeugt; Depot-/Positionslogik weiterhin offen (Status bleibt ~).
+- FA-SPAR-006 von ✖ auf ~: SavingsPlanService.AnalyzeAsync liefert Status; zusätzlich Informationsmeldung in der Kontoauszugs‑Prüfung bei Zielerreichung.
+
 Änderungen (05.09.2025):
 - FA-AUSZ-009 von ✖ auf ~: UI & API für Wertpapierauswahl, direkte Neuanlage und Zuordnung aus Kontoauszugseintrag implementiert. Depot-/Transaktionsverbuchung noch offen.
 - FA-WERT-001 Beschreibung präzisiert (Liste, Detail, Kategorien, Rücksprung aus Kontoauszug).
@@ -122,4 +130,4 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
 - Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
-*Letzte Aktualisierung: 05.09.2025*
+*Letzte Aktualisierung: 12.09.2025*
