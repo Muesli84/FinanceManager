@@ -88,19 +88,22 @@ public sealed class SetupImportService : ISetupImportService
                 {
                     contact = new Contact(userId, instituteName, ContactType.Bank, null);
                     _db.Contacts.Add(contact);
-
-                    var contactNames = account.GetProperty("Institute").GetProperty("Names");
-                    if (contactNames.ValueKind != JsonValueKind.Null)
-                    foreach (var contactName in contactNames.EnumerateArray().Select(n => n.GetString()).Where(n => !string.IsNullOrWhiteSpace(n)))
-                    {
-                        _db.AliasNames.Add(new AliasName(contact.Id, contactName ?? instituteName));
-                    }
                 }
                 if (contact.Type != ContactType.Bank)
                 {
                     contact.ChangeType(ContactType.Bank);
                     _db.Contacts.Update(contact);
                 }
+
+                var contactNames = account.GetProperty("Institute").GetProperty("Names");
+                if (contactNames.ValueKind != JsonValueKind.Null)
+                    foreach (var contactName in contactNames.EnumerateArray().Select(n => n.GetString()).Where(n => !string.IsNullOrWhiteSpace(n)))
+                    {
+                        var pattern = contactName ?? instituteName;
+                        var existing = _db.AliasNames.Where(a => a.ContactId == contact.Id && a.Pattern == pattern).Any();
+                        if (!existing)
+                            _db.AliasNames.Add(new AliasName(contact.Id, pattern));
+                    }
 
                 var existingAccount = _db.Accounts.FirstOrDefault(a => a.OwnerUserId == userId && a.Iban == iban);
                 if (existingAccount is not null)
@@ -147,8 +150,8 @@ public sealed class SetupImportService : ISetupImportService
                     amount,
                     expectedPurchaseActive ? dueDate : null,
                     interval == 0 ? null : (SavingsPlanInterval)(interval - 1));
-                if (status == 3)
-                    newSavingsPlan.Archive();
+                //if (status == 3)
+                  //  newSavingsPlan.Archive();
 
                 if (fixedAsset.TryGetProperty("Category", out var categoryProp))
                     if (categoryProp.TryGetProperty("Id", out var categoryIdProp) && categoryIdProp.ValueKind == JsonValueKind.Number)

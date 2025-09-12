@@ -7,9 +7,13 @@ namespace FinanceManager.Application.Statements;
 
 public interface IStatementDraftService
 {
-    Task<StatementDraftDto> CreateDraftAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct);
+    IAsyncEnumerable<StatementDraftDto> CreateDraftAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct);
     Task<StatementDraftDto?> GetDraftAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
+    Task<StatementDraftDto?> GetDraftHeaderAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
+    Task<IEnumerable<StatementDraftEntryDto>> GetDraftEntriesAsync(Guid draftId, CancellationToken ct);
+    Task<StatementDraftEntryDto?> GetDraftEntryAsync(Guid draftId, Guid entryId, CancellationToken ct);
     Task<IReadOnlyList<StatementDraftDto>> GetOpenDraftsAsync(Guid ownerUserId, CancellationToken ct);
+    Task<IReadOnlyList<StatementDraftDto>> GetOpenDraftsAsync(Guid ownerUserId, int skip, int take, CancellationToken ct);
     Task<StatementDraftDto?> AddEntryAsync(Guid draftId, Guid ownerUserId, DateTime bookingDate, decimal amount, string subject, CancellationToken ct);
     Task<CommitResult?> CommitAsync(Guid draftId, Guid ownerUserId, Guid accountId, ImportFormat format, CancellationToken ct);
     Task<bool> CancelAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
@@ -29,9 +33,9 @@ public interface IStatementDraftService
         decimal? taxAmount,
         Guid userId,
         CancellationToken ct);
-    Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
-    Task<DraftValidationResultDto> ValidateEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct);
+    Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct);
     Task<BookingResult> BookAsync(Guid draftId, Guid ownerUserId, bool forceWarnings, CancellationToken ct);
+    
 }
 
 public sealed record StatementDraftEntryDto(

@@ -1,11 +1,11 @@
 ﻿using FinanceManager.Application.Statements;
 using FinanceManager.Domain;
+using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure.Statements.Reader;
-using Microsoft.EntityFrameworkCore;
-using FinanceManager.Domain.Contacts;
 using FinanceManager.Shared.Dtos; // added
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -13,9 +13,9 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
 {
     private readonly AppDbContext _db;
     private readonly IReadOnlyList<IStatementFileReader> _statementFileReaders;
-    public StatementDraftService(AppDbContext db) { _db = db; _statementFileReaders = new List<IStatementFileReader>() { new ING_StatementFileReader(), new Barclays_StatementFileReader() }; }
+    public StatementDraftService(AppDbContext db) { _db = db; _statementFileReaders = new List<IStatementFileReader>() { new ING_StatementFileReader(), new Barclays_StatementFileReader(), new BackupStatementFileReader() }; }
 
-    public async Task<StatementDraftDto> CreateDraftAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct)
+    public async IAsyncEnumerable<StatementDraftDto> CreateDraftAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct)
     {
         var parsedDraft = _statementFileReaders
             .Select(reader => reader.Parse(originalFileName, fileBytes))
@@ -27,6 +27,21 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
             throw new InvalidOperationException("No valid statement file reader found or no movements detected.");
         }
 
+        StatementDraft draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
+        foreach (var movement in parsedDraft.Movements)
+        {
+            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview, false);
+            if (draft.Entries.Count == 100)
+            {
+                yield return await FinishDraftAsync(draft, ownerUserId, ct);
+                draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
+        }
+    }
+        yield return await FinishDraftAsync(draft, ownerUserId, ct);
+    }
+
+    private async Task<StatementDraft> CreateDraftHeader(Guid ownerUserId, string originalFileName, byte[] fileBytes, StatementParseResult parsedDraft, CancellationToken ct)
+    {
         var draft = new StatementDraft(ownerUserId, originalFileName, parsedDraft.Header.AccountNumber);
         draft.SetOriginalFile(fileBytes, null);
 
@@ -40,11 +55,11 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
             }
         }
 
-        foreach (var movement in parsedDraft.Movements)
-        {
-            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview, false);
-        }
+        return draft;
+    }
 
+    private async Task<StatementDraftDto> FinishDraftAsync(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
+    {
         _db.StatementDrafts.Add(draft);
         await _db.SaveChangesAsync(ct);
 
@@ -57,9 +72,10 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
     public async Task<IReadOnlyList<StatementDraftDto>> GetOpenDraftsAsync(Guid ownerUserId, CancellationToken ct)
     {
         var drafts = await _db.StatementDrafts
-            .Include(d => d.Entries)
+            //.Include(d => d.Entries)
             .Where(d => d.OwnerUserId == ownerUserId && d.Status == StatementDraftStatus.Draft)
             .OrderByDescending(d => d.CreatedUtc)
+            .ThenBy(d => d.Id)
             .ToListAsync(ct);
 
         // Lookup: welche Drafts sind als SplitDraft verknüpft
@@ -71,6 +87,34 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         var bySplitId = splitLinks
             .GroupBy(x => x.SplitDraftId!.Value)
             .ToDictionary(g => g.Key, g => (dynamic)g.First()); // Eintrag pro SplitDraftId
+
+        return drafts.Select(d => Map(d, bySplitId)).ToList();
+    }
+
+    public async Task<IReadOnlyList<StatementDraftDto>> GetOpenDraftsAsync(Guid ownerUserId, int skip, int take, CancellationToken ct)
+    {
+        take = Math.Clamp(take, 1, 50);
+        var query = _db.StatementDrafts
+            .Include(d => d.Entries)
+            .Where(d => d.OwnerUserId == ownerUserId && d.Status == StatementDraftStatus.Draft)
+            .OrderByDescending(d => d.CreatedUtc)
+            .ThenBy(d => d.Id)
+            .Skip(skip)
+            .Take(take)
+            .AsNoTracking();
+
+        var drafts = await query.ToListAsync(ct);
+
+        // Lookup: welche Drafts sind als SplitDraft verknüpft
+        var ids = drafts.Select(d => d.Id).ToList();
+        var splitLinks = await _db.StatementDraftEntries
+            .Where(e => e.SplitDraftId != null && ids.Contains(e.SplitDraftId.Value))
+            .Select(e => new { e.Id, e.DraftId, e.SplitDraftId, e.Amount })
+            .ToListAsync(ct);
+
+        var bySplitId = splitLinks
+            .GroupBy(x => x.SplitDraftId!.Value)
+            .ToDictionary(g => g.Key, g => (dynamic)g.First());
 
         return drafts.Select(d => Map(d, bySplitId)).ToList();
     }
@@ -94,6 +138,38 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
 
         var dict = new Dictionary<Guid, dynamic> { { draft.Id, (dynamic)splitRef } };
         return Map(draft, dict);
+    }
+
+    public async Task<StatementDraftDto?> GetDraftHeaderAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+
+        var splitRef = await _db.StatementDraftEntries
+            .Where(e => e.SplitDraftId == draft.Id)
+            .Select(e => new { e.DraftId, e.Id, e.Amount })
+            .FirstOrDefaultAsync(ct);
+
+        if (splitRef == null)
+        {
+            return Map(draft); // keine Parent-Referenz
+        }
+
+        var dict = new Dictionary<Guid, dynamic> { { draft.Id, (dynamic)splitRef } };
+        return Map(draft, dict);
+    }
+
+    public async Task<IEnumerable<StatementDraftEntryDto>> GetDraftEntriesAsync(Guid draftId, CancellationToken ct)
+    {
+        var entries = await _db.StatementDraftEntries.Where(e => e.DraftId == draftId).ToListAsync();
+        return entries.Select(e => Map(e));
+    }
+
+    public async Task<StatementDraftEntryDto?> GetDraftEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
+    {
+        var draftEntry = await _db.StatementDraftEntries.FirstOrDefaultAsync(e => e.DraftId == draftId && e.Id == entryId);
+        return Map(draftEntry);
     }
 
     public async Task<StatementDraftDto?> AddEntryAsync(Guid draftId, Guid ownerUserId, DateTime bookingDate, decimal amount, string subject, CancellationToken ct)
@@ -312,26 +388,31 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
             null,
             null,
             null,
-            draft.Entries.Select(e => new StatementDraftEntryDto(
-                e.Id,
-                e.BookingDate,
-                e.ValutaDate,
-                e.Amount,
-                e.CurrencyCode,
-                e.Subject,
-                e.RecipientName,
-                e.BookingDescription,
-                e.IsAnnounced,
-                e.IsCostNeutral,
-                e.Status,
-                e.ContactId,
-                e.SavingsPlanId,
-                e.SplitDraftId,
-                e.SecurityId,
-                e.SecurityTransactionType,
-                e.SecurityQuantity,
-                e.SecurityFeeAmount,
-                e.SecurityTaxAmount)).ToList());
+            draft.Entries.Select(e => Map(e)).ToList());
+    }
+
+    private static StatementDraftEntryDto Map(StatementDraftEntry e)
+    {
+        return new StatementDraftEntryDto(
+                        e.Id,
+                        e.BookingDate,
+                        e.ValutaDate,
+                        e.Amount,
+                        e.CurrencyCode,
+                        e.Subject,
+                        e.RecipientName,
+                        e.BookingDescription,
+                        e.IsAnnounced,
+                        e.IsCostNeutral,
+                        e.Status,
+                        e.ContactId,
+                        e.SavingsPlanId,
+                        e.SplitDraftId,
+                        e.SecurityId,
+                        e.SecurityTransactionType,
+                        e.SecurityQuantity,
+                        e.SecurityFeeAmount,
+                        e.SecurityTaxAmount);
     }
 
     // Mapping mit Split-Infos
@@ -379,10 +460,9 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
     // UpdateEntryCoreAsync: StatementDraftEntryDto Konstruktor anpassen
     public async Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct)
     {
-        var draft = await _db.StatementDrafts.Include(d => d.Entries)
-            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        var draft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         if (draft == null) { return null; }
-        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        var entry = await _db.StatementDraftEntries.FirstOrDefaultAsync(e => e.DraftId == draftId && e.Id == entryId, ct);
         if (entry == null) { return null; }
         if (draft.Status != StatementDraftStatus.Draft) { return null; }
         entry.UpdateCore(bookingDate, valutaDate, amount, subject, recipientName, currencyCode, bookingDescription);
@@ -649,15 +729,15 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         return draft;
     }
 
-    public async Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
+    public async Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts
-            .Include(d => d.Entries)
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         if (draft == null)
         {
             return new DraftValidationResultDto(draftId, false, new List<DraftValidationMessageDto>{ new("DRAFT_NOT_FOUND","Error","Draft not found", draftId, null) });
         }
+        var entries = await _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || e.Id == entryId)).ToListAsync();
 
         var messages = new List<DraftValidationMessageDto>();
 
@@ -707,7 +787,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
             draftTotalsCache[id] = total; return total;
         }
 
-        foreach (var entry in draft.Entries)
+        foreach (var entry in entries)
         {
             // Entry must have contact
             if (entry.ContactId == null)
@@ -767,7 +847,7 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
                 }
 
                 // Validate split draft recursively (single level per spec; still run validation to reuse rules)
-                var splitValidation = await ValidateAsync(entry.SplitDraftId.Value, ownerUserId, ct);
+                var splitValidation = await ValidateAsync(entry.SplitDraftId.Value, null, ownerUserId, ct);
                 foreach (var m in splitValidation.Messages)
                 {
                     // propagate but mark as from split
@@ -785,18 +865,9 @@ public sealed partial class StatementDraftService : IStatementDraftService // pa
         return new DraftValidationResultDto(draft.Id, isValid, messages);
     }
 
-    public async Task<DraftValidationResultDto> ValidateEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct)
-    {
-        var full = await ValidateAsync(draftId, ownerUserId, ct);
-        var filtered = full.Messages.Where(m => m.EntryId == entryId).ToList();
-        var isValid = filtered.All(m => m.Severity != "Error");
-        return new DraftValidationResultDto(draftId, isValid, filtered);
-    }
-
-
     public async Task<BookingResult> BookAsync(Guid draftId, Guid ownerUserId, bool forceWarnings, CancellationToken ct)
     {
-        var validation = await ValidateAsync(draftId, ownerUserId, ct);
+        var validation = await ValidateAsync(draftId, null, ownerUserId, ct);
         var hasErrors = validation.Messages.Any(m => m.Severity == "Error");
         var hasWarnings = validation.Messages.Any(m => m.Severity == "Warning");
         if (hasErrors) { return new BookingResult(false, hasWarnings, validation, null, null); }

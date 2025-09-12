@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -85,6 +86,12 @@ namespace FinanceManager.Infrastructure.Setup
                     return;
                 }
 
+                if (Directory.GetFiles(initDir, "skip").Any())
+                {
+                    _logger.LogInformation("AutoInit: 'skip'-Datei in 'init'-Verzeichnis gefunden – Vorgang wird übersprungen.");
+                    return;
+                }
+
                 _logger.LogInformation("AutoInit: Starte Initialisierung aus '{InitDir}' für Admin '{Admin}'.", initDir, admin.Username);
 
                 // 1) Setup-Importe (init-*.json) in Reihenfolge, erste Datei mit replace=true
@@ -110,9 +117,10 @@ namespace FinanceManager.Infrastructure.Setup
                 }
 
                 // 2) Statement-Drafts (draft-*.csv / draft-*.pdf)
+                var draftJson = Directory.EnumerateFiles(initDir, "draft-*.json", SearchOption.TopDirectoryOnly);
                 var draftCsv = Directory.EnumerateFiles(initDir, "draft-*.csv", SearchOption.TopDirectoryOnly);
                 var draftPdf = Directory.EnumerateFiles(initDir, "draft-*.pdf", SearchOption.TopDirectoryOnly);
-                var draftFiles = draftCsv.Concat(draftPdf).OrderBy(f => Path.GetFileName(f)).ToList();
+                var draftFiles = draftJson.Concat(draftCsv).Concat(draftPdf).OrderBy(f => Path.GetFileName(f)).ToList();
                 var drafts = new List<StatementDraftDto>();
                 foreach (var file in draftFiles)
                 {
@@ -120,7 +128,8 @@ namespace FinanceManager.Infrastructure.Setup
                     {
                         _logger.LogInformation("AutoInit: Importiere Draft-Datei '{File}'.", Path.GetFileName(file));
                         var bytes = await File.ReadAllBytesAsync(file, ct);
-                        drafts.Add(await _statementDraftService.CreateDraftAsync(admin.Id, Path.GetFileName(file), bytes, ct));
+                        await foreach(var draft in _statementDraftService.CreateDraftAsync(admin.Id, Path.GetFileName(file), bytes, ct))
+                        drafts.Add(draft);
                     }
                     catch (Exception ex)
                     {
@@ -144,7 +153,14 @@ namespace FinanceManager.Infrastructure.Setup
                                         var offset = draftFiles.Select(f => Path.GetFileName(f)).ToList().IndexOf(action[1]);
                                         var draft = drafts[offset];
                                         var contact = (await _contactService.ListAsync(admin.Id, 0, int.MaxValue, null, action[2], ct)).FirstOrDefault();
-                                        await AssignDraftAsync(drafts, draft, contact, admin.Id, ct);
+                                        if (action.Length > 3)
+                                        {
+                                            offset = draftFiles.Select(f => Path.GetFileName(f)).ToList().IndexOf(action[3]);
+                                            var destDraft = drafts[offset];
+                                            await AssignDraftAsync(drafts, draft, destDraft, contact, admin.Id, ct);
+                                        }
+                                        else
+                                            await AssignDraftAsync(drafts, draft, null, contact, admin.Id, ct);
                                         break;
                                     }
                                 case "statement-entry-remove":
@@ -189,9 +205,9 @@ namespace FinanceManager.Infrastructure.Setup
             }
         }
 
-        private async Task AssignDraftAsync(List<StatementDraftDto> drafts, StatementDraftDto draft, ContactDto? contact, Guid ownerId, CancellationToken ct)
+        private async Task AssignDraftAsync(List<StatementDraftDto> drafts, StatementDraftDto draft, StatementDraftDto destDraft, ContactDto? contact, Guid ownerId, CancellationToken ct)
         {
-            foreach (var currDraft in drafts.Where(d => d.DraftId != draft.DraftId))
+            foreach (var currDraft in drafts.Where(d => d.DraftId != draft.DraftId).Where(d => destDraft is null || d.DraftId == destDraft.DraftId))
             {
                 foreach (var entry in currDraft.Entries.Where(e => e.ContactId == contact.Id))
                 {

@@ -6,6 +6,8 @@ using System.Linq;
 using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
+using static iText.IO.Util.IntHashtable;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FinanceManager.Infrastructure.Statements.Reader

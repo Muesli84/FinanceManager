@@ -47,7 +47,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 20 * 1024 * 1024; // z.B. 20 MB
+    options.MultipartBodyLengthLimit = 50 * 1024 * 1024; // z.B. 20 MB
 });
 
 // Named HttpClient (bleibt)

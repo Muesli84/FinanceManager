@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @using FinanceManager.Application.Statements
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.StatementDrafts> Localizer
 
@@ -37,6 +38,7 @@ else
                 @foreach(var d in _drafts)
                 {
                     <tr style="cursor:pointer;" @onclick="() => OpenDetail(d.DraftId)">
+                        <td></td>
                         <td>@d.OriginalFileName</td>
                         <td>@d.Status</td>
                         <td>@d.Entries.Count</td>
@@ -44,20 +46,90 @@ else
                 }
             </tbody>
         </table>
+        @if(_canLoadMore)
+        {
+            <div class="infinite-sentinel" @ref="_sentinel" aria-hidden="true"></div>
+        }
     </div>
 }
 
 @code {
     private List<StatementDraftDto>? _drafts;
+    private int _skip;
+    private const int PageSize = 3;
+    private bool _canLoadMore = true;
+    private bool _loading;
+    private ElementReference _sentinel;
+    private DotNetObjectReference<StatementDrafts>? _selfRef;
+    private bool _observerAttached;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_observerAttached || _drafts == null || !_canLoadMore)
+        {
+            return;
+        }
+        if (_sentinel.Context is null)
+        {
+            return;
+        }
+        try
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("fmInfinite.observe", _sentinel, _selfRef, null);
+            await JS.InvokeVoidAsync("fmInfinite.refresh");
+            _observerAttached = true;
+        }
+        catch (JSException)
+        {
+            await Task.Yield();
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task LoadMoreFromJs()
+    {
+        await LoadAsync();
+        if (_canLoadMore)
+        {
+            await JS.InvokeVoidAsync("fmInfinite.refresh");
+        }
+        else
+        {
+            StateHasChanged();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
+        _drafts = new List<StatementDraftDto>();
+        _skip = 0;
+        _canLoadMore = true;
+        _observerAttached = false;
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
-        _drafts = await Http.GetFromJsonAsync<List<StatementDraftDto>>("api/statement-drafts");
+        if(_loading || !_canLoadMore) { return; }
+        _loading = true;
+        try
+        {
+            var url = $"api/statement-drafts?skip={_skip}&take={PageSize}";
+            var batch = await Http.GetFromJsonAsync<List<StatementDraftDto>>(url) ?? new();
+            if(batch.Count < PageSize)
+            {
+                _canLoadMore = false;
+            }
+            _drafts!.AddRange(batch);
+            _skip += batch.Count;
+            await InvokeAsync(StateHasChanged);
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private void OpenDetail(Guid id) => Nav.NavigateTo($"/statement-drafts/{id}");
@@ -67,7 +139,7 @@ else
         var file = e.File;
         if (file == null) { return; }
         using var content = new MultipartFormDataContent();
-        await using var stream = file.OpenReadStream(10_000_000);
+        await using var stream = file.OpenReadStream(25_000_000);
         content.Add(new StreamContent(stream), "file", file.Name);
         var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
         if (resp.IsSuccessStatusCode)
@@ -79,7 +151,9 @@ else
                 return;
             }
         }
-        // fallback reload list
+        // fallback reload list (reset Infinity)
+        _drafts = new List<StatementDraftDto>();
+        _skip = 0; _canLoadMore = true; _observerAttached = false;
         await LoadAsync();
         StateHasChanged();
     }

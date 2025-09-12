@@ -52,7 +52,7 @@
         {
             var http = ClientFactory.CreateClient("Api");
             using var content = new MultipartFormDataContent();
-            var stream = _file.OpenReadStream(20 * 1024 * 1024);
+            var stream = _file.OpenReadStream(50 * 1024 * 1024);
             content.Add(new StreamContent(stream), "file", _file.Name);
             content.Add(new StringContent(_replaceExisting.ToString()), "replaceExisting");
             var resp = await http.PostAsync("/api/setup/import", content);

@@ -28,8 +28,12 @@
   </ItemGroup>
 
   <Target Name="CopyInitFiles" BeforeTargets="Build">
-    <Exec Command="if exist &quot;$(SolutionDir)init&quot; xcopy &quot;$(SolutionDir)init&quot; &quot;$(TargetDir)init\&quot; /E /I /Y /Q" />
+	  <Exec Command="if exist &quot;$(ProjectDir)init&quot; rmdir /s /q &quot;$(ProjectDir)init\&quot;" />
+	  <Exec Command="if exist &quot;$(TargetDir)init&quot; rmdir /s /q &quot;$(TargetDir)init\&quot;" />
+
+	  <Exec Command="if exist &quot;$(SolutionDir)init&quot; xcopy &quot;$(SolutionDir)init&quot; &quot;$(TargetDir)init\&quot; /E /I /Y /Q" />
 	  <Exec Command="if exist &quot;$(SolutionDir)init&quot; xcopy &quot;$(SolutionDir)init&quot; &quot;$(ProjectDir)init\&quot; /E /I /Y /Q" />
+	  
   </Target>
 
 </Project>

@@ -31,9 +31,10 @@ public sealed class StatementDraftsController : ControllerBase
     public sealed record UploadRequest([Required] string FileName);
 
     [HttpGet]
-    public async Task<IActionResult> GetOpenAsync(CancellationToken ct)
+    public async Task<IActionResult> GetOpenAsync([FromQuery] int skip = 0, [FromQuery] int take = 3, CancellationToken ct = default)
     {
-        var drafts = await _drafts.GetOpenDraftsAsync(_current.UserId, ct);
+        take = Math.Clamp(take, 1, 3);
+        var drafts = await _drafts.GetOpenDraftsAsync(_current.UserId, skip, take, ct);
         return Ok(drafts);
     }
 
@@ -44,25 +45,37 @@ public sealed class StatementDraftsController : ControllerBase
         if (file == null || file.Length == 0) return BadRequest(new { error = "File required" });
         await using var ms = new MemoryStream();
         await file.CopyToAsync(ms, ct);
-        var draft = await _drafts.CreateDraftAsync(_current.UserId, file.FileName, ms.ToArray(), ct);
-        return Ok(draft);
+        StatementDraftDto firstDraft = null;
+        await foreach (var draft in _drafts.CreateDraftAsync(_current.UserId, file.FileName, ms.ToArray(), ct))
+        {
+            firstDraft = firstDraft ?? draft;
+        }
+        return Ok(firstDraft);
     }
 
     [HttpGet("{draftId:guid}")]
-    public async Task<IActionResult> GetAsync(Guid draftId, CancellationToken ct)
+    public async Task<IActionResult> GetAsync(Guid draftId, [FromQuery] bool headerOnly = false, CancellationToken ct = default)
     {
-        var draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
+        StatementDraftDto? draft;
+        if (headerOnly)
+        {
+            draft = await _drafts.GetDraftHeaderAsync(draftId, _current.UserId, ct);
+        }
+        else
+        {
+            draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
+        }
         return draft is null ? NotFound() : Ok(draft);
     }
 
     [HttpGet("{draftId:guid}/entries/{entryId:guid}")]
     public async Task<IActionResult> GetEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
-        var draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
-        if (draft is null) { return NotFound(); }
+        var draft = await _drafts.GetDraftHeaderAsync(draftId, _current.UserId, ct);
+        var ordered = (await _drafts.GetDraftEntriesAsync(draftId, ct)).OrderBy(e => e.BookingDate).ThenBy(e => e.Id).ToList();
+        var entry = await _drafts.GetDraftEntryAsync(draftId, entryId, ct);
 
-        var ordered = draft.Entries.OrderBy(e => e.BookingDate).ThenBy(e => e.Id).ToList();
-        var entry = ordered.FirstOrDefault(e => e.Id == entryId);
+
         if (entry is null) { return NotFound(); }
 
         var index = ordered.FindIndex(e => e.Id == entryId);
@@ -278,14 +291,14 @@ public sealed class StatementDraftsController : ControllerBase
     [HttpGet("{draftId:guid}/validate")]
     public async Task<IActionResult> ValidateAsync(Guid draftId, CancellationToken ct)
     {
-        var result = await _drafts.ValidateAsync(draftId, _current.UserId, ct);
+        var result = await _drafts.ValidateAsync(draftId, null, _current.UserId, ct);
         return Ok(result);
     }
 
     [HttpGet("{draftId:guid}/entries/{entryId:guid}/validate")]
     public async Task<IActionResult> ValidateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
-        var result = await _drafts.ValidateEntryAsync(draftId, entryId, _current.UserId, ct);
+        var result = await _drafts.ValidateAsync(draftId, entryId, _current.UserId, ct);
         return Ok(result);
     }
 

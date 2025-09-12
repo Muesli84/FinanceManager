@@ -32,11 +32,15 @@ public sealed class StatementDraftServiceTests
         db.Accounts.Add(new Account(owner, FinanceManager.Domain.AccountType.Giro, "Test", null, Guid.NewGuid()));
         db.SaveChanges();
 
-        var draft = await sut.CreateDraftAsync(owner, "file.csv", new byte[] { 1,2,3 }, CancellationToken.None);
-
-        draft.Entries.Should().HaveCount(2);
-        draft.DetectedAccountId.Should().NotBeNull();
-        draft.OriginalFileName.Should().Be("file.csv");
+        var counter = 0;
+        await foreach (var draft in sut.CreateDraftAsync(owner, "file.csv", new byte[] { 1, 2, 3 }, CancellationToken.None))
+        {
+            draft.Entries.Should().HaveCount(2);
+            draft.DetectedAccountId.Should().NotBeNull();
+            draft.OriginalFileName.Should().Be("file.csv");
+            counter++;
+        }
+        counter.Should().Be(1);
     }
 
     [Fact]
@@ -45,8 +49,13 @@ public sealed class StatementDraftServiceTests
         var (sut, _) = Create();
         var owner = Guid.NewGuid();
 
-        var draft = await sut.CreateDraftAsync(owner, "f.csv", Array.Empty<byte>(), CancellationToken.None);
-        draft.DetectedAccountId.Should().BeNull();
+        var counter = 0;
+        await foreach (var draft in sut.CreateDraftAsync(owner, "f.csv", Array.Empty<byte>(), CancellationToken.None))
+        {
+            draft.DetectedAccountId.Should().BeNull();
+            counter++;
+        }
+        counter.Should().Be(1);        
     }
 
     [Fact]
