@@ -1,5 +1,5 @@
 using FinanceManager.Application.Savings;
-using FinanceManager.Domain;
+using FinanceManager.Domain; // added for PostingKind
 using FinanceManager.Domain.Savings;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
@@ -120,12 +120,7 @@ public sealed class SavingsPlanService : ISavingsPlanService
         var remaining = Math.Max(0m, target - accumulated);
         decimal requiredMonthly = monthsRemaining > 0 ? Math.Ceiling((remaining / monthsRemaining) * 100) / 100 : remaining;
 
-        var reachable = monthsRemaining == 0 ? remaining == 0 : accumulated + monthsRemaining * 10_000_000m >= target ? remaining <= requiredMonthly * monthsRemaining : remaining <= requiredMonthly * monthsRemaining; // trivial check, replaced below
-
-        // Practical reachability: assume average of last n months, else require equal distribution
-        // For now simple rule: if remaining <= monthsRemaining * lastAvg then reachable, else not.
-        // But without past average, use equal distribution from now on => remaining == 0 or monthsRemaining>0.
-        reachable = monthsRemaining > 0 ? remaining <= requiredMonthly * monthsRemaining : remaining == 0;
+        var reachable = monthsRemaining > 0 ? remaining <= requiredMonthly * monthsRemaining : remaining == 0;
 
         return new SavingsPlanAnalysisDto(id, reachable, target, endDate, accumulated, requiredMonthly, monthsRemaining);
     }

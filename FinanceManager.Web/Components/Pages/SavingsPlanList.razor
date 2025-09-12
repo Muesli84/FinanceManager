@@ -12,10 +12,9 @@
     <button @onclick="NewPlan" aria-label="@Localizer["BtnNew"]" title="@Localizer["BtnNew"]" class="icon-btn">
         <svg><use href="/icons/sprite.svg#plus" /></svg>
     </button>
-    <!-- Weitere Symbol-Buttons für Aktionen -->
 </div>
 <div style="margin-top:1rem;">
-    <label><input type="checkbox" @bind="ShowActiveOnly" /> @Localizer["OnlyActive"]</label>
+    <label><input type="checkbox" @bind="ShowActiveOnly" @bind:after="(()=>LoadPlansAsync())" /> @Localizer["OnlyActive"]</label>
 </div>
 <table class="fm-table wide" style="margin-top:1rem;">
     <thead>
@@ -31,13 +30,27 @@
     <tbody>
         @foreach (var plan in Plans)
         {
+            var state = GetState(plan);
             <tr style="cursor:pointer;" @onclick="() => OpenDetail(plan.Id)">
                 <td>@plan.Name</td>
                 <td>@Localizer[$"Type_{plan.Type}"]</td>
                 <td>@(plan.TargetAmount?.ToString("N2") ?? "-")</td>
                 <td>@(plan.TargetDate?.ToShortDateString() ?? "-")</td>
                 <td>@(plan.Interval.HasValue ? Localizer[$"Interval_{plan.Interval}"] : "-")</td>
-                <td>@(plan.IsActive ? Localizer["StatusActive"] : Localizer["StatusArchived"])</td>
+                <td>
+                    @if(state == PlanState.Done)
+                    {
+                        <span title="Ziel erreichbar" style="color:#6c6;display:inline-flex;align-items:center;gap:.25rem;"><svg class="icon" style="width:16px;height:16px;"><use href="/icons/sprite.svg#check" /></svg></span>
+                    }
+                    else if(state == PlanState.Unreachable)
+                    {
+                        <span title="Ziel nicht erreichbar" style="color:#cc6;display:inline-flex;align-items:center;gap:.25rem;"><svg class="icon" style="width:16px;height:16px;"><use href="/icons/sprite.svg#warning" /></svg></span>
+                    }
+                    else
+                    {
+                        @Localizer[plan.IsActive ? "StatusActive" : "StatusArchived"]
+                    }
+                </td>
             </tr>
         }
     </tbody>
@@ -46,6 +59,9 @@
 @code {
     private List<SavingsPlanDto> Plans = new();
     private bool ShowActiveOnly = true;
+
+    private enum PlanState { Normal, Done, Unreachable }
+    private readonly Dictionary<Guid, SavingsPlanAnalysisDto> _analysisByPlan = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -59,7 +75,47 @@
         if (resp.IsSuccessStatusCode)
         {
             Plans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new();
+            await LoadAnalysesAsync();
         }
+        else
+        {
+            Plans.Clear();
+            _analysisByPlan.Clear();
+        }
+    }
+
+    private async Task LoadAnalysesAsync()
+    {
+        _analysisByPlan.Clear();
+        if (Plans.Count == 0) { return; }
+        var http = ClientFactory.CreateClient("Api");
+        var tasks = Plans.Select(async p =>
+        {
+            try
+            {
+                var r = await http.GetAsync($"/api/savings-plans/{p.Id}/analysis");
+                if (r.IsSuccessStatusCode)
+                {
+                    var dto = await r.Content.ReadFromJsonAsync<SavingsPlanAnalysisDto>();
+                    if (dto != null)
+                    {
+                        _analysisByPlan[p.Id] = dto;
+                    }
+                }
+            }
+            catch { }
+        });
+        await Task.WhenAll(tasks);
+        StateHasChanged();
+    }
+
+    private PlanState GetState(SavingsPlanDto plan)
+    {
+        if (!_analysisByPlan.TryGetValue(plan.Id, out var a) || a.TargetAmount is null || a.TargetDate is null)
+        {
+            return PlanState.Normal;
+        }
+        return a.TargetReachable ? PlanState.Done : PlanState.Unreachable;
     }
 
     private void NewPlan() => Navigation.NavigateTo("/savings-plans/new");

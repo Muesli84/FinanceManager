@@ -5,6 +5,7 @@ using FinanceManager.Domain.Securities;
 using FinanceManager.Infrastructure;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.IO;
 using System.Security.Principal;
@@ -181,6 +182,10 @@ public sealed class SetupImportService : ISetupImportService
     private IEnumerable<KeyValuePair<int, Guid>> ImportContacts(JsonElement contacts, IEnumerable<KeyValuePair<int, Guid>> contactCategories, Guid userId)
     {
         if (contacts.ValueKind != JsonValueKind.Undefined)
+        {
+            var existingContacts = _db.Contacts.ToArray();
+            var counter = 0;
+            Debug.WriteLine($"Import der Kontakte: {existingContacts.Length} vorher!");
             foreach (var contact in contacts.EnumerateArray())
             {
                 var dataId = contact.GetProperty("Id").GetInt32();
@@ -203,7 +208,10 @@ public sealed class SetupImportService : ISetupImportService
                 if (existing is not null)
                     newContact = existing;
                 else
+                {
+                    counter += 1;
                     _db.Contacts.Add(newContact);
+                }
 
                 var contactNames = contact.GetProperty("Names");
                 if (contactNames.ValueKind != JsonValueKind.Null)
@@ -211,6 +219,10 @@ public sealed class SetupImportService : ISetupImportService
                         _db.AliasNames.Add(new AliasName(newContact.Id, alias));
                 yield return new KeyValuePair<int, Guid>(dataId, newContact.Id);
             }
+            existingContacts = _db.Contacts.ToArray();
+            Debug.WriteLine($"Import der Kontakte: {existingContacts.Length} nachher!");
+            Debug.WriteLine($"Import der Kontakte: {counter} eingefügt!");
+        }
     }
 
     private IEnumerable<KeyValuePair<int, Guid>> ImportContactCategories(JsonElement contactCategories, Guid userId)
