@@ -10,7 +10,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-KTO-004  | Konto teilen mit anderen Benutzern                              | (Teilen-Logik noch offen)                                                            | ✖      |
 | FA-AUSZ-001 | Kontoauszugdateien einlesen (CSV, PDF)                          | StatementDraftService, FileReader                                                    | ✔      |
 | FA-AUSZ-002 | Für jeden Import wird ein Buch.-Blatt erzeugt                   | StatementDraftService, Domain.StatementDraft                                         | ✔      |
-| FA-AUSZ-003 | Buch.-Blatt Einträge bearbeiten, ergänzen, löschen              | StatementDraftService, UI (Detail + Editiermodus)                                    | ✔      |
+| FA-AUSZ-003 | Buch.-Blatt Einträge bearbeiten, ergänzen, löschen              | StatementDraftService, UI (Detail + Editiermodus); zusätzlich Archivierungs-Flag pro Eintrag für Sparpläne | ✔      |
 | FA-AUSZ-004 | Beim Buchen entstehen Bankposten                                | StatementDraftService.BookAsync → `PostingKind.Bank`                                 | ✔      |
 | FA-AUSZ-005 | Duplikatserkennung beim Import                                  | StatementDraftService: Duplikatprüfung                                               | ✔      |
 | FA-AUSZ-006 | Kostenneutral bei eigenen Kontakten                             | StatementDraftService: Status-/CostNeutral-Logik                                     | ✔      |
@@ -37,7 +37,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-SPAR-006 | Statusanzeige Sparziel erreicht                                 | SavingsPlanService.AnalyzeAsync liefert Kennzahlen; Kontoauszugs‑Prüfung: Infos bei Ziel erreicht sowie Hinweis auf fällige Pläne (ohne Monatsbuchung, nicht in offenem Auszug) | ~      |
 | FA-SPAR-007 | Anzeige fehlender Buchungen zum Ziel                            | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-008 | Prognose Zielverfehlung                                         | SavingsPlanService.AnalyzeAsync (Durchschnitt/Erfordernis)                           | ✔      |
-| FA-SPAR-009 | Archivierung bei Ausbuchung                                     | Noch nicht implementiert                                                             | ✖      |
+| FA-SPAR-009 | Archivierung bei Ausbuchung                                     | Kontoauszugseintrag: Flag „Sparplan nach Buchung archivieren“; Validate prüft exakte Ausbuchung (`SAVINGSPLAN_ARCHIVE_MISMATCH` bei Abweichung); Book archiviert bei Saldo=0 und meldet `SAVINGSPLAN_ARCHIVED` als Information | ✔      |
 | FA-SPAR-010 | Sparplan aus Rückzahlung/Kredit                                 | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-011 | Sparplanposten bei Buchung                                      | StatementDraftService.BookEntryAsync → `PostingKind.SavingsPlan` (negierter Betrag)  | ✔      |
 | FA-SPAR-012 | Umschalten aktive/archivierte Sparpläne                         | Noch nicht implementiert                                                             | ✖      |
@@ -112,6 +112,9 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - FA-SPAR-003 von ✖ auf ~: Bei Buchung wird bei wiederkehrenden Sparplänen das Fälligkeitsdatum um das Intervall erhöht.
 - FA-SPAR-006 Beschreibung erweitert: Kontoauszugs‑Prüfung meldet zusätzlich fällige Sparpläne (ohne Monatsbuchung, nicht in offenem Auszug) als Information.
 - FA-SPAR-001 erweitert: Neuanlage eines Sparplans direkt aus Kontoauszugseintrag inkl. automatischer Zuordnung und Rücksprung.
+- FA-SPAR-009 von ✖ auf ✔: Archivierung bei Ausbuchung via Archivierungs-Flag am Kontoauszugseintrag; Validierung `SAVINGSPLAN_ARCHIVE_MISMATCH` bei Abweichung; Archivierung und Info `SAVINGSPLAN_ARCHIVED` bei Buchung.
+- FA-AUSZ-003 Beschreibung erweitert: Archivierungs-Flag pro Eintrag in der Entry‑Detail‑UI; Persistierung über neuen API‑Endpoint.
+- Tests ergänzt: Unit-Tests für Fehlfall (Mismatch) und Erfolgsfall (Archivierung) der Archivierungsfunktion.
 
 Änderungen (12.09.2025):
 - FA-AUSZ-004 von ✖ auf ✔: Bankposten werden beim Buchen erzeugt (`PostingKind.Bank`).
