@@ -737,7 +737,7 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e = draft.AddEntry(DateTime.Today, 40m, "Save", bank.Name, DateTime.Today, "EUR", null, false);
+        var e = draft.AddEntry(DateTime.Today, -40m, "Save", bank.Name, DateTime.Today, "EUR", null, false);
         db.Entry(e).State = EntityState.Added;
         e.MarkAccounted(selfContact.Id);
         e.AssignSavingsPlan(plan.Id);
@@ -766,8 +766,8 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e1 = draft.AddEntry(DateTime.Today, 25m, "Save1", bank.Name, DateTime.Today, "EUR", null, false);
-        var e2 = draft.AddEntry(DateTime.Today, 25m, "Save2", bank.Name, DateTime.Today, "EUR", null, false);
+        var e1 = draft.AddEntry(DateTime.Today, -25m, "Save1", bank.Name, DateTime.Today, "EUR", null, false);
+        var e2 = draft.AddEntry(DateTime.Today, -25m, "Save2", bank.Name, DateTime.Today, "EUR", null, false);
         db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
         e1.MarkAccounted(selfContact.Id); e2.MarkAccounted(selfContact.Id);
         e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
@@ -798,8 +798,8 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e1 = draft.AddEntry(DateTime.Today, 8m, "A", bank.Name, DateTime.Today, "EUR", null, false);
-        var e2 = draft.AddEntry(DateTime.Today, 5m, "B", bank.Name, DateTime.Today, "EUR", null, false);
+        var e1 = draft.AddEntry(DateTime.Today, -8m, "A", bank.Name, DateTime.Today, "EUR", null, false);
+        var e2 = draft.AddEntry(DateTime.Today, -5m, "B", bank.Name, DateTime.Today, "EUR", null, false);
         db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
         e1.MarkAccounted(selfContact.Id); e2.MarkAccounted(selfContact.Id);
         e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
@@ -832,8 +832,8 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e1 = draft.AddEntry(DateTime.Today, 10m, "A", bank.Name, DateTime.Today, "EUR", null, false);
-        var e2 = draft.AddEntry(DateTime.Today, 20m, "B", bank.Name, DateTime.Today, "EUR", null, false);
+        var e1 = draft.AddEntry(DateTime.Today, -10m, "A", bank.Name, DateTime.Today, "EUR", null, false);
+        var e2 = draft.AddEntry(DateTime.Today, -20m, "B", bank.Name, DateTime.Today, "EUR", null, false);
         db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
         e1.MarkAccounted(selfContact.Id); e2.MarkAccounted(selfContact.Id);
         e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
@@ -1044,6 +1044,68 @@ public sealed class StatementDraftBookingTests
         var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_INVALID_ACCOUNT").Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_SavingsPlanArchiveFlag_WithMismatch_ShouldFail()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+
+        // Plan with target 200, current 50 -> remaining 150; planned 70 -> mismatch
+        var plan = new SavingsPlan(owner, "Archive Mismatch", SavingsPlanType.OneTime, 200m, null, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-3), 50m, null, null, null, null));
+        await db.SaveChangesAsync();
+
+        var e1 = draft.AddEntry(DateTime.Today, 30m, "A", bank.Name, DateTime.Today, "EUR", null, false);
+        var e2 = draft.AddEntry(DateTime.Today, 40m, "B", bank.Name, DateTime.Today, "EUR", null, false);
+        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
+        e1.MarkAccounted(self.Id); e2.MarkAccounted(self.Id);
+        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
+        await db.SaveChangesAsync();
+
+        await sut.SetEntryArchiveSavingsPlanOnBookingAsync(draft.Id, e1.Id, true, owner, CancellationToken.None);
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeFalse();
+        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_ARCHIVE_MISMATCH").Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_SavingsPlanArchiveFlag_WithExactSum_ShouldArchiveAndReturnInfo()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+
+        // Plan with target 200, current 150 -> remaining 50; planned 50 -> exact
+        var plan = new SavingsPlan(owner, "Archive OK", SavingsPlanType.OneTime, 200m, null, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-4), 150m, null, null, null, null));
+        await db.SaveChangesAsync();
+
+        var e1 = draft.AddEntry(DateTime.Today, -20m, "A", bank.Name, DateTime.Today, "EUR", null, false);
+        var e2 = draft.AddEntry(DateTime.Today, -30m, "B", bank.Name, DateTime.Today, "EUR", null, false);
+        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
+        e1.MarkAccounted(self.Id); e2.MarkAccounted(self.Id);
+        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
+        await db.SaveChangesAsync();
+
+        await sut.SetEntryArchiveSavingsPlanOnBookingAsync(draft.Id, e1.Id, true, owner, CancellationToken.None);
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+        // Plan should be archived
+        (await db.SavingsPlans.FindAsync(plan.Id))!.IsActive.Should().BeFalse();
+        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_ARCHIVED" && m.Severity == "Information").Should().BeTrue();
         conn.Dispose();
     }
 }

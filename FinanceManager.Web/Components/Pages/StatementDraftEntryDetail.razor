@@ -196,6 +196,13 @@ else
                             <button class="icon-btn" title="Neuen Sparplan anlegen" aria-label="Neuen Sparplan anlegen" @onclick="OpenCreateSavingsPlan" disabled="@(!CanCreateSavingsPlan)"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
                         </div>
                     </div>
+                    @if(_selectedSavingsPlanId != null)
+                    {
+                        <div style="display:flex;align-items:center;gap:.5rem;margin:.25rem 0 .5rem 0;max-width:420px;">
+                            <InputCheckbox @bind-Value="_archiveSavingsPlanOnBooking" />
+                            <span>Sparplan nach Buchung archivieren</span>
+                        </div>
+                    }
                 </td>
             </tr>
             @if(ShowSecuritySection)
@@ -340,6 +347,7 @@ else
     private string _savingsPlanFilter = string.Empty;
     private bool _savingsPlanDropdownVisible;
     private List<SavingsPlanDto> _userSavingsPlans = new();
+    private bool _archiveSavingsPlanOnBooking;
 
     private IEnumerable<SavingsPlanDto> FilteredSavingsPlans => string.IsNullOrWhiteSpace(_savingsPlanFilter)
          ? _userSavingsPlans
@@ -415,6 +423,7 @@ else
         _savingsPlanFilter = _selectedSavingsPlanId != null
             ? _userSavingsPlans.FirstOrDefault(p=>p.Id==_selectedSavingsPlanId)?.Name ?? string.Empty
             : string.Empty;
+        _archiveSavingsPlanOnBooking = _vm?.Entry.ArchiveSavingsPlanOnBooking ?? false;
 
         // Securities initialisieren
         if (_vm?.Entry != null)
@@ -450,6 +459,7 @@ else
             _savingsPlanFilter = _selectedSavingsPlanId != null
                 ? _userSavingsPlans.FirstOrDefault(p => p.Id == _selectedSavingsPlanId)?.Name ?? string.Empty
                 : string.Empty;
+            _archiveSavingsPlanOnBooking = _vm.Entry.ArchiveSavingsPlanOnBooking;
         }
     }
 
@@ -498,6 +508,7 @@ else
         if (_selectedSavingsPlanId != id) { _selectedSavingsPlanId = id; }
         _savingsPlanFilter = id == null ? string.Empty : _userSavingsPlans.FirstOrDefault(p => p.Id == id)?.Name ?? string.Empty;
         _savingsPlanDropdownVisible = false;
+        if (id == null) { _archiveSavingsPlanOnBooking = false; }
     }
     private void OnSavingsPlanFilterAfterChanged()
     {
@@ -658,6 +669,7 @@ else
         StatementDraftEntryStatus Status,
         Guid? ContactId,
         Guid? SavingsPlanId,
+        bool ArchiveSavingsPlanOnBooking,
         Guid? SplitDraftId,
         Guid? SecurityId,
         SecurityTransactionType? SecurityTransactionType,
@@ -721,6 +733,13 @@ else
             {
                 var payload3 = new { SavingsPlanId = _selectedSavingsPlanId };
                 resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/savingsplan", payload3);
+                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
+            }
+
+            // persist archive flag for savings plan
+            {
+                var payload4 = new { ArchiveOnBooking = _archiveSavingsPlanOnBooking };
+                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/savingsplan/archive-on-booking", payload4);
                 if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
             }
 
@@ -839,5 +858,14 @@ else
         {
             await LoadEntryAsync();
         }
+    }
+
+    private bool GetArchiveFlagFromEntryVm()
+    {
+        try
+        {
+            return _vm?.Entry.ArchiveSavingsPlanOnBooking ?? false;
+        }
+        catch { return false; }
     }
 }

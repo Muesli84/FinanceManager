@@ -422,6 +422,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             e.Status,
             e.ContactId,
             e.SavingsPlanId,
+            e.ArchiveSavingsPlanOnBooking,
             e.SplitDraftId,
             e.SecurityId,
             e.SecurityTransactionType,
@@ -463,6 +464,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 e.Status,
                 e.ContactId,
                 e.SavingsPlanId,
+                e.ArchiveSavingsPlanOnBooking,
                 e.SplitDraftId,
                 e.SecurityId,
                 e.SecurityTransactionType,
@@ -502,12 +504,25 @@ public sealed partial class StatementDraftService : IStatementDraftService
             entry.Status,
             entry.ContactId,
             entry.SavingsPlanId,
+            entry.ArchiveSavingsPlanOnBooking,
             entry.SplitDraftId,
             entry.SecurityId,
             entry.SecurityTransactionType,
             entry.SecurityQuantity,
             entry.SecurityFeeAmount,
             entry.SecurityTaxAmount);
+    }
+
+    public async Task<StatementDraftDto?> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, bool archive, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+        entry.SetArchiveSavingsPlanOnBooking(archive);
+        await _db.SaveChangesAsync(ct);
+        return await GetDraftAsync(draftId, ownerUserId, ct);
     }
 
     private async Task ReevaluateParentEntryStatusAsync(Guid ownerUserId, Guid splitDraftId, CancellationToken ct)
@@ -869,7 +884,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
         }
 
-        // Savings plan goal info/warning
+        // Savings plan goal info/warning + archive intent validation
         var planIds = entries.Where(e => e.SavingsPlanId != null).Select(e => e.SavingsPlanId!.Value).Distinct().ToList();
         if (planIds.Count > 0)
         {
@@ -877,16 +892,18 @@ public sealed partial class StatementDraftService : IStatementDraftService
             var contribByPlan = entries
                 .Where(e => e.SavingsPlanId != null)
                 .GroupBy(e => e.SavingsPlanId!.Value)
-                .ToDictionary(g => g.Key, g => g.Sum(x => x.Amount));
+                .ToDictionary(g => g.Key, g => g.Sum(x => -x.Amount));
 
             foreach (var plan in plans)
             {
+                bool wantsArchive = entries.Any(e => e.SavingsPlanId == plan.Id && e.ArchiveSavingsPlanOnBooking);
+
                 if (plan.TargetAmount is not decimal target) { continue; }
                 var current = await _db.Postings.AsNoTracking()
                     .Where(p => p.SavingsPlanId == plan.Id && p.Kind == PostingKind.SavingsPlan)
                     .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
                 var planned = contribByPlan.TryGetValue(plan.Id, out var val) ? val : 0m;
-                if (planned <= 0) { continue; }
+                if (planned == 0) { continue; }
                 var remaining = target - current;
                 if (remaining > 0m && planned == remaining)
                 {
@@ -895,12 +912,19 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 else if (remaining > 0m && planned > remaining)
                 {
                     messages.Add(new("SAVINGSPLAN_GOAL_EXCEEDED", "Warning", $"Die geplanten Buchungen überschreiten das Sparziel des Sparplans '{plan.Name}'.", draft.Id, null));
+                }               
+                if (wantsArchive)
+                {
+                    if (current + planned != target)
+                    {
+                        messages.Add(new("SAVINGSPLAN_ARCHIVE_MISMATCH", "Error", $"Sparplan '{plan.Name}' kann nicht archiviert werden: Buchungen gleichen den Restbetrag nicht exakt aus.", draft.Id, null));
+                    }
                 }
             }
         }
 
         // Additional info: due savings plans not yet posted this month and not assigned in open drafts
-        if (entries.Count > 0)
+        if (entries.Count > 0 && entryId is null)
         {
             var latestBookingDate = entries.Max(e => e.BookingDate);
             var monthStart = new DateTime(latestBookingDate.Year, latestBookingDate.Month, 1);
@@ -976,6 +1000,32 @@ public sealed partial class StatementDraftService : IStatementDraftService
         foreach (var bd in bookedDrafts) { bd.MarkCommitted(); }
         await _db.SaveChangesAsync(ct);
 
+        // Archive savings plans that were flagged and reached zero after booking
+        var flaggedPlanIds = draft.Entries.Where(e => e.SavingsPlanId != null && e.ArchiveSavingsPlanOnBooking)
+            .Select(e => e.SavingsPlanId!.Value)
+            .Distinct()
+            .ToList();
+        if (flaggedPlanIds.Count > 0)
+        {
+            var msgs = validation.Messages.ToList();
+            foreach (var pid in flaggedPlanIds)
+            {
+                var plan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Id == pid, ct);
+                if (plan == null || !plan.IsActive) { continue; }
+                var target = plan.TargetAmount ?? 0m;
+                var current = await _db.Postings.AsNoTracking()
+                    .Where(p => p.SavingsPlanId == plan.Id && p.Kind == PostingKind.SavingsPlan)
+                    .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
+                if (current == target)
+                {
+                    plan.Archive();
+                    msgs.Add(new("SAVINGSPLAN_ARCHIVED", "Information", $"Sparplan '{plan.Name}' wurde archiviert.", draft.Id, null));
+                }
+            }
+            await _db.SaveChangesAsync(ct);
+            validation = new DraftValidationResultDto(validation.DraftId, validation.IsValid, msgs);
+        }        
+
         var nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Id > draftId && d.Status == StatementDraftStatus.Draft).FirstOrDefaultAsync(ct);
         if (nextJournal is null)
             nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Status == StatementDraftStatus.Draft).LastOrDefaultAsync(ct);
@@ -1015,7 +1065,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             var plan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Id == e.SavingsPlanId, ct);
             if (plan != null && plan.Type == SavingsPlanType.Recurring && plan.TargetDate != null && plan.Interval != null && !updatedPlanIds.Contains(plan.Id))
             {
-                if (plan.TargetDate!.Value.Date <= e.BookingDate.Date)
+                while (plan.TargetDate!.Value.Date <= e.BookingDate.Date)
                 {
                     var months = GetMonthsToAdd(plan.Interval.Value);
                     if (months > 0)

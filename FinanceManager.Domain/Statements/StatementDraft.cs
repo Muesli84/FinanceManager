@@ -121,6 +121,7 @@ public sealed class StatementDraftEntry : Entity
     public StatementDraftEntryStatus Status { get; private set; }
     public Guid? ContactId { get; private set; }
     public Guid? SavingsPlanId { get; private set; }
+    public bool ArchiveSavingsPlanOnBooking { get; private set; }
     public bool IsCostNeutral { get; private set; } = false;
     public Guid? SplitDraftId { get; private set; }
     public Guid? SecurityId { get; private set; }
@@ -169,6 +170,12 @@ public sealed class StatementDraftEntry : Entity
     }
 
     public void AssignSavingsPlan(Guid? savingsPlanId) => SavingsPlanId = savingsPlanId;
+
+    public void SetArchiveSavingsPlanOnBooking(bool archive)
+    {
+        ArchiveSavingsPlanOnBooking = archive;
+        Touch();
+    }
 
     public void AssignSplitDraft(Guid splitDraftId)
     {

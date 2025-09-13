@@ -257,6 +257,7 @@ public sealed class StatementDraftsController : ControllerBase
     public sealed record SetContactRequest(Guid? ContactId);
     public sealed record SetCostNeutralRequest(bool? IsCostNeutral);
     public sealed record SetSavingsPlanRequest(Guid? SavingsPlanId);
+    public sealed record SetArchiveSavingsPlanOnBookingRequest(bool ArchiveOnBooking);
     public sealed record UpdateEntryCoreRequest(DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string Subject, string? RecipientName, string? CurrencyCode, string? BookingDescription);
 
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/edit-core")]
@@ -298,6 +299,15 @@ public sealed class StatementDraftsController : ControllerBase
             return NotFound();
         }
 
+        var entry = draft.Entries.First(e => e.Id == entryId);
+        return Ok(entry);
+    }
+
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/savingsplan/archive-on-booking")]
+    public async Task<IActionResult> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, [FromBody] SetArchiveSavingsPlanOnBookingRequest body, CancellationToken ct)
+    {
+        var draft = await _drafts.SetEntryArchiveSavingsPlanOnBookingAsync(draftId, entryId, body.ArchiveOnBooking, _current.UserId, ct);
+        if (draft == null) { return NotFound(); }
         var entry = draft.Entries.First(e => e.Id == entryId);
         return Ok(entry);
     }

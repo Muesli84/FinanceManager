@@ -24,6 +24,7 @@ public interface IStatementDraftService
     Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftDto?> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, Guid? splitDraftId, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct);
+    Task<StatementDraftDto?> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, bool archive, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraft?> SetEntrySecurityAsync(Guid draftId,
         Guid entryId,
         Guid? securityId,
@@ -52,6 +53,7 @@ public sealed record StatementDraftEntryDto(
     StatementDraftEntryStatus Status,
     Guid? ContactId,
     Guid? SavingsPlanId,
+    bool ArchiveSavingsPlanOnBooking,
     Guid? SplitDraftId,
     Guid? SecurityId,
     SecurityTransactionType? SecurityTransactionType,
