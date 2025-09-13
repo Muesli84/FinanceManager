@@ -7,6 +7,7 @@ using FinanceManager.Infrastructure.Statements.Reader;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using FinanceManager.Domain.Postings;
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -1052,14 +1053,14 @@ public sealed partial class StatementDraftService : IStatementDraftService
         decimal baseAmount = e.SplitDraftId != null ? 0m : e.Amount;
         var subj = e.Subject; var recip = e.RecipientName; var desc = e.BookingDescription;
 
-        _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Bank, draft.DetectedAccountId, null, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
+        await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Bank, draft.DetectedAccountId, null, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId)).Entity, ct);
         if (e.ContactId != null)
         {
-            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
+            await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId)).Entity, ct);
         }
         if (e.SavingsPlanId != null)
         {
-            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, -baseAmount, subj, recip, desc, null).SetGroup(groupId));
+            await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, -baseAmount, subj, recip, desc, null).SetGroup(groupId)).Entity, ct);
 
             // Extend due date for recurring plans if due reached and not already updated in this booking
             var plan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Id == e.SavingsPlanId, ct);
@@ -1082,14 +1083,14 @@ public sealed partial class StatementDraftService : IStatementDraftService
             var tradeNet = baseAmount;
             if (e.SecurityFeeAmount is decimal f) { tradeNet -= f; }
             if (e.SecurityTaxAmount is decimal t) { tradeNet -= t; }
-            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tradeNet, subj, recip, desc, SecurityPostingSubType.Trade).SetGroup(securityGroupId));
+            await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tradeNet, subj, recip, desc, SecurityPostingSubType.Trade).SetGroup(securityGroupId)).Entity, ct);
             if (e.SecurityFeeAmount is decimal fee && fee != 0)
             {
-                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, fee, subj, recip, "Fee", SecurityPostingSubType.Fee).SetGroup(securityGroupId));
+                await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, fee, subj, recip, "Fee", SecurityPostingSubType.Fee).SetGroup(securityGroupId)).Entity, ct);
             }
             if (e.SecurityTaxAmount is decimal tax && tax != 0)
             {
-                _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tax, subj, recip, "Tax", SecurityPostingSubType.Tax).SetGroup(securityGroupId));
+                await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tax, subj, recip, "Tax", SecurityPostingSubType.Tax).SetGroup(securityGroupId)).Entity, ct);
             }
         }
 
@@ -1108,4 +1109,65 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
         return bookedDrafts;
     }
+
+    private static DateTime GetPeriodStart(DateTime date, AggregatePeriod p)
+    {
+        var d = date.Date;
+        return p switch
+        {
+            AggregatePeriod.Month => new DateTime(d.Year, d.Month, 1),
+            AggregatePeriod.Quarter => new DateTime(d.Year, ((d.Month - 1) / 3) * 3 + 1, 1),
+            AggregatePeriod.HalfYear => new DateTime(d.Year, (d.Month <= 6 ? 1 : 7), 1),
+            AggregatePeriod.Year => new DateTime(d.Year, 1, 1),
+            _ => new DateTime(d.Year, d.Month, 1)
+        };
+    }
+
+    private async Task UpsertAggregatesAsync(Domain.Postings.Posting posting, CancellationToken ct)
+    {
+        if (posting.Amount == 0m) { return; }
+         // Build aggregates for Account, Contact, SavingsPlan, Security per required periods
+         var periods = new[] { AggregatePeriod.Month, AggregatePeriod.Quarter, AggregatePeriod.HalfYear, AggregatePeriod.Year };
+         foreach (var p in periods)
+         {
+             var periodStart = GetPeriodStart(posting.BookingDate, p);
+
+            async Task Upsert(Guid? accountId, Guid? contactId, Guid? savingsPlanId, Guid? securityId)
+            {
+                var agg = await _db.PostingAggregates
+                    .FirstOrDefaultAsync(x => x.Kind == posting.Kind
+                        && x.AccountId == accountId
+                        && x.ContactId == contactId
+                        && x.SavingsPlanId == savingsPlanId
+                        && x.SecurityId == securityId
+                        && x.Period == p
+                        && x.PeriodStart == periodStart, ct);
+                if (agg == null)
+                {
+                    agg = new Domain.Postings.PostingAggregate(posting.Kind, accountId, contactId, savingsPlanId, securityId, periodStart, p);
+                    _db.PostingAggregates.Add(agg);
+                }
+                agg.Add(posting.Amount);
+            }
+
+            // Aggregate only for the relevant dimension per posting kind
+            switch (posting.Kind)
+            {
+                case PostingKind.Bank:
+                    await Upsert(posting.AccountId, null, null, null);
+                    break;
+                case PostingKind.Contact:
+                    await Upsert(null, posting.ContactId, null, null);
+                    break;
+                case PostingKind.SavingsPlan:
+                    await Upsert(null, null, posting.SavingsPlanId, null);
+                    break;
+                case PostingKind.Security:
+                    await Upsert(null, null, null, posting.SecurityId);
+                    break;
+                default:
+                    break;
+            }
+         }
+     }
 }

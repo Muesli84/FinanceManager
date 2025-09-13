@@ -118,6 +118,9 @@ public sealed class StatementDraftBookingTests
         db.Postings.Count().Should().Be(2);
         db.Postings.Count(p => p.Kind == PostingKind.Bank).Should().Be(1);
         db.Postings.Count(p => p.Kind == PostingKind.Contact).Should().Be(1);
+        // Aggregates created for month/quarter/halfyear/year for account and contact
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(4);
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact).Should().Be(4);
         conn.Dispose();
     }
 
@@ -144,6 +147,10 @@ public sealed class StatementDraftBookingTests
         db.Postings.Count(p => p.Kind == PostingKind.Contact).Should().Be(1);
         db.Postings.Count(p => p.Kind == PostingKind.SavingsPlan).Should().Be(1);
         db.Postings.Single(p => p.Kind == PostingKind.SavingsPlan).Amount.Should().Be(-100m);
+        // Aggregates exist for bank/contact/savingsplan
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(4);
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact).Should().Be(4);
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.SavingsPlan).Should().Be(4);
         conn.Dispose();
     }
 
@@ -1106,6 +1113,41 @@ public sealed class StatementDraftBookingTests
         // Plan should be archived
         (await db.SavingsPlans.FindAsync(plan.Id))!.IsActive.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_ARCHIVED" && m.Severity == "Information").Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_Aggregates_Update_WhenPreExisting()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, _) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+        var plan = new SavingsPlan(owner, "Plan A", SavingsPlanType.OneTime, null, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+        var e = draft.AddEntry(DateTime.Today, 50m, "Save", self.Name, DateTime.Today, "EUR", null, false);
+        e.AssignSavingsPlan(plan.Id);
+        e.MarkAccounted(self.Id);
+        db.Entry(e).State = EntityState.Added;
+        await db.SaveChangesAsync();
+
+        // Pre-create aggregates with some amount
+        var startMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        db.PostingAggregates.Add(new FinanceManager.Domain.Postings.PostingAggregate(PostingKind.Bank, acc.Id, null, null, null, startMonth, FinanceManager.Domain.Postings.AggregatePeriod.Month));
+        db.PostingAggregates.Add(new FinanceManager.Domain.Postings.PostingAggregate(PostingKind.Contact, null, self.Id, null, null, startMonth, FinanceManager.Domain.Postings.AggregatePeriod.Month));
+        db.PostingAggregates.Add(new FinanceManager.Domain.Postings.PostingAggregate(PostingKind.SavingsPlan, null, null, plan.Id, null, startMonth, FinanceManager.Domain.Postings.AggregatePeriod.Month));
+        await db.SaveChangesAsync();
+
+        // Act
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+
+        // Assert: monthly aggregates updated to include the new amounts
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(4);
+        db.PostingAggregates.Single(a => a.Kind == PostingKind.Bank && a.Period == FinanceManager.Domain.Postings.AggregatePeriod.Month && a.PeriodStart == startMonth).Amount.Should().Be(50m);
+        db.PostingAggregates.Single(a => a.Kind == PostingKind.Contact && a.Period == FinanceManager.Domain.Postings.AggregatePeriod.Month && a.PeriodStart == startMonth).Amount.Should().Be(50m);
+        db.PostingAggregates.Single(a => a.Kind == PostingKind.SavingsPlan && a.Period == FinanceManager.Domain.Postings.AggregatePeriod.Month && a.PeriodStart == startMonth).Amount.Should().Be(-50m);
         conn.Dispose();
     }
 }

@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
     public DbSet<SavingsPlanCategory> SavingsPlanCategories { get; set; } = null!;
     public DbSet<Security> Securities => Set<Security>();
     public DbSet<SecurityCategory> SecurityCategories => Set<SecurityCategory>();
+    public DbSet<PostingAggregate> PostingAggregates => Set<PostingAggregate>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -172,6 +173,13 @@ public class AppDbContext : DbContext
             b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
             b.Property(x => x.Name).HasMaxLength(150).IsRequired();
             b.Property(x => x.OwnerUserId).IsRequired();
+        });
+
+        modelBuilder.Entity<PostingAggregate>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Amount).HasPrecision(18,2);
+            b.HasIndex(x => new { x.Kind, x.AccountId, x.ContactId, x.SavingsPlanId, x.SecurityId, x.Period, x.PeriodStart }).IsUnique();
         });
 
         modelBuilder.Entity<StatementDraftEntry>(b =>
