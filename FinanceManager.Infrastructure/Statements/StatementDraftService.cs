@@ -6,8 +6,8 @@ using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure.Statements.Reader;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
-using System.Text.RegularExpressions;
 using FinanceManager.Domain.Postings;
+using FinanceManager.Domain.Securities;
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -25,16 +25,6 @@ public sealed partial class StatementDraftService : IStatementDraftService
             new Barclays_StatementFileReader(),
             new BackupStatementFileReader()
         };
-    }
-
-    private static string NormalizeUmlauts(string text)
-    {
-        if (string.IsNullOrEmpty(text)) { return string.Empty; }
-        return text
-            .Replace("ä", "ae", StringComparison.OrdinalIgnoreCase)
-            .Replace("ö", "oe", StringComparison.OrdinalIgnoreCase)
-            .Replace("ü", "ue", StringComparison.OrdinalIgnoreCase)
-            .Replace("ß", "ss", StringComparison.OrdinalIgnoreCase);
     }
 
     public async IAsyncEnumerable<StatementDraftDto> CreateDraftAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct)
@@ -269,40 +259,59 @@ public sealed partial class StatementDraftService : IStatementDraftService
         return await GetDraftAsync(draft.Id, ownerUserId, ct);
     }
 
-    public void TryAutoAssignSavingsPlan(StatementDraftEntry entry, IEnumerable<SavingsPlan> userPlans, Contact selfContact)
+    public async Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct)
     {
-        if (entry.ContactId is null) { return; }
-        if (entry.ContactId != selfContact.Id) { return; }
-
-        string Clean(string s) => Regex.Replace(s ?? string.Empty, "\\s+", string.Empty);
-
-        var normalizedSubject = NormalizeUmlauts(entry.Subject).ToLowerInvariant();
-        var normalizedSubjectNoSpaces = Clean(normalizedSubject);
-
-        foreach (var plan in userPlans)
+        var draft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        var entry = await _db.StatementDraftEntries.FirstOrDefaultAsync(e => e.DraftId == draftId && e.Id == entryId, ct);
+        if (entry == null) { return null; }
+        if (draft.Status != StatementDraftStatus.Draft) { return null; }
+        entry.UpdateCore(bookingDate, valutaDate, amount, subject, recipientName, currencyCode, bookingDescription);
+        await _db.SaveChangesAsync(ct);
+        if (await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == draft.Id, ct))
         {
-            if (string.IsNullOrWhiteSpace(plan.Name)) { continue; }
-            var normalizedPlanName = Clean(NormalizeUmlauts(plan.Name).ToLowerInvariant());
-
-            bool nameMatches = normalizedSubjectNoSpaces.Contains(normalizedPlanName);
-            bool contractMatches = false;
-
-            if (!nameMatches && !string.IsNullOrWhiteSpace(plan.ContractNumber))
-            {
-                var cn = plan.ContractNumber.Trim();
-                var subjectForContract = Regex.Replace(entry.Subject ?? string.Empty, "[\\s-]", string.Empty, RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-                var cnNormalized = Regex.Replace(cn, "[\\s-]", string.Empty, RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-                contractMatches = subjectForContract.Contains(cnNormalized, StringComparison.OrdinalIgnoreCase);
-            }
-
-            if (nameMatches || contractMatches)
-            {
-                entry.AssignSavingsPlan(plan.Id);
-                break;
-            }
+            await ReevaluateParentEntryStatusAsync(ownerUserId, draft.Id, ct);
         }
+        if (entry.SplitDraftId != null)
+        {
+            await ReevaluateParentEntryStatusAsync(ownerUserId, entry.SplitDraftId.Value, ct);
+        }
+        return new StatementDraftEntryDto(
+            entry.Id,
+            entry.BookingDate,
+            entry.ValutaDate,
+            entry.Amount,
+            entry.CurrencyCode,
+            entry.Subject,
+            entry.RecipientName,
+            entry.BookingDescription,
+            entry.IsAnnounced,
+            entry.IsCostNeutral,
+            entry.Status,
+            entry.ContactId,
+            entry.SavingsPlanId,
+            entry.ArchiveSavingsPlanOnBooking,
+            entry.SplitDraftId,
+            entry.SecurityId,
+            entry.SecurityTransactionType,
+            entry.SecurityQuantity,
+            entry.SecurityFeeAmount,
+            entry.SecurityTaxAmount);
     }
 
+    public async Task<StatementDraftDto?> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, bool archive, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+        entry.SetArchiveSavingsPlanOnBooking(archive);
+        await _db.SaveChangesAsync(ct);
+        return await GetDraftAsync(draftId, ownerUserId, ct);
+    }
+
+    // Restore interface methods grouped here
     public async Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -391,324 +400,6 @@ public sealed partial class StatementDraftService : IStatementDraftService
         return await GetDraftAsync(draftId, ownerUserId, ct);
     }
 
-    private static StatementDraftDto Map(StatementDraft draft)
-    {
-        var total = draft.Entries.Sum(e => e.Amount);
-        return new StatementDraftDto(
-            draft.Id,
-            draft.OriginalFileName,
-            draft.DetectedAccountId,
-            draft.Status,
-            total,
-            false,
-            null,
-            null,
-            null,
-            draft.Entries.Select(e => Map(e)).ToList());
-    }
-
-    private static StatementDraftEntryDto Map(StatementDraftEntry e)
-    {
-        return new StatementDraftEntryDto(
-            e.Id,
-            e.BookingDate,
-            e.ValutaDate,
-            e.Amount,
-            e.CurrencyCode,
-            e.Subject,
-            e.RecipientName,
-            e.BookingDescription,
-            e.IsAnnounced,
-            e.IsCostNeutral,
-            e.Status,
-            e.ContactId,
-            e.SavingsPlanId,
-            e.ArchiveSavingsPlanOnBooking,
-            e.SplitDraftId,
-            e.SecurityId,
-            e.SecurityTransactionType,
-            e.SecurityQuantity,
-            e.SecurityFeeAmount,
-            e.SecurityTaxAmount);
-    }
-
-    private static StatementDraftDto Map(StatementDraft draft, IDictionary<Guid, dynamic> splitRefLookup)
-    {
-        var total = draft.Entries.Sum(e => e.Amount);
-        dynamic? refInfo = null;
-        splitRefLookup.TryGetValue(draft.Id, out refInfo);
-        Guid? parentDraftId = refInfo?.DraftId;
-        Guid? parentEntryId = refInfo?.Id;
-        decimal? parentEntryAmount = refInfo?.Amount;
-
-        return new StatementDraftDto(
-            draft.Id,
-            draft.OriginalFileName,
-            draft.DetectedAccountId,
-            draft.Status,
-            total,
-            parentDraftId != null,
-            parentDraftId,
-            parentEntryId,
-            parentEntryAmount,
-            draft.Entries.Select(e => new StatementDraftEntryDto(
-                e.Id,
-                e.BookingDate,
-                e.ValutaDate,
-                e.Amount,
-                e.CurrencyCode,
-                e.Subject,
-                e.RecipientName,
-                e.BookingDescription,
-                e.IsAnnounced,
-                e.IsCostNeutral,
-                e.Status,
-                e.ContactId,
-                e.SavingsPlanId,
-                e.ArchiveSavingsPlanOnBooking,
-                e.SplitDraftId,
-                e.SecurityId,
-                e.SecurityTransactionType,
-                e.SecurityQuantity,
-                e.SecurityFeeAmount,
-                e.SecurityTaxAmount)).ToList());
-    }
-
-    public async Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct)
-    {
-        var draft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        if (draft == null) { return null; }
-        var entry = await _db.StatementDraftEntries.FirstOrDefaultAsync(e => e.DraftId == draftId && e.Id == entryId, ct);
-        if (entry == null) { return null; }
-        if (draft.Status != StatementDraftStatus.Draft) { return null; }
-        entry.UpdateCore(bookingDate, valutaDate, amount, subject, recipientName, currencyCode, bookingDescription);
-        await _db.SaveChangesAsync(ct);
-        if (await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == draft.Id, ct))
-        {
-            await ReevaluateParentEntryStatusAsync(ownerUserId, draft.Id, ct);
-        }
-        if (entry.SplitDraftId != null)
-        {
-            await ReevaluateParentEntryStatusAsync(ownerUserId, entry.SplitDraftId.Value, ct);
-        }
-        return new StatementDraftEntryDto(
-            entry.Id,
-            entry.BookingDate,
-            entry.ValutaDate,
-            entry.Amount,
-            entry.CurrencyCode,
-            entry.Subject,
-            entry.RecipientName,
-            entry.BookingDescription,
-            entry.IsAnnounced,
-            entry.IsCostNeutral,
-            entry.Status,
-            entry.ContactId,
-            entry.SavingsPlanId,
-            entry.ArchiveSavingsPlanOnBooking,
-            entry.SplitDraftId,
-            entry.SecurityId,
-            entry.SecurityTransactionType,
-            entry.SecurityQuantity,
-            entry.SecurityFeeAmount,
-            entry.SecurityTaxAmount);
-    }
-
-    public async Task<StatementDraftDto?> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, bool archive, Guid ownerUserId, CancellationToken ct)
-    {
-        var draft = await _db.StatementDrafts.Include(d => d.Entries)
-            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        if (draft == null) { return null; }
-        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
-        if (entry == null) { return null; }
-        entry.SetArchiveSavingsPlanOnBooking(archive);
-        await _db.SaveChangesAsync(ct);
-        return await GetDraftAsync(draftId, ownerUserId, ct);
-    }
-
-    private async Task ReevaluateParentEntryStatusAsync(Guid ownerUserId, Guid splitDraftId, CancellationToken ct)
-    {
-        var parentEntry = await _db.StatementDraftEntries.FirstOrDefaultAsync(e => e.SplitDraftId == splitDraftId, ct);
-        if (parentEntry == null) { return; }
-        var parentDraft = await _db.StatementDrafts.Include(d => d.Entries).FirstOrDefaultAsync(d => d.Id == parentEntry.DraftId && d.OwnerUserId == ownerUserId, ct);
-        if (parentDraft == null) { return; }
-        var total = await _db.StatementDraftEntries.Where(e => e.DraftId == splitDraftId).SumAsync(e => e.Amount, ct);
-        if (total == parentEntry.Amount && parentEntry.ContactId != null && parentEntry.Status != StatementDraftEntryStatus.Accounted)
-        {
-            parentEntry.MarkAccounted(parentEntry.ContactId.Value);
-        }
-        else if (total != parentEntry.Amount && parentEntry.Status == StatementDraftEntryStatus.Accounted)
-        {
-            parentEntry.ResetOpen();
-            if (parentEntry.ContactId != null)
-            {
-                parentEntry.AssignContactWithoutAccounting(parentEntry.ContactId.Value);
-            }
-        }
-        await _db.SaveChangesAsync(ct);
-    }
-
-    private async Task ClassifyInternalAsync(StatementDraft draft, Guid? entryId, Guid ownerUserId, CancellationToken ct)
-    {
-        await ClassifyHeader(draft, ownerUserId, ct);
-
-        var entries = await _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || e.Id == entryId)).ToListAsync(ct);
-
-        var contacts = await _db.Contacts.AsNoTracking()
-            .Where(c => c.OwnerUserId == ownerUserId)
-            .ToListAsync(ct);
-        var selfContact = contacts.First(c => c.Type == ContactType.Self);
-        var aliasLookup = await _db.AliasNames.AsNoTracking()
-            .Where(a => contacts.Select(c => c.Id).Contains(a.ContactId))
-            .GroupBy(a => a.ContactId)
-            .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.Pattern).ToList(), ct);
-        var savingPlans = await _db.SavingsPlans.AsNoTracking()
-            .Where(sp => sp.OwnerUserId == ownerUserId && sp.IsActive)
-            .ToListAsync(ct);
-
-        List<(DateTime BookingDate, decimal Amount, string Subject)> existing = new();
-        if (draft.DetectedAccountId != null)
-        {
-            var since = DateTime.UtcNow.AddDays(-180);
-            var tempExisting = await _db.StatementEntries.AsNoTracking()
-                .Where(se => se.BookingDate >= since)
-                .Select(se => new { se.BookingDate, se.Amount, se.Subject })
-                .ToListAsync(ct);
-            existing = tempExisting
-                .Select(x => (x.BookingDate.Date, x.Amount, x.Subject))
-                .ToList();
-        }
-
-        Guid? bankContactId = null;
-        if (draft.DetectedAccountId != null)
-        {
-            bankContactId = await _db.Accounts
-                .Where(a => a.Id == draft.DetectedAccountId)
-                .Select(a => (Guid?)a.BankContactId)
-                .FirstOrDefaultAsync(ct);
-        }
-
-        foreach (var entry in entries)
-        {
-            if (entry.Status != StatementDraftEntryStatus.AlreadyBooked)
-            {
-                entry.ResetOpen();
-            }
-
-            if (existing.Any(x => x.BookingDate == entry.BookingDate.Date && x.Amount == entry.Amount && string.Equals(x.Subject, entry.Subject, StringComparison.OrdinalIgnoreCase)))
-            {
-                entry.MarkAlreadyBooked();
-                continue;
-            }
-
-            if (entry.IsAnnounced)
-            {
-                // keep announced unless fully accounted
-            }
-
-            TryAutoAssignContact(contacts, aliasLookup, bankContactId, selfContact, entry);
-            TryAutoAssignSavingsPlan(entry, savingPlans, selfContact);
-        }
-    }
-
-    private static void TryAutoAssignContact(List<Contact> contacts, Dictionary<Guid, List<string>> aliasLookup, Guid? bankContactId, Contact selfContact, StatementDraftEntry entry)
-    {
-        var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant().TrimEnd();
-        Guid? matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedRecipient);
-        var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
-        if (matchedContact != null && matchedContact.IsPaymentIntermediary)
-        {
-            var normalizedSubject = (entry.Subject ?? string.Empty).ToLowerInvariant().TrimEnd();
-            matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedSubject);
-        }
-        else if (matchedContact != null && matchedContact.Type == ContactType.Bank && bankContactId != null && matchedContact.Id != bankContactId)
-        {
-            entry.MarkCostNeutral(true);
-            entry.MarkAccounted(selfContact.Id);
-        }
-        else if (matchedContact != null)
-        {
-            if (matchedContact.Id == selfContact.Id)
-            {
-                entry.MarkCostNeutral(true);
-            }
-            entry.MarkAccounted(matchedContact.Id);
-        }
-    }
-
-    private async Task ClassifyHeader(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
-    {
-        if ((draft.DetectedAccountId == null) && (draft.AccountName != null))
-        {
-            var account = await _db.Accounts.AsNoTracking()
-                .Where(a => a.OwnerUserId == ownerUserId && (a.Iban == draft.AccountName))
-                .Select(a => new { a.Id })
-                .FirstOrDefaultAsync(ct);
-            if (account != null)
-            {
-                draft.SetDetectedAccount(account.Id);
-            }
-        }
-        if (draft.DetectedAccountId == null && string.IsNullOrWhiteSpace(draft.AccountName))
-        {
-            var singleAccountId = await _db.Accounts.AsNoTracking()
-                .Where(a => a.OwnerUserId == ownerUserId)
-                .Select(a => a.Id)
-                .ToListAsync(ct);
-            if (singleAccountId.Count == 1)
-            {
-                draft.SetDetectedAccount(singleAccountId[0]);
-            }
-        }
-    }
-
-    private static Guid? AssignContact(
-        List<Contact> contacts,
-        Dictionary<Guid, List<string>> aliasLookup,
-        Guid? bankContactId,
-        StatementDraftEntry entry,
-        string searchText)
-    {
-        Guid? matchedContactId = contacts
-            .Where(c => string.Equals(NormalizeUmlauts(c.Name), searchText, StringComparison.OrdinalIgnoreCase))
-            .Select(c => c.Id)
-            .FirstOrDefault();
-
-        if (matchedContactId == Guid.Empty)
-        {
-            foreach (var kvp in aliasLookup)
-            {
-                foreach (var pattern in kvp.Value.Select(val => val.ToLowerInvariant()))
-                {
-                    if (string.IsNullOrWhiteSpace(pattern)) { continue; }
-                    var regexPattern = "^" + Regex.Escape(pattern)
-                        .Replace("\\*", ".*")
-                        .Replace("\\?", ".") + "$";
-                    if (Regex.IsMatch(searchText, regexPattern, RegexOptions.IgnoreCase))
-                    {
-                        matchedContactId = kvp.Key;
-                        break;
-                    }
-                }
-                if (matchedContactId != Guid.Empty) { break; }
-            }
-        }
-        var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
-        if (string.IsNullOrWhiteSpace(entry.RecipientName) && bankContactId != null && bankContactId != Guid.Empty)
-        {
-            entry.MarkAccounted(bankContactId.Value);
-        }
-        else if (matchedContactId != null && matchedContactId != Guid.Empty)
-        {
-            if (matchedContact != null && matchedContact.IsPaymentIntermediary)
-                entry.AssignContactWithoutAccounting(matchedContact.Id);
-            else
-                entry.MarkAccounted(matchedContactId.Value);
-        }
-
-        return matchedContactId;
-    }
-
     public async Task<StatementDraft?> SetEntrySecurityAsync(
         Guid draftId,
         Guid entryId,
@@ -720,192 +411,213 @@ public sealed partial class StatementDraftService : IStatementDraftService
         Guid userId,
         CancellationToken ct)
     {
-        var draft = await _db.StatementDrafts
-            .Include(d => d.Entries)
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == userId, ct);
-
         if (draft == null) { return null; }
-
         var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
         if (entry == null) { return null; }
-
-        var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId, ct);
-        if (draft.DetectedAccountId is null)
-        {
-            entry.SetSecurity(null, null, null, null, null);
-        }
-        else if (account.BankContactId == null || entry.ContactId != account.BankContactId)
-        {
-            entry.SetSecurity(null, null, null, null, null);
-        }
-        else
-        {
-            entry.SetSecurity(securityId, transactionType, quantity, feeAmount, taxAmount);
-        }
-
+        entry.SetSecurity(securityId, transactionType, quantity, feeAmount, taxAmount);
         await _db.SaveChangesAsync(ct);
         return draft;
     }
 
     public async Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
-        return await InternalValidateAsync(draftId, entryId, ownerUserId, ct, new HashSet<Guid>());
-    }
-
-    public async Task<DraftValidationResultDto> InternalValidateAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct, HashSet<Guid> visited)
-    {
-        if (!visited.Add(draftId))
-        {
-            return new DraftValidationResultDto(draftId, false, new List<DraftValidationMessageDto> { new("SPLIT_CYCLE_DETECTED", "Error", "Zirkuläre Referenz bei Aufteilungs-Auszügen erkannt.", draftId, null) });
-        }
-
-        var draft = await _db.StatementDrafts
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        var messages = new List<DraftValidationMessageDto>();
         if (draft == null)
         {
-            return new DraftValidationResultDto(draftId, false, new List<DraftValidationMessageDto> { new("DRAFT_NOT_FOUND", "Error", "Draft not found", draftId, null) });
+            return new DraftValidationResultDto(draftId, false, messages);
         }
-        var entries = await _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || e.Id == entryId)).ToListAsync(ct);
 
-        var messages = new List<DraftValidationMessageDto>();
+        void Add(string code, string sev, string msg, Guid? eId) => messages.Add(new DraftValidationMessageDto(code, sev, msg, draft.Id, eId));
 
-        var isSplitDraft = await _db.StatementDraftEntries.AsNoTracking().AnyAsync(e => e.SplitDraftId == draft.Id, ct);
-        if (isSplitDraft)
+        if (draft.DetectedAccountId == null)
         {
-            if (draft.DetectedAccountId != null)
-            {
-                messages.Add(new("SPLIT_DRAFT_HAS_ACCOUNT", "Error", "Ein zugeordneter Aufteilungs-Kontoauszug darf keinem Bankkonto zugeordnet sein.", draft.Id, null));
-            }
+            Add("NO_ACCOUNT", "Error", "Kein Konto zugeordnet.", null);
         }
-        else
+
+        var self = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.OwnerUserId == ownerUserId && c.Type == ContactType.Self, ct);
+        var account = draft.DetectedAccountId == null
+            ? null
+            : await _db.Accounts.AsNoTracking().FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId, ct);
+
+        // Split cycle detection helper
+        var dfsVisited = new HashSet<Guid>();
+        var dfsStack = new HashSet<Guid>();
+        bool DetectCycle(Guid dId)
         {
-            if (draft.DetectedAccountId == null)
+            if (!dfsVisited.Add(dId)) { return false; }
+            dfsStack.Add(dId);
+            var nextIds = _db.StatementDraftEntries.AsNoTracking().Where(e => e.DraftId == dId && e.SplitDraftId != null).Select(e => e.SplitDraftId!.Value).ToList();
+            foreach (var nid in nextIds)
             {
-                messages.Add(new("NO_ACCOUNT", "Error", "Dem Kontoauszug ist kein Bankkonto zugeordnet.", draft.Id, null));
+                if (dfsStack.Contains(nid)) { return true; }
+                if (!dfsVisited.Contains(nid) && DetectCycle(nid)) { return true; }
             }
+            dfsStack.Remove(dId);
+            return false;
         }
-
-        var accounts = await _db.Accounts.AsNoTracking().ToListAsync(ct);
-        var contacts = await _db.Contacts.AsNoTracking().Where(c => c.OwnerUserId == ownerUserId).ToListAsync(ct);
-        var selfContact = contacts.FirstOrDefault(c => c.Type == ContactType.Self);
-
-        Contact? bankContact = null;
-        AccountType? detectedAccountType = null;
-        if (draft.DetectedAccountId is Guid accId)
+        if (DetectCycle(draft.Id))
         {
-            var account = accounts.FirstOrDefault(a => a.Id == accId);
-            if (account != null)
-            {
-                bankContact = contacts.FirstOrDefault(c => c.Id == account.BankContactId);
-                detectedAccountType = account.Type;
-            }
+            Add("SPLIT_CYCLE_DETECTED", "Error", "[Split] Zyklen in Split-Verknüpfungen erkannt.", null);
         }
 
-        Dictionary<Guid, decimal> draftTotalsCache = new();
-        async Task<decimal> GetDraftTotal(Guid id)
+        async Task ValidateSplitChainAsync(StatementDraftEntry parentEntry, string prefix, CancellationToken token)
         {
-            if (draftTotalsCache.TryGetValue(id, out var total)) { return total; }
-            total = await _db.StatementDraftEntries.AsNoTracking().Where(e => e.DraftId == id).SumAsync(e => e.Amount, ct);
-            draftTotalsCache[id] = total; return total;
+            if (parentEntry.SplitDraftId == null) { return; }
+            var childDraft = await _db.StatementDrafts.Include(d => d.Entries).FirstOrDefaultAsync(d => d.Id == parentEntry.SplitDraftId && d.OwnerUserId == ownerUserId, token);
+            if (childDraft == null) { return; }
+            if (childDraft.DetectedAccountId != null)
+            {
+                messages.Add(new DraftValidationMessageDto("SPLIT_DRAFT_HAS_ACCOUNT", "Error", prefix + "Split-Draft darf kein Konto zugeordnet haben.", draft.Id, parentEntry.Id));
+            }
+            var childSum = childDraft.Entries.Sum(x => x.Amount);
+            if (childSum != parentEntry.Amount)
+            {
+                messages.Add(new DraftValidationMessageDto("SPLIT_AMOUNT_MISMATCH", "Error", prefix + "Summe der Aufteilung entspricht nicht dem Ursprungsbetrag.", draft.Id, parentEntry.Id));
+            }
+
+            foreach (var ce in childDraft.Entries)
+            {
+                if (ce.ContactId == null)
+                {
+                    messages.Add(new DraftValidationMessageDto("ENTRY_NO_CONTACT", "Error", prefix + "Kein Kontakt zugeordnet.", draft.Id, ce.Id));
+                    continue;
+                }
+                var c = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == ce.ContactId && x.OwnerUserId == ownerUserId, token);
+                if (c == null) { continue; }
+                if (c.IsPaymentIntermediary)
+                {
+                    if (ce.SplitDraftId == null)
+                    {
+                        messages.Add(new DraftValidationMessageDto("INTERMEDIARY_NO_SPLIT", "Error", prefix + "Zahlungsdienst ohne weitere Aufteilung.", draft.Id, ce.Id));
+                    }
+                    else
+                    {
+                        await ValidateSplitChainAsync(ce, prefix, token);
+                    }
+                }
+                if (self != null && ce.ContactId == self.Id && ce.SavingsPlanId == null)
+                {
+                    messages.Add(new DraftValidationMessageDto("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", prefix + "Für Eigentransfer ist ein Sparplan sinnvoll.", draft.Id, ce.Id));
+                }
+
+                // Security validations for split entries as well
+                if (ce.SecurityId != null && account != null)
+                {
+                    if (ce.ContactId != account.BankContactId)
+                    {
+                        messages.Add(new DraftValidationMessageDto("SECURITY_INVALID_CONTACT", "Error", prefix + "Wertpapierbuchung erfordert Bankkontakt des Kontos.", draft.Id, ce.Id));
+                    }
+                    if (ce.SecurityTransactionType == null)
+                    {
+                        messages.Add(new DraftValidationMessageDto("SECURITY_MISSING_TXTYPE", "Error", prefix + "Wertpapier: Transaktionstyp fehlt.", draft.Id, ce.Id));
+                    }
+                    if (ce.SecurityTransactionType != null && ce.SecurityTransactionType != SecurityTransactionType.Dividend)
+                    {
+                        if (ce.SecurityQuantity == null || ce.SecurityQuantity <= 0m)
+                        {
+                            messages.Add(new DraftValidationMessageDto("SECURITY_MISSING_QUANTITY", "Error", prefix + "Wertpapier: Stückzahl fehlt.", draft.Id, ce.Id));
+                        }
+                    }
+                    var fee = ce.SecurityFeeAmount ?? 0m;
+                    var tax = ce.SecurityTaxAmount ?? 0m;
+                    if (fee + tax > Math.Abs(ce.Amount))
+                    {
+                        messages.Add(new DraftValidationMessageDto("SECURITY_FEE_TAX_EXCEEDS_AMOUNT", "Error", prefix + "Wertpapier: Gebühren+Steuern übersteigen Betrag.", draft.Id, ce.Id));
+                    }
+                }
+            }
         }
 
-        foreach (var entry in entries)
+        foreach (var e in draft.Entries)
         {
-            if (entry.ContactId == null)
+            if (entryId != null && e.Id != entryId) { continue; }
+
+            if (e.ContactId == null)
             {
-                messages.Add(new("ENTRY_NO_CONTACT", "Error", "Dem Eintrag ist kein Empfängerkontakt zugeordnet.", draft.Id, entry.Id));
+                Add("ENTRY_NO_CONTACT", "Error", "Kein Kontakt zugeordnet.", e.Id);
+                continue;
             }
-            else
+
+            var contact = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == e.ContactId && c.OwnerUserId == ownerUserId, ct);
+            if (contact == null) { continue; }
+
+            if (contact.IsPaymentIntermediary)
             {
-                var contact = contacts.FirstOrDefault(c => c.Id == entry.ContactId);
-                if (contact != null && contact.IsPaymentIntermediary)
+                if (e.SplitDraftId == null)
                 {
-                    if (entry.SplitDraftId == null)
-                    {
-                        messages.Add(new("INTERMEDIARY_NO_SPLIT", "Error", "Empfängerkontakt ist Zahlungsvermittler – Aufteilungs-Auszug oder tatsächlicher Empfänger erforderlich.", draft.Id, entry.Id));
-                    }
+                    Add("INTERMEDIARY_NO_SPLIT", "Error", "Zahlungsdienst ohne Aufteilungs-Entwurf.", e.Id);
                 }
-
-                if (entry.SavingsPlanId != null)
+                else
                 {
-                    if (contact != null && contact.Type != ContactType.Self)
-                    {
-                        messages.Add(new("SAVINGSPLAN_INVALID_CONTACT", "Error", "Sparplan darf nur bei eigenem (Self) Kontakt zugeordnet sein.", draft.Id, entry.Id));
-                    }
-                    // Must be a Giro account
-                    if (detectedAccountType != null && detectedAccountType.Value != AccountType.Giro)
-                    {
-                        messages.Add(new("SAVINGSPLAN_INVALID_ACCOUNT", "Error", "Sparplan darf nur bei Girokonten angegeben werden.", draft.Id, entry.Id));
-                    }
-                }
-                else if (contact != null && selfContact != null && contact.Id == selfContact.Id)
-                {
-                    messages.Add(new("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", "Beim eigenen Kontakt ist kein Sparplan ausgewählt (Hinweis).", draft.Id, entry.Id));
-                }
-
-                if (entry.SecurityId != null)
-                {
-                    if (bankContact == null || contact == null || contact.Id != bankContact.Id)
-                    {
-                        messages.Add(new("SECURITY_INVALID_CONTACT", "Error", "Wertpapiere dürfen nur beim Bankkontakt des Kontoauszugs zugewiesen sein.", draft.Id, entry.Id));
-                    }
-                    if (entry.SecurityTransactionType == null)
-                    {
-                        messages.Add(new("SECURITY_MISSING_TXTYPE", "Error", "Für ein zugewiesenes Wertpapier muss eine Buchungsart angegeben sein.", draft.Id, entry.Id));
-                    }
-                    if (entry.SecurityQuantity == null)
-                    {
-                        messages.Add(new("SECURITY_MISSING_QUANTITY", "Error", "Für ein zugewiesenes Wertpapier muss eine Menge angegeben sein.", draft.Id, entry.Id));
-                    }
-                    if ((entry.SecurityTaxAmount ?? 0m) + (entry.SecurityFeeAmount ?? 0m) > entry.Amount)
-                    {
-                        messages.Add(new("SECURITY_FEE_TAX_EXCEEDS_AMOUNT", "Error", "Für ein zugewiesenes Wertpapier dürfen Steuer und Gebühr nicht größer sein, als der gebuchte Betrag.", draft.Id, entry.Id));
-                    }
+                    await ValidateSplitChainAsync(e, "[Split] ", ct);
                 }
             }
 
-            if (entry.SplitDraftId != null)
+            if (self != null && e.ContactId == self.Id)
             {
-                var splitTotal = await GetDraftTotal(entry.SplitDraftId.Value);
-                if (splitTotal != entry.Amount)
+                if (e.SavingsPlanId == null)
                 {
-                    messages.Add(new("SPLIT_AMOUNT_MISMATCH", "Error", "Summe des Aufteilungs-Auszugs entspricht nicht dem Betrag des Originaleintrags.", draft.Id, entry.Id));
+                    Add("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", "Für Eigentransfer ist ein Sparplan sinnvoll.", e.Id);
                 }
-
-                var splitValidation = await InternalValidateAsync(entry.SplitDraftId.Value, null, ownerUserId, ct, visited);
-                foreach (var m in splitValidation.Messages)
+                else if (account != null && account.Type == AccountType.Savings)
                 {
-                    messages.Add(new DraftValidationMessageDto(
-                        m.Code,
-                        m.Severity,
-                        "[Split] " + m.Message,
-                        m.DraftId,
-                        m.EntryId));
+                    Add("SAVINGSPLAN_INVALID_ACCOUNT", "Error", "Sparplan auf Sparkonto ist nicht zulässig.", e.Id);
+                }
+            }
+
+            // Security validations
+            if (e.SecurityId != null && account != null)
+            {
+                if (e.ContactId != account.BankContactId)
+                {
+                    Add("SECURITY_INVALID_CONTACT", "Error", "Wertpapierbuchung erfordert Bankkontakt des Kontos.", e.Id);
+                }
+                if (e.SecurityTransactionType == null)
+                {
+                    Add("SECURITY_MISSING_TXTYPE", "Error", "Wertpapier: Transaktionstyp fehlt.", e.Id);
+                }
+                if (e.SecurityTransactionType != null && e.SecurityTransactionType != SecurityTransactionType.Dividend)
+                {
+                    if (e.SecurityQuantity == null || e.SecurityQuantity <= 0m)
+                    {
+                        Add("SECURITY_MISSING_QUANTITY", "Error", "Wertpapier: Stückzahl fehlt.", e.Id);
+                    }
+                }
+                var fee = e.SecurityFeeAmount ?? 0m;
+                var tax = e.SecurityTaxAmount ?? 0m;
+                if (fee + tax > Math.Abs(e.Amount))
+                {
+                    Add("SECURITY_FEE_TAX_EXCEEDS_AMOUNT", "Error", "Wertpapier: Gebühren+Steuern übersteigen Betrag.", e.Id);
                 }
             }
         }
 
-        // Savings plan goal info/warning + archive intent validation
-        var planIds = entries.Where(e => e.SavingsPlanId != null).Select(e => e.SavingsPlanId!.Value).Distinct().ToList();
+        // Savings plan goal info/warning + archive-intent validation
+        var planIds = draft.Entries.Where(e => e.SavingsPlanId != null).Select(e => e.SavingsPlanId!.Value).Distinct().ToList();
         if (planIds.Count > 0)
         {
             var plans = await _db.SavingsPlans.AsNoTracking().Where(p => planIds.Contains(p.Id)).ToListAsync(ct);
-            var contribByPlan = entries
+            var plannedByPlan = draft.Entries
                 .Where(e => e.SavingsPlanId != null)
                 .GroupBy(e => e.SavingsPlanId!.Value)
                 .ToDictionary(g => g.Key, g => g.Sum(x => -x.Amount));
 
             foreach (var plan in plans)
             {
-                bool wantsArchive = entries.Any(e => e.SavingsPlanId == plan.Id && e.ArchiveSavingsPlanOnBooking);
-
+                bool wantsArchive = draft.Entries.Any(e => e.SavingsPlanId == plan.Id && e.ArchiveSavingsPlanOnBooking);
                 if (plan.TargetAmount is not decimal target) { continue; }
+
                 var current = await _db.Postings.AsNoTracking()
                     .Where(p => p.SavingsPlanId == plan.Id && p.Kind == PostingKind.SavingsPlan)
                     .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
-                var planned = contribByPlan.TryGetValue(plan.Id, out var val) ? val : 0m;
-                if (planned == 0) { continue; }
+
+                var planned = plannedByPlan.TryGetValue(plan.Id, out var val) ? val : 0m;
                 var remaining = target - current;
+
                 if (remaining > 0m && planned == remaining)
                 {
                     messages.Add(new("SAVINGSPLAN_GOAL_REACHED_INFO", "Information", $"Mit den Buchungen in diesem Auszug wird das Sparziel des Sparplans '{plan.Name}' erreicht.", draft.Id, null));
@@ -913,7 +625,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 else if (remaining > 0m && planned > remaining)
                 {
                     messages.Add(new("SAVINGSPLAN_GOAL_EXCEEDED", "Warning", $"Die geplanten Buchungen überschreiten das Sparziel des Sparplans '{plan.Name}'.", draft.Id, null));
-                }               
+                }
+
                 if (wantsArchive)
                 {
                     if (current + planned != target)
@@ -924,16 +637,15 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
         }
 
-        // Additional info: due savings plans not yet posted this month and not assigned in open drafts
-        if (entries.Count > 0 && entryId is null)
+        // Savings plan due information (only when validating whole draft)
+        if (draft.Entries.Count > 0 && entryId is null)
         {
-            var latestBookingDate = entries.Max(e => e.BookingDate);
+            DateTime latestBookingDate = draft.Entries.Max(e => e.BookingDate).Date;
             var monthStart = new DateTime(latestBookingDate.Year, latestBookingDate.Month, 1);
             var nextMonth = monthStart.AddMonths(1);
 
-            DateTime AdjustDueDate(DateTime d)
+            static DateTime AdjustDueDate(DateTime d)
             {
-                // If due date falls on weekend, treat as previous Friday
                 if (d.DayOfWeek == DayOfWeek.Saturday) { return d.AddDays(-1); }
                 if (d.DayOfWeek == DayOfWeek.Sunday) { return d.AddDays(-2); }
                 return d;
@@ -946,21 +658,18 @@ public sealed partial class StatementDraftService : IStatementDraftService
             foreach (var plan in allUserPlans)
             {
                 var effectiveDue = AdjustDueDate(plan.TargetDate!.Value.Date);
-                if (effectiveDue > latestBookingDate.Date) { continue; }
+                if (effectiveDue > latestBookingDate) { continue; }
 
-                // Target not yet reached
                 var currentAmount = await _db.Postings.AsNoTracking()
                     .Where(p => p.SavingsPlanId == plan.Id && p.Kind == PostingKind.SavingsPlan)
                     .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
                 var target = plan.TargetAmount!.Value;
                 if (currentAmount >= target) { continue; }
 
-                // No posting in the draft's month
                 var hasPostingThisMonth = await _db.Postings.AsNoTracking()
                     .AnyAsync(p => p.SavingsPlanId == plan.Id && p.Kind == PostingKind.SavingsPlan && p.BookingDate >= monthStart && p.BookingDate < nextMonth, ct);
                 if (hasPostingThisMonth) { continue; }
 
-                // Not assigned in any open draft
                 var assignedInOpenDraft = await _db.StatementDraftEntries
                     .Join(_db.StatementDrafts, e => e.DraftId, d => d.Id, (e, d) => new { e, d })
                     .AnyAsync(x => x.d.OwnerUserId == ownerUserId && x.d.Status == StatementDraftStatus.Draft && x.e.SavingsPlanId == plan.Id, ct);
@@ -970,38 +679,261 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
         }
 
-        var isValid = messages.All(m => m.Severity != "Error");
+        var isValid = messages.All(m => !string.Equals(m.Severity, "Error", StringComparison.OrdinalIgnoreCase));
         return new DraftValidationResultDto(draft.Id, isValid, messages);
+    }
+
+    private static int GetMonthsToAdd(SavingsPlanInterval interval)
+    {
+        return interval switch
+        {
+            SavingsPlanInterval.Monthly => 1,
+            SavingsPlanInterval.BiMonthly => 2,
+            SavingsPlanInterval.Quarterly => 3,
+            SavingsPlanInterval.SemiAnnually => 6,
+            SavingsPlanInterval.Annually => 12,
+            _ => 0
+        };
     }
 
     public async Task<BookingResult> BookAsync(Guid draftId, Guid ownerUserId, bool forceWarnings, CancellationToken ct)
     {
         var validation = await ValidateAsync(draftId, null, ownerUserId, ct);
-        var hasErrors = validation.Messages.Any(m => m.Severity == "Error");
-        var hasWarnings = validation.Messages.Any(m => m.Severity == "Warning");
-        if (hasErrors) { return new BookingResult(false, hasWarnings, validation, null, null, null); }
-        if (hasWarnings && !forceWarnings) { return new BookingResult(false, true, validation, null, null, null); }
+        var hasErrors = validation.Messages.Any(m => string.Equals(m.Severity, "Error", StringComparison.OrdinalIgnoreCase));
+        var hasWarnings = validation.Messages.Any(m => string.Equals(m.Severity, "Warning", StringComparison.OrdinalIgnoreCase));
+        if (hasErrors)
+        {
+            return new BookingResult(false, hasWarnings, validation, null, null, null);
+        }
+        if (hasWarnings && !forceWarnings)
+        {
+            return new BookingResult(false, true, validation, null, null, null);
+        }
 
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        if (draft == null || draft.DetectedAccountId == null) { return new BookingResult(false, false, validation, null, null, null); }
+        if (draft == null || draft.DetectedAccountId == null)
+        {
+            return new BookingResult(false, false, validation, null, null, null);
+        }
 
-        var import = new StatementImport(draft.DetectedAccountId.Value, ImportFormat.Csv, draft.OriginalFileName);
-        _db.StatementImports.Add(import);
-        await _db.SaveChangesAsync(ct);
+        // Prevent booking a split-child draft directly
+        var isChild = await _db.StatementDraftEntries.AsNoTracking().AnyAsync(e => e.SplitDraftId == draft.Id, ct);
+        if (isChild)
+        {
+            return new BookingResult(false, hasWarnings, validation, null, null, null);
+        }
+
+        var account = await _db.Accounts.FirstAsync(a => a.Id == draft.DetectedAccountId, ct);
+        var self = await _db.Contacts.FirstAsync(c => c.OwnerUserId == ownerUserId && c.Type == ContactType.Self, ct);
 
         var updatedPlanIds = new HashSet<Guid>();
-        List<StatementDraft> bookedDrafts = new();
+        async Task UpdateRecurringPlanIfDueAsync(Guid planId, DateTime bookingDate, CancellationToken token)
+        {
+            if (updatedPlanIds.Contains(planId)) { return; }
+            var plan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Id == planId, token);
+            if (plan == null) { return; }
+            if (plan.Type != SavingsPlanType.Recurring) { return; }
+            if (plan.TargetDate == null || plan.Interval == null) { return; }
+            var targetDate = plan.TargetDate.Value.Date;
+            if (targetDate > bookingDate.Date) { return; }
+            var months = GetMonthsToAdd(plan.Interval.Value);
+            if (months <= 0) { return; }
+            // extend until after booking date
+            while (plan.TargetDate!.Value.Date <= bookingDate.Date)
+            {
+                plan.SetTarget(plan.TargetAmount, plan.TargetDate.Value.AddMonths(months));
+            }
+            updatedPlanIds.Add(plan.Id);
+        }
+
+        async Task<Guid> CreateBankAndContactAsync(StatementDraftEntry e, decimal amount, Guid? contactId, CancellationToken token)
+        {
+            var groupId = Guid.NewGuid();
+            var bankPosting = new Domain.Postings.Posting(
+                e.Id,
+                PostingKind.Bank,
+                account.Id,
+                null,
+                null,
+                null,
+                e.BookingDate,
+                amount,
+                e.Subject,
+                e.RecipientName,
+                e.BookingDescription,
+                null).SetGroup(groupId);
+            _db.Postings.Add(bankPosting);
+            await UpsertAggregatesAsync(bankPosting, token);
+
+            var contactPosting = new Domain.Postings.Posting(
+                e.Id,
+                PostingKind.Contact,
+                null,
+                contactId,
+                null,
+                null,
+                e.BookingDate,
+                amount,
+                e.Subject,
+                e.RecipientName,
+                e.BookingDescription,
+                null).SetGroup(groupId);
+            _db.Postings.Add(contactPosting);
+            await UpsertAggregatesAsync(contactPosting, token);
+
+            return groupId;
+        }
+
+        async Task CreateSecurityPostingsAsync(StatementDraftEntry e, Guid groupId, CancellationToken token)
+        {
+            if (e.SecurityId == null) { return; }
+            var fee = e.SecurityFeeAmount ?? 0m;
+            var tax = e.SecurityTaxAmount ?? 0m;
+            var tradeAmount = e.Amount - fee - tax;
+
+            var trade = new Domain.Postings.Posting(
+                e.Id,
+                PostingKind.Security,
+                null,
+                null,
+                null,
+                e.SecurityId,
+                e.BookingDate,
+                tradeAmount,
+                e.Subject,
+                e.RecipientName,
+                e.BookingDescription,
+                SecurityPostingSubType.Trade).SetGroup(groupId);
+            _db.Postings.Add(trade);
+            await UpsertAggregatesAsync(trade, token);
+
+            if (fee != 0m)
+            {
+                var feeP = new Domain.Postings.Posting(
+                    e.Id,
+                    PostingKind.Security,
+                    null,
+                    null,
+                    null,
+                    e.SecurityId,
+                    e.BookingDate,
+                    fee,
+                    e.Subject,
+                    e.RecipientName,
+                    e.BookingDescription,
+                    SecurityPostingSubType.Fee).SetGroup(groupId);
+                _db.Postings.Add(feeP);
+                await UpsertAggregatesAsync(feeP, token);
+            }
+            if (tax != 0m)
+            {
+                var taxP = new Domain.Postings.Posting(
+                    e.Id,
+                    PostingKind.Security,
+                    null,
+                    null,
+                    null,
+                    e.SecurityId,
+                    e.BookingDate,
+                    tax,
+                    e.Subject,
+                    e.RecipientName,
+                    e.BookingDescription,
+                    SecurityPostingSubType.Tax).SetGroup(groupId);
+                _db.Postings.Add(taxP);
+                await UpsertAggregatesAsync(taxP, token);
+            }
+        }
+
+        async Task BookSplitDraftRecursiveAsync(Guid splitId, CancellationToken token, HashSet<Guid> visited)
+        {
+            if (!visited.Add(splitId)) { return; }
+            var cd = await _db.StatementDrafts.Include(d => d.Entries).FirstOrDefaultAsync(d => d.Id == splitId && d.OwnerUserId == ownerUserId, token);
+            if (cd == null) { return; }
+
+            foreach (var ce in cd.Entries)
+            {
+                if (ce.ContactId == null) { continue; }
+                var c = await _db.Contacts.FirstOrDefaultAsync(x => x.Id == ce.ContactId && x.OwnerUserId == ownerUserId, token);
+                if (c == null) { continue; }
+                if (c.IsPaymentIntermediary && ce.SplitDraftId != null)
+                {
+                    var gid = await CreateBankAndContactAsync(ce, 0m, ce.ContactId, token);
+                    await CreateSecurityPostingsAsync(ce, gid, token);
+                    await BookSplitDraftRecursiveAsync(ce.SplitDraftId.Value, token, visited);
+                }
+                else
+                {
+                    var gid = await CreateBankAndContactAsync(ce, ce.Amount, ce.ContactId, token);
+                    if (ce.SavingsPlanId != null && self != null && ce.ContactId == self.Id)
+                    {
+                        var spPosting = new Domain.Postings.Posting(
+                            ce.Id,
+                            PostingKind.SavingsPlan,
+                            null,
+                            null,
+                            ce.SavingsPlanId,
+                            null,
+                            ce.BookingDate,
+                            -ce.Amount,
+                            ce.Subject,
+                            ce.RecipientName,
+                            ce.BookingDescription,
+                            null).SetGroup(gid);
+                        _db.Postings.Add(spPosting);
+                        await UpsertAggregatesAsync(spPosting, token);
+                        await UpdateRecurringPlanIfDueAsync(ce.SavingsPlanId.Value, ce.BookingDate, token);
+                    }
+                    await CreateSecurityPostingsAsync(ce, gid, token);
+                }
+            }
+
+            cd.MarkCommitted();
+        }
+
         foreach (var e in draft.Entries)
         {
-            bookedDrafts.AddRange(await BookEntryAsync(draft, import, e, updatedPlanIds, ct));
+            if (e.ContactId == null) { continue; }
+            var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == e.ContactId && c.OwnerUserId == ownerUserId, ct);
+            if (contact == null) { continue; }
+
+            if (contact.IsPaymentIntermediary && e.SplitDraftId != null)
+            {
+                var gid = await CreateBankAndContactAsync(e, 0m, e.ContactId, ct);
+                await CreateSecurityPostingsAsync(e, gid, ct);
+                await BookSplitDraftRecursiveAsync(e.SplitDraftId.Value, ct, new HashSet<Guid>());
+            }
+            else
+            {
+                var gid = await CreateBankAndContactAsync(e, e.Amount, e.ContactId, ct);
+                if (e.SavingsPlanId != null && e.ContactId == self.Id)
+                {
+                    var spPosting = new Domain.Postings.Posting(
+                        e.Id,
+                        PostingKind.SavingsPlan,
+                        null,
+                        null,
+                        e.SavingsPlanId,
+                        null,
+                        e.BookingDate,
+                        -e.Amount,
+                        e.Subject,
+                        e.RecipientName,
+                        e.BookingDescription,
+                        null).SetGroup(gid);
+                    _db.Postings.Add(spPosting);
+                    await UpsertAggregatesAsync(spPosting, ct);
+                    await UpdateRecurringPlanIfDueAsync(e.SavingsPlanId.Value, e.BookingDate, ct);
+                }
+                await CreateSecurityPostingsAsync(e, gid, ct);
+            }
         }
 
         draft.MarkCommitted();
-        foreach (var bd in bookedDrafts) { bd.MarkCommitted(); }
         await _db.SaveChangesAsync(ct);
 
-        // Archive savings plans that were flagged and reached zero after booking
+        // Archive savings plans if flagged and totals meet target after booking; append info to validation messages
         var flaggedPlanIds = draft.Entries.Where(e => e.SavingsPlanId != null && e.ArchiveSavingsPlanOnBooking)
             .Select(e => e.SavingsPlanId!.Value)
             .Distinct()
@@ -1025,149 +957,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
             await _db.SaveChangesAsync(ct);
             validation = new DraftValidationResultDto(validation.DraftId, validation.IsValid, msgs);
-        }        
-
-        var nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Id > draftId && d.Status == StatementDraftStatus.Draft).FirstOrDefaultAsync(ct);
-        if (nextJournal is null)
-            nextJournal = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Status == StatementDraftStatus.Draft).LastOrDefaultAsync(ct);
-
-        return new BookingResult(true, hasWarnings, validation, import.Id, draft.Entries.Count, nextJournal?.Id);
-    }
-
-    private static int GetMonthsToAdd(SavingsPlanInterval interval)
-    {
-        return interval switch
-        {
-            SavingsPlanInterval.Monthly => 1,
-            SavingsPlanInterval.BiMonthly => 2,
-            SavingsPlanInterval.Quarterly => 3,
-            SavingsPlanInterval.SemiAnnually => 6,
-            SavingsPlanInterval.Annually => 12,
-            _ => 0
-        };
-    }
-
-    private async Task<IEnumerable<StatementDraft>> BookEntryAsync(StatementDraft draft, StatementImport import, StatementDraftEntry e, HashSet<Guid> updatedPlanIds, CancellationToken ct)
-    {
-        var groupId = Guid.NewGuid();
-        decimal baseAmount = e.SplitDraftId != null ? 0m : e.Amount;
-        var subj = e.Subject; var recip = e.RecipientName; var desc = e.BookingDescription;
-
-        await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Bank, draft.DetectedAccountId, null, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId)).Entity, ct);
-        if (e.ContactId != null)
-        {
-            await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId)).Entity, ct);
-        }
-        if (e.SavingsPlanId != null)
-        {
-            await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, -baseAmount, subj, recip, desc, null).SetGroup(groupId)).Entity, ct);
-
-            // Extend due date for recurring plans if due reached and not already updated in this booking
-            var plan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Id == e.SavingsPlanId, ct);
-            if (plan != null && plan.Type == SavingsPlanType.Recurring && plan.TargetDate != null && plan.Interval != null && !updatedPlanIds.Contains(plan.Id))
-            {
-                while (plan.TargetDate!.Value.Date <= e.BookingDate.Date)
-                {
-                    var months = GetMonthsToAdd(plan.Interval.Value);
-                    if (months > 0)
-                    {
-                        plan.SetTarget(plan.TargetAmount, plan.TargetDate.Value.AddMonths(months));
-                        updatedPlanIds.Add(plan.Id);
-                    }
-                }
-            }
-        }
-        if (e.SecurityId != null)
-        {
-            var securityGroupId = Guid.NewGuid();
-            var tradeNet = baseAmount;
-            if (e.SecurityFeeAmount is decimal f) { tradeNet -= f; }
-            if (e.SecurityTaxAmount is decimal t) { tradeNet -= t; }
-            await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tradeNet, subj, recip, desc, SecurityPostingSubType.Trade).SetGroup(securityGroupId)).Entity, ct);
-            if (e.SecurityFeeAmount is decimal fee && fee != 0)
-            {
-                await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, fee, subj, recip, "Fee", SecurityPostingSubType.Fee).SetGroup(securityGroupId)).Entity, ct);
-            }
-            if (e.SecurityTaxAmount is decimal tax && tax != 0)
-            {
-                await UpsertAggregatesAsync(_db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.Security, null, null, null, e.SecurityId, e.BookingDate, tax, subj, recip, "Tax", SecurityPostingSubType.Tax).SetGroup(securityGroupId)).Entity, ct);
-            }
         }
 
-        List<StatementDraft> bookedDrafts = new();
-        if (e.SplitDraftId != null)
-        {
-            var childDraft = await _db.StatementDrafts.Include(x => x.Entries).FirstOrDefaultAsync(x => x.Id == e.SplitDraftId, ct);
-            if (childDraft != null)
-            {
-                foreach (var ce in childDraft.Entries)
-                {
-                    bookedDrafts.AddRange(await BookEntryAsync(childDraft, import, ce, updatedPlanIds, ct));
-                }
-                bookedDrafts.Add(childDraft);
-            }
-        }
-        return bookedDrafts;
+        return new BookingResult(true, false, validation, null, draft.Entries.Count, null);
     }
-
-    private static DateTime GetPeriodStart(DateTime date, AggregatePeriod p)
-    {
-        var d = date.Date;
-        return p switch
-        {
-            AggregatePeriod.Month => new DateTime(d.Year, d.Month, 1),
-            AggregatePeriod.Quarter => new DateTime(d.Year, ((d.Month - 1) / 3) * 3 + 1, 1),
-            AggregatePeriod.HalfYear => new DateTime(d.Year, (d.Month <= 6 ? 1 : 7), 1),
-            AggregatePeriod.Year => new DateTime(d.Year, 1, 1),
-            _ => new DateTime(d.Year, d.Month, 1)
-        };
-    }
-
-    private async Task UpsertAggregatesAsync(Domain.Postings.Posting posting, CancellationToken ct)
-    {
-        if (posting.Amount == 0m) { return; }
-         // Build aggregates for Account, Contact, SavingsPlan, Security per required periods
-         var periods = new[] { AggregatePeriod.Month, AggregatePeriod.Quarter, AggregatePeriod.HalfYear, AggregatePeriod.Year };
-         foreach (var p in periods)
-         {
-             var periodStart = GetPeriodStart(posting.BookingDate, p);
-
-            async Task Upsert(Guid? accountId, Guid? contactId, Guid? savingsPlanId, Guid? securityId)
-            {
-                var agg = await _db.PostingAggregates
-                    .FirstOrDefaultAsync(x => x.Kind == posting.Kind
-                        && x.AccountId == accountId
-                        && x.ContactId == contactId
-                        && x.SavingsPlanId == savingsPlanId
-                        && x.SecurityId == securityId
-                        && x.Period == p
-                        && x.PeriodStart == periodStart, ct);
-                if (agg == null)
-                {
-                    agg = new Domain.Postings.PostingAggregate(posting.Kind, accountId, contactId, savingsPlanId, securityId, periodStart, p);
-                    _db.PostingAggregates.Add(agg);
-                }
-                agg.Add(posting.Amount);
-            }
-
-            // Aggregate only for the relevant dimension per posting kind
-            switch (posting.Kind)
-            {
-                case PostingKind.Bank:
-                    await Upsert(posting.AccountId, null, null, null);
-                    break;
-                case PostingKind.Contact:
-                    await Upsert(null, posting.ContactId, null, null);
-                    break;
-                case PostingKind.SavingsPlan:
-                    await Upsert(null, null, posting.SavingsPlanId, null);
-                    break;
-                case PostingKind.Security:
-                    await Upsert(null, null, null, posting.SecurityId);
-                    break;
-                default:
-                    break;
-            }
-         }
-     }
 }
