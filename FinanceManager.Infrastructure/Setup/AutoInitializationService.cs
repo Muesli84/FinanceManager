@@ -47,7 +47,7 @@ namespace FinanceManager.Infrastructure.Setup
         {
             try
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(300));
                 RunAsync(cts.Token).GetAwaiter().GetResult();
             }
             catch (Exception ex)
@@ -128,7 +128,7 @@ namespace FinanceManager.Infrastructure.Setup
                     {
                         _logger.LogInformation("AutoInit: Importiere Draft-Datei '{File}'.", Path.GetFileName(file));
                         var bytes = await File.ReadAllBytesAsync(file, ct);
-                        await foreach(var draft in _statementDraftService.CreateDraftAsync(admin.Id, Path.GetFileName(file), bytes, ct))
+                        await foreach (var draft in _statementDraftService.CreateDraftAsync(admin.Id, Path.GetFileName(file), bytes, ct))
                             drafts.Add(draft);
                     }
                     catch (Exception ex)
@@ -136,66 +136,73 @@ namespace FinanceManager.Infrastructure.Setup
                         _logger.LogError(ex, "AutoInit: Fehler beim Import der Draft-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(file));
                     }
                 }
-
-                var actionFiless = Directory.EnumerateFiles(initDir, "action-*.txt", SearchOption.TopDirectoryOnly);
-                foreach (var file in actionFiless)
-                {
-                    try
-                    {
-                        _logger.LogInformation("AutoInit: Verarbeite Aktions-Datei '{File}'.", Path.GetFileName(file));
-                        var actions = await File.ReadAllLinesAsync(file, ct);
-                        foreach (var action in actions.Select(action => action.Split(':')))
-                        {
-                            switch(action[0])
-                            {
-                                case "statement-entry-assignent":
-                                    {
-                                        var offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[1]);
-                                        var draft = drafts[offset];
-                                        var contact = (await _contactService.ListAsync(admin.Id, 0, int.MaxValue, null, action[2], ct)).FirstOrDefault();
-                                        if (action.Length > 3)
-                                        {
-                                            offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[3]);
-                                            var destDraft = drafts[offset];
-                                            await AssignDraftAsync(drafts, draft, destDraft, contact, admin.Id, ct);
-                                        }
-                                        else
-                                            await AssignDraftAsync(drafts, draft, null, contact, admin.Id, ct);
-                                        break;
-                                    }
-                                case "statement-entry-remove":
-                                    await RemoveDraftEntryAsync(drafts, action[1], admin.Id, ct);
-                                    break;
-                                case "statement-posting":
-                                    {
-                                        var offset = 0;
-                                        do
-                                        {
-                                            offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[1]);
-                                            if (offset >= 0)
-                                            {
-                                                var draft = drafts[offset];
-                                                await PostDraftAsync(draft, admin.Id, ct);
-                                                drafts.RemoveAt(offset);
-                                            }
-                                        } while (offset >= 0);
-                                        break;
-                                    }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "AutoInit: Fehler beim Import der Draft-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(file));
-                    }
-                }
-
                 _logger.LogInformation("AutoInit: Initialisierung abgeschlossen. SetupFiles={SetupCount}, DraftFiles={DraftCount}.", setupFiles.Count, draftFiles.Count);
+
+                await ExecuteActions(admin, initDir, drafts, ct);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Auto initialization failed.");
                 throw;
+            }
+        }
+
+        private async Task ExecuteActions(Domain.Users.User admin, string initDir, List<StatementDraftDto> drafts, CancellationToken ct)
+        {
+            var actionFiless = Directory.EnumerateFiles(initDir, "action-*.txt", SearchOption.TopDirectoryOnly);
+            foreach (var file in actionFiless)
+            {
+                try
+                {
+                    _logger.LogInformation("AutoInit: Verarbeite Aktions-Datei '{File}'.", Path.GetFileName(file));
+                    var actions = await File.ReadAllLinesAsync(file, ct);
+                    foreach (var action in actions.Select(action => action.Split(':')))
+                    {
+                        switch (action[0])
+                        {
+                            case "statement-entry-assignent":
+                                {
+                                    var offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[1]);
+                                    var draft = drafts[offset];
+                                    var contact = (await _contactService.ListAsync(admin.Id, 0, int.MaxValue, null, action[2], ct)).FirstOrDefault();
+                                    if (action.Length > 3)
+                                    {
+                                        offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[3]);
+                                        var destDraft = drafts[offset];
+                                        await AssignDraftAsync(drafts, draft, destDraft, contact, admin.Id, ct);
+                                    }
+                                    else
+                                        await AssignDraftAsync(drafts, draft, null, contact, admin.Id, ct);
+                                    break;
+                                }
+                            case "statement-entry-remove":
+                                await RemoveDraftEntryAsync(drafts, action[1], admin.Id, ct);
+                                break;
+                            case "statement-posting":
+                                {
+                                    var offset = 0;
+                                    do
+                                    {
+                                        offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[1]);
+                                        if (offset >= 0)
+                                        {
+                                            var draft = drafts[offset];
+                                            if (!draft.Entries.Any())
+                                                await _statementDraftService.CancelAsync(draft.DraftId, admin.Id, ct);
+                                            else
+                                                await PostDraftAsync(draft, admin.Id, ct);
+                                            drafts.RemoveAt(offset);
+                                        }
+                                    } while (offset >= 0);
+                                    break;
+                                }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "AutoInit: Fehler beim Import der Draft-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(file));
+                }
             }
         }
 
