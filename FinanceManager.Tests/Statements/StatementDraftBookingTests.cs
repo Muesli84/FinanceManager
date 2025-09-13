@@ -846,4 +846,94 @@ public sealed class StatementDraftBookingTests
         res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO").Should().BeTrue();
         conn.Dispose();
     }
+
+    [Fact]
+    public async Task Validate_SavingsPlanDue_WhenLatestBookingEqualsDueFriday_ShouldReportInformation()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+
+        // create plan with target on last Friday
+        DateTime today = DateTime.Today;
+        int daysSinceFriday = ((int)today.DayOfWeek - (int)DayOfWeek.Friday + 7) % 7;
+        var lastFriday = today.AddDays(-daysSinceFriday);
+        var plan = new SavingsPlan(owner, "DuePlan", SavingsPlanType.OneTime, 200m, lastFriday, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        // some past postings, remaining > 0
+        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, lastFriday.AddMonths(-1), 50m, null, null, null, null));
+        await db.SaveChangesAsync();
+
+        // draft entries not assigned to plan; latest booking date = due date (Friday)
+        var e1 = draft.AddEntry(lastFriday.AddDays(-2), 10m, "X", bank.Name, lastFriday.AddDays(-2), "EUR", null, false);
+        var e2 = draft.AddEntry(lastFriday, 20m, "Y", bank.Name, lastFriday, "EUR", null, false);
+        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
+        e1.MarkAccounted(bank.Id); e2.MarkAccounted(bank.Id);
+        await db.SaveChangesAsync();
+
+        var res = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
+        res.Messages.Any(m => m.Code == "SAVINGSPLAN_DUE" && m.Severity == "Information").Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Validate_SavingsPlanDue_WhenLatestBookingBeforeDueFriday_ShouldNotReportInformation()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+
+        DateTime today = DateTime.Today;
+        int daysSinceFriday = ((int)today.DayOfWeek - (int)DayOfWeek.Friday + 7) % 7;
+        var lastFriday = today.AddDays(-daysSinceFriday);
+        var lastThursday = lastFriday.AddDays(-1);
+        var plan = new SavingsPlan(owner, "DuePlan2", SavingsPlanType.OneTime, 200m, lastFriday, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, lastFriday.AddMonths(-1), 50m, null, null, null, null));
+        await db.SaveChangesAsync();
+
+        var e1 = draft.AddEntry(lastThursday.AddDays(-5), 10m, "X", bank.Name, lastThursday.AddDays(-5), "EUR", null, false);
+        var e2 = draft.AddEntry(lastThursday, 20m, "Y", bank.Name, lastThursday, "EUR", null, false);
+        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
+        e1.MarkAccounted(bank.Id); e2.MarkAccounted(bank.Id);
+        await db.SaveChangesAsync();
+
+        var res = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
+        res.Messages.Any(m => m.Code == "SAVINGSPLAN_DUE").Should().BeFalse();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Validate_SavingsPlanDue_WhenDueOnSunday_AndLatestBookingOnPreviousFriday_ShouldReportInformation()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+
+        DateTime today = DateTime.Today;
+        int daysSinceSunday = ((int)today.DayOfWeek - (int)DayOfWeek.Sunday + 7) % 7;
+        var lastSunday = today.AddDays(-daysSinceSunday);
+        var previousFriday = lastSunday.AddDays(-2);
+
+        var plan = new SavingsPlan(owner, "DuePlan3", SavingsPlanType.OneTime, 200m, lastSunday, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, lastSunday.AddMonths(-1), 50m, null, null, null, null));
+        await db.SaveChangesAsync();
+
+        var e1 = draft.AddEntry(previousFriday.AddDays(-1), 10m, "X", bank.Name, previousFriday.AddDays(-1), "EUR", null, false);
+        var e2 = draft.AddEntry(previousFriday, 20m, "Y", bank.Name, previousFriday, "EUR", null, false);
+        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
+        e1.MarkAccounted(bank.Id); e2.MarkAccounted(bank.Id);
+        await db.SaveChangesAsync();
+
+        var res = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
+        res.Messages.Any(m => m.Code == "SAVINGSPLAN_DUE" && m.Severity == "Information").Should().BeTrue();
+        conn.Dispose();
+    }
 }

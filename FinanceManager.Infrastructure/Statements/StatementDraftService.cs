@@ -892,6 +892,52 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
         }
 
+        // Additional info: due savings plans not yet posted this month and not assigned in open drafts
+        if (entries.Count > 0)
+        {
+            var latestBookingDate = entries.Max(e => e.BookingDate);
+            var monthStart = new DateTime(latestBookingDate.Year, latestBookingDate.Month, 1);
+            var nextMonth = monthStart.AddMonths(1);
+
+            DateTime AdjustDueDate(DateTime d)
+            {
+                // If due date falls on weekend, treat as previous Friday
+                if (d.DayOfWeek == DayOfWeek.Saturday) { return d.AddDays(-1); }
+                if (d.DayOfWeek == DayOfWeek.Sunday) { return d.AddDays(-2); }
+                return d;
+            }
+
+            var allUserPlans = await _db.SavingsPlans.AsNoTracking()
+                .Where(p => p.OwnerUserId == ownerUserId && p.IsActive && p.TargetAmount != null && p.TargetDate != null)
+                .ToListAsync(ct);
+
+            foreach (var plan in allUserPlans)
+            {
+                var effectiveDue = AdjustDueDate(plan.TargetDate!.Value.Date);
+                if (effectiveDue > latestBookingDate.Date) { continue; }
+
+                // Target not yet reached
+                var currentAmount = await _db.Postings.AsNoTracking()
+                    .Where(p => p.SavingsPlanId == plan.Id && p.Kind == PostingKind.SavingsPlan)
+                    .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
+                var target = plan.TargetAmount!.Value;
+                if (currentAmount >= target) { continue; }
+
+                // No posting in the draft's month
+                var hasPostingThisMonth = await _db.Postings.AsNoTracking()
+                    .AnyAsync(p => p.SavingsPlanId == plan.Id && p.Kind == PostingKind.SavingsPlan && p.BookingDate >= monthStart && p.BookingDate < nextMonth, ct);
+                if (hasPostingThisMonth) { continue; }
+
+                // Not assigned in any open draft
+                var assignedInOpenDraft = await _db.StatementDraftEntries
+                    .Join(_db.StatementDrafts, e => e.DraftId, d => d.Id, (e, d) => new { e, d })
+                    .AnyAsync(x => x.d.OwnerUserId == ownerUserId && x.d.Status == StatementDraftStatus.Draft && x.e.SavingsPlanId == plan.Id, ct);
+                if (assignedInOpenDraft) { continue; }
+
+                messages.Add(new("SAVINGSPLAN_DUE", "Information", $"Sparplan '{plan.Name}' ist fällig (Fälligkeitsdatum: {effectiveDue:d}).", draft.Id, null));
+            }
+        }
+
         var isValid = messages.All(m => m.Severity != "Error");
         return new DraftValidationResultDto(draft.Id, isValid, messages);
     }
