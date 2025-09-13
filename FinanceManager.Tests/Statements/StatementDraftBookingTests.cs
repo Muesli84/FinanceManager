@@ -143,6 +143,7 @@ public sealed class StatementDraftBookingTests
         db.Postings.Count(p => p.Kind == PostingKind.Bank).Should().Be(1);
         db.Postings.Count(p => p.Kind == PostingKind.Contact).Should().Be(1);
         db.Postings.Count(p => p.Kind == PostingKind.SavingsPlan).Should().Be(1);
+        db.Postings.Single(p => p.Kind == PostingKind.SavingsPlan).Amount.Should().Be(-100m);
         conn.Dispose();
     }
 

@@ -988,7 +988,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
         if (e.SavingsPlanId != null)
         {
-            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, baseAmount, subj, recip, desc, null).SetGroup(groupId));
+            _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, -baseAmount, subj, recip, desc, null).SetGroup(groupId));
         }
         if (e.SecurityId != null)
         {
