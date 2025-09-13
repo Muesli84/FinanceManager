@@ -40,12 +40,12 @@ public sealed class StatementDraftBookingTests
         return (sut, db, conn, ownerUser.Id);
     }
 
-    private static async Task<(Account account, Contact bank)> AddAccountAsync(AppDbContext db, Guid owner)
+    private static async Task<(Account account, Contact bank)> AddAccountAsync(AppDbContext db, Guid owner, AccountType type = AccountType.Giro)
     {
         var bank = new Contact(owner, "Bank", ContactType.Bank, null, null);
         db.Contacts.Add(bank);
         await db.SaveChangesAsync();
-        var acc = new Account(owner, AccountType.Giro, "Testkonto", "DE00", bank.Id);
+        var acc = new Account(owner, type, "Testkonto", "DE00", bank.Id);
         db.Accounts.Add(acc);
         await db.SaveChangesAsync();
         return (acc, bank);
@@ -1022,6 +1022,28 @@ public sealed class StatementDraftBookingTests
 
         var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
         reloaded!.TargetDate!.Value.Date.Should().Be(today.Date);
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_SelfContactWithSavingsPlan_OnSavingsAccount_ShouldFail()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, _) = await AddAccountAsync(db, owner, AccountType.Savings);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+        var plan = new SavingsPlan(owner, "Plan A", SavingsPlanType.OneTime, null, null, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+        var e = draft.AddEntry(DateTime.Today, 100m, "Save", self.Name, DateTime.Today, "EUR", null, false);
+        e.AssignSavingsPlan(plan.Id);
+        e.MarkAccounted(self.Id);
+        db.Entry(e).State = EntityState.Added;
+        await db.SaveChangesAsync();
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeFalse();
+        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_INVALID_ACCOUNT").Should().BeTrue();
         conn.Dispose();
     }
 }

@@ -774,12 +774,14 @@ public sealed partial class StatementDraftService : IStatementDraftService
         var selfContact = contacts.FirstOrDefault(c => c.Type == ContactType.Self);
 
         Contact? bankContact = null;
+        AccountType? detectedAccountType = null;
         if (draft.DetectedAccountId is Guid accId)
         {
             var account = accounts.FirstOrDefault(a => a.Id == accId);
             if (account != null)
             {
                 bankContact = contacts.FirstOrDefault(c => c.Id == account.BankContactId);
+                detectedAccountType = account.Type;
             }
         }
 
@@ -813,6 +815,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     if (contact != null && contact.Type != ContactType.Self)
                     {
                         messages.Add(new("SAVINGSPLAN_INVALID_CONTACT", "Error", "Sparplan darf nur bei eigenem (Self) Kontakt zugeordnet sein.", draft.Id, entry.Id));
+                    }
+                    // Must be a Giro account
+                    if (detectedAccountType != null && detectedAccountType.Value != AccountType.Giro)
+                    {
+                        messages.Add(new("SAVINGSPLAN_INVALID_ACCOUNT", "Error", "Sparplan darf nur bei Girokonten angegeben werden.", draft.Id, entry.Id));
                     }
                 }
                 else if (contact != null && selfContact != null && contact.Id == selfContact.Id)
