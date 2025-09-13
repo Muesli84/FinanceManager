@@ -29,17 +29,17 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-KON-005  | Kontakte verschmelzen (Merge)                                   | ContactService.MergeAsync, ContactsController, ContactMergeDialog                    | ✔      |
 | FA-AUTO-001 | Aliasnamen für automatische Kontaktzuordnung                    | StatementDraftService: Alias-Matching                                                | ✔      |
 | FA-AUTO-002 | Duplikate werden ausgelassen                                    | StatementDraftService: Duplikatprüfung                                               | ✔      |
-| FA-SPAR-001 | Sparpläne verwalten (CRUD)                                      | SavingsPlanService, SavingPlanController, IO                                         | ✔      |
-| FA-SPAR-002 | Sparplan-Typen                                                  | Noch nicht implementiert                                                             | ✖      |
-| FA-SPAR-003 | Wiederkehrende Intervalle                                       | Noch nicht implementiert                                                             | ✖      |
+| FA-SPAR-001 | Sparpläne verwalten (CRUD)                                      | SavingsPlanService, SavingsPlansController, UI (Liste, Detail), Neuanlage & Auto‑Zuordnung aus Kontoauszugseintrag | ✔      |
+| FA-SPAR-002 | Sparplan-Typen                                                  | SavingsPlanType (OneTime, Recurring, Open) inkl. UI/Service                          | ✔      |
+| FA-SPAR-003 | Wiederkehrende Intervalle                                       | Bei Buchung wird Fälligkeit für wiederkehrende Pläne (Type=Recurring) um Intervall verlängert | ~      |
 | FA-SPAR-004 | Automatische Sparplanvorschläge                                 | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-005 | Manuelle Änderung Sparplanvorschlag                             | Noch nicht implementiert                                                             | ✖      |
-| FA-SPAR-006 | Statusanzeige Sparziel erreicht                                 | SavingsPlanService.AnalyzeAsync liefert Kennzahlen; Info-Meldung bei Kontoauszugs‑Prüfung (Ziel erreicht) | ~      |
+| FA-SPAR-006 | Statusanzeige Sparziel erreicht                                 | SavingsPlanService.AnalyzeAsync liefert Kennzahlen; Kontoauszugs‑Prüfung: Infos bei Ziel erreicht sowie Hinweis auf fällige Pläne (ohne Monatsbuchung, nicht in offenem Auszug) | ~      |
 | FA-SPAR-007 | Anzeige fehlender Buchungen zum Ziel                            | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-008 | Prognose Zielverfehlung                                         | SavingsPlanService.AnalyzeAsync (Durchschnitt/Erfordernis)                           | ✔      |
 | FA-SPAR-009 | Archivierung bei Ausbuchung                                     | Noch nicht implementiert                                                             | ✖      |
 | FA-SPAR-010 | Sparplan aus Rückzahlung/Kredit                                 | Noch nicht implementiert                                                             | ✖      |
-| FA-SPAR-011 | Sparplanposten bei Buchung                                      | StatementDraftService.BookAsync → `PostingKind.SavingsPlan`                          | ✔      |
+| FA-SPAR-011 | Sparplanposten bei Buchung                                      | StatementDraftService.BookEntryAsync → `PostingKind.SavingsPlan` (negierter Betrag)  | ✔      |
 | FA-SPAR-012 | Umschalten aktive/archivierte Sparpläne                         | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-001 | Wertpapiere verwalten                                           | SecurityService, SecuritiesController, UI (Liste, Detail, Kategorien), Erstellung & Rücksprung aus Kontoauszug | ✔      |
 | FA-WERT-002 | Wertpapiertransaktionen                                         | Noch nicht implementiert                                                             | ✖      |
@@ -107,13 +107,19 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
+Änderungen (13.09.2025):
+- FA-SPAR-002 von ✖ auf ✔: Sparplan-Typen (OneTime, Recurring, Open) in DTO/Domain + UI/Service nutzbar.
+- FA-SPAR-003 von ✖ auf ~: Bei Buchung wird bei wiederkehrenden Sparplänen das Fälligkeitsdatum um das Intervall erhöht.
+- FA-SPAR-006 Beschreibung erweitert: Kontoauszugs‑Prüfung meldet zusätzlich fällige Sparpläne (ohne Monatsbuchung, nicht in offenem Auszug) als Information.
+- FA-SPAR-001 erweitert: Neuanlage eines Sparplans direkt aus Kontoauszugseintrag inkl. automatischer Zuordnung und Rücksprung.
+
 Änderungen (12.09.2025):
 - FA-AUSZ-004 von ✖ auf ✔: Bankposten werden beim Buchen erzeugt (`PostingKind.Bank`).
 - FA-AUSZ-007 von ✖ auf ✔: Kontaktposten werden beim Buchen erzeugt (`PostingKind.Contact`).
 - FA-WERT-003 von ✖ auf ✔: Wertpapier-Postings (Trade/Fee/Tax) beim Buchen (`PostingKind.Security`).
 - FA-SPAR-011 von ✖ auf ✔: Sparplan-Postings beim Buchen (`PostingKind.SavingsPlan`).
 - FA-AUSZ-009 Beschreibung ergänzt: Security-Postings werden erzeugt; Depot-/Positionslogik weiterhin offen (Status bleibt ~).
-- FA-SPAR-006 von ✖ auf ~: SavingsPlanService.AnalyzeAsync liefert Status; zusätzlich Informationsmeldung in der Kontoauszugs‑Prüfung bei Zielerreichung.
+- FA-SPAR-006 von ✖ auf ~: SavingsPlanService.AnalyzeAsync liefert Status; zusätzlich Informationsmeldung in der Kontoauszugs‑Prüfung (Ziel erreicht).
 
 Änderungen (05.09.2025):
 - FA-AUSZ-009 von ✖ auf ~: UI & API für Wertpapierauswahl, direkte Neuanlage und Zuordnung aus Kontoauszugseintrag implementiert. Depot-/Transaktionsverbuchung noch offen.
@@ -130,4 +136,4 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
 - Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
-*Letzte Aktualisierung: 12.09.2025*
+*Letzte Aktualisierung: 13.09.2025*
