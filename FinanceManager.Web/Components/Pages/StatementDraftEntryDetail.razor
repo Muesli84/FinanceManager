@@ -192,6 +192,9 @@ else
                                 </ul>
                             }
                         </div>
+                        <div style="display:flex;gap:.35rem;">
+                            <button class="icon-btn" title="Neuen Sparplan anlegen" aria-label="Neuen Sparplan anlegen" @onclick="OpenCreateSavingsPlan" disabled="@(!CanCreateSavingsPlan)"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -322,6 +325,7 @@ else
     private List<ContactVm> _allContacts = new();
     private string _contactFilter = string.Empty;
     private Guid? _selectedContactId;
+    private Guid? _selfContactId;
     private string? _contactError;
     private bool _dropdownVisible;
     private bool _pendingSave;
@@ -338,8 +342,8 @@ else
     private List<SavingsPlanDto> _userSavingsPlans = new();
 
     private IEnumerable<SavingsPlanDto> FilteredSavingsPlans => string.IsNullOrWhiteSpace(_savingsPlanFilter)
-        ? _userSavingsPlans
-        : _userSavingsPlans.Where(p => p.Name.Contains(_savingsPlanFilter, StringComparison.OrdinalIgnoreCase));
+         ? _userSavingsPlans
+         : _userSavingsPlans.Where(p => p.Name.Contains(_savingsPlanFilter, StringComparison.OrdinalIgnoreCase));
 
     // Split UI
     private bool _showSplitDialog;
@@ -456,6 +460,7 @@ else
         {
             var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
             _allContacts = list.Select(c => new ContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name).ToList();
+            _selfContactId = list.FirstOrDefault(c => c.Type == ContactType.Self)?.Id;
         }
     }
 
@@ -503,144 +508,21 @@ else
         }
     }
 
-    private void ShowDropdown(FocusEventArgs _) => _dropdownVisible = true;
-    private void SelectContact(Guid? id)
-    {
-        if (_selectedContactId != id) { _selectedContactId = id; }
-        _contactFilter = id == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==id)?.Name ?? string.Empty;
-        _dropdownVisible = false;
-    }
-    private void OnContactFilterAfterChanged()
-    {
-        _dropdownVisible = true;
-        if (_selectedContactId != null && !_allContacts.Any(c => string.Equals(c.Name, _contactFilter, StringComparison.OrdinalIgnoreCase)))
-        {
-            _selectedContactId = null;
-        }
-    }
+    private bool CanCreateSavingsPlan =>
+        _vm != null &&
+        _selfContactId != null &&
+        _vm.Entry.ContactId != null &&
+        _vm.Entry.ContactId == _selfContactId &&
+        _vm.Entry.Amount < 0 &&
+        _selectedSavingsPlanId == null;
 
-    // Security combobox
-    private void ShowSecurityDropdown(FocusEventArgs _) => _securityDropdownVisible = true;
-    private void OnSecurityFilterChanged()
+    private void OpenCreateSavingsPlan()
     {
-        _securityDropdownVisible = true;
-        if (_selectedSecurityId != null &&
-            !_securities.Any(s => string.Equals(s.Name, _securityFilter, StringComparison.OrdinalIgnoreCase)))
-        {
-            _selectedSecurityId = null;
-        }
-    }
-    private void SelectSecurity(Guid? id)
-    {
-        if (_selectedSecurityId != id) { _selectedSecurityId = id; }
-        _securityFilter = id == null ? string.Empty : _securities.FirstOrDefault(s => s.Id == id)?.Name ?? string.Empty;
-        _securityDropdownVisible = false;
-    }
-    private void OpenCreateSecurity()
-    {
-        var name = _securityFilter;
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            name = _vm?.Entry.Subject;
-        }
+        if (_vm == null) { return; }
+        var name = string.IsNullOrWhiteSpace(_savingsPlanFilter) ? _vm.Entry.Subject : _savingsPlanFilter;
         name ??= string.Empty;
-        var url = $"/securities/new?prefillName={Uri.EscapeDataString(name)}&draftId={DraftId}&entryId={EntryId}";
+        var url = $"/savings-plans/new?prefillName={Uri.EscapeDataString(name)}&draftId={DraftId}&entryId={EntryId}";
         Nav.NavigateTo(url);
-    }
-    private void OpenSecurityDetail()
-    {
-        if (_selectedSecurityId != null)
-        {
-            Nav.NavigateTo($"/securities/{_selectedSecurityId}?draftId={DraftId}&entryId={EntryId}");
-        }
-    }
-
-    private async Task PersistSecurityChangesIfNeededAsync()
-    {
-        if (_vm == null) { return; }
-        if (!ShowSecuritySection && _vm.Entry.SecurityId == null)
-        {
-            return;
-        }
-        var e = _vm.Entry;
-        var changed =
-            e.SecurityId != _selectedSecurityId ||
-            e.SecurityTransactionType != _securityTxType ||
-            e.SecurityQuantity != _securityQuantity ||
-            e.SecurityFeeAmount != _securityFee ||
-            e.SecurityTaxAmount != _securityTax;
-
-        if (!changed) { return; }
-
-        var payload = new
-        {
-            SecurityId = _selectedSecurityId,
-            TransactionType = _securityTxType,
-            Quantity = _securityQuantity,
-            FeeAmount = _securityFee,
-            TaxAmount = _securityTax
-        };
-
-        var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/security", payload);
-        if (!resp.IsSuccessStatusCode)
-        {
-            _securityError = await resp.Content.ReadAsStringAsync();
-        }
-        else
-        {
-            await LoadEntryAsync();
-        }
-    }
-
-    private async Task SaveAll()
-    {
-        if (_vm == null) { return; }
-        _pendingSave = true; _contactError = null;
-        try
-        {
-            var payload = new { ContactId = _selectedContactId };
-            var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/contact", payload);
-            if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
-
-            if (_vm.Entry.IsCostNeutral != _IsCostNeutral)
-            {
-                var payload2 = new { IsCostNeutral = _IsCostNeutral };
-                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/costneutral", payload2);
-                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
-            }
-
-            if (_vm.Entry.SavingsPlanId != _selectedSavingsPlanId)
-            {
-                var payload3 = new { SavingsPlanId = _selectedSavingsPlanId };
-                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/savingsplan", payload3);
-                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
-            }
-
-            await PersistSecurityChangesIfNeededAsync();
-
-            await LoadEntryAsync();
-            _selectedContactId = _vm?.Entry.ContactId;
-            _contactFilter = _selectedContactId == null
-                ? string.Empty
-                : _allContacts.FirstOrDefault(c => c.Id == _selectedContactId)?.Name ?? string.Empty;
-        }
-        catch (Exception ex)
-        {
-            _contactError = ex.Message;
-        }
-        _pendingSave = false;
-    }
-
-    private async Task Reclassify()
-    {
-        var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/classify/{_vm?.Entry.Id}", null);
-        if (resp.IsSuccessStatusCode)
-        {
-            await LoadEntryAsync();
-            _selectedContactId = _vm?.Entry.ContactId;
-            _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==_vm.Entry.ContactId)?.Name ?? string.Empty;
-            StateHasChanged();
-        }
     }
 
     private void Back() => Nav.NavigateTo($"/statement-drafts/{DraftId}");
@@ -816,4 +698,146 @@ else
 
     private sealed record DraftValidationMessageDto(string Code, string Severity, string Message, Guid DraftId, Guid? EntryId);
     private sealed record DraftValidationResultDto(Guid DraftId, bool IsValid, IReadOnlyList<DraftValidationMessageDto> Messages);
+
+    // Handlers reintroduced after refactor
+    private async Task SaveAll()
+    {
+        if (_vm == null) { return; }
+        _pendingSave = true; _contactError = null;
+        try
+        {
+            var payload = new { ContactId = _selectedContactId };
+            var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/contact", payload);
+            if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
+
+            if (_vm.Entry.IsCostNeutral != _IsCostNeutral)
+            {
+                var payload2 = new { IsCostNeutral = _IsCostNeutral };
+                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/costneutral", payload2);
+                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
+            }
+
+            if (_vm.Entry.SavingsPlanId != _selectedSavingsPlanId)
+            {
+                var payload3 = new { SavingsPlanId = _selectedSavingsPlanId };
+                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/savingsplan", payload3);
+                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
+            }
+
+            await PersistSecurityChangesIfNeededAsync();
+
+            await LoadEntryAsync();
+            _selectedContactId = _vm?.Entry.ContactId;
+            _contactFilter = _selectedContactId == null
+                ? string.Empty
+                : _allContacts.FirstOrDefault(c => c.Id == _selectedContactId)?.Name ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _contactError = ex.Message;
+        }
+        _pendingSave = false;
+    }
+
+    private async Task Reclassify()
+    {
+        var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/classify/{_vm?.Entry.Id}", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            await LoadEntryAsync();
+            _selectedContactId = _vm?.Entry.ContactId;
+            _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==_vm.Entry.ContactId)?.Name ?? string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenSecurityDetail()
+    {
+        if (_selectedSecurityId != null)
+        {
+            Nav.NavigateTo($"/securities/{_selectedSecurityId}?draftId={DraftId}&entryId={EntryId}");
+        }
+    }
+
+    private void ShowDropdown(FocusEventArgs _) => _dropdownVisible = true;
+    private void SelectContact(Guid? id)
+    {
+        if (_selectedContactId != id) { _selectedContactId = id; }
+        _contactFilter = id == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==id)?.Name ?? string.Empty;
+        _dropdownVisible = false;
+    }
+    private void OnContactFilterAfterChanged()
+    {
+        _dropdownVisible = true;
+        if (_selectedContactId != null && !_allContacts.Any(c => string.Equals(c.Name, _contactFilter, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedContactId = null;
+        }
+    }
+
+    private void ShowSecurityDropdown(FocusEventArgs _) => _securityDropdownVisible = true;
+    private void OnSecurityFilterChanged()
+    {
+        _securityDropdownVisible = true;
+        if (_selectedSecurityId != null &&
+            !_securities.Any(s => string.Equals(s.Name, _securityFilter, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedSecurityId = null;
+        }
+    }
+    private void SelectSecurity(Guid? id)
+    {
+        if (_selectedSecurityId != id) { _selectedSecurityId = id; }
+        _securityFilter = id == null ? string.Empty : _securities.FirstOrDefault(s => s.Id == id)?.Name ?? string.Empty;
+        _securityDropdownVisible = false;
+    }
+
+    private void OpenCreateSecurity()
+    {
+        var name = _securityFilter;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            name = _vm?.Entry.Subject;
+        }
+        name ??= string.Empty;
+        var url = $"/securities/new?prefillName={Uri.EscapeDataString(name)}&draftId={DraftId}&entryId={EntryId}";
+        Nav.NavigateTo(url);
+    }
+
+    private async Task PersistSecurityChangesIfNeededAsync()
+    {
+        if (_vm == null) { return; }
+        if (!ShowSecuritySection && _vm.Entry.SecurityId == null)
+        {
+            return;
+        }
+        var e = _vm.Entry;
+        var changed =
+            e.SecurityId != _selectedSecurityId ||
+            e.SecurityTransactionType != _securityTxType ||
+            e.SecurityQuantity != _securityQuantity ||
+            e.SecurityFeeAmount != _securityFee ||
+            e.SecurityTaxAmount != _securityTax;
+
+        if (!changed) { return; }
+
+        var payload = new
+        {
+            SecurityId = _selectedSecurityId,
+            TransactionType = _securityTxType,
+            Quantity = _securityQuantity,
+            FeeAmount = _securityFee,
+            TaxAmount = _securityTax
+        };
+
+        var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/security", payload);
+        if (!resp.IsSuccessStatusCode)
+        {
+            _securityError = await resp.Content.ReadAsStringAsync();
+        }
+        else
+        {
+            await LoadEntryAsync();
+        }
+    }
 }

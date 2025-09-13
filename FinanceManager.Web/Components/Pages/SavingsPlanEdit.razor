@@ -4,6 +4,7 @@
 @using FinanceManager.Shared.Dtos
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.Extensions.Localization
+@using Microsoft.AspNetCore.WebUtilities
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Components.Pages.SavingsPlanEdit> Localizer
@@ -121,9 +122,27 @@
     private List<SavingsPlanCategoryDto> _categories = new();
 
     private SavingsPlanAnalysisDto? _analysis;
+    private Guid? _returnDraftId;
+    private Guid? _returnEntryId;
+    private string? _prefillName;
 
     protected override async Task OnParametersSetAsync()
     {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("prefillName", out var prefill))
+        {
+            _prefillName = prefill.ToString();
+        }
+        if (query.TryGetValue("draftId", out var did) && Guid.TryParse(did, out var dgid))
+        {
+            _returnDraftId = dgid;
+        }
+        if (query.TryGetValue("entryId", out var eid) && Guid.TryParse(eid, out var egid))
+        {
+            _returnEntryId = egid;
+        }
+
         if (IsEdit)
         {
             var http = ClientFactory.CreateClient("Api");
@@ -146,6 +165,13 @@
             else
             {
                 _error = "Sparplan nicht gefunden.";
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(_prefillName) && string.IsNullOrWhiteSpace(_model.Name))
+            {
+                _model.Name = _prefillName!;
             }
         }
         await LoadCategoriesAsync();
@@ -192,13 +218,33 @@
         else
         {
             var resp = await http.PostAsJsonAsync("/api/savings-plans", _model);
-            if (resp.IsSuccessStatusCode)
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+
+            var dto = await resp.Content.ReadFromJsonAsync<SavingsPlanDto>();
+            if (dto == null)
             {
                 Navigation.NavigateTo("/savings-plans", true);
+                return;
+            }
+
+            if (_returnDraftId != null && _returnEntryId != null)
+            {
+                try
+                {
+                    var assignPayload = new { SavingsPlanId = (Guid?)dto.Id };
+                    var assignResp = await http.PostAsJsonAsync($"/api/statement-drafts/{_returnDraftId}/entries/{_returnEntryId}/savingsplan", assignPayload);
+                    // ignore non-success; still navigate back
+                }
+                catch { }
+                Navigation.NavigateTo($"/statement-drafts/{_returnDraftId}/entries/{_returnEntryId}", true);
             }
             else
             {
-                _error = await resp.Content.ReadAsStringAsync();
+                Navigation.NavigateTo($"/savings-plans/{dto.Id}", true);
             }
         }
     }

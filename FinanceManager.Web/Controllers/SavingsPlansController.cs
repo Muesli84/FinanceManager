@@ -57,7 +57,7 @@ public sealed class SavingsPlansController : ControllerBase
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         var dto = await _service.CreateAsync(_current.UserId, req.Name, req.Type, req.TargetAmount, req.TargetDate, req.Interval, req.CategoryId, req.ContractNumber, ct);
-        return CreatedAtAction("GetSavingsPlans", new { id = dto.Id }, dto);
+        return CreatedAtRoute("GetSavingsPlans", new { id = dto.Id }, dto);
     }
 
     [HttpPut("{id:guid}")]
