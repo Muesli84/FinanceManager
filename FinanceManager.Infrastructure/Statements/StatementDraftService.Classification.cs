@@ -200,10 +200,20 @@ public sealed partial class StatementDraftService
             .Where(c => string.Equals(NormalizeUmlauts(c.Name), searchText, StringComparison.OrdinalIgnoreCase))
             .Select(c => c.Id)
             .FirstOrDefault();
+        Guid? secondaryContactId = matchedContactId = contacts
+                .Where(c => searchText.Contains(NormalizeUmlauts(c.Name), StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.Id)
+                .FirstOrDefault();
 
-        if (matchedContactId == Guid.Empty)
-        {
-            foreach (var kvp in aliasLookup)
+        for (int idxMode = 0; idxMode < 2; idxMode++)         {
+            if (matchedContactId != Guid.Empty) { break; }
+
+            if (idxMode == 1)
+            {
+                searchText = Regex.Replace(searchText, "\\s+", string.Empty);
+            }
+
+            foreach (var kvp in aliasLookup) 
             {
                 foreach (var pattern in kvp.Value.Select(val => val.ToLowerInvariant()))
                 {
@@ -220,6 +230,8 @@ public sealed partial class StatementDraftService
                 if (matchedContactId != Guid.Empty) { break; }
             }
         }
+        if (matchedContactId == null || matchedContactId == Guid.Empty) matchedContactId = secondaryContactId;
+
         var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
         if (string.IsNullOrWhiteSpace(entry.RecipientName) && bankContactId != null && bankContactId != Guid.Empty)
         {

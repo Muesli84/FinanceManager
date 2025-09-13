@@ -2,6 +2,7 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Shared.Dtos;
 using System.Threading.Tasks;
+using FinanceManager.Domain.Securities;
 
 namespace FinanceManager.Application.Statements;
 
@@ -36,7 +37,22 @@ public interface IStatementDraftService
         CancellationToken ct);
     Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct);
     Task<BookingResult> BookAsync(Guid draftId, Guid ownerUserId, bool forceWarnings, CancellationToken ct);
-    
+
+    // Aggregated update to minimize round-trips; single endpoints stay available
+    Task<StatementDraftEntryDto?> SaveEntryAllAsync(
+        Guid draftId,
+        Guid entryId,
+        Guid ownerUserId,
+        Guid? contactId,
+        bool? isCostNeutral,
+        Guid? savingsPlanId,
+        bool? archiveOnBooking,
+        Guid? securityId,
+        SecurityTransactionType? transactionType,
+        decimal? quantity,
+        decimal? feeAmount,
+        decimal? taxAmount,
+        CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(

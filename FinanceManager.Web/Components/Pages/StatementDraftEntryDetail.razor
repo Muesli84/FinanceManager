@@ -14,36 +14,45 @@
 else
 {
     <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
-        <button class="icon-btn" @onclick="Back" title="Back" aria-label="Back"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-        <button class="icon-btn" disabled="@(_pendingSave)" @onclick="SaveAll" title="Save Changes" aria-label="Save Changes"><svg><use href="/icons/sprite.svg#save" /></svg></button>
-        <button class="icon-btn" @onclick="Reclassify" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
-        <button class="icon-btn" disabled="@(_selectedContactId==null)" @onclick="OpenContactDetail" title="Kontakt anzeigen" aria-label="Kontakt anzeigen">
-            <svg><use href="/icons/sprite.svg#groups" /></svg>
-        </button>
-        <button class="icon-btn" disabled="@(_selectedSecurityId == null)" title="Wertpapier anzeigen" aria-label="Wertpapier anzeigen" @onclick="OpenSecurityDetail">
-            <svg><use href="/icons/sprite.svg#security" /></svg>
-        </button>
-        <button class="icon-btn" @onclick="ValidateEntry" title="Eintrag prüfen" aria-label="Eintrag prüfen">
-            <svg><use href="/icons/sprite.svg#check" /></svg>
-        </button>
+        <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
+            <button class="icon-btn" @onclick="Back" title="Back" aria-label="Back"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+        </div>
+        <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
+            <button class="icon-btn" disabled="@(_pendingSave)" @onclick="SaveAll" title="Save Changes" aria-label="Save Changes"><svg><use href="/icons/sprite.svg#save" /></svg></button>
+            <button class="icon-btn" @onclick="Reclassify" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
+            <button class="icon-btn" @onclick="ValidateEntry" title="Eintrag prüfen" aria-label="Eintrag prüfen">
+                <svg><use href="/icons/sprite.svg#check" /></svg>
+            </button>
+            <button class="icon-btn" @onclick="OpenSplitDialog" title="Split-Auszug zuordnen" aria-label="Split-Auszug zuordnen">
+                <svg><use href="/icons/sprite.svg#link" /></svg>
+            </button>
+        </div>
+        <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
+            <button class="icon-btn" disabled="@(_selectedContactId==null)" @onclick="OpenContactDetail" title="Kontakt anzeigen" aria-label="Kontakt anzeigen">
+                <svg><use href="/icons/sprite.svg#groups" /></svg>
+            </button>
+            <button class="icon-btn" disabled="@(_selectedSecurityId == null)" title="Wertpapier anzeigen" aria-label="Wertpapier anzeigen" @onclick="OpenSecurityDetail">
+                <svg><use href="/icons/sprite.svg#security" /></svg>
+            </button>
+            <button class="icon-btn" disabled="@(_selectedSavingsPlanId == null)" title="Sparplan anzeigen" aria-label="Sparplan anzeigen" @onclick="OpenSavingsPlanDetail">
+                <svg><use href="/icons/sprite.svg#external" /></svg>
+            </button>
+            @if(_vm?.Entry.SplitDraftId != null)
+            {
+                <button class="icon-btn" @onclick="OpenAssignedSplitDraft" title="Verknüpften Auszug öffnen" aria-label="Verknüpften Auszug öffnen">
+                    <svg><use href="/icons/sprite.svg#external" /></svg>
+                </button>
+                <button class="icon-btn" @onclick="RemoveSplit" title="Zuordnung entfernen" aria-label="Zuordnung entfernen">
+                    <svg><use href="/icons/sprite.svg#unlink" /></svg>
+                </button>
+            }
+        </div>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
             <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrev" title="Previous Entry" aria-label="Previous Entry"><svg><use href="/icons/sprite.svg#back" /></svg></button>
             <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpen" title="Nächster offener Eintrag" aria-label="Nächster offener Eintrag">
                 <svg><use href="/icons/sprite.svg#arrow-right" /></svg>
             </button>
         </div>
-        <button class="icon-btn" @onclick="OpenSplitDialog" title="Split-Auszug zuordnen" aria-label="Split-Auszug zuordnen">
-            <svg><use href="/icons/sprite.svg#link" /></svg>
-        </button>
-        @if(_vm?.Entry.SplitDraftId != null)
-        {
-            <button class="icon-btn" @onclick="OpenAssignedSplitDraft" title="Verknüpften Auszug öffnen" aria-label="Verknüpften Auszug öffnen">
-                <svg><use href="/icons/sprite.svg#external" /></svg>
-            </button>
-            <button class="icon-btn" @onclick="RemoveSplit" title="Zuordnung entfernen" aria-label="Zuordnung entfernen">
-                <svg><use href="/icons/sprite.svg#unlink" /></svg>
-            </button>
-        }
     </div>
     <p><strong>Draft File:</strong> @_vm.OriginalFileName</p>
     @if(_entryValidation != null)
@@ -549,6 +558,10 @@ else
     {
         if (_selectedContactId != null) { Nav.NavigateTo($"/contacts/{_selectedContactId}"); }
     }
+    private void OpenSavingsPlanDetail()
+    {
+        if (_selectedSavingsPlanId != null) { Nav.NavigateTo($"/savings-plans/{_selectedSavingsPlanId}"); }
+    }
     private void GoPrev()
     {
         if (_vm?.PrevEntryId != null)
@@ -718,38 +731,28 @@ else
         _pendingSave = true; _contactError = null;
         try
         {
-            var payload = new { ContactId = _selectedContactId };
-            var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/contact", payload);
-            if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
-
-            if (_vm.Entry.IsCostNeutral != _IsCostNeutral)
+            var payload = new
             {
-                var payload2 = new { IsCostNeutral = _IsCostNeutral };
-                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/costneutral", payload2);
-                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
-            }
+                ContactId = _selectedContactId,
+                IsCostNeutral = _IsCostNeutral,
+                SavingsPlanId = _selectedSavingsPlanId,
+                ArchiveOnBooking = _archiveSavingsPlanOnBooking,
+                SecurityId = _selectedSecurityId,
+                TransactionType = _securityTxType,
+                Quantity = _securityQuantity,
+                FeeAmount = _securityFee,
+                TaxAmount = _securityTax
+            };
 
-            if (_vm.Entry.SavingsPlanId != _selectedSavingsPlanId)
+            var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/save-all", payload);
+            if (!resp.IsSuccessStatusCode)
             {
-                var payload3 = new { SavingsPlanId = _selectedSavingsPlanId };
-                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/savingsplan", payload3);
-                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
+                _contactError = await resp.Content.ReadAsStringAsync();
             }
-
-            // persist archive flag for savings plan
+            else
             {
-                var payload4 = new { ArchiveOnBooking = _archiveSavingsPlanOnBooking };
-                resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/savingsplan/archive-on-booking", payload4);
-                if (!resp.IsSuccessStatusCode) { throw new ApplicationException(await resp.Content.ReadAsStringAsync()); }
+                await LoadEntryAsync();
             }
-
-            await PersistSecurityChangesIfNeededAsync();
-
-            await LoadEntryAsync();
-            _selectedContactId = _vm?.Entry.ContactId;
-            _contactFilter = _selectedContactId == null
-                ? string.Empty
-                : _allContacts.FirstOrDefault(c => c.Id == _selectedContactId)?.Name ?? string.Empty;
         }
         catch (Exception ex)
         {

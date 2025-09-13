@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Net.Mime;
+using FinanceManager.Domain.Securities;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -339,5 +340,36 @@ public sealed class StatementDraftsController : ControllerBase
             return StatusCode(StatusCodes.Status428PreconditionRequired, result); // 428 indicates client needs confirmation
         }
         return Ok(result);
+    }
+
+    public sealed record SaveEntryAllRequest(
+        Guid? ContactId,
+        bool? IsCostNeutral,
+        Guid? SavingsPlanId,
+        bool? ArchiveOnBooking,
+        Guid? SecurityId,
+        SecurityTransactionType? TransactionType,
+        decimal? Quantity,
+        decimal? FeeAmount,
+        decimal? TaxAmount);
+
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/save-all")]
+    public async Task<IActionResult> SaveEntryAllAsync(Guid draftId, Guid entryId, [FromBody] SaveEntryAllRequest body, CancellationToken ct)
+    {
+        var dto = await _drafts.SaveEntryAllAsync(
+            draftId,
+            entryId,
+            _current.UserId,
+            body.ContactId,
+            body.IsCostNeutral,
+            body.SavingsPlanId,
+            body.ArchiveOnBooking,
+            body.SecurityId,
+            body.TransactionType,
+            body.Quantity,
+            body.FeeAmount,
+            body.TaxAmount,
+            ct);
+        return dto == null ? NotFound() : Ok(dto);
     }
 }

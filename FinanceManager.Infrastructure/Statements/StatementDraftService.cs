@@ -27,6 +27,103 @@ public sealed partial class StatementDraftService : IStatementDraftService
         };
     }
 
+    public async Task<StatementDraftEntryDto?> SaveEntryAllAsync(
+        Guid draftId,
+        Guid entryId,
+        Guid ownerUserId,
+        Guid? contactId,
+        bool? isCostNeutral,
+        Guid? savingsPlanId,
+        bool? archiveOnBooking,
+        Guid? securityId,
+        SecurityTransactionType? transactionType,
+        decimal? quantity,
+        decimal? feeAmount,
+        decimal? taxAmount,
+        CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts
+            .Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        if (draft.Status != StatementDraftStatus.Draft) { return null; }
+
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+
+        // Contact
+        if (contactId == null)
+        {
+            entry.ClearContact();
+        }
+        else
+        {
+            bool exists = await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == contactId && c.OwnerUserId == ownerUserId, ct);
+            if (!exists) { return null; }
+            entry.MarkAccounted(contactId.Value);
+        }
+
+        // Cost neutral
+        if (isCostNeutral.HasValue)
+        {
+            entry.MarkCostNeutral(isCostNeutral.Value);
+        }
+
+        // Savings plan
+        if (entry.SavingsPlanId != savingsPlanId)
+        {
+            entry.AssignSavingsPlan(savingsPlanId);
+        }
+        if (archiveOnBooking.HasValue)
+        {
+            entry.SetArchiveSavingsPlanOnBooking(archiveOnBooking.Value);
+        }
+
+        // Security
+        if (securityId != entry.SecurityId
+            || transactionType != entry.SecurityTransactionType
+            || quantity != entry.SecurityQuantity
+            || feeAmount != entry.SecurityFeeAmount
+            || taxAmount != entry.SecurityTaxAmount)
+        {
+            entry.SetSecurity(securityId, transactionType, quantity, feeAmount, taxAmount);
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        // Re-evaluate parent statuses if this draft is parent or child in a split
+        if (await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == draft.Id, ct))
+        {
+            await ReevaluateParentEntryStatusAsync(ownerUserId, draft.Id, ct);
+        }
+        if (entry.SplitDraftId != null)
+        {
+            await ReevaluateParentEntryStatusAsync(ownerUserId, entry.SplitDraftId.Value, ct);
+        }
+
+        return new StatementDraftEntryDto(
+            entry.Id,
+            entry.BookingDate,
+            entry.ValutaDate,
+            entry.Amount,
+            entry.CurrencyCode,
+            entry.Subject,
+            entry.RecipientName,
+            entry.BookingDescription,
+            entry.IsAnnounced,
+            entry.IsCostNeutral,
+            entry.Status,
+            entry.ContactId,
+            entry.SavingsPlanId,
+            entry.ArchiveSavingsPlanOnBooking,
+            entry.SplitDraftId,
+            entry.SecurityId,
+            entry.SecurityTransactionType,
+            entry.SecurityQuantity,
+            entry.SecurityFeeAmount,
+            entry.SecurityTaxAmount);
+    }
+
     public async IAsyncEnumerable<StatementDraftDto> CreateDraftAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct)
     {
         var parsedDraft = _statementFileReaders
@@ -959,6 +1056,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
             validation = new DraftValidationResultDto(validation.DraftId, validation.IsValid, msgs);
         }
 
-        return new BookingResult(true, false, validation, null, draft.Entries.Count, null);
+        return new BookingResult(true, false, validation, null, draft.Entries.Count, await GetNextStatementDraftAsync(draft));
+    }
+    private async Task<Guid?> GetNextStatementDraftAsync(StatementDraft draft)
+    {
+        var nextDraft = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Status == StatementDraftStatus.Draft).Where(d => d.Id > draft.Id).FirstOrDefaultAsync();
+        if (nextDraft is null)
+                nextDraft = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Status == StatementDraftStatus.Draft).LastOrDefaultAsync();
+        return nextDraft?.Id;
     }
 }
