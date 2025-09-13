@@ -937,4 +937,91 @@ public sealed class StatementDraftBookingTests
         res.Messages.Any(m => m.Code == "SAVINGSPLAN_DUE" && m.Severity == "Information").Should().BeTrue();
         conn.Dispose();
     }
+
+    [Theory]
+    [InlineData(SavingsPlanInterval.Monthly, 1)]
+    [InlineData(SavingsPlanInterval.BiMonthly, 2)]
+    [InlineData(SavingsPlanInterval.Quarterly, 3)]
+    [InlineData(SavingsPlanInterval.SemiAnnually, 6)]
+    [InlineData(SavingsPlanInterval.Annually, 12)]
+    public async Task Booking_RecurringSavingsPlan_WhenDueToday_ExtendsTargetDate_ByInterval(SavingsPlanInterval interval, int months)
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+        var today = DateTime.Today;
+
+        var plan = new SavingsPlan(owner, "R", SavingsPlanType.Recurring, 100m, today, interval);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var e = draft.AddEntry(today, 10m, "Save", bank.Name, today, "EUR", null, false);
+        db.Entry(e).State = EntityState.Added;
+        e.MarkAccounted(self.Id);
+        e.AssignSavingsPlan(plan.Id);
+        await db.SaveChangesAsync();
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+
+        var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
+        reloaded!.TargetDate!.Value.Date.Should().Be(today.AddMonths(months).Date);
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_RecurringSavingsPlan_WhenDueTomorrow_DoesNotChangeTargetDate()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+        var today = DateTime.Today;
+        var tomorrow = today.AddDays(1);
+
+        var plan = new SavingsPlan(owner, "R2", SavingsPlanType.Recurring, 100m, tomorrow, SavingsPlanInterval.Monthly);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var e = draft.AddEntry(today, 10m, "Save", bank.Name, today, "EUR", null, false);
+        db.Entry(e).State = EntityState.Added;
+        e.MarkAccounted(self.Id);
+        e.AssignSavingsPlan(plan.Id);
+        await db.SaveChangesAsync();
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+
+        var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
+        reloaded!.TargetDate!.Value.Date.Should().Be(tomorrow.Date);
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_OneTimeSavingsPlan_WhenDueToday_DoesNotChangeTargetDate()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+        var today = DateTime.Today;
+
+        var plan = new SavingsPlan(owner, "O", SavingsPlanType.OneTime, 100m, today, null);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var e = draft.AddEntry(today, 10m, "Save", bank.Name, today, "EUR", null, false);
+        db.Entry(e).State = EntityState.Added;
+        e.MarkAccounted(self.Id);
+        e.AssignSavingsPlan(plan.Id);
+        await db.SaveChangesAsync();
+
+        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+
+        var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
+        reloaded!.TargetDate!.Value.Date.Should().Be(today.Date);
+        conn.Dispose();
+    }
 }

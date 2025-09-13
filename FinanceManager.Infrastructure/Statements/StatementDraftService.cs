@@ -958,10 +958,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
         _db.StatementImports.Add(import);
         await _db.SaveChangesAsync(ct);
 
+        var updatedPlanIds = new HashSet<Guid>();
         List<StatementDraft> bookedDrafts = new();
         foreach (var e in draft.Entries)
         {
-            bookedDrafts.AddRange(await BookEntryAsync(draft, import, e, ct));
+            bookedDrafts.AddRange(await BookEntryAsync(draft, import, e, updatedPlanIds, ct));
         }
 
         draft.MarkCommitted();
@@ -975,7 +976,20 @@ public sealed partial class StatementDraftService : IStatementDraftService
         return new BookingResult(true, hasWarnings, validation, import.Id, draft.Entries.Count, nextJournal?.Id);
     }
 
-    private async Task<IEnumerable<StatementDraft>> BookEntryAsync(StatementDraft draft, StatementImport import, StatementDraftEntry e, CancellationToken ct)
+    private static int GetMonthsToAdd(SavingsPlanInterval interval)
+    {
+        return interval switch
+        {
+            SavingsPlanInterval.Monthly => 1,
+            SavingsPlanInterval.BiMonthly => 2,
+            SavingsPlanInterval.Quarterly => 3,
+            SavingsPlanInterval.SemiAnnually => 6,
+            SavingsPlanInterval.Annually => 12,
+            _ => 0
+        };
+    }
+
+    private async Task<IEnumerable<StatementDraft>> BookEntryAsync(StatementDraft draft, StatementImport import, StatementDraftEntry e, HashSet<Guid> updatedPlanIds, CancellationToken ct)
     {
         var groupId = Guid.NewGuid();
         decimal baseAmount = e.SplitDraftId != null ? 0m : e.Amount;
@@ -989,6 +1003,21 @@ public sealed partial class StatementDraftService : IStatementDraftService
         if (e.SavingsPlanId != null)
         {
             _db.Postings.Add(new Domain.Postings.Posting(import.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, -baseAmount, subj, recip, desc, null).SetGroup(groupId));
+
+            // Extend due date for recurring plans if due reached and not already updated in this booking
+            var plan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Id == e.SavingsPlanId, ct);
+            if (plan != null && plan.Type == SavingsPlanType.Recurring && plan.TargetDate != null && plan.Interval != null && !updatedPlanIds.Contains(plan.Id))
+            {
+                if (plan.TargetDate!.Value.Date <= e.BookingDate.Date)
+                {
+                    var months = GetMonthsToAdd(plan.Interval.Value);
+                    if (months > 0)
+                    {
+                        plan.SetTarget(plan.TargetAmount, plan.TargetDate.Value.AddMonths(months));
+                        updatedPlanIds.Add(plan.Id);
+                    }
+                }
+            }
         }
         if (e.SecurityId != null)
         {
@@ -1015,7 +1044,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             {
                 foreach (var ce in childDraft.Entries)
                 {
-                    bookedDrafts.AddRange(await BookEntryAsync(childDraft, import, ce, ct));
+                    bookedDrafts.AddRange(await BookEntryAsync(childDraft, import, ce, updatedPlanIds, ct));
                 }
                 bookedDrafts.Add(childDraft);
             }
