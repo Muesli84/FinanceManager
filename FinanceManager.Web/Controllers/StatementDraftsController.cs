@@ -126,6 +126,20 @@ public sealed class StatementDraftsController : ControllerBase
         return draft is null ? NotFound() : Ok(draft);
     }
 
+    [HttpPost("classify")]
+    public async Task<IActionResult> ClassifyAllAsync(CancellationToken ct)
+    {
+        try
+        {
+            var draft = await _drafts.ClassifyAsync(null, null, _current.UserId, ct);
+            return draft is null ? NotFound() : Ok(draft);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex);
+        }
+    }
+
     [HttpPost("{draftId:guid}/classify")]
     public async Task<IActionResult> ClassifyAsync(Guid draftId, CancellationToken ct)
     {

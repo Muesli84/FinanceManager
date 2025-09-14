@@ -43,7 +43,7 @@ public sealed class StatementDraftSecurityClassificationTests
 
     private static async Task<StatementDraft> CreateDraftAsync(AppDbContext db, Guid owner, Guid? accountId = null)
     {
-        var draft = new StatementDraft(owner, "file.csv", "");
+        var draft = new StatementDraft(owner, "file.csv", "", "");
         if (accountId != null)
         {
             draft.SetDetectedAccount(accountId.Value);

@@ -8,6 +8,12 @@
 
 <h3>@Localizer["Nav_StatementDrafts"]</h3>
 
+<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
+    <button @onclick="ClassifyAsync" class="icon-btn" title="Reclassify" aria-label="Reclassify">
+        <svg><use href="/icons/sprite.svg#refresh" /></svg>
+    </button>
+</div>
+
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
     <div class="icon-btn" title="@Localizer["Nav_StatementDrafts_Import"]" aria-label="@Localizer["Nav_StatementDrafts_Import"]" style="padding:.3rem .6rem;">
         <InputFile OnChange="OnFileChanged" />
@@ -30,6 +36,7 @@ else
                 <tr>
                     <th style="width:2rem;"></th>
                     <th>@Localizer["Nav_StatementDrafts_File"]</th>
+                    <th>@Localizer["Nav_StatementDrafts_Description"]</th>
                     <th>@Localizer["Nav_StatementDrafts_Status"]</th>
                     <th>@Localizer["Nav_StatementDrafts_Entries"]</th>
                 </tr>
@@ -40,6 +47,7 @@ else
                     <tr style="cursor:pointer;" @onclick="() => OpenDetail(d.DraftId)">
                         <td></td>
                         <td>@d.OriginalFileName</td>
+                        <td>@d.Description</td>
                         <td>@d.Status</td>
                         <td>@d.Entries.Count(e => e.Status != Domain.Statements.StatementDraftEntryStatus.AlreadyBooked)</td>
                     </tr>
@@ -59,6 +67,7 @@ else
     private const int PageSize = 3;
     private bool _canLoadMore = true;
     private bool _loading;
+    private bool _cancelLoading;
     private ElementReference _sentinel;
     private DotNetObjectReference<StatementDrafts>? _selfRef;
     private bool _observerAttached;
@@ -103,10 +112,18 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        await Reload();
+    }
+    private void Clear()
+    {
         _drafts = new List<StatementDraftDto>();
         _skip = 0;
         _canLoadMore = true;
         _observerAttached = false;
+    }
+    private async Task Reload()
+    {
+        Clear();
         await LoadAsync();
     }
 
@@ -118,6 +135,11 @@ else
         {
             var url = $"api/statement-drafts?skip={_skip}&take={PageSize}";
             var batch = await Http.GetFromJsonAsync<List<StatementDraftDto>>(url) ?? new();
+            if (_cancelLoading)
+            {
+                _cancelLoading = false;
+                return;
+            }
             if(batch.Count < PageSize)
             {
                 _canLoadMore = false;
@@ -156,5 +178,21 @@ else
         _skip = 0; _canLoadMore = true; _observerAttached = false;
         await LoadAsync();
         StateHasChanged();
+    }
+
+    private async Task ClassifyAsync()
+    {
+        _cancelLoading = true;
+        Clear();        
+        var response = await Http.PostAsync($"api/statement-drafts/classify", null);
+        if (response.IsSuccessStatusCode)
+        {
+            var msg = await response.Content.ReadAsStringAsync();
+            if (!string.IsNullOrWhiteSpace(msg))
+            {
+                await JS.InvokeVoidAsync("alert", msg);
+            }
+        }
+        await Reload();
     }
 }

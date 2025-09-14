@@ -18,7 +18,7 @@ public interface IStatementDraftService
     Task<StatementDraftDto?> AddEntryAsync(Guid draftId, Guid ownerUserId, DateTime bookingDate, decimal amount, string subject, CancellationToken ct);
     Task<CommitResult?> CommitAsync(Guid draftId, Guid ownerUserId, Guid accountId, ImportFormat format, CancellationToken ct);
     Task<bool> CancelAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
-    Task<StatementDraftDto?> ClassifyAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct);
+    Task<StatementDraftDto?> ClassifyAsync(Guid? draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftDto?> SetAccountAsync(Guid draftId, Guid ownerUserId, Guid accountId, CancellationToken ct);
     Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct);
     Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct);
@@ -86,6 +86,7 @@ public sealed record StatementDraftEntryDto(
 public sealed record StatementDraftDto(
     Guid DraftId,
     string OriginalFileName,
+    string? Description,
     Guid? DetectedAccountId,
     StatementDraftStatus Status,
     decimal TotalAmount,

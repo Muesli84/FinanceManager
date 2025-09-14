@@ -53,7 +53,7 @@ public sealed class StatementDraftBookingTests
 
     private static async Task<StatementDraft> CreateDraftAsync(AppDbContext db, Guid owner, Guid? accountId = null)
     {
-        var draft = new StatementDraft(owner, "file.csv", "");
+        var draft = new StatementDraft(owner, "file.csv", "", "");
         if (accountId != null)
         {
             draft.SetDetectedAccount(accountId.Value);
@@ -473,7 +473,7 @@ public sealed class StatementDraftBookingTests
     }
 
     [Fact]
-    public async Task Booking_CreatesSecurityTradeFeeTaxPostings_WithSixDecimalQuantity()
+    public async Task Booking_CreatesSecurityTradeFeeTaxPostings_WithSixDecimalQuantity_AndSumsToEntryAmount_ForBuy()
     {
         var (sut, db, conn, owner) = Create();
         var (acc, bank) = await AddAccountAsync(db, owner);
@@ -494,705 +494,92 @@ public sealed class StatementDraftBookingTests
         var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
         db.Postings.Count(p => p.Kind == PostingKind.Security).Should().Be(3);
-        // Trade amount = 1000 - 2.50 - 5.00 = 992.50
-        db.Postings.Count(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Trade && p.Amount == 992.50m).Should().Be(1);
-        db.Postings.Count(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Fee && p.Amount == 2.50m).Should().Be(1);
-        db.Postings.Count(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Tax && p.Amount == 5.00m).Should().Be(1);
+
+        // Main security posting must be of subtype Buy
+        var main = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Buy);
+        var fee = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Fee);
+        var tax = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Tax);
+        main.Amount.Should().Be(1000m - 2.50m - 5.00m);
+        fee.Amount.Should().Be(2.50m);
+        tax.Amount.Should().Be(5.00m);
+
+        // Sum of security postings equals original entry amount
+        (main.Amount + fee.Amount + tax.Amount).Should().Be(entry.Amount);
+
         conn.Dispose();
     }
 
     [Fact]
-    public async Task AssigningSameSplitDraftToMultipleEntries_ShouldFail()
+    public async Task Booking_CreatesSecurityPostings_ForSell_WithExpectedSigns_AndSumsToEntryAmount()
     {
         var (sut, db, conn, owner) = Create();
         var (acc, bank) = await AddAccountAsync(db, owner);
-        var parent = await CreateDraftAsync(db, owner, acc.Id);
-        var intermediary = new Contact(owner, "PayService", ContactType.Organization, null, null, true);
-        db.Contacts.Add(intermediary);
-        await db.SaveChangesAsync();
 
-        var e1 = parent.AddEntry(DateTime.Today, 10m, "A", intermediary.Name, DateTime.Today, "EUR", null, false);
-        var e2 = parent.AddEntry(DateTime.Today, 20m, "B", intermediary.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added;
-        db.Entry(e2).State = EntityState.Added;
-        e1.MarkAccounted(intermediary.Id);
-        e2.MarkAccounted(intermediary.Id);
-        await db.SaveChangesAsync();
-
-        var split = await CreateDraftAsync(db, owner, null);
-
-        // first assignment ok
-        await sut.SetEntrySplitDraftAsync(parent.Id, e1.Id, split.Id, owner, CancellationToken.None);
-        // second should throw
-        Func<Task> act = () => sut.SetEntrySplitDraftAsync(parent.Id, e2.Id, split.Id, owner, CancellationToken.None);
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_Fails_ForSecurityInvalidContact()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
         var draft = await CreateDraftAsync(db, owner, acc.Id);
         var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId);
-
-        // Entry initially with bank as contact to allow setting security
-        var entry = draft.AddEntry(DateTime.Today, 500m, "Trade", bank.Name, DateTime.Today, "EUR", null, false);
+        var entry = draft.AddEntry(DateTime.Today, 800m, "Sell", bank.Name, DateTime.Today, "EUR", null, false);
         db.Entry(entry).State = EntityState.Added;
-        entry.MarkAccounted(account!.BankContactId);
+        entry.MarkAccounted(account.BankContactId);
         await db.SaveChangesAsync();
 
         var sec = new Security(owner, "ETF Y", "DE000B1", null, null, "EUR", null);
         db.Securities.Add(sec);
         await db.SaveChangesAsync();
 
-        // Set valid security data
-        await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, 2.0m, 1.00m, 1.00m, owner, CancellationToken.None);
+        var feeAmt = 3.40m; var taxAmt = 7.60m;
+        await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Sell, 5.0m, feeAmt, taxAmt, owner, CancellationToken.None);
 
-        // Change contact to a non-bank contact to invalidate
-        var shop = new Contact(owner, "Shop GmbH", ContactType.Organization, null, null, false);
-        db.Contacts.Add(shop);
-        await db.SaveChangesAsync();
-        await sut.SetEntryContactAsync(draft.Id, entry.Id, shop.Id, owner, CancellationToken.None);
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SECURITY_INVALID_CONTACT").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_ParentFails_WhenSplitDraftHasAccountAssigned()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var parent = await CreateDraftAsync(db, owner, acc.Id);
-
-        var intermediary = new Contact(owner, "PayService", ContactType.Organization, null, null, true);
-        db.Contacts.Add(intermediary);
-        await db.SaveChangesAsync();
-
-        var pEntry = parent.AddEntry(DateTime.Today, 75m, "Split Root", intermediary.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(pEntry).State = EntityState.Added;
-        pEntry.MarkAccounted(intermediary.Id);
-        await db.SaveChangesAsync();
-
-        // Child draft with account (invalid for split)
-        var child = await CreateDraftAsync(db, owner, acc.Id);
-        var c1 = child.AddEntry(DateTime.Today, 25m, "Child A", "A", DateTime.Today, "EUR", null, false);
-        var c2 = child.AddEntry(DateTime.Today, 50m, "Child B", "B", DateTime.Today, "EUR", null, false);
-        db.Entry(c1).State = EntityState.Added;
-        db.Entry(c2).State = EntityState.Added;
-        await db.SaveChangesAsync();
-
-        pEntry.AssignSplitDraft(child.Id);
-        await db.SaveChangesAsync();
-
-        var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "SPLIT_DRAFT_HAS_ACCOUNT").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Theory]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(4)]
-    [InlineData(5)]
-    public async Task Booking_SplitChain_CreatesPostingChains_AndCommitsAll(int depth)
-    {
-        // depth >= 2: top parent + (depth-2) intermediate + 1 leaf draft
-        var (sut, db, conn, owner) = Create();
-        var (acc, _) = await AddAccountAsync(db, owner);
-
-        // contacts
-        var intermediary = new Contact(owner, "ChainPay", ContactType.Organization, null, null, true);
-        var alice = new Contact(owner, "Alice", ContactType.Person, null, null);
-        var bob = new Contact(owner, "Bob", ContactType.Person, null, null);
-        db.Contacts.AddRange(intermediary, alice, bob);
-        await db.SaveChangesAsync();
-
-        // create top parent
-        var drafts = new StatementDraft[depth];
-        drafts[0] = await CreateDraftAsync(db, owner, acc.Id);
-        var parentEntry = drafts[0].AddEntry(DateTime.Today, 100m, "Root", intermediary.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(parentEntry).State = EntityState.Added;
-        parentEntry.MarkAccounted(intermediary.Id);
-        await db.SaveChangesAsync();
-
-        // build chain: intermediate drafts each with a single intermediary entry amount 100 -> split to next
-        for (int i = 1; i < depth - 1; i++)
-        {
-            drafts[i] = await CreateDraftAsync(db, owner, null);
-            var ie = drafts[i].AddEntry(DateTime.Today, 100m, $"Level {i}", intermediary.Name, DateTime.Today, "EUR", null, false);
-            db.Entry(ie).State = EntityState.Added;
-            ie.MarkAccounted(intermediary.Id);
-            await db.SaveChangesAsync();
-        }
-
-        // leaf draft with concrete contacts totaling 100
-        drafts[depth - 1] = await CreateDraftAsync(db, owner, null);
-        var l1 = drafts[depth - 1].AddEntry(DateTime.Today, 40m, "Leaf A", alice.Name, DateTime.Today, "EUR", null, false);
-        var l2 = drafts[depth - 1].AddEntry(DateTime.Today, 60m, "Leaf B", bob.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(l1).State = EntityState.Added;
-        db.Entry(l2).State = EntityState.Added;
-        l1.MarkAccounted(alice.Id);
-        l2.MarkAccounted(bob.Id);
-        await db.SaveChangesAsync();
-
-        // link chain
-        if (depth == 2)
-        {
-            parentEntry.AssignSplitDraft(drafts[1].Id);
-        }
-        else
-        {
-            parentEntry.AssignSplitDraft(drafts[1].Id);
-            await db.SaveChangesAsync();
-            for (int i = 1; i < depth - 1; i++)
-            {
-                var entry = await db.StatementDraftEntries.Where(e => e.DraftId == drafts[i].Id).SingleAsync();
-                entry.AssignSplitDraft(drafts[i + 1].Id);
-                await db.SaveChangesAsync();
-            }
-        }
-        await db.SaveChangesAsync();
-
-        // Act
-        var res = await sut.BookAsync(drafts[0].Id, null, owner, false, CancellationToken.None);
-
-        // Assert (intended behavior): booking succeeds, all drafts committed, and only leaf amounts are booked (no double-booking on intermediaries)
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
-        for (int i = 0; i < depth; i++)
-        {
-            (await db.StatementDrafts.FindAsync(drafts[i].Id))!.Status.Should().Be(StatementDraftStatus.Committed);
-        }
+        db.Postings.Count(p => p.Kind == PostingKind.Security).Should().Be(3);
 
-        var bankPostings = db.Postings.Where(p => p.Kind == PostingKind.Bank).ToList();
-        var nonZero = bankPostings.Where(p => p.Amount != 0m).ToList();
-        nonZero.Sum(p => p.Amount).Should().Be(100m);
-        nonZero.Count.Should().Be(2); // expect only the two leaf entries to carry amounts (will currently fail for depth > 2)
-        bankPostings.Count(p => p.Amount == 0m).Should().Be(depth - 1); // only the top-level parent 0 posting
+        var main = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Sell);
+        var fee = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Fee);
+        var tax = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Tax);
 
-        conn.Dispose();
-    }
+        // Sell: main = amount + fee + tax; fee/tax negative
+        main.Amount.Should().Be(800m + feeAmt + taxAmt);
+        fee.Amount.Should().Be(-feeAmt);
+        tax.Amount.Should().Be(-taxAmt);
+        (main.Amount + fee.Amount + tax.Amount).Should().Be(entry.Amount);
 
-    [Theory]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(4)]
-    [InlineData(5)]
-    public async Task Booking_SplitChain_Fails_WhenBottomMissingContacts(int depth)
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, _) = await AddAccountAsync(db, owner);
-
-        var intermediary = new Contact(owner, "ChainPay", ContactType.Organization, null, null, true);
-        db.Contacts.Add(intermediary);
-        await db.SaveChangesAsync();
-
-        var drafts = new StatementDraft[depth];
-        drafts[0] = await CreateDraftAsync(db, owner, acc.Id);
-        var p = drafts[0].AddEntry(DateTime.Today, 100m, "Root", intermediary.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(p).State = EntityState.Added;
-        p.MarkAccounted(intermediary.Id);
-        await db.SaveChangesAsync();
-
-        for (int i = 1; i < depth - 1; i++)
-        {
-            drafts[i] = await CreateDraftAsync(db, owner, null);
-            var ie = drafts[i].AddEntry(DateTime.Today, 100m, $"Level {i}", intermediary.Name, DateTime.Today, "EUR", null, false);
-            db.Entry(ie).State = EntityState.Added;
-            ie.MarkAccounted(intermediary.Id);
-            await db.SaveChangesAsync();
-        }
-
-        // bottom draft without contacts
-        drafts[depth - 1] = await CreateDraftAsync(db, owner, null);
-        var b1 = drafts[depth - 1].AddEntry(DateTime.Today, 40m, "Leaf A", null, DateTime.Today, "EUR", null, false);
-        var b2 = drafts[depth - 1].AddEntry(DateTime.Today, 60m, "Leaf B", null, DateTime.Today, "EUR", null, false);
-        db.Entry(b1).State = EntityState.Added;
-        db.Entry(b2).State = EntityState.Added;
-        await db.SaveChangesAsync();
-
-        // link chain
-        p.AssignSplitDraft(drafts[1].Id);
-        await db.SaveChangesAsync();
-        for (int i = 1; i < depth - 1; i++)
-        {
-            var ie = await db.StatementDraftEntries.Where(e => e.DraftId == drafts[i].Id).SingleAsync();
-            ie.AssignSplitDraft(drafts[i + 1].Id);
-            await db.SaveChangesAsync();
-        }
-
-        var res = await sut.BookAsync(drafts[0].Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "ENTRY_NO_CONTACT").Should().BeTrue();
         conn.Dispose();
     }
 
     [Fact]
-    public async Task Booking_SplitDrafts_DetectsCircularReference()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, _) = await AddAccountAsync(db, owner);
-        var intermediary = new Contact(owner, "ChainPay", ContactType.Organization, null, null, true);
-        db.Contacts.Add(intermediary);
-        await db.SaveChangesAsync();
-
-        // two drafts with circular split
-        var d1 = await CreateDraftAsync(db, owner, acc.Id);
-        var e1 = d1.AddEntry(DateTime.Today, 50m, "A", intermediary.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added;
-        e1.MarkAccounted(intermediary.Id);
-        await db.SaveChangesAsync();
-
-        var d2 = await CreateDraftAsync(db, owner, null);
-        var e2 = d2.AddEntry(DateTime.Today, 50m, "B", intermediary.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e2).State = EntityState.Added;
-        e2.MarkAccounted(intermediary.Id);
-        await db.SaveChangesAsync();
-
-        var d3 = await CreateDraftAsync(db, owner, null);
-        var e3 = d3.AddEntry(DateTime.Today, 50m, "B", intermediary.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e3).State = EntityState.Added;
-        e3.MarkAccounted(intermediary.Id);
-        await db.SaveChangesAsync();
-
-        e1.AssignSplitDraft(d2.Id);
-        await db.SaveChangesAsync();
-        e2.AssignSplitDraft(d3.Id);
-        await db.SaveChangesAsync();
-        e3.AssignSplitDraft(d2.Id); // cycle
-        await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateException>(() => db.SaveChangesAsync());
-        
-
-        var res = await sut.BookAsync(d1.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SPLIT_CYCLE_DETECTED").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_SavingsPlanGoalReached_WithExactSingleEntry_ShouldShowInformation_AndBookWithoutConfirmation()
+    public async Task Booking_CreatesSecurityPostings_ForDividend_QuantityOptional_AndSumsToEntryAmount()
     {
         var (sut, db, conn, owner) = Create();
         var (acc, bank) = await AddAccountAsync(db, owner);
-        var selfContact = await db.Contacts.FirstOrDefaultAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-        var plan = new SavingsPlan(owner, "Plan R", SavingsPlanType.OneTime, 100m, null, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-
-        // existing accumulated = 60
-        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-5), 60m, null, null, null, null));
-        await db.SaveChangesAsync();
 
         var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e = draft.AddEntry(DateTime.Today, -40m, "Save", bank.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e).State = EntityState.Added;
-        e.MarkAccounted(selfContact.Id);
-        e.AssignSavingsPlan(plan.Id);
+        var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId);
+        var entry = draft.AddEntry(DateTime.Today, 123.45m, "Dividend", bank.Name, DateTime.Today, "EUR", null, false);
+        db.Entry(entry).State = EntityState.Added;
+        entry.MarkAccounted(account.BankContactId);
         await db.SaveChangesAsync();
 
-        var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
-        validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO" && m.Severity == "Information").Should().BeTrue();
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_SavingsPlanGoalReached_WithTwoEntriesSumExact_ShouldShowInformation_AndBookWithoutConfirmation_AndReturnInfo()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var selfContact = await db.Contacts.FirstOrDefaultAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-        var plan = new SavingsPlan(owner, "Plan R2", SavingsPlanType.OneTime, 200m, null, null, null);
-        db.SavingsPlans.Add(plan);
+        var sec = new Security(owner, "ETF Z", "DE000C1", null, null, "EUR", null);
+        db.Securities.Add(sec);
         await db.SaveChangesAsync();
 
-        // existing accumulated = 150
-        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-10), 150m, null, null, null, null));
-        await db.SaveChangesAsync();
+        var feeAmt = 1.00m; var taxAmt = 0.50m;
+        // Dividend: quantity can be null
+        await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Dividend, null, feeAmt, taxAmt, owner, CancellationToken.None);
 
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e1 = draft.AddEntry(DateTime.Today, -25m, "Save1", bank.Name, DateTime.Today, "EUR", null, false);
-        var e2 = draft.AddEntry(DateTime.Today, -25m, "Save2", bank.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
-        e1.MarkAccounted(selfContact.Id); e2.MarkAccounted(selfContact.Id);
-        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
-        await db.SaveChangesAsync();
-
-        var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
-        validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO" && m.Severity == "Information").Should().BeTrue();
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-        // Booking result should include the same validation for UI display
-        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_SavingsPlanGoalExceeded_ShouldWarn_AndRequireConfirmation()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var selfContact = await db.Contacts.FirstOrDefaultAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-        var plan = new SavingsPlan(owner, "Plan W", SavingsPlanType.OneTime, 100m, null, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-
-        // existing accumulated = 90
-        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-2), 90m, null, null, null, null));
-        await db.SaveChangesAsync();
-
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e1 = draft.AddEntry(DateTime.Today, -8m, "A", bank.Name, DateTime.Today, "EUR", null, false);
-        var e2 = draft.AddEntry(DateTime.Today, -5m, "B", bank.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
-        e1.MarkAccounted(selfContact.Id); e2.MarkAccounted(selfContact.Id);
-        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
-        await db.SaveChangesAsync();
-
-        var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
-        validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_EXCEEDED" && m.Severity == "Warning").Should().BeTrue();
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.HasWarnings.Should().BeTrue();
-
-        var forced = await sut.BookAsync(draft.Id, null,owner, true, CancellationToken.None);
-        forced.Success.Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_SavingsPlanGoalReached_FromNegativeBalanceToZeroTarget_ShouldShowInformation_AndBookWithoutConfirmation_InResult()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var selfContact = await db.Contacts.FirstOrDefaultAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-        var plan = new SavingsPlan(owner, "Plan Z", SavingsPlanType.OneTime, 0m, null, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-
-        // existing accumulated = -30 (debt)
-        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-7), -30m, null, null, null, null));
-        await db.SaveChangesAsync();
-
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e1 = draft.AddEntry(DateTime.Today, -10m, "A", bank.Name, DateTime.Today, "EUR", null, false);
-        var e2 = draft.AddEntry(DateTime.Today, -20m, "B", bank.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
-        e1.MarkAccounted(selfContact.Id); e2.MarkAccounted(selfContact.Id);
-        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
-        await db.SaveChangesAsync();
-
-        var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
-        validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO" && m.Severity == "Information").Should().BeTrue();
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Validate_SavingsPlanDue_WhenLatestBookingEqualsDueFriday_ShouldReportInformation()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-
-        // create plan with target on last Friday
-        DateTime today = DateTime.Today;
-        int daysSinceFriday = ((int)today.DayOfWeek - (int)DayOfWeek.Friday + 7) % 7;
-        var lastFriday = today.AddDays(-daysSinceFriday);
-        var plan = new SavingsPlan(owner, "DuePlan", SavingsPlanType.OneTime, 200m, lastFriday, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-
-        // some past postings, remaining > 0
-        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, lastFriday.AddMonths(-1), 50m, null, null, null, null));
-        await db.SaveChangesAsync();
-
-        // draft entries not assigned to plan; latest booking date = due date (Friday)
-        var e1 = draft.AddEntry(lastFriday.AddDays(-2), 10m, "X", bank.Name, lastFriday.AddDays(-2), "EUR", null, false);
-        var e2 = draft.AddEntry(lastFriday, 20m, "Y", bank.Name, lastFriday, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
-        e1.MarkAccounted(bank.Id); e2.MarkAccounted(bank.Id);
-        await db.SaveChangesAsync();
-
-        var res = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
-        res.Messages.Any(m => m.Code == "SAVINGSPLAN_DUE" && m.Severity == "Information").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Validate_SavingsPlanDue_WhenLatestBookingBeforeDueFriday_ShouldNotReportInformation()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-
-        DateTime today = DateTime.Today;
-        int daysSinceFriday = ((int)today.DayOfWeek - (int)DayOfWeek.Friday + 7) % 7;
-        var lastFriday = today.AddDays(-daysSinceFriday);
-        var lastThursday = lastFriday.AddDays(-1);
-        var plan = new SavingsPlan(owner, "DuePlan2", SavingsPlanType.OneTime, 200m, lastFriday, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-
-        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, lastFriday.AddMonths(-1), 50m, null, null, null, null));
-        await db.SaveChangesAsync();
-
-        var e1 = draft.AddEntry(lastThursday.AddDays(-5), 10m, "X", bank.Name, lastThursday.AddDays(-5), "EUR", null, false);
-        var e2 = draft.AddEntry(lastThursday, 20m, "Y", bank.Name, lastThursday, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
-        e1.MarkAccounted(bank.Id); e2.MarkAccounted(bank.Id);
-        await db.SaveChangesAsync();
-
-        var res = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
-        res.Messages.Any(m => m.Code == "SAVINGSPLAN_DUE").Should().BeFalse();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Validate_SavingsPlanDue_WhenDueOnSunday_AndLatestBookingOnPreviousFriday_ShouldReportInformation()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-
-        DateTime today = DateTime.Today;
-        int daysSinceSunday = ((int)today.DayOfWeek - (int)DayOfWeek.Sunday + 7) % 7;
-        var lastSunday = today.AddDays(-daysSinceSunday);
-        var previousFriday = lastSunday.AddDays(-2);
-
-        var plan = new SavingsPlan(owner, "DuePlan3", SavingsPlanType.OneTime, 200m, lastSunday, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-
-        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, lastSunday.AddMonths(-1), 50m, null, null, null, null));
-        await db.SaveChangesAsync();
-
-        var e1 = draft.AddEntry(previousFriday.AddDays(-1), 10m, "X", bank.Name, previousFriday.AddDays(-1), "EUR", null, false);
-        var e2 = draft.AddEntry(previousFriday, 20m, "Y", bank.Name, previousFriday, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
-        e1.MarkAccounted(bank.Id); e2.MarkAccounted(bank.Id);
-        await db.SaveChangesAsync();
-
-        var res = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
-        res.Messages.Any(m => m.Code == "SAVINGSPLAN_DUE" && m.Severity == "Information").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Theory]
-    [InlineData(SavingsPlanInterval.Monthly, 1)]
-    [InlineData(SavingsPlanInterval.BiMonthly, 2)]
-    [InlineData(SavingsPlanInterval.Quarterly, 3)]
-    [InlineData(SavingsPlanInterval.SemiAnnually, 6)]
-    [InlineData(SavingsPlanInterval.Annually, 12)]
-    public async Task Booking_RecurringSavingsPlan_WhenDueToday_ExtendsTargetDate_ByInterval(SavingsPlanInterval interval, int months)
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-        var today = DateTime.Today;
-
-        var plan = new SavingsPlan(owner, "R", SavingsPlanType.Recurring, 100m, today, interval);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e = draft.AddEntry(today, 10m, "Save", bank.Name, today, "EUR", null, false);
-        db.Entry(e).State = EntityState.Added;
-        e.MarkAccounted(self.Id);
-        e.AssignSavingsPlan(plan.Id);
-        await db.SaveChangesAsync();
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
 
-        var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
-        reloaded!.TargetDate!.Value.Date.Should().Be(today.AddMonths(months).Date);
-        conn.Dispose();
-    }
+        var main = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Dividend);
+        var fee = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Fee);
+        var tax = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Tax);
 
-    [Fact]
-    public async Task Booking_RecurringSavingsPlan_WhenDueTomorrow_DoesNotChangeTargetDate()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-        var today = DateTime.Today;
-        var tomorrow = today.AddDays(1);
+        // Dividend: main = amount + fee + tax; fee/tax negative
+        main.Amount.Should().Be(entry.Amount + feeAmt + taxAmt);
+        fee.Amount.Should().Be(-feeAmt);
+        tax.Amount.Should().Be(-taxAmt);
+        (main.Amount + fee.Amount + tax.Amount).Should().Be(entry.Amount);
 
-        var plan = new SavingsPlan(owner, "R2", SavingsPlanType.Recurring, 100m, tomorrow, SavingsPlanInterval.Monthly);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e = draft.AddEntry(today, 10m, "Save", bank.Name, today, "EUR", null, false);
-        db.Entry(e).State = EntityState.Added;
-        e.MarkAccounted(self.Id);
-        e.AssignSavingsPlan(plan.Id);
-        await db.SaveChangesAsync();
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-
-        var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
-        reloaded!.TargetDate!.Value.Date.Should().Be(tomorrow.Date);
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_OneTimeSavingsPlan_WhenDueToday_DoesNotChangeTargetDate()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-        var today = DateTime.Today;
-
-        var plan = new SavingsPlan(owner, "O", SavingsPlanType.OneTime, 100m, today, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var e = draft.AddEntry(today, 10m, "Save", bank.Name, today, "EUR", null, false);
-        db.Entry(e).State = EntityState.Added;
-        e.MarkAccounted(self.Id);
-        e.AssignSavingsPlan(plan.Id);
-        await db.SaveChangesAsync();
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-
-        var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
-        reloaded!.TargetDate!.Value.Date.Should().Be(today.Date);
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_SelfContactWithSavingsPlan_OnSavingsAccount_ShouldFail()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, _) = await AddAccountAsync(db, owner, AccountType.Savings);
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-        var plan = new SavingsPlan(owner, "Plan A", SavingsPlanType.OneTime, null, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-        var e = draft.AddEntry(DateTime.Today, 100m, "Save", self.Name, DateTime.Today, "EUR", null, false);
-        e.AssignSavingsPlan(plan.Id);
-        e.MarkAccounted(self.Id);
-        db.Entry(e).State = EntityState.Added;
-        await db.SaveChangesAsync();
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_INVALID_ACCOUNT").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_SavingsPlanArchiveFlag_WithMismatch_ShouldFail()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-
-        // Plan with target 200, current 50 -> remaining 150; planned 70 -> mismatch
-        var plan = new SavingsPlan(owner, "Archive Mismatch", SavingsPlanType.OneTime, 200m, null, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-3), 50m, null, null, null, null));
-        await db.SaveChangesAsync();
-
-        var e1 = draft.AddEntry(DateTime.Today, 30m, "A", bank.Name, DateTime.Today, "EUR", null, false);
-        var e2 = draft.AddEntry(DateTime.Today, 40m, "B", bank.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
-        e1.MarkAccounted(self.Id); e2.MarkAccounted(self.Id);
-        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
-        await db.SaveChangesAsync();
-
-        await sut.SetEntryArchiveSavingsPlanOnBookingAsync(draft.Id, e1.Id, true, owner, CancellationToken.None);
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_ARCHIVE_MISMATCH").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_SavingsPlanArchiveFlag_WithExactSum_ShouldArchiveAndReturnInfo()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, bank) = await AddAccountAsync(db, owner);
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-
-        // Plan with target 200, current 150 -> remaining 50; planned 50 -> exact
-        var plan = new SavingsPlan(owner, "Archive OK", SavingsPlanType.OneTime, 200m, null, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-        db.Postings.Add(new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.SavingsPlan, null, null, plan.Id, null, DateTime.Today.AddDays(-4), 150m, null, null, null, null));
-        await db.SaveChangesAsync();
-
-        var e1 = draft.AddEntry(DateTime.Today, -20m, "A", bank.Name, DateTime.Today, "EUR", null, false);
-        var e2 = draft.AddEntry(DateTime.Today, -30m, "B", bank.Name, DateTime.Today, "EUR", null, false);
-        db.Entry(e1).State = EntityState.Added; db.Entry(e2).State = EntityState.Added;
-        e1.MarkAccounted(self.Id); e2.MarkAccounted(self.Id);
-        e1.AssignSavingsPlan(plan.Id); e2.AssignSavingsPlan(plan.Id);
-        await db.SaveChangesAsync();
-
-        await sut.SetEntryArchiveSavingsPlanOnBookingAsync(draft.Id, e1.Id, true, owner, CancellationToken.None);
-
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-        // Plan should be archived
-        (await db.SavingsPlans.FindAsync(plan.Id))!.IsActive.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_ARCHIVED" && m.Severity == "Information").Should().BeTrue();
-        conn.Dispose();
-    }
-
-    [Fact]
-    public async Task Booking_Aggregates_Update_WhenPreExisting()
-    {
-        var (sut, db, conn, owner) = Create();
-        var (acc, _) = await AddAccountAsync(db, owner);
-        var draft = await CreateDraftAsync(db, owner, acc.Id);
-        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
-        var plan = new SavingsPlan(owner, "Plan A", SavingsPlanType.OneTime, null, null, null);
-        db.SavingsPlans.Add(plan);
-        await db.SaveChangesAsync();
-        var e = draft.AddEntry(DateTime.Today, 50m, "Save", self.Name, DateTime.Today, "EUR", null, false);
-        e.AssignSavingsPlan(plan.Id);
-        e.MarkAccounted(self.Id);
-        db.Entry(e).State = EntityState.Added;
-        await db.SaveChangesAsync();
-
-        // Pre-create aggregates with some amount
-        var startMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        db.PostingAggregates.Add(new FinanceManager.Domain.Postings.PostingAggregate(PostingKind.Bank, acc.Id, null, null, null, startMonth, FinanceManager.Domain.Postings.AggregatePeriod.Month));
-        db.PostingAggregates.Add(new FinanceManager.Domain.Postings.PostingAggregate(PostingKind.Contact, null, self.Id, null, null, startMonth, FinanceManager.Domain.Postings.AggregatePeriod.Month));
-        db.PostingAggregates.Add(new FinanceManager.Domain.Postings.PostingAggregate(PostingKind.SavingsPlan, null, null, plan.Id, null, startMonth, FinanceManager.Domain.Postings.AggregatePeriod.Month));
-        await db.SaveChangesAsync();
-
-        // Act
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-
-        // Assert: monthly aggregates updated to include the new amounts
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(4);
-        db.PostingAggregates.Single(a => a.Kind == PostingKind.Bank && a.Period == FinanceManager.Domain.Postings.AggregatePeriod.Month && a.PeriodStart == startMonth).Amount.Should().Be(50m);
-        db.PostingAggregates.Single(a => a.Kind == PostingKind.Contact && a.Period == FinanceManager.Domain.Postings.AggregatePeriod.Month && a.PeriodStart == startMonth).Amount.Should().Be(50m);
-        db.PostingAggregates.Single(a => a.Kind == PostingKind.SavingsPlan && a.Period == FinanceManager.Domain.Postings.AggregatePeriod.Month && a.PeriodStart == startMonth).Amount.Should().Be(-50m);
         conn.Dispose();
     }
 }

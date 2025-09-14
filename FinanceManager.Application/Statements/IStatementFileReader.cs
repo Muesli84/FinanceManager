@@ -37,6 +37,7 @@ public record StatementHeader()
     public string? AccountHolder { get; set; }
     public DateTime? PeriodStart { get; set; }
     public DateTime? PeriodEnd { get; set; }
+    public string Description { get; set; }
 };
 
 /// <summary>

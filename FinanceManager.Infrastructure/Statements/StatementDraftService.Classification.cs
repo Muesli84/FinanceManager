@@ -156,7 +156,7 @@ public sealed partial class StatementDraftService
             // Automatisierte Wertpapierzuordnung:
             // - Nur wenn bisher kein Wertpapier gesetzt ist
             // - Match anhand Identifier, AlphaVantageCode oder Name, die im Betreff / Beschreibung / Empfänger vorkommen
-            if (entry.SecurityId != null || securities.Count() <= 0)
+            if (securities.Count() <= 0)
             {
                 return;
             }
@@ -188,6 +188,8 @@ public sealed partial class StatementDraftService
                 // Mehrdeutige Zuordnung → Status auf Offen lassen
                 entry.ResetOpen();
             }
+            else
+                entry.SetSecurity(null, null, null, null, null);
         }
     }
 

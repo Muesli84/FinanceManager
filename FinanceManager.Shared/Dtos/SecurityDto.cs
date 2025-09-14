@@ -26,8 +26,9 @@ public enum SecurityTransactionType
 }
 public enum SecurityPostingSubType
 {
-    Trade = 0,
-    Fee = 1,
-    Tax = 2,
-    Dividend = 3
+    Buy = 0,
+    Sell = 1,
+    Dividend = 2,
+    Fee = 3,
+    Tax = 4
 }

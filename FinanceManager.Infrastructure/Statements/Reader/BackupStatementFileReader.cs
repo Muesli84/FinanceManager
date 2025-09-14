@@ -23,7 +23,8 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             _BackupData = JsonSerializer.Deserialize<BackupData>(fileContent);
             _GlobalHeader = new StatementHeader()
             {
-                IBAN = _BackupData.BankAccounts[0].GetProperty("IBAN").GetString() ?? ""
+                IBAN = _BackupData.BankAccounts[0].GetProperty("IBAN").GetString() ?? "",
+                Description = $"Backup eingelesen am {DateTime.Today.ToShortDateString()}"
             };
         }
 

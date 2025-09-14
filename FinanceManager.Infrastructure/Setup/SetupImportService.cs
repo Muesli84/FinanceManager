@@ -83,7 +83,7 @@ public sealed class SetupImportService : ISetupImportService
             BankAccountLedgerEntries = bankAccountLedgerEntries.Select(entry =>
             {
                 if (entry.SourceContact is not null)
-                    entry.SourceContact.UID = contacts.FirstOrDefault(c => c.Key == entry.SourceContact?.Id).Value;
+                    entry.SourceContact.UID = contacts.FirstOrDefault(c => c.Key == entry.SourceContact?.Id).Value;                
                 var stockEntries = stockLedgerEntries.EnumerateArray().Where(e =>
                 {
                     return e.GetProperty("SourceLedgerEntry").GetProperty("Id").GetInt32() == entry.Id;
@@ -96,7 +96,7 @@ public sealed class SetupImportService : ISetupImportService
                         var stockId = stockEntry.GetProperty("Stock").GetProperty("Id").GetInt32();
                         var stockUId = stocks.FirstOrDefault(s => s.Key == stockId).Value;
                         var stock = _db.Securities.AsNoTracking().FirstOrDefault(s => s.Id == stockUId && s.OwnerUserId == userId);
-                        if (stock is not null && !entry.Description.Contains(stock.Identifier, StringComparison.OrdinalIgnoreCase))
+                        if (stock is not null)
                         {
                             entry.Description = $"{entry.Description} [Wertpapier: {stock.Name} ({stock.Identifier})]";
                         }
@@ -114,12 +114,13 @@ public sealed class SetupImportService : ISetupImportService
                     throw new ApplicationException("Darf es nicht geben!?!");
                 if (fixedAssetEntries.FirstOrDefault() is JsonElement fixedAssetEntry)
                 {
-                    if (fixedAssetEntry.ValueKind == JsonValueKind.Object)
+                    var sourceContact = (entry.SourceContact is null) ? null: _db.Contacts.FirstOrDefault(c => c.Id == entry.SourceContact.UID);
+                    if (fixedAssetEntry.ValueKind == JsonValueKind.Object && sourceContact is not null && sourceContact.Type == ContactType.Self)
                     {
                         var savingsPlanId = fixedAssetEntry.GetProperty("FixedAsset").GetProperty("Id").GetInt32();
                         var savingsPlanUId = savingsPlans.FirstOrDefault(s => s.Key == savingsPlanId).Value;
                         var savingsPlan = _db.SavingsPlans.AsNoTracking().FirstOrDefault(s => s.Id == savingsPlanUId && s.OwnerUserId == userId);
-                        if (savingsPlan is not null && !entry.Description.Contains(savingsPlan.Name, StringComparison.OrdinalIgnoreCase))
+                        if (savingsPlan is not null)
                         {
                             entry.Description = $"{entry.Description} [Sparplan: {savingsPlan.Name}]";
                         }

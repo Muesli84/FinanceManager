@@ -13,6 +13,7 @@ public sealed partial class StatementDraftService
         return new StatementDraftDto(
             draft.Id,
             draft.OriginalFileName,
+            draft.Description,
             draft.DetectedAccountId,
             draft.Status,
             total,
@@ -60,6 +61,7 @@ public sealed partial class StatementDraftService
         return new StatementDraftDto(
             draft.Id,
             draft.OriginalFileName,
+            draft.Description,
             draft.DetectedAccountId,
             draft.Status,
             total,

@@ -137,23 +137,27 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
 
         StatementDraft draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
+        var batchCounter = 1;
         foreach (var movement in parsedDraft.Movements)
         {
-            var contact = _db.Contacts.AsNoTracking()
-                .FirstOrDefault(c => c.OwnerUserId == ownerUserId && c.Id == movement.ContactId);
-            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, contact?.Name ?? movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview, false);
             if (draft.Entries.Count == 100)
             {
+                draft.Description += $" ({batchCounter++})";
                 yield return await FinishDraftAsync(draft, ownerUserId, ct);
                 draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
             }
+            var contact = _db.Contacts.AsNoTracking()
+                .FirstOrDefault(c => c.OwnerUserId == ownerUserId && c.Id == movement.ContactId);
+            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, contact?.Name ?? movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview, false);
         }
+        if (batchCounter > 1)
+            draft.Description += $" ({batchCounter++})";
         yield return await FinishDraftAsync(draft, ownerUserId, ct);
     }
 
     private async Task<StatementDraft> CreateDraftHeader(Guid ownerUserId, string originalFileName, byte[] fileBytes, StatementParseResult parsedDraft, CancellationToken ct)
     {
-        var draft = new StatementDraft(ownerUserId, originalFileName, parsedDraft.Header.AccountNumber);
+        var draft = new StatementDraft(ownerUserId, originalFileName, parsedDraft.Header.AccountNumber, parsedDraft.Header.Description);
         draft.SetOriginalFile(fileBytes, null);
 
         if (!string.IsNullOrWhiteSpace(parsedDraft.Header.IBAN))
@@ -204,7 +208,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
         var query = _db.StatementDrafts
             .Include(d => d.Entries)
             .Where(d => d.OwnerUserId == ownerUserId && d.Status == StatementDraftStatus.Draft)
-            .OrderByDescending(d => d.CreatedUtc)
+            .OrderBy(d => d.CreatedUtc)
+            .ThenBy(d => d.Description)
             .ThenBy(d => d.Id)
             .Skip(skip)
             .Take(take)
@@ -339,14 +344,21 @@ public sealed partial class StatementDraftService : IStatementDraftService
         return true;
     }
 
-    public async Task<StatementDraftDto?> ClassifyAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct)
+    public async Task<StatementDraftDto?> ClassifyAsync(Guid? draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
-        var draft = await _db.StatementDrafts
-            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        if (draft == null) { return null; }
-        await ClassifyInternalAsync(draft, entryId, ownerUserId, ct);
-        await _db.SaveChangesAsync(ct);
-        return await GetDraftAsync(draftId, ownerUserId, ct);
+        var drafts = await _db.StatementDrafts
+            .Where(d => d.Status != StatementDraftStatus.Committed)
+            .Where(d => d.OwnerUserId == ownerUserId && (draftId == null || d.Id == draftId))
+            .ToListAsync(ct);
+        if (!drafts.Any()) { return null; }
+        List<StatementDraftDto> resultLust = new List<StatementDraftDto>();
+        foreach (var draft in drafts)
+        {
+            await ClassifyInternalAsync(draft, entryId, ownerUserId, ct);
+            await _db.SaveChangesAsync(ct);
+            resultLust.Add(await GetDraftAsync(draft.Id, ownerUserId, ct));
+        }
+        return resultLust.FirstOrDefault();
     }
 
     public async Task<StatementDraftDto?> SetAccountAsync(Guid draftId, Guid ownerUserId, Guid accountId, CancellationToken ct)
@@ -733,7 +745,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 }
                 else if (remaining > 0m && planned > remaining)
                 {
-                    messages.Add(new("SAVINGSPLAN_GOAL_EXCEEDED", "Warning", $"Die geplanten Buchungen überschreiten das Sparziel des Sparplans '{plan.Name}'.", draft.Id, null));
+                    messages.Add(new("SAVINGSPLAN_GOAL_EXCEEDS", "Warning", $"Die geplanten Buchungen überschreiten das Sparziel des Sparplans '{plan.Name}'.", draft.Id, null));
                 }
 
                 if (wantsArchive)
@@ -906,9 +918,30 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 fee = -fee;
                 tax = -tax;
             }
-            var tradeAmount = e.Amount + fee + tax;
+            var feeTaxFactor = e.SecurityTransactionType switch
+            {
+                SecurityTransactionType.Buy => 1,
+                SecurityTransactionType.Sell => -1,
+                SecurityTransactionType.Dividend => -1,
+                _ => -1
+            };
+            var tradeAmount = e.SecurityTransactionType switch
+            {
+                SecurityTransactionType.Buy => e.Amount - fee - tax,
+                SecurityTransactionType.Sell => e.Amount + fee + tax,
+                SecurityTransactionType.Dividend => e.Amount + fee + tax,
+                _ => e.Amount + fee + tax
+            };
 
-            var trade = new Domain.Postings.Posting(
+            var tradeSubType = e.SecurityTransactionType switch
+            {
+                SecurityTransactionType.Buy => SecurityPostingSubType.Buy,
+                SecurityTransactionType.Sell => SecurityPostingSubType.Sell,
+                SecurityTransactionType.Dividend => SecurityPostingSubType.Dividend,
+                _ => SecurityPostingSubType.Buy
+            };
+
+            var main = new Domain.Postings.Posting(
                 e.Id,
                 PostingKind.Security,
                 null,
@@ -920,9 +953,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 e.Subject,
                 e.RecipientName,
                 e.BookingDescription,
-                SecurityPostingSubType.Trade).SetGroup(groupId);
-            _db.Postings.Add(trade);
-            await UpsertAggregatesAsync(trade, token);
+                tradeSubType).SetGroup(groupId);
+            _db.Postings.Add(main);
+            await UpsertAggregatesAsync(main, token);
 
             if (fee != 0m)
             {
@@ -934,7 +967,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     null,
                     e.SecurityId,
                     e.BookingDate,
-                    -fee,
+                    feeTaxFactor * fee,
                     e.Subject,
                     e.RecipientName,
                     e.BookingDescription,
@@ -952,7 +985,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     null,
                     e.SecurityId,
                     e.BookingDate,
-                    -tax,
+                    feeTaxFactor * tax,
                     e.Subject,
                     e.RecipientName,
                     e.BookingDescription,

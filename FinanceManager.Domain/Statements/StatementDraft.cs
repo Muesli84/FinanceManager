@@ -15,16 +15,18 @@ public sealed class StatementDraft : Entity, IAggregateRoot
 {
     private readonly List<StatementDraftEntry> _entries = new();
     private StatementDraft() { }
-    public StatementDraft(Guid ownerUserId, string originalFileName, string? accountNumber)
+    public StatementDraft(Guid ownerUserId, string originalFileName, string? accountNumber, string? description)
     {
         OwnerUserId = Guards.NotEmpty(ownerUserId, nameof(ownerUserId));
         OriginalFileName = Guards.NotNullOrWhiteSpace(originalFileName, nameof(originalFileName));
         AccountName = accountNumber;
         Status = StatementDraftStatus.Draft;
+        Description = description ?? Path.GetFileNameWithoutExtension(originalFileName);
     }
     public Guid OwnerUserId { get; private set; }
     public string OriginalFileName { get; private set; } = null!;
     public string? AccountName { get; set; }
+    public string? Description { get; set; }
     public Guid? DetectedAccountId { get; private set; }
     public StatementDraftStatus Status { get; private set; }
     public ICollection<StatementDraftEntry> Entries => _entries;
