@@ -64,6 +64,51 @@ public sealed class StatementDraftBookingTests
     }
 
     [Fact]
+    public async Task Booking_SingleEntry_ShouldNotCommitWholeDraft_AndRemoveOnlyThatEntry()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, _) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+
+        // normal recipient contact (no intermediary, no self)
+        var shop = new Contact(owner, "Shop GmbH", ContactType.Organization, null, null, false);
+        db.Contacts.Add(shop);
+        await db.SaveChangesAsync();
+
+        // two entries
+        var e1 = draft.AddEntry(DateTime.Today, 10m, "A", shop.Name, DateTime.Today, "EUR", null, false);
+        var e2 = draft.AddEntry(DateTime.Today, 20m, "B", shop.Name, DateTime.Today, "EUR", null, false);
+        db.Entry(e1).State = EntityState.Added;
+        db.Entry(e2).State = EntityState.Added;
+        e1.MarkAccounted(shop.Id); e2.MarkAccounted(shop.Id);
+        await db.SaveChangesAsync();
+
+        // IMPORTANT: simulate production by using a fresh DbContext (new scope)
+        var freshOptions = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options;
+        using var freshDb = new AppDbContext(freshOptions);
+        var freshSut = new StatementDraftService(freshDb);
+
+        // Act: book only first entry on fresh context
+        var res = await freshSut.BookAsync(draft.Id, e1.Id, owner, false, CancellationToken.None);
+
+        // Assert
+        res.Success.Should().BeTrue();
+
+        // Reload draft and verify status and remaining entries using fresh context
+        var reloaded = await freshDb.StatementDrafts.Include(d => d.Entries).FirstAsync(d => d.Id == draft.Id);
+        reloaded.Status.Should().Be(StatementDraftStatus.Draft); // not committed because one entry remains
+        reloaded.Entries.Should().HaveCount(1);
+        reloaded.Entries.Single().Subject.Should().Be("B");
+
+        // Exactly two postings (bank + contact) for the booked entry
+        freshDb.Postings.Count().Should().Be(2);
+        freshDb.Postings.Count(p => p.Kind == PostingKind.Bank).Should().Be(1);
+        freshDb.Postings.Count(p => p.Kind == PostingKind.Contact).Should().Be(1);
+
+        conn.Dispose();
+    }
+
+    [Fact]
     public async Task Booking_ShouldFail_WhenNoAccountAssigned()
     {
         var (sut, db, conn, owner) = Create();

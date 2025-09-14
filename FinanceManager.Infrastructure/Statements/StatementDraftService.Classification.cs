@@ -1,4 +1,4 @@
-using FinanceManager.Domain.Contacts;
+﻿using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Shared.Dtos;
@@ -14,10 +14,10 @@ public sealed partial class StatementDraftService
     {
         if (string.IsNullOrEmpty(text)) { return string.Empty; }
         return text
-            .Replace("�", "ae", StringComparison.OrdinalIgnoreCase)
-            .Replace("�", "oe", StringComparison.OrdinalIgnoreCase)
-            .Replace("�", "ue", StringComparison.OrdinalIgnoreCase)
-            .Replace("�", "ss", StringComparison.OrdinalIgnoreCase);
+            .Replace("ä", "ae", StringComparison.OrdinalIgnoreCase)
+            .Replace("ö", "oe", StringComparison.OrdinalIgnoreCase)
+            .Replace("ü", "ue", StringComparison.OrdinalIgnoreCase)
+            .Replace("ß", "ss", StringComparison.OrdinalIgnoreCase);
     }
 
     public void TryAutoAssignSavingsPlan(StatementDraftEntry entry, IEnumerable<SavingsPlan> userPlans, Contact selfContact)
@@ -75,7 +75,6 @@ public sealed partial class StatementDraftService
         }
         await _db.SaveChangesAsync(ct);
     }
-
     private async Task ClassifyInternalAsync(StatementDraft draft, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
         await ClassifyHeader(draft, ownerUserId, ct);
@@ -92,6 +91,12 @@ public sealed partial class StatementDraftService
             .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.Pattern).ToList(), ct);
         var savingPlans = await _db.SavingsPlans.AsNoTracking()
             .Where(sp => sp.OwnerUserId == ownerUserId && sp.IsActive)
+            .ToListAsync(ct);
+
+        // Securities für Auto-Matching laden (nur aktive)
+        var securities = await _db.Securities.AsNoTracking()
+            .Where(s => s.OwnerUserId == ownerUserId && s.IsActive)
+            .OrderBy(s => s.Name)
             .ToListAsync(ct);
 
         List<(DateTime BookingDate, decimal Amount, string Subject)> existing = new();
@@ -136,6 +141,53 @@ public sealed partial class StatementDraftService
 
             TryAutoAssignContact(contacts, aliasLookup, bankContactId, selfContact, entry);
             TryAutoAssignSavingsPlan(entry, savingPlans, selfContact);
+            TryAutoAssignSecurity(securities, entry);
+        }
+
+        static void TryAutoAssignSecurity(IEnumerable<Domain.Securities.Security> securities, StatementDraftEntry entry)
+        {
+            // Helper zur Normalisierung (nur A-Z/0-9, Großschreibung, Umlaute vereinheitlichen)
+            static string NormalizeForSecurityMatch(string? s)
+            {
+                var baseText = NormalizeUmlauts(s ?? string.Empty).ToUpperInvariant();
+                return Regex.Replace(baseText, "[^A-Z0-9]", string.Empty, RegexOptions.CultureInvariant | RegexOptions.Compiled);
+            }
+
+            // Automatisierte Wertpapierzuordnung:
+            // - Nur wenn bisher kein Wertpapier gesetzt ist
+            // - Match anhand Identifier, AlphaVantageCode oder Name, die im Betreff / Beschreibung / Empfänger vorkommen
+            if (entry.SecurityId != null || securities.Count() <= 0)
+            {
+                return;
+            }
+            var rawText = $"{entry.Subject} {entry.BookingDescription} {entry.RecipientName}";
+            var haystack = NormalizeForSecurityMatch(rawText);
+
+            bool Matches(string? probe)
+            {
+                var p = NormalizeForSecurityMatch(probe);
+                if (string.IsNullOrEmpty(p)) { return false; }
+                return haystack.Contains(p, StringComparison.Ordinal);
+            }
+
+            var matched = securities
+                .Where(s =>
+                    Matches(s.Identifier) ||
+                    Matches(s.AlphaVantageCode) ||
+                    Matches(s.Name))
+                .ToList();
+
+            if (matched.Count == 1)
+            {
+                entry.SetSecurity(matched[0].Id, null, null, null, null);
+            }
+            else if (matched.Count > 1)
+            {
+                var first = matched.First();
+                entry.SetSecurity(first.Id, null, null, null, null);
+                // Mehrdeutige Zuordnung → Status auf Offen lassen
+                entry.ResetOpen();
+            }
         }
     }
 

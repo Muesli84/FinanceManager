@@ -489,6 +489,8 @@ else
                 : string.Empty;
             _archiveSavingsPlanOnBooking = _vm.Entry.ArchiveSavingsPlanOnBooking;
         }
+        else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+            _vm = null;
     }
 
     private async Task LoadContactsAsync()

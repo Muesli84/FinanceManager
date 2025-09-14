@@ -275,6 +275,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
     public async Task<StatementDraftEntryDto?> GetDraftEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
         var draftEntry = await _db.StatementDraftEntries.FirstOrDefaultAsync(e => e.DraftId == draftId && e.Id == entryId, ct);
+        if (draftEntry is null)
+            return null;
         return Map(draftEntry);
     }
 
@@ -283,8 +285,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         if (draft == null || draft.Status != StatementDraftStatus.Draft) { return null; }
-        _db.Entry(draft.AddEntry(bookingDate, amount, subject)).State = EntityState.Added;
-        await ClassifyInternalAsync(draft, null, ownerUserId, ct);
+        var entry = _db.Entry(draft.AddEntry(bookingDate, amount, subject));
+        entry.State = EntityState.Added;
+        await _db.SaveChangesAsync(ct);
+        await ClassifyInternalAsync(draft, entry.Entity.Id, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
         if (await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == draft.Id, ct))
         {
@@ -895,9 +899,14 @@ public sealed partial class StatementDraftService : IStatementDraftService
         async Task CreateSecurityPostingsAsync(StatementDraftEntry e, Guid groupId, CancellationToken token)
         {
             if (e.SecurityId == null) { return; }
-            var fee = e.SecurityFeeAmount ?? 0m;
-            var tax = e.SecurityTaxAmount ?? 0m;
-            var tradeAmount = e.Amount - fee - tax;
+            var fee = Math.Abs(e.SecurityFeeAmount ?? 0m);
+            var tax = Math.Abs(e.SecurityTaxAmount ?? 0m);
+            if (e.Amount < 0)
+            {
+                fee = -fee;
+                tax = -tax;
+            }
+            var tradeAmount = e.Amount + fee + tax;
 
             var trade = new Domain.Postings.Posting(
                 e.Id,
@@ -925,7 +934,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     null,
                     e.SecurityId,
                     e.BookingDate,
-                    fee,
+                    -fee,
                     e.Subject,
                     e.RecipientName,
                     e.BookingDescription,
@@ -943,7 +952,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     null,
                     e.SecurityId,
                     e.BookingDate,
-                    tax,
+                    -tax,
                     e.Subject,
                     e.RecipientName,
                     e.BookingDescription,
@@ -1065,10 +1074,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
             {
                 _db.StatementDraftEntries.Remove(e);
             }
+            await _db.SaveChangesAsync(ct);
 
-            // If draft now empty → mark committed
-            var remainingCount = draft.Entries.Count - toBook.Count;
-            if (remainingCount <= 0)
+            if (!_db.StatementDraftEntries.Where(e => e.DraftId == draft.Id).Any())
             {
                 draft.MarkCommitted();
             }
