@@ -5,6 +5,7 @@ using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
+using FinanceManager.Web.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -53,8 +54,16 @@ public sealed class StatementDraftsControllerTests
         db = sp.GetRequiredService<AppDbContext>();
         var draftService = new StatementDraftService(db);        
         var logger = sp.GetRequiredService<ILogger<StatementDraftsController>>();
-        var controller = new StatementDraftsController(draftService, current, logger);        
+        var classification = new DummyClassificationCoordinator();
+        var controller = new StatementDraftsController(draftService, current, logger, classification);        
         return (controller, db, current.UserId);
+    }
+
+    private sealed class DummyClassificationCoordinator : IClassificationCoordinator
+    {
+        public Task<ClassificationStatus> ProcessAsync(Guid userId, TimeSpan maxDuration, System.Threading.CancellationToken ct)
+            => Task.FromResult(new ClassificationStatus(false, 0, 0, null));
+        public ClassificationStatus? GetStatus(Guid userId) => new ClassificationStatus(false, 0, 0, null);
     }
 
     private sealed class TestCurrentUserService : FinanceManager.Application.ICurrentUserService

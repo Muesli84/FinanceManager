@@ -57,7 +57,7 @@ public sealed class StatementDraftClassificationTests
     private static async Task<StatementDraft> CreateStatementDraftAsync(AppDbContext db, Account account, Action<StatementDraft> callback)
     {
         var owner = db.Users.First().Id;
-        var draft = new StatementDraft(owner, "file.csv", account.Iban);
+        var draft = new StatementDraft(owner, "file.csv", account.Iban, null);
         callback(draft);
         db.StatementDrafts.Add(draft);
         await db.SaveChangesAsync();

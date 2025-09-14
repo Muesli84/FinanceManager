@@ -11,8 +11,15 @@
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
     <button @onclick="ClassifyAsync" class="icon-btn" title="Reclassify" aria-label="Reclassify">
         <svg><use href="/icons/sprite.svg#refresh" /></svg>
-    </button>
+    </button>    
 </div>
+
+@if (_isClassifying)
+{
+    <div class="alert alert-success" style="margin-top:1rem;">
+        <span style="margin-left:.4rem;">@_classifyMessage (@_processed/@_total)</span>
+    </div>
+}
 
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
     <div class="icon-btn" title="@Localizer["Nav_StatementDrafts_Import"]" aria-label="@Localizer["Nav_StatementDrafts_Import"]" style="padding:.3rem .6rem;">
@@ -72,6 +79,12 @@ else
     private DotNetObjectReference<StatementDrafts>? _selfRef;
     private bool _observerAttached;
 
+    private bool _isClassifying;
+    private int _processed;
+    private int _total;
+    private string? _classifyMessage;
+    private CancellationTokenSource? _classifyCts;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_observerAttached || _drafts == null || !_canLoadMore)
@@ -113,6 +126,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         await Reload();
+        await RefreshClassifyStatusAsync();
     }
     private void Clear()
     {
@@ -182,17 +196,70 @@ else
 
     private async Task ClassifyAsync()
     {
-        _cancelLoading = true;
-        Clear();        
-        var response = await Http.PostAsync($"api/statement-drafts/classify", null);
-        if (response.IsSuccessStatusCode)
+        _classifyCts ??= new CancellationTokenSource();
+        try
         {
-            var msg = await response.Content.ReadAsStringAsync();
-            if (!string.IsNullOrWhiteSpace(msg))
+            var resp = await Http.PostAsync("api/statement-drafts/classify", null, _classifyCts.Token);
+            if (resp.StatusCode == System.Net.HttpStatusCode.Accepted)
             {
-                await JS.InvokeVoidAsync("alert", msg);
+                _isClassifying = true;
+                var payload = await resp.Content.ReadFromJsonAsync<TempStatus>(_classifyCts.Token);
+                UpdateClassifyUi(payload);
+                _ = PollUntilFinishedAsync();
+            }
+            else if (resp.IsSuccessStatusCode)
+            {
+                _isClassifying = false;
+                _classifyMessage = null;
+                await Reload();
+            }
+            else
+            {
+                var msg = await resp.Content.ReadAsStringAsync(_classifyCts.Token);
+                _classifyMessage = msg;
             }
         }
-        await Reload();
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task PollUntilFinishedAsync()
+    {
+        while (_isClassifying)
+        {
+            await Task.Delay(1000);
+            await RefreshClassifyStatusAsync();
+        }
+    }
+
+    private async Task RefreshClassifyStatusAsync()
+    {
+        var s = await Http.GetFromJsonAsync<TempStatus>("api/statement-drafts/classify/status");
+        if (s != null)
+        {
+            UpdateClassifyUi(s);
+            if (!s.running)
+            {
+                await Reload();
+            }
+        }
+    }
+
+    private void UpdateClassifyUi(TempStatus s)
+    {
+        _isClassifying = s.running;
+        _processed = s.processed;
+        _total = s.total;
+        _classifyMessage = s.message ?? (_isClassifying ? "Working..." : null);
+        StateHasChanged();
+    }
+
+    private sealed class TempStatus
+    {
+        public bool running { get; set; }
+        public int processed { get; set; }
+        public int total { get; set; }
+        public string? message { get; set; }
     }
 }

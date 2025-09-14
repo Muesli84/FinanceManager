@@ -230,6 +230,15 @@ public sealed partial class StatementDraftService : IStatementDraftService
         return drafts.Select(d => Map(d, bySplitId)).ToList();
     }
 
+    public Task<int> GetOpenDraftsCountAsync(Guid userId, CancellationToken token)
+    {
+       return _db.StatementDrafts
+            .Include(d => d.Entries)
+            .Where(d => d.OwnerUserId == userId && d.Status == StatementDraftStatus.Draft)            
+            .AsNoTracking()
+            .CountAsync();
+    }
+
     public async Task<StatementDraftDto?> GetDraftAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts

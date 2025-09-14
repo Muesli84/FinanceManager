@@ -14,6 +14,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Net.Mime;
 using FinanceManager.Domain.Securities;
+using FinanceManager.Web.Services;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -26,8 +27,9 @@ public sealed class StatementDraftsController : ControllerBase
     private readonly IStatementDraftService _drafts;
     private readonly ICurrentUserService _current;
     private readonly ILogger<StatementDraftsController> _logger;
-    public StatementDraftsController(IStatementDraftService drafts, ICurrentUserService current, ILogger<StatementDraftsController> logger)
-    { _drafts = drafts; _current = current; _logger = logger; }
+    private readonly IClassificationCoordinator _classification;
+    public StatementDraftsController(IStatementDraftService drafts, ICurrentUserService current, ILogger<StatementDraftsController> logger, IClassificationCoordinator classification)
+    { _drafts = drafts; _current = current; _logger = logger; _classification = classification; }
 
     public sealed record UploadRequest([Required] string FileName);
 
@@ -52,6 +54,36 @@ public sealed class StatementDraftsController : ControllerBase
             firstDraft = firstDraft ?? draft;
         }
         return Ok(firstDraft);
+    }
+
+    [HttpGet("classify/status")]
+    public IActionResult GetClassifyStatus()
+    {
+        var s = _classification.GetStatus(_current.UserId);
+        if (s == null) { return Ok(new { running = false, processed = 0, total = 0, message = (string?)null }); }
+        return Ok(new { running = s.Running, processed = s.Processed, total = s.Total, message = s.Message });
+    }
+
+    [HttpPost("classify")] // trigger or continue
+    public async Task<IActionResult> ClassifyAllAsync(CancellationToken ct)
+    {
+        try
+        {
+            // allow up to 2 seconds per request before returning a "still working" message
+            var status = await _classification.ProcessAsync(_current.UserId, TimeSpan.FromSeconds(2), ct);
+            if (status.Running)
+            {
+                return Accepted(new { running = true, message = status.Message, processed = status.Processed, total = status.Total });
+            }
+            // finished -> return latest drafts snapshot
+            var drafts = await _drafts.GetOpenDraftsAsync(_current.UserId, 0, 3, ct);
+            return Ok(new { running = false, processed = status.Processed, total = status.Total, drafts });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ClassifyAll failed");
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpGet("{draftId:guid}")]
@@ -124,20 +156,6 @@ public sealed class StatementDraftsController : ControllerBase
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         var draft = await _drafts.AddEntryAsync(draftId, _current.UserId, req.BookingDate, req.Amount, req.Subject, ct);
         return draft is null ? NotFound() : Ok(draft);
-    }
-
-    [HttpPost("classify")]
-    public async Task<IActionResult> ClassifyAllAsync(CancellationToken ct)
-    {
-        try
-        {
-            var draft = await _drafts.ClassifyAsync(null, null, _current.UserId, ct);
-            return draft is null ? NotFound() : Ok(draft);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(ex);
-        }
     }
 
     [HttpPost("{draftId:guid}/classify")]
