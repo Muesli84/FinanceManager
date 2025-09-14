@@ -28,8 +28,9 @@ public sealed class StatementDraftsController : ControllerBase
     private readonly ICurrentUserService _current;
     private readonly ILogger<StatementDraftsController> _logger;
     private readonly IClassificationCoordinator _classification;
-    public StatementDraftsController(IStatementDraftService drafts, ICurrentUserService current, ILogger<StatementDraftsController> logger, IClassificationCoordinator classification)
-    { _drafts = drafts; _current = current; _logger = logger; _classification = classification; }
+    private readonly IBookingCoordinator _booking;
+    public StatementDraftsController(IStatementDraftService drafts, ICurrentUserService current, ILogger<StatementDraftsController> logger, IClassificationCoordinator classification, IBookingCoordinator booking)
+    { _drafts = drafts; _current = current; _logger = logger; _classification = classification; _booking = booking; }
 
     public sealed record UploadRequest([Required] string FileName);
 
@@ -85,6 +86,42 @@ public sealed class StatementDraftsController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    [HttpGet("book-all/status")]
+    public IActionResult GetBookAllStatus()
+    {
+        var s = _booking.GetStatus(_current.UserId);
+        if (s == null) { return Ok(new { running = false, processed = 0, failed = 0, total = 0, warnings = 0, errors = 0, message = (string?)null, issues = Array.Empty<object>() }); }
+        return Ok(new { running = s.Running, processed = s.Processed, failed = s.Failed, total = s.Total, warnings = s.Warnings, errors = s.Errors, message = s.Message, issues = s.ErrorDetails });
+    }
+
+    [HttpPost("book-all")] // trigger/continue
+    public async Task<IActionResult> BookAllAsync([FromBody] MassBookRequest req, CancellationToken ct)
+    {
+        try
+        {
+            var status = await _booking.ProcessAsync(_current.UserId, req.IgnoreWarnings, req.AbortOnFirstIssue, TimeSpan.FromSeconds(2), ct);
+            if (status.Running)
+            {
+                return Accepted(new { running = true, message = status.Message, processed = status.Processed, failed = status.Failed, total = status.Total, warnings = status.Warnings, errors = status.Errors, issues = status.ErrorDetails });
+            }
+            return Ok(new { running = false, processed = status.Processed, failed = status.Failed, total = status.Total, warnings = status.Warnings, errors = status.Errors, issues = status.ErrorDetails });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "BookAll failed");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("book-all/cancel")]
+    public IActionResult CancelBookAll()
+    {
+        _booking.Cancel(_current.UserId);
+        return Accepted();
+    }
+
+    public sealed record MassBookRequest(bool IgnoreWarnings, bool AbortOnFirstIssue);
 
     [HttpGet("{draftId:guid}")]
     public async Task<IActionResult> GetAsync(Guid draftId, [FromQuery] bool headerOnly = false, CancellationToken ct = default)

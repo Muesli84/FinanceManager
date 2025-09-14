@@ -55,7 +55,8 @@ public sealed class StatementDraftsControllerTests
         var draftService = new StatementDraftService(db);        
         var logger = sp.GetRequiredService<ILogger<StatementDraftsController>>();
         var classification = new DummyClassificationCoordinator();
-        var controller = new StatementDraftsController(draftService, current, logger, classification);        
+        var booking = new DummyBookingCoordinator();
+        var controller = new StatementDraftsController(draftService, current, logger, classification, booking);        
         return (controller, db, current.UserId);
     }
 
@@ -64,6 +65,22 @@ public sealed class StatementDraftsControllerTests
         public Task<ClassificationStatus> ProcessAsync(Guid userId, TimeSpan maxDuration, System.Threading.CancellationToken ct)
             => Task.FromResult(new ClassificationStatus(false, 0, 0, null));
         public ClassificationStatus? GetStatus(Guid userId) => new ClassificationStatus(false, 0, 0, null);
+    }
+
+    private sealed class DummyBookingCoordinator : IBookingCoordinator
+    {
+        public Task<BookingStatus> ProcessAsync(Guid userId, bool ignoreWarnings, bool abortOnFirstIssue, TimeSpan maxDuration, System.Threading.CancellationToken ct)
+        {
+            var status = new BookingStatus(false, 0, 0, 0, null, 0, 0, Array.Empty<BookingIssue>());
+            return Task.FromResult(status);
+        }
+
+        public BookingStatus? GetStatus(Guid userId)
+        {
+            return new BookingStatus(false, 0, 0, 0, null, 0, 0, Array.Empty<BookingIssue>());
+        }
+
+        public void Cancel(Guid userId) { }
     }
 
     private sealed class TestCurrentUserService : FinanceManager.Application.ICurrentUserService

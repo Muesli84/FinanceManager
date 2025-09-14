@@ -1,15 +1,12 @@
-using FinanceManager.Application.Statements;
-using FinanceManager.Infrastructure;
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging;
-using Serilog;
 using System.Collections.Concurrent;
+using FinanceManager.Application.Statements;
+using Microsoft.Extensions.Logging;
 
 namespace FinanceManager.Web.Services;
 
 public sealed class ClassificationCoordinator : IClassificationCoordinator
 {
-    private readonly IServiceProvider serviceProvider;    
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ClassificationCoordinator> _logger;
 
     private sealed class State
@@ -23,10 +20,10 @@ public sealed class ClassificationCoordinator : IClassificationCoordinator
     }
 
     private readonly ConcurrentDictionary<Guid, State> _states = new();
-    
-    public ClassificationCoordinator(IServiceProvider serviceProvider, ILogger<ClassificationCoordinator> logger)
+
+    public ClassificationCoordinator(IServiceScopeFactory scopeFactory, ILogger<ClassificationCoordinator> logger)
     {
-        this.serviceProvider = serviceProvider;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -53,7 +50,6 @@ public sealed class ClassificationCoordinator : IClassificationCoordinator
             state.CurrentTask = Task.Run(() => RunLoopAsync(userId, state), state.Cts.Token);
         }
 
-        // Allow worker to progress for given max duration
         var sw = System.Diagnostics.Stopwatch.StartNew();
         while (sw.Elapsed < maxDuration && state.Running)
         {
@@ -69,31 +65,28 @@ public sealed class ClassificationCoordinator : IClassificationCoordinator
     {
         try
         {
-            using (var scope = serviceProvider.CreateScope())
+            const int pageSize = 25;
+            int skip = 0;
+            while (!state.Cts.IsCancellationRequested)
             {
-                var drafts =  scope.ServiceProvider.GetRequiredService<IStatementDraftService>();
-                // page through drafts to avoid loading everything at once
-                const int pageSize = 2;
-                int skip = 0;
-                state.Total = await drafts.GetOpenDraftsCountAsync(userId, state.Cts.Token);
-                while (!state.Cts.IsCancellationRequested)
-                {
-                    var batch = await drafts.GetOpenDraftsAsync(userId, skip, pageSize, state.Cts.Token);
-                    if (batch.Count == 0) { break; }
+                using var scope = _scopeFactory.CreateScope();
+                var drafts = scope.ServiceProvider.GetRequiredService<IStatementDraftService>();
 
-                    foreach (var draft in batch)
-                    {
-                        if (state.Cts.IsCancellationRequested) { return; }
-                        await drafts.ClassifyAsync(draft.DraftId, null, userId, state.Cts.Token);
-                        state.Processed++;
-                    }
-                    skip += batch.Count;
+                var batch = await drafts.GetOpenDraftsAsync(userId, skip, pageSize, state.Cts.Token);
+                if (skip == 0) { state.Total = batch.Count; }
+                if (batch.Count == 0) { break; }
+
+                foreach (var draft in batch)
+                {
+                    if (state.Cts.IsCancellationRequested) { return; }
+                    await drafts.ClassifyAsync(draft.DraftId, null, userId, state.Cts.Token);
+                    state.Processed++;
                 }
+                skip += batch.Count;
             }
         }
         catch (OperationCanceledException)
         {
-            // ignored – cooperative cancellation
         }
         catch (Exception ex)
         {

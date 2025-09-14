@@ -50,8 +50,8 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit = 50 * 1024 * 1024; // z.B. 20 MB
 });
 
-// Register classification coordinator
 builder.Services.AddSingleton<IClassificationCoordinator, ClassificationCoordinator>();
+builder.Services.AddSingleton<IBookingCoordinator, BookingCoordinator>();
 
 // Named HttpClient (bleibt)
 builder.Services.AddTransient<AuthenticatedHttpClientHandler>();
