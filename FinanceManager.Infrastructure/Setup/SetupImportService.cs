@@ -1,3 +1,4 @@
+using FinanceManager.Application.Statements;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Savings;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.IO;
+using System.Linq;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
@@ -15,7 +17,13 @@ using System.Text.Json;
 public sealed class SetupImportService : ISetupImportService
 {
     private readonly AppDbContext _db;
-    public SetupImportService(AppDbContext db) { _db = db; }
+    private readonly IStatementDraftService _statementDraftService;
+
+    public SetupImportService(AppDbContext db, IStatementDraftService statementDraftService)
+    {
+        _db = db;
+        _statementDraftService = statementDraftService;
+    }
 
     public async Task ImportAsync(Guid userId, Stream fileStream, bool replaceExisting, CancellationToken ct)
     {
@@ -48,6 +56,89 @@ public sealed class SetupImportService : ISetupImportService
         var savingsPlans = ImportSavingsPlans(backupData.FixedAssets, savingsPlanCategories, userId).ToList();
         var stocks = ImportStocks(backupData.Stocks, userId).ToList();
         await _db.SaveChangesAsync();
+        await ImportLedgerEntriesAsync(meta, backupData.BankAccounts, backupData.BankAccountLedgerEntries, backupData.StockLedgerEntries, stocks, backupData.FixedAssetLedgerEntries, savingsPlans, userId, contacts, ct);
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task ImportLedgerEntriesAsync(BackupMeta meta, JsonElement bankAccounts, BackupBankAccountLedgerEntry[]? bankAccountLedgerEntries, JsonElement stockLedgerEntries, List<KeyValuePair<int, Guid>> stocks, JsonElement fixedAssetLedgerEntries, List<KeyValuePair<int, Guid>> savingsPlans, Guid userId, List<KeyValuePair<int, Guid>> contacts, CancellationToken ct)
+    {
+        if (bankAccountLedgerEntries is null)
+            return;
+        // 1) Erste Zeile: Meta als JSON
+        var metaJson = JsonSerializer.Serialize(meta);
+
+        // 2) Zweite Zeile: Objekt mit minimalen Feldern, die der BackupStatementFileReader erwartet
+        //    - BankAccounts: enthält mindestens eine IBAN (für Header-Detektion)
+        //    - BankAccountLedgerEntries: übernommene Bewegungen
+        //    - BankAccountJournalLines: leeres Array (Reader erwartet Feld)
+        var firstIban = await _db.Accounts
+            .AsNoTracking()
+            .Where(a => a.OwnerUserId == userId && a.Iban != null && a.Iban != "")
+            .Select(a => a.Iban!)
+            .FirstOrDefaultAsync(ct) ?? string.Empty;
+        var emptyArray = new string[0];
+        var dataObj = new
+        {
+            BankAccounts = bankAccounts,
+            BankAccountLedgerEntries = bankAccountLedgerEntries.Select(entry =>
+            {
+                if (entry.SourceContact is not null)
+                    entry.SourceContact.UID = contacts.FirstOrDefault(c => c.Key == entry.SourceContact?.Id).Value;
+                var stockEntries = stockLedgerEntries.EnumerateArray().Where(e =>
+                {
+                    return e.GetProperty("SourceLedgerEntry").GetProperty("Id").GetInt32() == entry.Id;
+                }).ToArray();
+                if (stockEntries.Length > 1)
+                    throw new ApplicationException("Darf es nicht geben!?!");
+                if (stockEntries.FirstOrDefault() is JsonElement stockEntry){
+                    if (stockEntry.ValueKind == JsonValueKind.Object)
+                    {
+                        var stockId = stockEntry.GetProperty("Stock").GetProperty("Id").GetInt32();
+                        var stockUId = stocks.FirstOrDefault(s => s.Key == stockId).Value;
+                        var stock = _db.Securities.AsNoTracking().FirstOrDefault(s => s.Id == stockUId && s.OwnerUserId == userId);
+                        if (stock is not null && !entry.Description.Contains(stock.Identifier, StringComparison.OrdinalIgnoreCase))
+                        {
+                            entry.Description = $"{entry.Description} [Wertpapier: {stock.Name} ({stock.Identifier})]";
+                        }
+                    }
+                }
+
+                var fixedAssetEntries = fixedAssetLedgerEntries.EnumerateArray().Where(e =>
+                {
+                    var sourceLedger = e.GetProperty("SourceLedgerEntry");
+                    if (sourceLedger.ValueKind == JsonValueKind.Null)
+                        return false;
+                    return sourceLedger.GetProperty("Id").GetInt32() == entry.Id;
+                }).ToArray();
+                if (fixedAssetEntries.Length > 1)
+                    throw new ApplicationException("Darf es nicht geben!?!");
+                if (fixedAssetEntries.FirstOrDefault() is JsonElement fixedAssetEntry)
+                {
+                    if (fixedAssetEntry.ValueKind == JsonValueKind.Object)
+                    {
+                        var savingsPlanId = fixedAssetEntry.GetProperty("FixedAsset").GetProperty("Id").GetInt32();
+                        var savingsPlanUId = savingsPlans.FirstOrDefault(s => s.Key == savingsPlanId).Value;
+                        var savingsPlan = _db.SavingsPlans.AsNoTracking().FirstOrDefault(s => s.Id == savingsPlanUId && s.OwnerUserId == userId);
+                        if (savingsPlan is not null && !entry.Description.Contains(savingsPlan.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            entry.Description = $"{entry.Description} [Sparplan: {savingsPlan.Name}]";
+                        }
+                    }
+                }
+                return entry;
+            }),
+            BankAccountJournalLines = emptyArray
+        };
+        var dataJson = JsonSerializer.Serialize(dataObj);
+
+        var fileContent = $"{metaJson}\n{dataJson}";
+        var fileBytes = Encoding.UTF8.GetBytes(fileContent);
+
+        // 3) Kontoauszug-Entwürfe erzeugen (Enumeration zwingend, sonst passiert nichts)
+        await foreach (var draft in _statementDraftService.CreateDraftAsync(userId, "backup.ndjson", fileBytes, ct))
+        {
+            var result = await _statementDraftService.BookAsync(draft.DraftId, null, userId, true, ct);
+        }
     }
 
     private IEnumerable<KeyValuePair<int, Guid>> ImportStocks(JsonElement stocks, Guid userId)
@@ -63,7 +154,15 @@ public sealed class SetupImportService : ISetupImportService
                 var currencyCode = stock.GetProperty("CurrencyCode").GetString();
                 if (string.IsNullOrWhiteSpace(name)) continue;
                 var newStock = new Security(userId, name, symbol, description, avCode, currencyCode ?? "EUR", null);
-                _db.Securities.Add(newStock);
+                var existing = _db.Securities.FirstOrDefault(s => s.OwnerUserId == userId && ((s.Identifier == newStock.Identifier && newStock.Identifier != "") || (s.AlphaVantageCode == newStock.AlphaVantageCode && newStock.AlphaVantageCode != "" && newStock.AlphaVantageCode != "-")));
+                if (existing is null)
+                    _db.Securities.Add(newStock);
+                else
+                {
+                    existing.Update(name, symbol, description, avCode, currencyCode ?? "EUR", null);
+                    newStock = existing;
+                    _db.Securities.Update(existing);
+                }
                 _db.SaveChanges();
                 yield return new KeyValuePair<int, Guid>(dataId, newStock.Id);
             }
@@ -182,7 +281,11 @@ public sealed class SetupImportService : ISetupImportService
                 var name = category.GetProperty("Name").GetString();
                 if (string.IsNullOrWhiteSpace(name)) continue;
                 var newCategory = new SavingsPlanCategory(userId, name);
-                _db.SavingsPlanCategories.Add(newCategory);
+                var existingCategory = _db.SavingsPlanCategories.FirstOrDefault(c => c.Name == newCategory.Name && c.OwnerUserId == userId);
+                if (existingCategory is null)
+                    _db.SavingsPlanCategories.Add(newCategory);
+                else
+                    newCategory = existingCategory;
                 yield return new KeyValuePair<int, Guid>(dataId, newCategory.Id);
             }
     }
@@ -222,9 +325,26 @@ public sealed class SetupImportService : ISetupImportService
                 }
 
                 var contactNames = contact.GetProperty("Names");
-                if (contactNames.ValueKind != JsonValueKind.Null)
-                    foreach (var alias in contactNames.EnumerateArray().Select(n => n.GetString()).Where(n => !string.IsNullOrWhiteSpace(n)))
-                        _db.AliasNames.Add(new AliasName(newContact.Id, alias));
+                switch(contactNames.ValueKind)
+                {
+                    case JsonValueKind.Array:
+                        foreach (var alias in contactNames.EnumerateArray().Select(n =>
+                        {
+                            switch(n.ValueKind)
+                            {
+                                case JsonValueKind.String:
+                                    return n.GetString();
+                                case JsonValueKind.Object:
+                                    return n.GetProperty("Name").GetString();
+                                default: return "";
+                            }
+                        })
+                        .Where(n => !string.IsNullOrWhiteSpace(n))
+                        .Where(n => !_db.AliasNames.Any(a => a.ContactId == newContact.Id && a.Pattern == n)))
+                            _db.AliasNames.Add(new AliasName(newContact.Id, alias));
+                        break;
+                }
+                                    
                 yield return new KeyValuePair<int, Guid>(dataId, newContact.Id);
             }
             existingContacts = _db.Contacts.ToArray();
@@ -242,7 +362,11 @@ public sealed class SetupImportService : ISetupImportService
                 var name = category.GetProperty("Name").GetString();
                 if (string.IsNullOrWhiteSpace(name)) continue;
                 var newCategory = new ContactCategory(userId, name);
-                _db.ContactCategories.Add(newCategory);
+                var existingCategory = _db.ContactCategories.FirstOrDefault(c => c.Name == newCategory.Name && c.OwnerUserId == userId);
+                if (existingCategory is null)
+                    _db.ContactCategories.Add(newCategory);
+                else
+                    newCategory = existingCategory;
                 yield return new KeyValuePair<int, Guid>(dataId, newCategory.Id);
             }
     }
@@ -261,6 +385,29 @@ public sealed class SetupImportService : ISetupImportService
         public JsonElement FixedAssetCategories { get; set; }
         public JsonElement FixedAssets { get; set; }
         public JsonElement Stocks { get; set; }
+        public BackupBankAccountLedgerEntry[]? BankAccountLedgerEntries { get; set; }
+        public JsonElement StockLedgerEntries { get; set; }
+        public JsonElement FixedAssetLedgerEntries { get; set; }
         // Weitere Properties nach Bedarf
+    }
+    private sealed class BackupBankAccountLedgerEntry
+    {
+        public int Id { get; set; }
+        public JsonElement Account { get; set; }
+        public DateTime PostingDate { get; set; }
+        public DateTime ValutaDate { get; set; }
+        public decimal Amount { get; set; }
+        public string? CurrencyCode { get; set; }
+        public string? PostingDescription { get; set; }
+        public string? Description { get; set; }
+        public string? SourceName { get; set; }
+        public BackupContact? SourceContact { get; set; }
+        public JsonElement IsCostNeutral { get; set; }
+
+    }
+    private sealed class BackupContact
+    {
+        public int Id { get; set; }
+        public Guid? UID { get; set; }
     }
 }

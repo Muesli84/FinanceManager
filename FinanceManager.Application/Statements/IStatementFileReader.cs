@@ -53,4 +53,5 @@ public sealed record StatementMovement()
     public string? CurrencyCode { get; set; }
     public bool IsPreview { get; set; }
     public bool IsError { get; set; }
+    public Guid ContactId { get; set; }
 };

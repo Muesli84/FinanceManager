@@ -210,7 +210,14 @@ namespace FinanceManager.Infrastructure.Setup
         {
             try
             {
-                await _statementDraftService.BookAsync(draft.DraftId, ownerId, true, ct);
+                var result = await _statementDraftService.BookAsync(draft.DraftId, null, ownerId, true, ct);
+                if (result.Success) return;
+                var entriesWithMessages = result.Validation.Messages.Select(m => new { DraftId = m.DraftId, EntryId = m.EntryId });
+                foreach (var entry in draft.Entries)
+                {
+                    if (entriesWithMessages.Any(em => em.EntryId == entry.Id)) continue;
+                    await _statementDraftService.BookAsync(draft.DraftId, entry.Id, ownerId, true, ct);
+                }
             }
             catch (Exception ex)
             {

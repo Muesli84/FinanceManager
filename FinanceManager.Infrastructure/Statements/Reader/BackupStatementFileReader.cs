@@ -37,6 +37,9 @@ namespace FinanceManager.Infrastructure.Statements.Reader
         {
             foreach (var entry in _BackupData.BankAccountLedgerEntries.EnumerateArray())
             {
+                var contact = entry.GetProperty("SourceContact");
+                var contactUId = (contact.ValueKind == JsonValueKind.Object) ? contact.GetProperty("UID") : new JsonElement();
+                var contactId = (contactUId.ValueKind == JsonValueKind.String) ? contactUId.GetGuid() : Guid.Empty;
                 var movement = new StatementMovement()
                 {
                     BookingDate = entry.GetProperty("PostingDate").GetDateTime(),
@@ -45,6 +48,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     CurrencyCode = entry.GetProperty("CurrencyCode").GetString(),
                     Subject = entry.GetProperty("Description").GetString(),
                     Counterparty = entry.GetProperty("SourceName").GetString(),
+                    ContactId = contactId,
                     PostingDescription = entry.GetProperty("PostingDescription").GetString(),
                     IsPreview = false,
                     IsError = false

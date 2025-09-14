@@ -1,9 +1,10 @@
-using System.Text.RegularExpressions;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
+using System.Numerics;
+using System.Text.RegularExpressions;
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -29,9 +30,9 @@ public sealed partial class StatementDraftService
         var normalizedSubject = NormalizeUmlauts(entry.Subject).ToLowerInvariant();
         var normalizedSubjectNoSpaces = Clean(normalizedSubject);
 
-        foreach (var plan in userPlans)
+        var matchingPlans = userPlans.Where(plan =>
         {
-            if (string.IsNullOrWhiteSpace(plan.Name)) { continue; }
+            if (string.IsNullOrWhiteSpace(plan.Name)) { return false; }
             var normalizedPlanName = Clean(NormalizeUmlauts(plan.Name).ToLowerInvariant());
 
             bool nameMatches = normalizedSubjectNoSpaces.Contains(normalizedPlanName);
@@ -44,13 +45,13 @@ public sealed partial class StatementDraftService
                 var cnNormalized = Regex.Replace(cn, "[\\s-]", string.Empty, RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
                 contractMatches = subjectForContract.Contains(cnNormalized, StringComparison.OrdinalIgnoreCase);
             }
+            return (nameMatches || contractMatches);
+        }).ToList();
 
-            if (nameMatches || contractMatches)
-            {
-                entry.AssignSavingsPlan(plan.Id);
-                break;
-            }
-        }
+        if (matchingPlans.FirstOrDefault() is SavingsPlan plan)
+            entry.AssignSavingsPlan(plan.Id);
+        if (matchingPlans.Count > 1)
+            entry.MarkNeedsCheck();
     }
 
     private async Task ReevaluateParentEntryStatusAsync(Guid ownerUserId, Guid splitDraftId, CancellationToken ct)
@@ -140,7 +141,7 @@ public sealed partial class StatementDraftService
 
     private static void TryAutoAssignContact(List<Contact> contacts, Dictionary<Guid, List<string>> aliasLookup, Guid? bankContactId, Contact selfContact, StatementDraftEntry entry)
     {
-        var normalizedRecipient = (entry.RecipientName ?? string.Empty).ToLowerInvariant().TrimEnd();
+        var normalizedRecipient = NormalizeUmlauts((entry.RecipientName ?? string.Empty).ToLowerInvariant().TrimEnd());
         Guid? matchedContactId = AssignContact(contacts, aliasLookup, bankContactId, entry, normalizedRecipient);
         var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
         if (matchedContact != null && matchedContact.IsPaymentIntermediary)

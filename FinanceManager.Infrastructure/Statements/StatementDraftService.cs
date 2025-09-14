@@ -641,6 +641,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 Add("ENTRY_NO_CONTACT", "Error", "Kein Kontakt zugeordnet.", e.Id);
                 continue;
             }
+            else if (e.Status == StatementDraftEntryStatus.Open)
+            {
+                Add("ENTRY_NEEDS_CHECK", "Error", "Eine Prüfung der Angaben ist erforderlich.", e.Id);
+                continue;
+            }
 
             var contact = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == e.ContactId && c.OwnerUserId == ownerUserId, ct);
             if (contact == null) { continue; }
