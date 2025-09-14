@@ -658,73 +658,80 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
 
         foreach (var e in entries)
-        {
-            if (entryId != null && e.Id != entryId) { continue; }
-
-            if (e.ContactId == null)
+            try
             {
-                Add("ENTRY_NO_CONTACT", "Error", "Kein Kontakt zugeordnet.", e.Id);
-                continue;
-            }
-            else if (e.Status == StatementDraftEntryStatus.Open)
-            {
-                Add("ENTRY_NEEDS_CHECK", "Error", "Eine Prüfung der Angaben ist erforderlich.", e.Id);
-                continue;
-            }
+                if (entryId != null && e.Id != entryId) { continue; }
 
-            var contact = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == e.ContactId && c.OwnerUserId == ownerUserId, ct);
-            if (contact == null) { continue; }
+                if (e.ContactId == null)
+                {
+                    Add("ENTRY_NO_CONTACT", "Error", "Kein Kontakt zugeordnet.", e.Id);
+                    continue;
+                }
+                else if (e.Status == StatementDraftEntryStatus.Open)
+                {
+                    Add("ENTRY_NEEDS_CHECK", "Error", "Eine Prüfung der Angaben ist erforderlich.", e.Id);
+                    continue;
+                }
 
-            if (contact.IsPaymentIntermediary)
-            {
-                if (e.SplitDraftId == null)
-                {
-                    Add("INTERMEDIARY_NO_SPLIT", "Error", "Zahlungsdienst ohne Aufteilungs-Entwurf.", e.Id);
-                }
-                else
-                {
-                    await ValidateSplitChainAsync(e, "[Split] ", ct);
-                }
-            }
+                var contact = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == e.ContactId && c.OwnerUserId == ownerUserId, ct);
+                if (contact == null) { continue; }
 
-            if (self != null && e.ContactId == self.Id)
-            {
-                if (e.SavingsPlanId == null)
+                if (contact.IsPaymentIntermediary)
                 {
-                    Add("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", "Für Eigentransfer ist ein Sparplan sinnvoll.", e.Id);
-                }
-                else if (account != null && account.Type == AccountType.Savings)
-                {
-                    Add("SAVINGSPLAN_INVALID_ACCOUNT", "Error", "Sparplan auf Sparkonto ist nicht zulässig.", e.Id);
-                }
-            }
-
-            // Security validations
-            if (e.SecurityId != null && account != null)
-            {
-                if (e.ContactId != account.BankContactId)
-                {
-                    Add("SECURITY_INVALID_CONTACT", "Error", "Wertpapierbuchung erfordert Bankkontakt des Kontos.", e.Id);
-                }
-                if (e.SecurityTransactionType == null)
-                {
-                    Add("SECURITY_MISSING_TXTYPE", "Error", "Wertpapier: Transaktionstyp fehlt.", e.Id);
-                }
-                if (e.SecurityTransactionType != null && e.SecurityTransactionType != SecurityTransactionType.Dividend)
-                {
-                    if (e.SecurityQuantity == null || e.SecurityQuantity <= 0m)
+                    if (e.SplitDraftId == null)
                     {
-                        Add("SECURITY_MISSING_QUANTITY", "Error", "Wertpapier: Stückzahl fehlt.", e.Id);
+                        Add("INTERMEDIARY_NO_SPLIT", "Error", "Zahlungsdienst ohne Aufteilungs-Entwurf.", e.Id);
+                    }
+                    else
+                    {
+                        await ValidateSplitChainAsync(e, "[Split] ", ct);
                     }
                 }
-                var fee = e.SecurityFeeAmount ?? 0m;
-                var tax = e.SecurityTaxAmount ?? 0m;
-                if (fee + tax > Math.Abs(e.Amount))
+
+                if (self != null && e.ContactId == self.Id)
                 {
-                    Add("SECURITY_FEE_TAX_EXCEEDS_AMOUNT", "Error", "Wertpapier: Gebühren+Steuern übersteigen Betrag.", e.Id);
+                    if (e.SavingsPlanId == null)
+                    {
+                        Add("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", "Für Eigentransfer ist ein Sparplan sinnvoll.", e.Id);
+                    }
+                    else if (account != null && account.Type == AccountType.Savings)
+                    {
+                        Add("SAVINGSPLAN_INVALID_ACCOUNT", "Error", "Sparplan auf Sparkonto ist nicht zulässig.", e.Id);
+                    }
+                }
+
+                // Security validations
+                if (e.SecurityId != null && account != null)
+                {
+                    if (e.ContactId != account.BankContactId)
+                    {
+                        Add("SECURITY_INVALID_CONTACT", "Error", "Wertpapierbuchung erfordert Bankkontakt des Kontos.", e.Id);
+                    }
+                    if (e.SecurityTransactionType == null)
+                    {
+                        Add("SECURITY_MISSING_TXTYPE", "Error", "Wertpapier: Transaktionstyp fehlt.", e.Id);
+                    }
+                    if (e.SecurityTransactionType != null && e.SecurityTransactionType != SecurityTransactionType.Dividend)
+                    {
+                        if (e.SecurityQuantity == null || e.SecurityQuantity <= 0m)
+                        {
+                            Add("SECURITY_MISSING_QUANTITY", "Error", "Wertpapier: Stückzahl fehlt.", e.Id);
+                        }
+                    }
+                    var fee = e.SecurityFeeAmount ?? 0m;
+                    var tax = e.SecurityTaxAmount ?? 0m;
+                    if (fee + tax > Math.Abs(e.Amount))
+                    {
+                        Add("SECURITY_FEE_TAX_EXCEEDS_AMOUNT", "Error", "Wertpapier: Gebühren+Steuern übersteigen Betrag.", e.Id);
+                    }
                 }
             }
-        }
+            finally
+            {
+                if (messages.Any(m => m.EntryId == e.Id && m.Severity == "Error"))
+                    e.MarkNeedsCheck();
+            }
+        await _db.SaveChangesAsync();
 
         // Savings plan goal info/warning + archive-intent validation
         var planIds = entries.Where(e => e.SavingsPlanId != null).Select(e => e.SavingsPlanId!.Value).Distinct().ToList();

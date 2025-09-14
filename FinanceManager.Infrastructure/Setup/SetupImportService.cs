@@ -138,7 +138,7 @@ public sealed class SetupImportService : ISetupImportService
         // 3) Kontoauszug-Entwürfe erzeugen (Enumeration zwingend, sonst passiert nichts)
         await foreach (var draft in _statementDraftService.CreateDraftAsync(userId, "backup.ndjson", fileBytes, ct))
         {
-            var result = await _statementDraftService.BookAsync(draft.DraftId, null, userId, true, ct);
+            var result = await _statementDraftService.BookAsync(draft.DraftId, null, userId, false, ct);
         }
     }
 

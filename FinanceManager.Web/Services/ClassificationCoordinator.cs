@@ -65,7 +65,7 @@ public sealed class ClassificationCoordinator : IClassificationCoordinator
     {
         try
         {
-            const int pageSize = 25;
+            const int pageSize = 2;
             int skip = 0;
             while (!state.Cts.IsCancellationRequested)
             {
@@ -73,7 +73,7 @@ public sealed class ClassificationCoordinator : IClassificationCoordinator
                 var drafts = scope.ServiceProvider.GetRequiredService<IStatementDraftService>();
 
                 var batch = await drafts.GetOpenDraftsAsync(userId, skip, pageSize, state.Cts.Token);
-                if (skip == 0) { state.Total = batch.Count; }
+                if (skip == 0) { state.Total = await drafts.GetOpenDraftsCountAsync(userId, state.Cts.Token); }
                 if (batch.Count == 0) { break; }
 
                 foreach (var draft in batch)
