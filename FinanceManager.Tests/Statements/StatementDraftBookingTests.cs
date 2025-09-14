@@ -72,7 +72,7 @@ public sealed class StatementDraftBookingTests
         db.Entry(entry).State = EntityState.Added;
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
 
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "NO_ACCOUNT").Should().BeTrue();
@@ -89,7 +89,7 @@ public sealed class StatementDraftBookingTests
         db.Entry(entry).State = EntityState.Added;
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
 
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "ENTRY_NO_CONTACT").Should().BeTrue();
@@ -108,12 +108,12 @@ public sealed class StatementDraftBookingTests
         entry.MarkAccounted(self.Id);
         await db.SaveChangesAsync();
 
-        var res1 = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res1 = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res1.Success.Should().BeFalse();
         res1.HasWarnings.Should().BeTrue();
         res1.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_MISSING_FOR_SELF").Should().BeTrue();
 
-        var res2 = await sut.BookAsync(draft.Id, owner, true, CancellationToken.None);
+        var res2 = await sut.BookAsync(draft.Id, null,owner, true, CancellationToken.None);
         res2.Success.Should().BeTrue();
         db.Postings.Count().Should().Be(2);
         db.Postings.Count(p => p.Kind == PostingKind.Bank).Should().Be(1);
@@ -140,7 +140,7 @@ public sealed class StatementDraftBookingTests
         db.Entry(e).State = EntityState.Added;
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
         db.Postings.Count().Should().Be(3);
         db.Postings.Count(p => p.Kind == PostingKind.Bank).Should().Be(1);
@@ -168,7 +168,7 @@ public sealed class StatementDraftBookingTests
         e.MarkAccounted(intermediary.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "INTERMEDIARY_NO_SPLIT").Should().BeTrue();
         conn.Dispose();
@@ -209,11 +209,11 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         // Booking the child (split) draft should fail
-        var childRes = await sut.BookAsync(child.Id, owner, false, CancellationToken.None);
+        var childRes = await sut.BookAsync(child.Id, null, owner, false, CancellationToken.None);
         childRes.Success.Should().BeFalse();
 
         // Booking the parent should succeed and create 0-amount parent postings + child postings
-        var parentRes = await sut.BookAsync(parent.Id, owner, false, CancellationToken.None);
+        var parentRes = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
         parentRes.Success.Should().BeTrue();
 
         var bankPostings = db.Postings.Where(p => p.Kind == PostingKind.Bank).ToList();
@@ -257,7 +257,7 @@ public sealed class StatementDraftBookingTests
         pEntry.AssignSplitDraft(child.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(parent.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "INTERMEDIARY_NO_SPLIT").Should().BeFalse();
         res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "ENTRY_NO_CONTACT").Should().BeTrue();
@@ -287,7 +287,7 @@ public sealed class StatementDraftBookingTests
         pEntry.AssignSplitDraft(child.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(parent.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SPLIT_AMOUNT_MISMATCH").Should().BeTrue();
         conn.Dispose();
@@ -317,7 +317,7 @@ public sealed class StatementDraftBookingTests
         pEntry.AssignSplitDraft(child.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(parent.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.HasWarnings.Should().BeTrue();
         res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "SAVINGSPLAN_MISSING_FOR_SELF").Should().BeTrue();
@@ -346,7 +346,7 @@ public sealed class StatementDraftBookingTests
         pEntry.AssignSplitDraft(child.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(parent.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "INTERMEDIARY_NO_SPLIT").Should().BeTrue();
         conn.Dispose();
@@ -370,7 +370,7 @@ public sealed class StatementDraftBookingTests
 
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, null, null, null, null, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SECURITY_MISSING_TXTYPE").Should().BeTrue();
         conn.Dispose();
@@ -394,7 +394,7 @@ public sealed class StatementDraftBookingTests
 
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, null, null, null, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SECURITY_MISSING_QUANTITY").Should().BeTrue();
         conn.Dispose();
@@ -421,7 +421,7 @@ public sealed class StatementDraftBookingTests
         // Set security with Buy, quantity present, but fee+tax exceed entry amount
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, 1.0m, 70.00m, 40.00m, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SECURITY_FEE_TAX_EXCEEDS_AMOUNT").Should().BeTrue();
         conn.Dispose();
@@ -446,7 +446,7 @@ public sealed class StatementDraftBookingTests
 
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, 1.123456m, 2.50m, 5.00m, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
         db.Postings.Count(p => p.Kind == PostingKind.Security).Should().Be(3);
         // Trade amount = 1000 - 2.50 - 5.00 = 992.50
@@ -511,7 +511,7 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
         await sut.SetEntryContactAsync(draft.Id, entry.Id, shop.Id, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SECURITY_INVALID_CONTACT").Should().BeTrue();
         conn.Dispose();
@@ -544,7 +544,7 @@ public sealed class StatementDraftBookingTests
         pEntry.AssignSplitDraft(child.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(parent.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "SPLIT_DRAFT_HAS_ACCOUNT").Should().BeTrue();
         conn.Dispose();
@@ -615,7 +615,7 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         // Act
-        var res = await sut.BookAsync(drafts[0].Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(drafts[0].Id, null, owner, false, CancellationToken.None);
 
         // Assert (intended behavior): booking succeeds, all drafts committed, and only leaf amounts are booked (no double-booking on intermediaries)
         res.Success.Should().BeTrue();
@@ -681,7 +681,7 @@ public sealed class StatementDraftBookingTests
             await db.SaveChangesAsync();
         }
 
-        var res = await sut.BookAsync(drafts[0].Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(drafts[0].Id, null, owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "ENTRY_NO_CONTACT").Should().BeTrue();
         conn.Dispose();
@@ -723,7 +723,7 @@ public sealed class StatementDraftBookingTests
         await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateException>(() => db.SaveChangesAsync());
         
 
-        var res = await sut.BookAsync(d1.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(d1.Id, null, owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SPLIT_CYCLE_DETECTED").Should().BeTrue();
         conn.Dispose();
@@ -753,7 +753,7 @@ public sealed class StatementDraftBookingTests
         var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
         validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO" && m.Severity == "Information").Should().BeTrue();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
         conn.Dispose();
     }
@@ -783,7 +783,7 @@ public sealed class StatementDraftBookingTests
         var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
         validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO" && m.Severity == "Information").Should().BeTrue();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
         // Booking result should include the same validation for UI display
         res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO").Should().BeTrue();
@@ -815,11 +815,11 @@ public sealed class StatementDraftBookingTests
         var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
         validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_EXCEEDED" && m.Severity == "Warning").Should().BeTrue();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.HasWarnings.Should().BeTrue();
 
-        var forced = await sut.BookAsync(draft.Id, owner, true, CancellationToken.None);
+        var forced = await sut.BookAsync(draft.Id, null,owner, true, CancellationToken.None);
         forced.Success.Should().BeTrue();
         conn.Dispose();
     }
@@ -849,7 +849,7 @@ public sealed class StatementDraftBookingTests
         var validation = await sut.ValidateAsync(draft.Id, null, owner, CancellationToken.None);
         validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO" && m.Severity == "Information").Should().BeTrue();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
         res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_GOAL_REACHED_INFO").Should().BeTrue();
         conn.Dispose();
@@ -969,7 +969,7 @@ public sealed class StatementDraftBookingTests
         e.AssignSavingsPlan(plan.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
 
         var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
@@ -997,7 +997,7 @@ public sealed class StatementDraftBookingTests
         e.AssignSavingsPlan(plan.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
 
         var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
@@ -1024,7 +1024,7 @@ public sealed class StatementDraftBookingTests
         e.AssignSavingsPlan(plan.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
 
         var reloaded = await db.SavingsPlans.FindAsync(plan.Id);
@@ -1048,7 +1048,7 @@ public sealed class StatementDraftBookingTests
         db.Entry(e).State = EntityState.Added;
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_INVALID_ACCOUNT").Should().BeTrue();
         conn.Dispose();
@@ -1078,7 +1078,7 @@ public sealed class StatementDraftBookingTests
 
         await sut.SetEntryArchiveSavingsPlanOnBookingAsync(draft.Id, e1.Id, true, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeFalse();
         res.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_ARCHIVE_MISMATCH").Should().BeTrue();
         conn.Dispose();
@@ -1108,7 +1108,7 @@ public sealed class StatementDraftBookingTests
 
         await sut.SetEntryArchiveSavingsPlanOnBookingAsync(draft.Id, e1.Id, true, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
         // Plan should be archived
         (await db.SavingsPlans.FindAsync(plan.Id))!.IsActive.Should().BeFalse();
@@ -1140,7 +1140,7 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         // Act
-        var res = await sut.BookAsync(draft.Id, owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
         res.Success.Should().BeTrue();
 
         // Assert: monthly aggregates updated to include the new amounts

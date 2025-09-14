@@ -139,7 +139,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
         StatementDraft draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
         foreach (var movement in parsedDraft.Movements)
         {
-            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview, false);
+            var contact = _db.Contacts.AsNoTracking()
+                .FirstOrDefault(c => c.OwnerUserId == ownerUserId && c.Id == movement.ContactId);
+            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, contact?.Name ?? movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview, false);
             if (draft.Entries.Count == 100)
             {
                 yield return await FinishDraftAsync(draft, ownerUserId, ct);
@@ -520,13 +522,14 @@ public sealed partial class StatementDraftService : IStatementDraftService
 
     public async Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
-        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+        var draft = await _db.StatementDrafts
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         var messages = new List<DraftValidationMessageDto>();
         if (draft == null)
         {
             return new DraftValidationResultDto(draftId, false, messages);
         }
+        var entries = await _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || entryId == e.Id)).ToArrayAsync();
 
         void Add(string code, string sev, string msg, Guid? eId) => messages.Add(new DraftValidationMessageDto(code, sev, msg, draft.Id, eId));
 
@@ -576,7 +579,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 messages.Add(new DraftValidationMessageDto("SPLIT_AMOUNT_MISMATCH", "Error", prefix + "Summe der Aufteilung entspricht nicht dem Ursprungsbetrag.", draft.Id, parentEntry.Id));
             }
 
-            foreach (var ce in childDraft.Entries)
+            foreach (var ce in entries)
             {
                 if (ce.ContactId == null)
                 {
@@ -629,7 +632,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
         }
 
-        foreach (var e in draft.Entries)
+        foreach (var e in entries)
         {
             if (entryId != null && e.Id != entryId) { continue; }
 
@@ -694,18 +697,18 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
 
         // Savings plan goal info/warning + archive-intent validation
-        var planIds = draft.Entries.Where(e => e.SavingsPlanId != null).Select(e => e.SavingsPlanId!.Value).Distinct().ToList();
+        var planIds = entries.Where(e => e.SavingsPlanId != null).Select(e => e.SavingsPlanId!.Value).Distinct().ToList();
         if (planIds.Count > 0)
         {
             var plans = await _db.SavingsPlans.AsNoTracking().Where(p => planIds.Contains(p.Id)).ToListAsync(ct);
-            var plannedByPlan = draft.Entries
+            var plannedByPlan = entries
                 .Where(e => e.SavingsPlanId != null)
                 .GroupBy(e => e.SavingsPlanId!.Value)
                 .ToDictionary(g => g.Key, g => g.Sum(x => -x.Amount));
 
             foreach (var plan in plans)
             {
-                bool wantsArchive = draft.Entries.Any(e => e.SavingsPlanId == plan.Id && e.ArchiveSavingsPlanOnBooking);
+                bool wantsArchive = entries.Any(e => e.SavingsPlanId == plan.Id && e.ArchiveSavingsPlanOnBooking);
                 if (plan.TargetAmount is not decimal target) { continue; }
 
                 var current = await _db.Postings.AsNoTracking()
@@ -735,7 +738,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
 
         // Savings plan due information (only when validating whole draft)
-        if (draft.Entries.Count > 0 && entryId is null)
+        if (entries.Count() > 0 && entryId is null)
         {
             DateTime latestBookingDate = draft.Entries.Max(e => e.BookingDate).Date;
             var monthStart = new DateTime(latestBookingDate.Year, latestBookingDate.Month, 1);
@@ -793,9 +796,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
         };
     }
 
-    public async Task<BookingResult> BookAsync(Guid draftId, Guid ownerUserId, bool forceWarnings, CancellationToken ct)
+    public async Task<BookingResult> BookAsync(Guid draftId, Guid? entryId, Guid ownerUserId, bool forceWarnings, CancellationToken ct)
     {
-        var validation = await ValidateAsync(draftId, null, ownerUserId, ct);
+        // Validate scope: whole draft or single entry
+        var validation = await ValidateAsync(draftId, entryId, ownerUserId, ct);
         var hasErrors = validation.Messages.Any(m => string.Equals(m.Severity, "Error", StringComparison.OrdinalIgnoreCase));
         var hasWarnings = validation.Messages.Any(m => string.Equals(m.Severity, "Warning", StringComparison.OrdinalIgnoreCase));
         if (hasErrors)
@@ -807,14 +811,15 @@ public sealed partial class StatementDraftService : IStatementDraftService
             return new BookingResult(false, true, validation, null, null, null);
         }
 
-        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+        var draft = await _db.StatementDrafts
             .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         if (draft == null || draft.DetectedAccountId == null)
         {
             return new BookingResult(false, false, validation, null, null, null);
         }
+        var entries = await _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || entryId == e.Id)).ToListAsync();
 
-        // Prevent booking a split-child draft directly
+        // Prevent booking a split-child draft directly (for both whole and single-entry booking)
         var isChild = await _db.StatementDraftEntries.AsNoTracking().AnyAsync(e => e.SplitDraftId == draft.Id, ct);
         if (isChild)
         {
@@ -989,7 +994,23 @@ public sealed partial class StatementDraftService : IStatementDraftService
             cd.MarkCommitted();
         }
 
-        foreach (var e in draft.Entries)
+        // Decide which entries to book
+        List<StatementDraftEntry> toBook;
+        if (entryId is null)
+        {
+            toBook = entries.ToList();
+        }
+        else
+        {
+            var e = entries.FirstOrDefault(x => x.Id == entryId.Value);
+            if (e == null)
+            {
+                return new BookingResult(false, false, validation, null, null, await GetNextStatementDraftAsync(draft));
+            }
+            toBook = new List<StatementDraftEntry> { e };
+        }
+
+        foreach (var e in toBook)
         {
             if (e.ContactId == null) { continue; }
             var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == e.ContactId && c.OwnerUserId == ownerUserId, ct);
@@ -1027,11 +1048,32 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
         }
 
-        draft.MarkCommitted();
+        // Remove booked entries from draft (so they no longer appear)
+        if (entryId is null)
+        {
+            // booking entire draft → mark committed after postings
+            draft.MarkCommitted();
+        }
+        else
+        {
+            foreach (var e in toBook)
+            {
+                _db.StatementDraftEntries.Remove(e);
+            }
+
+            // If draft now empty → mark committed
+            var remainingCount = draft.Entries.Count - toBook.Count;
+            if (remainingCount <= 0)
+            {
+                draft.MarkCommitted();
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
 
-        // Archive savings plans if flagged and totals meet target after booking; append info to validation messages
-        var flaggedPlanIds = draft.Entries.Where(e => e.SavingsPlanId != null && e.ArchiveSavingsPlanOnBooking)
+        // Archive savings plans if flagged on the booked entries and totals meet target after booking; append info to validation messages
+        var flaggedPlanIds = toBook
+            .Where(e => e.SavingsPlanId != null && e.ArchiveSavingsPlanOnBooking)
             .Select(e => e.SavingsPlanId!.Value)
             .Distinct()
             .ToList();
@@ -1056,7 +1098,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
             validation = new DraftValidationResultDto(validation.DraftId, validation.IsValid, msgs);
         }
 
-        return new BookingResult(true, false, validation, null, draft.Entries.Count, await GetNextStatementDraftAsync(draft));
+        var totalBooked = toBook.Count;
+        return new BookingResult(true, false, validation, null, totalBooked, await GetNextStatementDraftAsync(draft));
     }
     private async Task<Guid?> GetNextStatementDraftAsync(StatementDraft draft)
     {

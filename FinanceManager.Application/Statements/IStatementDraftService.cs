@@ -36,9 +36,7 @@ public interface IStatementDraftService
         Guid userId,
         CancellationToken ct);
     Task<DraftValidationResultDto> ValidateAsync(Guid draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct);
-    Task<BookingResult> BookAsync(Guid draftId, Guid ownerUserId, bool forceWarnings, CancellationToken ct);
-
-    // Aggregated update to minimize round-trips; single endpoints stay available
+    Task<BookingResult> BookAsync(Guid draftId, Guid? entryId, Guid ownerUserId, bool forceWarnings, CancellationToken ct);
     Task<StatementDraftEntryDto?> SaveEntryAllAsync(
         Guid draftId,
         Guid entryId,

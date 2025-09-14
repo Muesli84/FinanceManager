@@ -26,6 +26,9 @@ else
             <button class="icon-btn" @onclick="OpenSplitDialog" title="Split-Auszug zuordnen" aria-label="Split-Auszug zuordnen">
                 <svg><use href="/icons/sprite.svg#link" /></svg>
             </button>
+            <button class="icon-btn" @onclick="BookEntry" title="Eintrag buchen" aria-label="Eintrag buchen">
+                <svg><use href="/icons/sprite.svg#postings" /></svg>
+            </button>
         </div>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
             <button class="icon-btn" disabled="@(_selectedContactId==null)" @onclick="OpenContactDetail" title="Kontakt anzeigen" aria-label="Kontakt anzeigen">
@@ -73,6 +76,22 @@ else
                     }
                 </ul>
             }
+        </div>
+    }
+    @if(_showBookWarnings && _lastBookingResult != null)
+    {
+        <div class="panel" style="margin-bottom:1rem;padding:.5rem .75rem;border:1px solid #665;border-radius:4px;background:#2a1f1f;max-width:960px;">
+            <h4 style="margin:.2rem 0 .4rem 0;font-size:.8rem;">Warnungen</h4>
+            <ul style="margin:.25rem 0 0 1rem;padding:0;font-size:.65rem;">
+                @foreach(var m in _lastBookingResult.Validation.Messages.Where(m=>m.Severity=="Warning"))
+                {
+                    <li style="margin:.2rem 0;color:#cc6;">@m.Message</li>
+                }
+            </ul>
+            <div style="margin-top:.5rem;display:flex;gap:.5rem;">
+                <button class="icon-btn" @onclick="ConfirmBookEntry"><svg><use href="/icons/sprite.svg#check" /></svg>&nbsp;Trotzdem buchen</button>
+                <button class="icon-btn" @onclick="(()=>{_showBookWarnings=false;})"><svg><use href="/icons/sprite.svg#clear" /></svg>&nbsp;Abbrechen</button>
+            </div>
         </div>
     }
     <div style="margin-bottom:1rem;">
@@ -709,7 +728,7 @@ else
     private sealed record SavingsPlanDto(Guid Id, string Name);
     private sealed record StatementDraftListDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, StatementDraftStatus Status, decimal TotalAmount, bool IsSplitDraft, IReadOnlyList<EntryDto> Entries);
 
-    private sealed record SecurityDto(Guid Id, string Name, string Identifier);
+    private sealed record SecurityDto(Guid Id, string Name, String Identifier);
     private sealed class SecurityVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Identifier { get; set; } = string.Empty; }
     private enum SecurityTransactionType { Buy=0, Sell=1, DividendOrInterest=2 }
 
@@ -871,4 +890,62 @@ else
         }
         catch { return false; }
     }
+
+    private bool _showBookWarnings;
+    private BookingResultDto? _lastBookingResult;
+
+    private async Task BookEntry()
+    {
+        _contactError = null;
+        _showBookWarnings = false;
+        try
+        {
+            var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/book", null);
+            if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
+            {
+                _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                _showBookWarnings = true;
+                StateHasChanged();
+                return;
+            }
+            if (!resp.IsSuccessStatusCode)
+            {
+                var text = await resp.Content.ReadAsStringAsync();
+                _contactError = string.IsNullOrWhiteSpace(text) ? "Fehler beim Buchen." : text;
+                return;
+            }
+            _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+            await LoadEntryAsync();
+            // Navigate to draft overview if entry gone
+            if (_vm != null && _vm.Entry != null && _vm.Entry.Id == EntryId)
+            {
+                // entry still there; just refresh UI
+                StateHasChanged();
+            }
+            else
+            {
+                Nav.NavigateTo($"/statement-drafts/{DraftId}", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _contactError = ex.Message;
+        }
+    }
+
+    private async Task ConfirmBookEntry()
+    {
+        var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/book?forceWarnings=true", null);
+        if (!resp.IsSuccessStatusCode)
+        {
+            _contactError = await resp.Content.ReadAsStringAsync();
+            return;
+        }
+        _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+        _showBookWarnings = false;
+        await LoadEntryAsync();
+        Nav.NavigateTo($"/statement-drafts/{DraftId}", true);
+    }
+
+    private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);
 }

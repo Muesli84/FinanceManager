@@ -41,7 +41,7 @@ else
                         <td></td>
                         <td>@d.OriginalFileName</td>
                         <td>@d.Status</td>
-                        <td>@d.Entries.Count</td>
+                        <td>@d.Entries.Count(e => e.Status != Domain.Statements.StatementDraftEntryStatus.AlreadyBooked)</td>
                     </tr>
                 }
             </tbody>
