@@ -180,7 +180,21 @@ public class AppDbContext : DbContext
         {
             b.HasKey(x => x.Id);
             b.Property(x => x.Amount).HasPrecision(18,2);
+            // broad unique index (may be NULL-sensitive depending on provider)
             b.HasIndex(x => new { x.Kind, x.AccountId, x.ContactId, x.SavingsPlanId, x.SecurityId, x.Period, x.PeriodStart }).IsUnique();
+            // refined unique indexes per dimension combination (filters to non-null key parts)
+            b.HasIndex(x => new { x.Kind, x.AccountId, x.Period, x.PeriodStart })
+                .IsUnique()
+                .HasFilter("[AccountId] IS NOT NULL AND [ContactId] IS NULL AND [SavingsPlanId] IS NULL AND [SecurityId] IS NULL");
+            b.HasIndex(x => new { x.Kind, x.ContactId, x.Period, x.PeriodStart })
+                .IsUnique()
+                .HasFilter("[ContactId] IS NOT NULL AND [AccountId] IS NULL AND [SavingsPlanId] IS NULL AND [SecurityId] IS NULL");
+            b.HasIndex(x => new { x.Kind, x.SavingsPlanId, x.Period, x.PeriodStart })
+                .IsUnique()
+                .HasFilter("[SavingsPlanId] IS NOT NULL AND [AccountId] IS NULL AND [ContactId] IS NULL AND [SecurityId] IS NULL");
+            b.HasIndex(x => new { x.Kind, x.SecurityId, x.Period, x.PeriodStart })
+                .IsUnique()
+                .HasFilter("[SecurityId] IS NOT NULL AND [AccountId] IS NULL AND [ContactId] IS NULL AND [SavingsPlanId] IS NULL");
         });
 
         modelBuilder.Entity<StatementDraftEntry>(b =>
@@ -209,6 +223,10 @@ public class AppDbContext : DbContext
 
     internal void ClearUserData(Guid userId)
     {
+        PostingAggregates.RemoveRange(PostingAggregates.Where(p => Accounts.Any(a => a.Id == p.AccountId && a.OwnerUserId == userId)));
+        PostingAggregates.RemoveRange(PostingAggregates.Where(p => Contacts.Any(a => a.Id == p.ContactId && a.OwnerUserId == userId)));
+        PostingAggregates.RemoveRange(PostingAggregates.Where(p => Securities.Any(a => a.Id == p.SecurityId && a.OwnerUserId == userId)));
+        PostingAggregates.RemoveRange(PostingAggregates.Where(p => SavingsPlans.Any(a => a.Id == p.SavingsPlanId && a.OwnerUserId == userId)));
         Postings.RemoveRange(Postings.Where(p => Accounts.Any(a => a.Id == p.AccountId && a.OwnerUserId == userId)));
         StatementEntries.RemoveRange(StatementEntries.Where(e => StatementImports.Any(i => Accounts.Any(a => a.Id == i.AccountId && a.OwnerUserId == userId) && e.StatementImportId == e.StatementImportId)));
         StatementImports.RemoveRange(StatementImports.Where(i => Accounts.Any(a => a.Id == i.AccountId && a.OwnerUserId == userId)));

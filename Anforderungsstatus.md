@@ -44,11 +44,12 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-WERT-001 | Wertpapiere verwalten                                           | SecurityService, SecuritiesController, UI (Liste, Detail, Kategorien), Erstellung & Rücksprung aus Kontoauszug | ✔      |
 | FA-WERT-002 | Wertpapiertransaktionen                                         | Transaktionstyp und Menge werden bei Buchung erfasst (Buy +, Sell −, Dividend ohne Menge); Positions-/Depot-/FIFO‑Logik noch offen | ~      |
 | FA-WERT-003 | Wertpapierposten bei Buchung                                    | StatementDraftService.BookAsync → `PostingKind.Security` (Trade/Fee/Tax)             | ✔      |
-| FA-WERT-004 | Kursabruf AlphaVantage API                                      | Noch nicht implementiert                                                             | ✖      |
-| FA-WERT-005 | Historische Kurse nachholen                                     | Noch nicht implementiert                                                             | ✖      |
-| FA-WERT-006 | API-Limit erkennen/beachten                                     | Noch nicht implementiert                                                             | ✖      |
-| FA-WERT-007 | Speicherung Kursposten                                          | Noch nicht implementiert                                                             | ✖      |
+| FA-WERT-004 | Kursabruf AlphaVantage API                                      | Hintergrund‑Worker ruft tägliche Kurse (TIME_SERIES_DAILY) ab; optionaler API‑Key (ohne Key inaktiv); Erkennung des Request‑Limits (Backoff bis Folgetag); Abruf 1×/Tag bis Vortag; Wochenenden übersprungen | ~      |
+| FA-WERT-005 | Historische Kurse nachholen                                     | Initiales Backfill (bis ca. 2 Jahre, dann inkrementell seit letztem Eintrag)         | ~      |
+| FA-WERT-006 | API-Limit erkennen/beachten                                     | Worker erkennt Note/Information und pausiert bis zum nächsten Tag                    | ✔      |
+| FA-WERT-007 | Speicherung Kursposten                                          | Entität `SecurityPrice`, Unique‑Index (SecurityId+Date), Persistierung via Worker    | ✔      |
 | FA-WERT-008 | Renditeberechnung                                               | Noch nicht implementiert                                                             | ✖      |
+| FA-WERT-009 | Kursliste im UI (Infinite Scroll)                               | Seite `SecurityPrices.razor` + API `SecurityPricesController`                        | ✔      |
 | FA-REP-001  | Buchungsaggregation (Monat, Quartal, Jahr)                      | Noch nicht implementiert                                                             | ✖      |
 | FA-REP-002  | Year-To-Date Berechnung                                         | Noch nicht implementiert                                                             | ✖      |
 | FA-REP-003  | Vergleich mit Vorjahr                                           | Noch nicht implementiert                                                             | ✖      |
@@ -64,7 +65,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-API-001  | Web API für alle Entitäten                                      | Controller für Konten, Kontakte, Auszüge                                             | ✔      |
 | FA-API-002  | Suchkriterien für API                                           | Kontakte: type + q Filter ergänzt; weitere Entitäten offen                           | ~      |
 | FA-API-003  | Authentifizierung & Autorisierung                               | Program.cs, Controller `[Authorize]`                                                 | ✔      |
-| FA-API-004  | Rate Limiting/Caching Kursabfragen                              | Noch nicht implementiert                                                             | ✖      |
+| FA-API-004  | Rate Limiting/Caching Kursabfragen                              | Rate‑Limit Handling in Worker integriert (AlphaVantage); API‑Gateway‑Limiting offen  | ~      |
 | FA-AUTH-001 | Anmeldung erforderlich                                          | Program.cs, Controller `[Authorize]`                                                 | ✔      |
 | FA-AUTH-002 | JWT-Token bei Anmeldung                                         | Program.cs, JwtBearer                                                                | ✔      |
 | FA-AUTH-003 | Token im Authorization Header                                   | Program.cs, JwtBearer                                                                | ✔      |
@@ -94,7 +95,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-SEC-006 | Audit Logging sicherheitsrelevanter Aktionen                    | Noch nicht implementiert                                                             | ✖      |
 | NFA-SEC-007 | Login-Sperre nach Fehlversuchen                                 | Noch nicht implementiert                                                             | ✖      |
 | NFA-SEC-008 | Admin-Audit Logging                                             | Noch nicht implementiert                                                             | ✖      |
-| NFA-REL-001 | Fehler beim Kursabruf blockiert Hauptfunktionen nicht           | Noch nicht implementiert                                                             | ✖      |
+| NFA-REL-001 | Fehler beim Kursabruf blockiert Hauptfunktionen nicht           | Worker isoliert, Fehler/Rate‑Limit werden gefangen und verhindern keine UI/API       | ✔      |
 | NFA-USAB-001| Responsive UI                                                   | UI: Blazor, Responsive Design teilweise                                              | ~      |
 | NFA-ARCH-001| Trennung Domäne/Präsentation                                   | Shared Library, Blazor, Services                                                     | ✔      |
 | NFA-LOG-001 | Zentrales Logging                                               | Program.cs, Serilog                                                                  | ✔      |
@@ -108,9 +109,14 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ~ = teilweise umgesetzt / in Arbeit  
 
 Änderungen (15.09.2025):
-- FA-WERT-002 von ✖ auf ~: Transaktionstyp und Menge werden bei Buchung erfasst (Buy positiv, Sell negativ, Dividend keine Menge). Positions-/Depot-/FIFO‑Logik bleibt offen.
-- FA-AUSZ-009 Beschreibung erweitert: Mengenlogik ergänzt; Persistenz in `Posting.Quantity`; Validierung: Dividend ohne Menge, Buy/Sell mit Menge.
-- Tests ergänzt: Unit-Tests für Wertpapierbuchung mit Menge (Buy/Sell/Dividend), inkl. Vorzeichen- und Präzisionsprüfung.
+- FA-WERT-004 von ✖ auf ~: Hintergrund‑Worker (optional via API‑Key) ruft tägliche Kurse ab; Rate‑Limit erkannt (Backoff bis Folgetag); keine Anfragen ohne Key; Abruf 1×/Tag bis Vortag; Wochenende übersprungen.
+- FA-WERT-005 von ✖ auf ~: Initiales Backfill (bis ca. 2 Jahre) und inkrementeller Abruf seit letztem Eintrag.
+- FA-WERT-006 von ✖ auf ✔: Rate‑Limit-Erkennung implementiert.
+- FA-WERT-007 von ✖ auf ✔: Speicherung Kursposten (`SecurityPrice`).
+- FA-WERT-009 neu: Kursliste im UI (Infinite Scroll) inkl. API.
+- NFA-REL-001 von ✖ auf ✔: Kursabruffehler blockieren die Hauptfunktionen nicht.
+- README angepasst: AlphaVantage‑Key optional; ohne Key keine Kursabrufe.
+- FA-WERT-002/FA-AUSZ-009: Mengenlogik und Tests ergänzt (siehe Änderungen gleicher Tag).
 
 Änderungen (13.09.2025):
 - FA-SPAR-002 von ✖ auf ✔: Sparplan-Typen (OneTime, Recurring, Open) in DTO/Domain + UI/Service nutzbar.

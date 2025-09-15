@@ -70,6 +70,55 @@ else
             <div style="color:#e66;margin-top:1rem;">@_error</div>
         }
     </EditForm>
+
+    @if (!IsNew && _chartsLoaded)
+    {
+        <div style="margin-top:1.5rem;">
+            <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.5rem;">
+                <label>Intervall:</label>
+                <select @bind="_period" @bind:after="async () => await LoadAggregatesAsync()">
+                    <option value="Month">Monat</option>
+                    <option value="Quarter">Quartal</option>
+                    <option value="Year">Jahr</option>
+                </select>
+            </div>
+            <div class="chart" style="--bar-color:#2d6cdf;--bar-neg:#c94;--axis:#555;border:1px solid var(--border);padding:.5rem 1rem;border-radius:.35rem;">
+                @if (_points.Count == 0)
+                {
+                    <div style="opacity:.7;font-size:.85rem;">Keine Daten.</div>
+                }
+                else
+                {
+                    var maxAbs = _points.Select(p => Math.Abs(p.Amount)).DefaultIfEmpty(0m).Max();
+                    var halfHeight = 90m; // px
+                    var scale = maxAbs == 0 ? 0 : halfHeight / maxAbs;
+                    <div style="display:flex;flex-direction:column;gap:0;height:180px;border-top:1px solid var(--axis);border-bottom:1px solid var(--axis);">
+                        <div style="display:flex;align-items:flex-end;gap:.35rem;height:50%;">
+                            @foreach (var p in _points)
+                            {
+                                var posH = p.Amount > 0 ? (int)Math.Round((double)(p.Amount * scale)) : 0;
+                                <div title="@($"{p.PeriodStart:yyyy-MM-dd} ({p.Amount})")" style="width:16px;background:var(--bar-color);height:@(posH)px;"></div>
+                            }
+                        </div>
+                        <div style="height:1px;background:var(--axis);opacity:.6;"></div>
+                        <div style="display:flex;align-items:flex-start;gap:.35rem;height:50%;">
+                            @foreach (var p in _points)
+                            {
+                                var negH = p.Amount < 0 ? (int)Math.Round((double)(-p.Amount * scale)) : 0;
+                                <div title="@($"{p.PeriodStart:yyyy-MM-dd} ({p.Amount})")" style="width:16px;background:var(--bar-neg);height:@(negH)px;"></div>
+                            }
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:.35rem;font-size:.65rem;color:#aaa;margin-top:.25rem;">
+                        @foreach (var p in _points)
+                        {
+                            <div style="width:16px;text-align:center;">@FormatLabel(p.PeriodStart)</div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
 }
 
 @code {
@@ -82,6 +131,11 @@ else
     private bool _loaded;
     private bool _busy;
     private string? _error;
+
+    // Charts
+    private string _period = "Month";
+    private bool _chartsLoaded;
+    private List<AggregatePointDto> _points = new();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -100,6 +154,8 @@ else
                         _model.Type = dto.Type.ToString();
                         _model.Iban = dto.Iban;
                         _model.BankContactId = dto.BankContactId.ToString();
+                        _chartsLoaded = true;
+                        await LoadAggregatesAsync();
                     }
                 }
                 else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -113,6 +169,23 @@ else
             }
         }
         _loaded = true;
+    }
+
+    private async Task LoadAggregatesAsync()
+    {
+        if (Id == null) return;
+        var url = $"/api/accounts/{Id}/aggregates?period={_period}";
+        var resp = await Http.GetAsync(url);
+        if (resp.IsSuccessStatusCode)
+        {
+            _points = await resp.Content.ReadFromJsonAsync<List<AggregatePointDto>>() ?? new();
+            StateHasChanged();
+        }
+    }
+
+    private static string FormatLabel(DateTime d)
+    {
+        return d.ToString("yy-M");
     }
 
     private async Task LoadBankContactsAsync()
@@ -215,6 +288,7 @@ else
 
     private sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
+    private sealed record AggregatePointDto(DateTime PeriodStart, decimal Amount);
     private enum ContactType { Self, Bank, Person, Organization, Other }
     private enum AccountType { Giro, Savings }
 }

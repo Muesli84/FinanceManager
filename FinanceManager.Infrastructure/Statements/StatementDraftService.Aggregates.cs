@@ -30,14 +30,27 @@ public sealed partial class StatementDraftService
 
             async Task Upsert(Guid? accountId, Guid? contactId, Guid? savingsPlanId, Guid? securityId)
             {
-                var agg = await _db.PostingAggregates
-                    .FirstOrDefaultAsync(x => x.Kind == posting.Kind
-                        && x.AccountId == accountId
-                        && x.ContactId == contactId
-                        && x.SavingsPlanId == savingsPlanId
-                        && x.SecurityId == securityId
-                        && x.Period == p
-                        && x.PeriodStart == periodStart, ct);
+                // Check ChangeTracker first to avoid duplicate creations within the same context
+                var agg = _db.PostingAggregates.Local.FirstOrDefault(x => x.Kind == posting.Kind
+                    && x.AccountId == accountId
+                    && x.ContactId == contactId
+                    && x.SavingsPlanId == savingsPlanId
+                    && x.SecurityId == securityId
+                    && x.Period == p
+                    && x.PeriodStart == periodStart);
+
+                if (agg == null)
+                {
+                    agg = await _db.PostingAggregates
+                        .FirstOrDefaultAsync(x => x.Kind == posting.Kind
+                            && x.AccountId == accountId
+                            && x.ContactId == contactId
+                            && x.SavingsPlanId == savingsPlanId
+                            && x.SecurityId == securityId
+                            && x.Period == p
+                            && x.PeriodStart == periodStart, ct);
+                }
+
                 if (agg == null)
                 {
                     agg = new Domain.Postings.PostingAggregate(posting.Kind, accountId, contactId, savingsPlanId, securityId, periodStart, p);
