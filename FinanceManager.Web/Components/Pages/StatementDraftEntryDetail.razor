@@ -290,17 +290,21 @@ else
                                 </div>
                                 <div>
                                     <label>Menge</label>
-                                    <InputNumber @bind-Value="_securityQuantity" />
+                                    <input type="text" @bind="_securityQuantityExpr" @bind:event="oninput" @onblur="ParseSecurityQuantity" />
                                 </div>
                                 <div>
                                     <label>Gebühr (enthalten)</label>
-                                    <InputNumber @bind-Value="_securityFee" />
+                                    <input type="text" @bind="_securityFeeExpr" @bind:event="oninput" @onblur="ParseSecurityFee" />
                                 </div>
                                 <div>
                                     <label>Steuer (enthalten)</label>
-                                    <InputNumber @bind-Value="_securityTax" />
+                                    <input type="text" @bind="_securityTaxExpr" @bind:event="oninput" @onblur="ParseSecurityTax" />
                                 </div>
                             </div>
+                            @if(!string.IsNullOrEmpty(_securityExprError))
+                            {
+                                <div style="margin-top:.25rem;color:#e66;font-size:.75rem;">@_securityExprError</div>
+                            }
                         }
                     </td>
                 </tr>
@@ -410,6 +414,12 @@ else
     private decimal? _securityFee;
     private decimal? _securityTax;
 
+    // Expression inputs + error
+    private string _securityQuantityExpr = string.Empty;
+    private string _securityFeeExpr = string.Empty;
+    private string _securityTaxExpr = string.Empty;
+    private string? _securityExprError;
+
     private IEnumerable<SecurityVm> FilteredSecurities => string.IsNullOrWhiteSpace(_securityFilter)
         ? _securities
         : _securities.Where(s => s.Name.Contains(_securityFilter, StringComparison.OrdinalIgnoreCase) || s.Identifier.Contains(_securityFilter, StringComparison.OrdinalIgnoreCase));
@@ -461,6 +471,10 @@ else
             _securityQuantity = _vm.Entry.SecurityQuantity;
             _securityFee = _vm.Entry.SecurityFeeAmount;
             _securityTax = _vm.Entry.SecurityTaxAmount;
+            // init expr fields from values
+            _securityQuantityExpr = _securityQuantity?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
+            _securityFeeExpr = _securityFee?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
+            _securityTaxExpr = _securityTax?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
         }
 
         // Securities laden falls nötig (jetzt auch falls bereits SecurityId gesetzt, selbst wenn Bankkontakt-Bedingung nicht erfüllt)
@@ -846,6 +860,106 @@ else
         name ??= string.Empty;
         var url = $"/securities/new?prefillName={Uri.EscapeDataString(name)}&draftId={DraftId}&entryId={EntryId}";
         Nav.NavigateTo(url);
+    }
+
+    // Expression parsing and assignment
+    private void ParseSecurityQuantity(FocusEventArgs _)
+    {
+        if (TryEvalDecimal(_securityQuantityExpr, out var v))
+        {
+            _securityQuantity = v;
+            _securityQuantityExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
+            _securityExprError = null;
+        }
+        else { _securityExprError = "Ungültige Menge."; }
+    }
+    private void ParseSecurityFee(FocusEventArgs _)
+    {
+        if (TryEvalDecimal(_securityFeeExpr, out var v))
+        {
+            _securityFee = v;
+            _securityFeeExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
+            _securityExprError = null;
+        }
+        else { _securityExprError = "Ungültige Gebühr."; }
+    }
+    private void ParseSecurityTax(FocusEventArgs _)
+    {
+        if (TryEvalDecimal(_securityTaxExpr, out var v))
+        {
+            _securityTax = v;
+            _securityTaxExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
+            _securityExprError = null;
+        }
+        else { _securityExprError = "Ungültige Steuer."; }
+    }
+
+    private static bool TryEvalDecimal(string? expr, out decimal? value)
+    {
+        value = null;
+        if (string.IsNullOrWhiteSpace(expr)) { return true; }
+        try
+        {
+            var d = Eval(expr);
+            value = (decimal)d;
+            return true;
+        }
+        catch
+        {
+            value = null; return false;
+        }
+    }
+
+    // Minimal expression evaluator: + - * / and parentheses; culture-agnostic (accepts , or . as decimal separator)
+    private static double Eval(string input)
+    {
+        var expr = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
+        expr = expr.Replace(',', '.');
+        int i = 0;
+        double ParseExpression()
+        {
+            double x = ParseTerm();
+            while (i < expr.Length)
+            {
+                if (expr[i] == '+') { i++; x += ParseTerm(); }
+                else if (expr[i] == '-') { i++; x -= ParseTerm(); }
+                else break;
+            }
+            return x;
+        }
+        double ParseTerm()
+        {
+            double x = ParseFactor();
+            while (i < expr.Length)
+            {
+                if (expr[i] == '*') { i++; x *= ParseFactor(); }
+                else if (expr[i] == '/') { i++; x /= ParseFactor(); }
+                else break;
+            }
+            return x;
+        }
+        double ParseFactor()
+        {
+            if (i >= expr.Length) throw new FormatException();
+            if (expr[i] == '+') { i++; return ParseFactor(); }
+            if (expr[i] == '-') { i++; return -ParseFactor(); }
+            if (expr[i] == '(')
+            {
+                i++; var v = ParseExpression();
+                if (i >= expr.Length || expr[i] != ')') throw new FormatException();
+                i++; return v;
+            }
+            int start = i;
+            while (i < expr.Length && (char.IsDigit(expr[i]) || expr[i] == '.')) i++;
+            if (start == i) throw new FormatException();
+            var token = expr.Substring(start, i - start);
+            if (!double.TryParse(token, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v2))
+                throw new FormatException();
+            return v2;
+        }
+        var result = ParseExpression();
+        if (i != expr.Length) throw new FormatException();
+        return result;
     }
 
     private async Task PersistSecurityChangesIfNeededAsync()
