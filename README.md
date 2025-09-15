@@ -47,7 +47,7 @@ Querschnittsthemen: Logging, Auth (JWT), Internationalisierung, Caching, Validat
 - Blazor Server (Razor Components)
 - (Geplant) .NET MAUI iOS
 - EF Core (relationale DB, Provider TBD)
-- AlphaVantage API (Wertpapierkurse)
+- AlphaVantage API (Wertpapierkurse; API-Key optional)
 - Auth: JWT (kurzlebig), Passwort-Hash Argon2id/bcrypt
 - Logging: ILogger Abstraktion (Serilog geplant)
 - Validation: DataAnnotations / FluentValidation (geplant)
@@ -81,6 +81,7 @@ Querschnittsthemen: Logging, Auth (JWT), Internationalisierung, Caching, Validat
 - Voraussetzungen allgemein:
   - .NET 9 Runtime (Hosting Bundle für Windows, ASP.NET Core Runtime für Linux)
   - Datenbankzugriff konfigurieren (ConnectionStrings in `appsettings.Production.json`)
+  - Optional: AlphaVantage API?Key (`AlphaVantage:ApiKey` bzw. ENV `ALPHAVANTAGE__APIKEY`). Ohne Key werden keine Kurse abgerufen (Worker inaktiv).
 
 - Windows
   - Veröffentlichung: `dotnet publish FinanceManager.Web -c Release -o .\publish`
@@ -111,6 +112,10 @@ Querschnittsthemen: Logging, Auth (JWT), Internationalisierung, Caching, Validat
         }
       }
       ```
+  - Optional: AlphaVantage Key als Environment setzen (optional, für Kursabruf):
+    ```ini
+    Environment=ALPHAVANTAGE__APIKEY=your-key-here
+    ```
   - systemd-Unit `/etc/systemd/system/financemanager.service`:
     ```ini
     [Unit]
@@ -126,6 +131,8 @@ Querschnittsthemen: Logging, Auth (JWT), Internationalisierung, Caching, Validat
     User=www-data
     Environment=ASPNETCORE_ENVIRONMENT=Production
     Environment=ASPNETCORE_URLS=http://0.0.0.0:5005
+    # Optional: AlphaVantage Key
+    # Environment=ALPHAVANTAGE__APIKEY=your-key-here
 
     [Install]
     WantedBy=multi-user.target
@@ -143,7 +150,7 @@ Querschnittsthemen: Logging, Auth (JWT), Internationalisierung, Caching, Validat
 ### Voraussetzungen
 - .NET 9 SDK
 - Node/NPM (optional für Build Pipelines künftiger Frontend Assets)
-- API Key für AlphaVantage (User Secrets / ENV VAR `ALPHAVANTAGE__APIKEY`)
+- Optional: AlphaVantage API?Key (`AlphaVantage:ApiKey` bzw. ENV `ALPHAVANTAGE__APIKEY`). Ohne Key werden keine Kurse abgerufen.
 
 ### Lokaler Start
 ```bash

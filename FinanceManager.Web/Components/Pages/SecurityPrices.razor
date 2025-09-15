@@ -1,0 +1,130 @@
+@page "/securities/{SecurityId:guid}/prices"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<h3>Kurse</h3>
+<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
+    <button class="icon-btn" @onclick="Back" title="Zurück" aria-label="Zurück"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+</div>
+@if(_loading && _items.Count==0)
+{
+    <p>Lade...</p>
+}
+else
+{
+    <table class="fm-table wide">
+        <thead>
+            <tr>
+                <th style="width:9rem;">Datum</th>
+                <th style="width:9rem;text-align:right;">Schlusskurs</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var p in _items)
+            {
+                <tr>
+                    <td>@p.Date.ToShortDateString()</td>
+                    <td style="text-align:right;">@p.Close</td>
+                </tr>
+            }
+            @if(_loading)
+            {
+                <tr><td colspan="2" style="opacity:.6;">Lade...</td></tr>
+            }
+        </tbody>
+    </table>
+    <div style="margin-top:.5rem;">
+        @if(_canLoadMore)
+        {
+            <div @ref="_sentinel" class="infinite-sentinel" aria-hidden="true"></div>
+        }
+        else if(_items.Count==0 && !_loading)
+        {
+            <span style="opacity:.6;font-size:.75rem;">Keine Kurse vorhanden.</span>
+        }
+        else if(!_canLoadMore)
+        {
+            <div class="end-of-list" style="opacity:.6;font-size:.65rem;">Ende erreicht.</div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public Guid SecurityId { get; set; }
+    private const int PageSize = 100;
+    private bool _loading; private bool _canLoadMore = true; private int _skip;
+    private List<PriceDto> _items = new();
+
+    private ElementReference _sentinel;
+    private DotNetObjectReference<SecurityPrices>? _selfRef;
+    private bool _observerAttached;
+
+    private sealed record PriceDto(DateTime Date, decimal Close);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if(_items.Count==0)
+        {
+            await LoadMoreAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_observerAttached || !_canLoadMore || _loading)
+        {
+            return;
+        }
+        if (_sentinel.Context is null)
+        {
+            return;
+        }
+        try
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("fmInfinite.observe", _sentinel, _selfRef, null);
+            _observerAttached = true;
+        }
+        catch (JSException)
+        {
+            await Task.Yield();
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public async Task LoadMoreFromJs()
+    {
+        await LoadMoreAsync();
+        if (_canLoadMore)
+        {
+            await JS.InvokeVoidAsync("fmInfinite.refresh");
+        }
+        else
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if(_loading || !_canLoadMore) return;
+        _loading = true;
+        try
+        {
+            var resp = await Http.GetAsync($"/api/securities/{SecurityId}/prices?skip={_skip}&take={PageSize}");
+            if(resp.IsSuccessStatusCode)
+            {
+                var chunk = await resp.Content.ReadFromJsonAsync<List<PriceDto>>() ?? new();
+                _items.AddRange(chunk);
+                _skip += chunk.Count;
+                if(chunk.Count < PageSize) _canLoadMore = false;
+            }
+        }
+        finally { _loading=false; StateHasChanged(); }
+    }
+
+    private void Back() => Nav.NavigateTo($"/securities/{SecurityId}");
+}

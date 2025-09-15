@@ -31,6 +31,7 @@ public class AppDbContext : DbContext
     public DbSet<Security> Securities => Set<Security>();
     public DbSet<SecurityCategory> SecurityCategories => Set<SecurityCategory>();
     public DbSet<PostingAggregate> PostingAggregates => Set<PostingAggregate>();
+    public DbSet<SecurityPrice> SecurityPrices => Set<SecurityPrice>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -190,6 +191,14 @@ public class AppDbContext : DbContext
             b.Property<decimal?>("SecurityFeeAmount").HasPrecision(18,2);
             b.Property<decimal?>("SecurityTaxAmount").HasPrecision(18,2);
             b.HasIndex("SecurityId");
+        });
+
+        modelBuilder.Entity<SecurityPrice>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.SecurityId, x.Date }).IsUnique();
+            b.Property(x => x.Date).IsRequired();
+            b.Property(x => x.Close).HasPrecision(18,4).IsRequired();
         });
     }
 

@@ -53,6 +53,10 @@ builder.Services.Configure<FormOptions>(options =>
 builder.Services.AddSingleton<IClassificationCoordinator, ClassificationCoordinator>();
 builder.Services.AddSingleton<IBookingCoordinator, BookingCoordinator>();
 
+// NEW: Security prices
+builder.Services.AddSingleton<IPriceProvider, AlphaVantagePriceProvider>();
+builder.Services.AddHostedService<SecurityPriceWorker>();
+
 // Named HttpClient (bleibt)
 builder.Services.AddTransient<AuthenticatedHttpClientHandler>();
 builder.Services.AddSingleton<IAuthTokenProvider, JwtCookieAuthTokenProvider>();

@@ -15,6 +15,7 @@
         <button class="icon-btn" @onclick="ArchiveAsync" disabled="@(!_loaded || !_model.IsActive)" title="Archivieren" aria-label="Archivieren"><svg><use href="/icons/sprite.svg#archive" /></svg></button>
         <button class="icon-btn danger" @onclick="DeleteAsync" disabled="@(!_loaded || _model.IsActive)" title="Löschen" aria-label="Löschen"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
         <button class="icon-btn" @onclick="OpenPostings" disabled="@(!_loaded)" title="Postings" aria-label="Postings"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
+        <button class="icon-btn" @onclick="OpenPrices" disabled="@(!_loaded)" title="Kurse" aria-label="Kurse"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
     }    
 </div>
 
@@ -236,6 +237,14 @@
         if (Id.HasValue)
         {
             Nav.NavigateTo($"/postings/security/{Id}");
+        }
+    }
+
+    private void OpenPrices()
+    {
+        if (Id.HasValue)
+        {
+            Nav.NavigateTo($"/securities/{Id}/prices");
         }
     }
 
