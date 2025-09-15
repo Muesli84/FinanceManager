@@ -609,7 +609,7 @@ else
     }
     private void OpenContactDetail()
     {
-        if (_selectedContactId != null) { Nav.NavigateTo($"/contacts/{_selectedContactId}"); }
+        if (_selectedContactId != null) { Nav.NavigateTo($"/contacts/{_selectedContactId}?&draftId={DraftId}&entryId={EntryId}"); }
     }
     private void OpenSavingsPlanDetail()
     {

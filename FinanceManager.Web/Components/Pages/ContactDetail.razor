@@ -270,7 +270,17 @@ else
         _busy = false;
     }
 
-    private void Back() => Navigation.NavigateTo("/contacts", forceLoad: true);
+    private void Back()
+    {
+        if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
+        {
+            Navigation.NavigateTo($"/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}", forceLoad: true);
+        }
+        else
+        {
+            Navigation.NavigateTo("/contacts", forceLoad: true);
+        }
+    }
     private void OpenBankAccounts()
     {
         if (Id.HasValue)
