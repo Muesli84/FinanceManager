@@ -73,7 +73,8 @@ else
     private CancellationTokenSource? _searchCts;
 
     private enum PostingKind { Bank=0, Contact=1, SavingsPlan=2, Security=3 }
-    private enum SecurityPostingSubType { Trade=0, Fee=1, Tax=2, Dividend=3 }
+    // Align with server enum: Buy=0, Sell=1, Dividend=2, Fee=3, Tax=4
+    private enum SecurityPostingSubType { Buy=0, Sell=1, Dividend=2, Fee=3, Tax=4 }
     private sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
 
     protected override async Task OnParametersSetAsync()
