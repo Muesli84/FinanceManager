@@ -12,9 +12,10 @@
 5. Roadmap (Wellen)
 6. Authentifizierung & Sicherheit (Kurz)
 7. Internationalisierung (i18n)
-8. Entwicklung & Build
-9. Geplante Erweiterungen / Offene Punkte
-10. Lizenz / Status
+8. Installation
+9. Entwicklung & Build
+10. Geplante Erweiterungen / Offene Punkte
+11. Lizenz / Status
 
 ## 1. Überblick
 FinanceManager ist eine Blazor Server Anwendung (.NET 9) zur Verwaltung persönlicher Finanzen. Importierte Kontoauszüge (CSV/PDF) werden verarbeitet, Buchungen kategorisiert und in Bank-/Kontakt-/Sparplan- und Wertpapierposten überführt. Ergänzend existieren Auswertungen (Monat, Quartal, Jahr, YTD) und ein KPI-Dashboard. Mehrere Benutzer werden unterstützt; Bankkonten können gezielt geteilt werden. Eine .NET MAUI App (iOS) ist geplant.
@@ -75,7 +76,70 @@ Querschnittsthemen: Logging, Auth (JWT), Internationalisierung, Caching, Validat
 - Fallback-Kette: Benutzer > Browser > de.
 - Alle UI-Texte via Ressourcen – keine Hardcoded Strings.
 
-## 8. Entwicklung & Build
+## 8. Installation
+
+- Voraussetzungen allgemein:
+  - .NET 9 Runtime (Hosting Bundle für Windows, ASP.NET Core Runtime für Linux)
+  - Datenbankzugriff konfigurieren (ConnectionStrings in `appsettings.Production.json`)
+
+- Windows
+  - Veröffentlichung: `dotnet publish FinanceManager.Web -c Release -o .\publish`
+  - Start (interaktiv):
+    ```bash
+    cd .\publish
+    dotnet FinanceManager.Web.dll
+    ```
+  - Port-Konfiguration (optional): per Umgebungsvariable `ASPNETCORE_URLS` (z.B. `http://localhost:5000`) oder via `appsettings.Production.json` (Kestrel ? Endpoints).
+
+- Linux (systemd)
+  - Veröffentlichung auf dem Build-Rechner und Kopie nach `/opt/financemanager`:
+    ```bash
+    dotnet publish FinanceManager.Web -c Release -o ./publish
+    sudo mkdir -p /opt/financemanager
+    sudo cp -r ./publish/* /opt/financemanager/
+    sudo chown -R www-data:www-data /opt/financemanager # Benutzer/Gruppe bei Bedarf anpassen
+    ```
+  - Port in der Konfiguration setzen (eine der beiden Varianten):
+    - Umgebungsvariable (empfohlen): `ASPNETCORE_URLS=http://0.0.0.0:5005`
+    - Oder `appsettings.Production.json` in `/opt/financemanager`:
+      ```json
+      {
+        "Kestrel": {
+          "Endpoints": {
+            "Http": { "Url": "http://0.0.0.0:5005" }
+          }
+        }
+      }
+      ```
+  - systemd-Unit `/etc/systemd/system/financemanager.service`:
+    ```ini
+    [Unit]
+    Description=FinanceManager (Blazor Server)
+    After=network.target
+
+    [Service]
+    WorkingDirectory=/opt/financemanager
+    ExecStart=/usr/bin/dotnet /opt/financemanager/FinanceManager.Web.dll
+    Restart=always
+    RestartSec=10
+    SyslogIdentifier=financemanager
+    User=www-data
+    Environment=ASPNETCORE_ENVIRONMENT=Production
+    Environment=ASPNETCORE_URLS=http://0.0.0.0:5005
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+  - Dienst aktivieren/starten:
+    ```bash
+    sudo systemctl daemon-reload
+    sudo systemctl enable financemanager
+    sudo systemctl start financemanager
+    sudo systemctl status financemanager -n 100
+    ```
+  - Optional: Reverse Proxy (nginx/Apache) für TLS/Domain vor den Dienst schalten.
+
+## 9. Entwicklung & Build
 ### Voraussetzungen
 - .NET 9 SDK
 - Node/NPM (optional für Build Pipelines künftiger Frontend Assets)
@@ -99,7 +163,7 @@ dotnet test
 ### Code-Qualität
 - `dotnet format` vor Pull Request.
 
-## 9. Geplante Erweiterungen / Offene Punkte (Auszug)
+## 10. Geplante Erweiterungen / Offene Punkte (Auszug)
 - OP-002: Konsolidierung Projekt-/Produktname.
 - OP-003: Finale Wahl Auth (Identity Integration vs. eigenes Minimal-Setup).
 - OP-009: Rollenmodell für Konto-Freigaben (erweitert?).
@@ -108,7 +172,7 @@ dotnet test
 - OP-012: Weitere Importformate (MT940, CAMT). 
 - OP-013: Persistenter Sprachwechsel (Client State / Server Profil).
 
-## 10. Lizenz / Status
+## 11. Lizenz / Status
 - Aktueller Status: Entwurf / frühe Implementierung.
 - Lizenz: (noch nicht festgelegt) – bitte hinzufügen (z.B. MIT).
 
