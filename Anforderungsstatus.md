@@ -22,6 +22,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-012 | Anzeige Gesamtbetrag verknüpfter Aufteilungs-Auszüge im Eintrag | StatementDraftsController GetEntry: SplitSum/Difference; EntryDetail UI Amount-Zeile | ✔      |
 | FA-AUSZ-013 | Status offen bei Zahlungsintermediär bis vollständig gesplittet | StatementDraftService: TryAutoAssignContact & ReevaluateParentEntryStatusAsync       | ✔      |
 | FA-AUSZ-014 | Originaldatei speichern & Download / Inline-Ansicht             | StatementDraft: OriginalFileContent; Controller /file Endpoint; Detail-Viewer        | ✔      |
+| FA-AUSZ-015 | Massenbuchung Kontoauszüge (inkl. optionaler Einzelbuchung pro Eintrag) | BookingCoordinator, StatementDraftsController (`/api/statement-drafts/book-all`), UI `StatementDrafts.razor` Dialogoption „Einträge einzeln buchen“ – nur Einträge mit Warnung/Fehler bleiben offen | ✔      |
 | FA-KON-001  | Kontakte verwalten (CRUD)                                       | ContactService, ContactsController, UI                                               | ✔      |
 | FA-KON-002  | Kontakte können Kategorie zugeordnet werden                     | ContactService, UI                                                                   | ✔      |
 | FA-KON-003  | Anwender als Kontakt angelegt                                   | ContactService, Initialisierung                                                      | ✔      |
@@ -57,7 +58,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-REP-005  | Renditekennzahlen Wertpapiere                                   | Noch nicht implementiert                                                             | ✖      |
 | FA-KPI-001  | Dividenden aktueller Monat                                      | Noch nicht implementiert                                                             | ✖      |
 | FA-KPI-002  | Dividenden aktuelles Jahr                                       | Noch nicht implementiert                                                             | ✖      |
-| FA-KPI-003  | Einnahmen/Ausgaben pro Monat                                    | Noch nicht implementiert                                                             | ✖      |
+| FA-KPI-003  | Einnahmen/Ausgaben pro Monat                                    | Erste Graphen auf Bankkontodetailseite                                               | ~      |
 | FA-KPI-004  | Gesamtdepotrendite aktuelles Jahr                               | Noch nicht implementiert                                                             | ✖      |
 | FA-KPI-005  | KPI-Fallback Jahresanfang                                       | Noch nicht implementiert                                                             | ✖      |
 | FA-UI-001   | Suchfeld in Listen                                              | Kontakte-Liste + Merge-Dialog implementiert; andere Listen teils offen               | ~      |
@@ -108,9 +109,14 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
+Änderungen (15.09.2025) – Ergänzung 2:
+- NEU: FA-AUSZ-015 Massenbuchung mit optionaler Einzelbuchung pro Eintrag (UI Dialogoption „Einträge einzeln buchen“). Backend: BookingCoordinator erweitert; Controller & UI aktualisiert.
+- UX: Rückkehrpfad nach Öffnen eines Kontakts aus Kontoauszugseintrag via `returnUrl` (kein eigener Requirement-Eintrag, inkrementelle Verbesserung von FA-KON-001 / FA-AUSZ-003).
+- FA-KPI-003 von ✖ auf ~: Erste Graphen auf Bankkontodetailseite (Einnahmen/Ausgaben pro Monat).
+
 Änderungen (15.09.2025):
 - FA-WERT-004 von ✖ auf ~: Hintergrund‑Worker (optional via API‑Key) ruft tägliche Kurse ab; Rate‑Limit erkannt (Backoff bis Folgetag); keine Anfragen ohne Key; Abruf 1×/Tag bis Vortag; Wochenende übersprungen.
-- FA-WERT-005 von ✖ auf ~: Initiales Backfill (bis ca. 2 Jahre) und inkrementeller Abruf seit letztem Eintrag.
+- FA-WERT-005 von ✖ auf ~: Initiales Backfill (bis ca. 2 Jahre, dann inkrementell seit letztem Eintrag).
 - FA-WERT-006 von ✖ auf ✔: Rate‑Limit-Erkennung implementiert.
 - FA-WERT-007 von ✖ auf ✔: Speicherung Kursposten (`SecurityPrice`).
 - FA-WERT-009 neu: Kursliste im UI (Infinite Scroll) inkl. API.

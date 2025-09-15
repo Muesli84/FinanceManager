@@ -23,6 +23,7 @@ FinanceManager ist eine Blazor Server Anwendung (.NET 9) zur Verwaltung persönli
 ## 2. Kernfunktionen
 - Konten: Giro- & Sparkonten, Bankkontakt-Automatik, Sharing (Lese / optional Schreibrechte).
 - Kontoauszug-Import: CSV & PDF (Strategy Pattern), Duplikatserkennung, Buch.-Blatt vor endgültiger Verbuchung, Alias-Matching für Kontakte.
+- Kontoauszug Massenbuchung: Dialog mit Optionen (Warnungen ignorieren, bei erster Warnung/Fehler abbrechen, Einträge einzeln buchen). Einzelbuchungsmodus bucht jeden offenen Eintrag separat; nur Einträge mit Warnung/Fehler verbleiben offen.
 - Kontakte & Kategorien: Verwaltung inkl. Aliasnamen (Wildcards ? *). Automatische Zuordnung beim Import.
 - Sparpläne: Einmalig (Zielbetrag/Zieldatum), wiederkehrend (Intervalle), offen. Automatische Erkennung bei Eigen-Sparkonto-Zahlungen, Zielstatus (erreicht / nahe / verfehlt) & Archivierung.
 - Wertpapiere: Aktien/Fonds, Transaktionen (Kauf, Verkauf, Dividende/Zins, Gebühren, Steuern, Menge). Menge wird bei Buchung gespeichert (Buy positiv, Sell negativ, Dividend ohne Menge). Kursdienst/Renditen in Planung.
