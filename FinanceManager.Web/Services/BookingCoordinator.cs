@@ -37,6 +37,8 @@ public sealed class BookingCoordinator : IBookingCoordinator
     {
         if (_states.TryGetValue(userId, out var s))
         {
+            if (!s.Running)
+                _states.TryRemove(userId, out var sOut);
             return new BookingStatus(s.Running, s.Processed, s.Failed, s.Total, s.Message, s.Warnings, s.Errors, s.Issues.ToList());
         }
         return null;

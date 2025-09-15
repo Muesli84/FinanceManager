@@ -19,8 +19,23 @@
 
 @if (_isClassifying)
 {
-    <div class="alert alert-success" style="margin-top:1rem;">
-        <span style="margin-left:.4rem;">@_classifyMessage (@_processed/@_total)</span>
+    <div style="margin-top:1rem;margin-bottom:1rem;padding:.75rem .9rem;border:1px solid #3a3a3a;border-radius:.35rem;background:#10151e;box-shadow:0 6px 18px rgba(0,0,0,.35);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+            <div style="display:flex;align-items:center;gap:.6rem;">
+                <svg style="width:1rem;height:1rem;fill:#7fb3ff;"><use href="/icons/sprite.svg#clock" /></svg>
+                <strong>Klassifizierung läuft…</strong>
+            </div>
+        </div>
+        <div style="margin-top:.5rem;font-size:.85rem;opacity:.9;">@_classifyMessage</div>
+        <div style="margin-top:.6rem;display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;">
+            <span>Fortschritt: @_processed / @_total</span>
+        </div>
+        <div style="margin-top:.6rem;height:.5rem;border-radius:.25rem;background:#222;overflow:hidden;">
+            @{
+                var percentC = _total > 0 ? Math.Clamp((int)Math.Round(100.0 * _processed / _total), 0, 100) : 0;
+            }
+            <div style="height:100%;width:@percentC%;background:#2d6cdf;"></div>
+        </div>
     </div>
 }
 
@@ -332,8 +347,11 @@ else
         var s = await Http.GetFromJsonAsync<TempStatus>("api/statement-drafts/classify/status");
         if (s != null)
         {
-            await InvokeAsync(() => UpdateClassifyUi(s));            
-            if (!s.running)
+            var isStarted = _isClassifying;
+            await InvokeAsync(() => UpdateClassifyUi(s));
+            if (!isStarted && _isClassifying)
+                _ = PollUntilFinishedAsync();
+            if (!s.running && s.total > 0)
             {
                 await Reload();
             }
@@ -410,9 +428,11 @@ else
         var s = await Http.GetFromJsonAsync<BookStatus>("api/statement-drafts/book-all/status");
         if (s != null)
         {
+            var isStarted = _isBooking;
             await InvokeAsync(() => UpdateBookingUi(s));
-            
-            if (!s.running)
+            if (!isStarted && _isBooking)
+                _ = PollBookingUntilFinishedAsync();
+            if (!s.running && s.total > 0)
             {
                 await Reload();
             }

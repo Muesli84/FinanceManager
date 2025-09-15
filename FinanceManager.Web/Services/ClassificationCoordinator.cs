@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using FinanceManager.Application.Statements;
+using FinanceManager.Infrastructure.Migrations;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceManager.Web.Services;
@@ -31,6 +32,8 @@ public sealed class ClassificationCoordinator : IClassificationCoordinator
     {
         if (_states.TryGetValue(userId, out var s))
         {
+            if (!s.Running)
+                _states.TryRemove(userId, out var sOut);
             return new ClassificationStatus(s.Running, s.Processed, s.Total, s.Message);
         }
         return null;
