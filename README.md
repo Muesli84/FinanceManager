@@ -24,7 +24,7 @@ FinanceManager ist eine Blazor Server Anwendung (.NET 9) zur Verwaltung persönli
 - Kontoauszug-Import: CSV & PDF (Strategy Pattern), Duplikatserkennung, Buch.-Blatt vor endgültiger Verbuchung, Alias-Matching für Kontakte.
 - Kontakte & Kategorien: Verwaltung inkl. Aliasnamen (Wildcards ? *). Automatische Zuordnung beim Import.
 - Sparpläne: Einmalig (Zielbetrag/Zieldatum), wiederkehrend (Intervalle), offen. Automatische Erkennung bei Eigen-Sparkonto-Zahlungen, Zielstatus (erreicht / nahe / verfehlt) & Archivierung.
-- Wertpapiere: Aktien/Fonds, Transaktionen (Kauf, Verkauf, Dividende/Zins, Gebühren, Steuern, Menge), Kursabruf (AlphaVantage) inkl. Historie & Rate Limit Handling, Renditekennzahlen.
+- Wertpapiere: Aktien/Fonds, Transaktionen (Kauf, Verkauf, Dividende/Zins, Gebühren, Steuern, Menge). Menge wird bei Buchung gespeichert (Buy positiv, Sell negativ, Dividend ohne Menge). Kursdienst/Renditen in Planung.
 - Auswertungen: Aggregationen Monat / Quartal / Jahr, YTD, Vorjahresvergleich, P&L nach Kategorien.
 - KPI Dashboard: Monatliche/Jährliche Dividenden, Einnahmen/Ausgaben Chart, Jahres-Depotrendite.
 - Benutzer & Rollen: Registrierung, erster Benutzer = Admin, Konto-Sharing, Sperren/Entsperren, Löschung (mit Datenbereinigung / -übertrag Workflow geplant).
@@ -52,6 +52,7 @@ Querschnittsthemen: Logging, Auth (JWT), Internationalisierung, Caching, Validat
 - Validation: DataAnnotations / FluentValidation (geplant)
 - Internationalisierung: resx Ressourcen, CultureInfo
 - Build/Format: dotnet CLI, EditorConfig, Analyzers/StyleCop
+- Tests: xUnit, FluentAssertions (Projekt `FinanceManager.Tests`)
 
 ## 5. Roadmap (Wellen)
 | Welle | Fokus |
@@ -89,9 +90,14 @@ dotnet run
 ```
 Standard URL: https://localhost:5001 (HTTPS) / http://localhost:5000 (HTTP)
 
+### Tests
+```bash
+dotnet test
+```
+- Unit-Tests unter `FinanceManager.Tests` (xUnit, FluentAssertions).
+
 ### Code-Qualität
 - `dotnet format` vor Pull Request.
-- Tests (geplant) unter /Tests* Projekten (noch nicht angelegt).
 
 ## 9. Geplante Erweiterungen / Offene Punkte (Auszug)
 - OP-002: Konsolidierung Projekt-/Produktname.
