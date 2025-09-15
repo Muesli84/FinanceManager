@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 @using FinanceManager.Domain.Statements
 
 @code { enum StatementDraftStatus { Draft=0, Committed=1, Expired=2 } }
@@ -15,29 +16,29 @@ else
 {
     <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" @onclick="Back" title="Back" aria-label="Back"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+            <button class="icon-btn" @onclick="BackAsync" title="Back" aria-label="Back"><svg><use href="/icons/sprite.svg#back" /></svg></button>
         </div>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
             <button class="icon-btn" disabled="@(_pendingSave)" @onclick="SaveAll" title="Save Changes" aria-label="Save Changes"><svg><use href="/icons/sprite.svg#save" /></svg></button>
-            <button class="icon-btn" @onclick="Reclassify" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
-            <button class="icon-btn" @onclick="ValidateEntry" title="Eintrag prüfen" aria-label="Eintrag prüfen">
+            <button class="icon-btn" @onclick="Reclassify" disabled="@_hasUnsavedChanges" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
+            <button class="icon-btn" @onclick="ValidateEntry" disabled="@_hasUnsavedChanges" title="Eintrag prüfen" aria-label="Eintrag prüfen">
                 <svg><use href="/icons/sprite.svg#check" /></svg>
             </button>
-            <button class="icon-btn" @onclick="OpenSplitDialog" title="Split-Auszug zuordnen" aria-label="Split-Auszug zuordnen">
+            <button class="icon-btn" @onclick="OpenSplitDialog" disabled="@_hasUnsavedChanges" title="Split-Auszug zuordnen" aria-label="Split-Auszug zuordnen">
                 <svg><use href="/icons/sprite.svg#link" /></svg>
             </button>
-            <button class="icon-btn" @onclick="BookEntry" title="Eintrag buchen" aria-label="Eintrag buchen">
+            <button class="icon-btn" @onclick="BookEntry" disabled="@_hasUnsavedChanges" title="Eintrag buchen" aria-label="Eintrag buchen">
                 <svg><use href="/icons/sprite.svg#postings" /></svg>
             </button>
         </div>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" disabled="@(_selectedContactId==null)" @onclick="OpenContactDetail" title="Kontakt anzeigen" aria-label="Kontakt anzeigen">
+            <button class="icon-btn" disabled="@(_selectedContactId==null || _hasUnsavedChanges)" @onclick="OpenContactDetail" title="Kontakt anzeigen" aria-label="Kontakt anzeigen">
                 <svg><use href="/icons/sprite.svg#groups" /></svg>
             </button>
-            <button class="icon-btn" disabled="@(_selectedSecurityId == null)" title="Wertpapier anzeigen" aria-label="Wertpapier anzeigen" @onclick="OpenSecurityDetail">
+            <button class="icon-btn" disabled="@(_selectedSecurityId == null || _hasUnsavedChanges)" title="Wertpapier anzeigen" aria-label="Wertpapier anzeigen" @onclick="OpenSecurityDetail">
                 <svg><use href="/icons/sprite.svg#security" /></svg>
             </button>
-            <button class="icon-btn" disabled="@(_selectedSavingsPlanId == null)" title="Sparplan anzeigen" aria-label="Sparplan anzeigen" @onclick="OpenSavingsPlanDetail">
+            <button class="icon-btn" disabled="@(_selectedSavingsPlanId == null || _hasUnsavedChanges)" title="Sparplan anzeigen" aria-label="Sparplan anzeigen" @onclick="OpenSavingsPlanDetail">
                 <svg><use href="/icons/sprite.svg#external" /></svg>
             </button>
             @if(_vm?.Entry.SplitDraftId != null)
@@ -51,8 +52,8 @@ else
             }
         </div>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrev" title="Previous Entry" aria-label="Previous Entry"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-            <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpen" title="Nächster offener Eintrag" aria-label="Nächster offener Eintrag">
+            <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrevAsync" title="Previous Entry" aria-label="Previous Entry"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+            <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpenAsync" title="Nächster offener Eintrag" aria-label="Nächster offener Eintrag">
                 <svg><use href="/icons/sprite.svg#arrow-right" /></svg>
             </button>
         </div>
@@ -196,7 +197,7 @@ else
             </tr>
             <tr>
                 <th>Cost Neutral</th>
-                <td><InputCheckbox @bind-Value="IsCostNeutral" /></td>
+                <td><InputCheckbox @bind-Value="IsCostNeutral" @bind-Value:after="(()=> MarkDirty())" /></td>
             </tr>
             <tr>
                 <th>Sparplan</th>
@@ -227,7 +228,7 @@ else
                     @if(_selectedSavingsPlanId != null)
                     {
                         <div style="display:flex;align-items:center;gap:.5rem;margin:.25rem 0 .5rem 0;max-width:420px;">
-                            <InputCheckbox @bind-Value="_archiveSavingsPlanOnBooking" />
+                            <InputCheckbox @bind-Value="_archiveSavingsPlanOnBooking" @bind-Value:after="(()=> MarkDirty())" />
                             <span>Sparplan nach Buchung archivieren</span>
                         </div>
                     }
@@ -281,7 +282,7 @@ else
                             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;max-width:720px;margin-top:.25rem;">
                                 <div>
                                     <label>Art</label>
-                                    <select @bind="_securityTxType">
+                                    <select @bind="_securityTxType" @bind:after="()=> MarkDirty()">
                                         <option value="">--</option>
                                         <option value="Buy">Kauf</option>
                                         <option value="Sell">Verkauf</option>
@@ -290,15 +291,15 @@ else
                                 </div>
                                 <div>
                                     <label>Menge</label>
-                                    <input type="text" @bind="_securityQuantityExpr" @bind:event="oninput" @onblur="ParseSecurityQuantity" />
+                                    <input type="text" @bind="_securityQuantityExpr" @bind:event="oninput" @bind:after="MarkDirty" @onblur="ParseSecurityQuantity" />
                                 </div>
                                 <div>
                                     <label>Gebühr (enthalten)</label>
-                                    <input type="text" @bind="_securityFeeExpr" @bind:event="oninput" @onblur="ParseSecurityFee" />
+                                    <input type="text" @bind="_securityFeeExpr" @bind:event="oninput" @bind:after="MarkDirty" @onblur="ParseSecurityFee" />
                                 </div>
                                 <div>
                                     <label>Steuer (enthalten)</label>
-                                    <input type="text" @bind="_securityTaxExpr" @bind:event="oninput" @onblur="ParseSecurityTax" />
+                                    <input type="text" @bind="_securityTaxExpr" @bind:event="oninput" @bind:after="MarkDirty" @onblur="ParseSecurityTax" />
                                 </div>
                             </div>
                             @if(!string.IsNullOrEmpty(_securityExprError))
@@ -370,6 +371,10 @@ else
     private bool _pendingSave;
     private bool _IsCostNeutral;
     private bool IsCostNeutral { get => _IsCostNeutral; set { _IsCostNeutral = value; } }
+
+    private bool _hasUnsavedChanges;
+    private void MarkDirty() => _hasUnsavedChanges = true;
+    private void ClearDirty() => _hasUnsavedChanges = false;
 
     private IEnumerable<ContactVm> FilteredContacts => string.IsNullOrWhiteSpace(_contactFilter)
         ? _allContacts
@@ -477,16 +482,25 @@ else
             _securityTaxExpr = _securityTax?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
         }
 
-        // Securities laden falls nötig (jetzt auch falls bereits SecurityId gesetzt, selbst wenn Bankkontakt-Bedingung nicht erfüllt)
         await LoadSecuritiesIfNeededAsync();
 
-        // Eingabefeld vorbefüllen wenn Security bekannt (erst nach Laden der Liste sinnvoll)
         if (_selectedSecurityId != null && string.IsNullOrEmpty(_securityFilter))
         {
             _securityFilter = _securities.FirstOrDefault(s => s.Id == _selectedSecurityId)?.Name ?? string.Empty;
         }
 
         InitCoreEdit();
+        ClearDirty();
+    }
+
+    private async Task<bool> ConfirmIfDirtyAsync()
+    {
+        if (!_hasUnsavedChanges) { return true; }
+        try
+        {
+            return await JS.InvokeAsync<bool>("confirm", "Es gibt ungespeicherte Änderungen. Wirklich fortfahren?");
+        }
+        catch { return true; }
     }
 
     private async Task LoadEntryAsync()
@@ -530,7 +544,6 @@ else
 
     private async Task LoadSecuritiesIfNeededAsync()
     {
-        // Laden wenn Section gezeigt werden soll ODER wenn bereits SecurityId gesetzt (damit Anzeige möglich)
         if (!ShowSecuritySection && _vm?.Entry.SecurityId == null) { return; }
         if (_securities.Count > 0) { return; }
 
@@ -550,7 +563,7 @@ else
     private void ShowSavingsPlanDropdown(FocusEventArgs _) => _savingsPlanDropdownVisible = true;
     private void SelectSavingsPlan(Guid? id)
     {
-        if (_selectedSavingsPlanId != id) { _selectedSavingsPlanId = id; }
+        if (_selectedSavingsPlanId != id) { _selectedSavingsPlanId = id; MarkDirty(); }
         _savingsPlanFilter = id == null ? string.Empty : _userSavingsPlans.FirstOrDefault(p => p.Id == id)?.Name ?? string.Empty;
         _savingsPlanDropdownVisible = false;
         if (id == null) { _archiveSavingsPlanOnBooking = false; }
@@ -560,7 +573,7 @@ else
         _savingsPlanDropdownVisible = true;
         if (_selectedSavingsPlanId != null && !_userSavingsPlans.Any(p => string.Equals(p.Name, _savingsPlanFilter, StringComparison.OrdinalIgnoreCase)))
         {
-            _selectedSavingsPlanId = null;
+            _selectedSavingsPlanId = null; MarkDirty();
         }
     }
 
@@ -581,7 +594,11 @@ else
         Nav.NavigateTo(url);
     }
 
-    private void Back() => Nav.NavigateTo($"/statement-drafts/{DraftId}");
+    private async Task BackAsync()
+    {
+        if (!await ConfirmIfDirtyAsync()) return;
+        Nav.NavigateTo($"/statement-drafts/{DraftId}");
+    }
     private void OpenCreateContact()
     {
         var name = _vm?.Entry.RecipientName;
@@ -598,15 +615,17 @@ else
     {
         if (_selectedSavingsPlanId != null) { Nav.NavigateTo($"/savings-plans/{_selectedSavingsPlanId}"); }
     }
-    private void GoPrev()
+    private async Task GoPrevAsync()
     {
+        if (!await ConfirmIfDirtyAsync()) return;
         if (_vm?.PrevEntryId != null)
         {
             Nav.NavigateTo($"/statement-drafts/{DraftId}/entries/{_vm.PrevEntryId}");
         }
     }
-    private void GoNextOpen()
+    private async Task GoNextOpenAsync()
     {
+        if (!await ConfirmIfDirtyAsync()) return;
         if (_vm?.NextOpenEntryId != null)
         {
             Nav.NavigateTo($"/statement-drafts/{DraftId}/entries/{_vm.NextOpenEntryId}");
@@ -693,6 +712,7 @@ else
             {
                 await LoadEntryAsync();
                 InitCoreEdit();
+                ClearDirty();
             }
         }
         catch(Exception ex)
@@ -701,7 +721,7 @@ else
         }
         _savingCore = false;
     }
-    private void ResetCoreEdits() => InitCoreEdit();
+    private void ResetCoreEdits() { InitCoreEdit(); ClearDirty(); }
 
     // Records / DTO shapes
     private sealed record EntryDto(
@@ -753,6 +773,7 @@ else
 
     private async Task ValidateEntry()
     {
+        if (_hasUnsavedChanges) { return; }
         _entryValidation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{DraftId}/entries/{EntryId}/validate");
         StateHasChanged();
     }
@@ -760,7 +781,6 @@ else
     private sealed record DraftValidationMessageDto(string Code, string Severity, string Message, Guid DraftId, Guid? EntryId);
     private sealed record DraftValidationResultDto(Guid DraftId, bool IsValid, IReadOnlyList<DraftValidationMessageDto> Messages);
 
-    // Handlers reintroduced after refactor
     private async Task SaveAll()
     {
         if (_vm == null) { return; }
@@ -788,6 +808,7 @@ else
             else
             {
                 await LoadEntryAsync();
+                ClearDirty();
             }
         }
         catch (Exception ex)
@@ -799,6 +820,7 @@ else
 
     private async Task Reclassify()
     {
+        if (_hasUnsavedChanges) { return; }
         var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/classify/{_vm?.Entry.Id}", null);
         if (resp.IsSuccessStatusCode)
         {
@@ -811,6 +833,7 @@ else
 
     private void OpenSecurityDetail()
     {
+        if (_hasUnsavedChanges) { return; }
         if (_selectedSecurityId != null)
         {
             Nav.NavigateTo($"/securities/{_selectedSecurityId}?draftId={DraftId}&entryId={EntryId}");
@@ -820,7 +843,7 @@ else
     private void ShowDropdown(FocusEventArgs _) => _dropdownVisible = true;
     private void SelectContact(Guid? id)
     {
-        if (_selectedContactId != id) { _selectedContactId = id; }
+        if (_selectedContactId != id) { _selectedContactId = id; MarkDirty(); }
         _contactFilter = id == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==id)?.Name ?? string.Empty;
         _dropdownVisible = false;
     }
@@ -829,7 +852,7 @@ else
         _dropdownVisible = true;
         if (_selectedContactId != null && !_allContacts.Any(c => string.Equals(c.Name, _contactFilter, StringComparison.OrdinalIgnoreCase)))
         {
-            _selectedContactId = null;
+            _selectedContactId = null; MarkDirty();
         }
     }
 
@@ -840,12 +863,12 @@ else
         if (_selectedSecurityId != null &&
             !_securities.Any(s => string.Equals(s.Name, _securityFilter, StringComparison.OrdinalIgnoreCase)))
         {
-            _selectedSecurityId = null;
+            _selectedSecurityId = null; MarkDirty();
         }
     }
     private void SelectSecurity(Guid? id)
     {
-        if (_selectedSecurityId != id) { _selectedSecurityId = id; }
+        if (_selectedSecurityId != id) { _selectedSecurityId = id; MarkDirty(); }
         _securityFilter = id == null ? string.Empty : _securities.FirstOrDefault(s => s.Id == id)?.Name ?? string.Empty;
         _securityDropdownVisible = false;
     }
@@ -862,14 +885,11 @@ else
         Nav.NavigateTo(url);
     }
 
-    // Expression parsing and assignment
     private void ParseSecurityQuantity(FocusEventArgs _)
     {
         if (TryEvalDecimal(_securityQuantityExpr, out var v))
         {
-            _securityQuantity = v;
-            _securityQuantityExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
-            _securityExprError = null;
+            _securityQuantity = v; _securityQuantityExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty();
         }
         else { _securityExprError = "Ungültige Menge."; }
     }
@@ -877,9 +897,7 @@ else
     {
         if (TryEvalDecimal(_securityFeeExpr, out var v))
         {
-            _securityFee = v;
-            _securityFeeExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
-            _securityExprError = null;
+            _securityFee = v; _securityFeeExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty();
         }
         else { _securityExprError = "Ungültige Gebühr."; }
     }
@@ -887,9 +905,7 @@ else
     {
         if (TryEvalDecimal(_securityTaxExpr, out var v))
         {
-            _securityTax = v;
-            _securityTaxExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
-            _securityExprError = null;
+            _securityTax = v; _securityTaxExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty();
         }
         else { _securityExprError = "Ungültige Steuer."; }
     }
@@ -910,7 +926,6 @@ else
         }
     }
 
-    // Minimal expression evaluator: + - * / and parentheses; culture-agnostic (accepts , or . as decimal separator)
     private static double Eval(string input)
     {
         var expr = new string(input.Where(c => !char.IsWhiteSpace(c)).ToArray());
@@ -962,43 +977,6 @@ else
         return result;
     }
 
-    private async Task PersistSecurityChangesIfNeededAsync()
-    {
-        if (_vm == null) { return; }
-        if (!ShowSecuritySection && _vm.Entry.SecurityId == null)
-        {
-            return;
-        }
-        var e = _vm.Entry;
-        var changed =
-            e.SecurityId != _selectedSecurityId ||
-            e.SecurityTransactionType != _securityTxType ||
-            e.SecurityQuantity != _securityQuantity ||
-            e.SecurityFeeAmount != _securityFee ||
-            e.SecurityTaxAmount != _securityTax;
-
-        if (!changed) { return; }
-
-        var payload = new
-        {
-            SecurityId = _selectedSecurityId,
-            TransactionType = _securityTxType,
-            Quantity = _securityQuantity,
-            FeeAmount = _securityFee,
-            TaxAmount = _securityTax
-        };
-
-        var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/security", payload);
-        if (!resp.IsSuccessStatusCode)
-        {
-            _securityError = await resp.Content.ReadAsStringAsync();
-        }
-        else
-        {
-            await LoadEntryAsync();
-        }
-    }
-
     private bool GetArchiveFlagFromEntryVm()
     {
         try
@@ -1013,6 +991,7 @@ else
 
     private async Task BookEntry()
     {
+        if (_hasUnsavedChanges) { return; }
         _contactError = null;
         _showBookWarnings = false;
         try
@@ -1033,10 +1012,8 @@ else
             }
             _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
             await LoadEntryAsync();
-            // Navigate to draft overview if entry gone
             if (_vm != null && _vm.Entry != null && _vm.Entry.Id == EntryId)
             {
-                // entry still there; just refresh UI
                 StateHasChanged();
             }
             else
