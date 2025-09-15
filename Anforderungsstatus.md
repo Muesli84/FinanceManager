@@ -16,7 +16,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-006 | Kostenneutral bei eigenen Kontakten                             | StatementDraftService: Status-/CostNeutral-Logik                                     | ✔      |
 | FA-AUSZ-007 | Kontaktposten beim Buchen entstehen                             | StatementDraftService.BookAsync → `PostingKind.Contact`                              | ✔      |
 | FA-AUSZ-008 | Empfänger muss Kontakt zugeordnet werden                        | StatementDraftService, UI                                                            | ✔      |
-| FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | UI & API: Auswahl, Neuanlage und Zuordnung in StatementDraftEntryDetail; Persistierung via `/security` Endpoint. Buchungs-/Transaktionslogik (Positions-/Depotbuchungen) noch offen; Security-Postings (Trade/Fee/Tax) werden erzeugt. | ~      |
+| FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | UI & API: Auswahl, Neuanlage und Zuordnung in StatementDraftEntryDetail; Persistierung via `/security` Endpoint. Buchungs-/Transaktionslogik (Positions-/Depotbuchungen) noch offen; Security-Postings (Trade/Fee/Tax) werden erzeugt. Menge wird bei Buchung in `Posting.Quantity` gespeichert (Buy positiv, Sell negativ, Dividend keine Menge); Validierung angepasst. | ~      |
 | FA-AUSZ-010 | PDF-Parsing mit Tabellenextraktion                              | ING_StatementFileReader, Barclays_StatementFileReader, erweiterbar                   | ✔      |
 | FA-AUSZ-011 | Import-Pipeline mit Format-Strategie                            | StatementDraftService, Reader-Interface                                              | ✔      |
 | FA-AUSZ-012 | Anzeige Gesamtbetrag verknüpfter Aufteilungs-Auszüge im Eintrag | StatementDraftsController GetEntry: SplitSum/Difference; EntryDetail UI Amount-Zeile | ✔      |
@@ -42,7 +42,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-SPAR-011 | Sparplanposten bei Buchung                                      | StatementDraftService.BookEntryAsync → `PostingKind.SavingsPlan` (negierter Betrag)  | ✔      |
 | FA-SPAR-012 | Umschalten aktive/archivierte Sparpläne                         | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-001 | Wertpapiere verwalten                                           | SecurityService, SecuritiesController, UI (Liste, Detail, Kategorien), Erstellung & Rücksprung aus Kontoauszug | ✔      |
-| FA-WERT-002 | Wertpapiertransaktionen                                         | Noch nicht implementiert                                                             | ✖      |
+| FA-WERT-002 | Wertpapiertransaktionen                                         | Transaktionstyp und Menge werden bei Buchung erfasst (Buy +, Sell −, Dividend ohne Menge); Positions-/Depot-/FIFO‑Logik noch offen | ~      |
 | FA-WERT-003 | Wertpapierposten bei Buchung                                    | StatementDraftService.BookAsync → `PostingKind.Security` (Trade/Fee/Tax)             | ✔      |
 | FA-WERT-004 | Kursabruf AlphaVantage API                                      | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-005 | Historische Kurse nachholen                                     | Noch nicht implementiert                                                             | ✖      |
@@ -107,6 +107,11 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
+Änderungen (15.09.2025):
+- FA-WERT-002 von ✖ auf ~: Transaktionstyp und Menge werden bei Buchung erfasst (Buy positiv, Sell negativ, Dividend keine Menge). Positions-/Depot-/FIFO‑Logik bleibt offen.
+- FA-AUSZ-009 Beschreibung erweitert: Mengenlogik ergänzt; Persistenz in `Posting.Quantity`; Validierung: Dividend ohne Menge, Buy/Sell mit Menge.
+- Tests ergänzt: Unit-Tests für Wertpapierbuchung mit Menge (Buy/Sell/Dividend), inkl. Vorzeichen- und Präzisionsprüfung.
+
 Änderungen (13.09.2025):
 - FA-SPAR-002 von ✖ auf ✔: Sparplan-Typen (OneTime, Recurring, Open) in DTO/Domain + UI/Service nutzbar.
 - FA-SPAR-003 von ✖ auf ~: Bei Buchung wird bei wiederkehrenden Sparplänen das Fälligkeitsdatum um das Intervall erhöht.
@@ -139,4 +144,4 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
 - Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
-*Letzte Aktualisierung: 13.09.2025*
+*Letzte Aktualisierung: 15.09.2025*
