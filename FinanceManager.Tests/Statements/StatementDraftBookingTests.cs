@@ -64,7 +64,7 @@ public sealed class StatementDraftBookingTests
     }
 
     [Fact]
-    public async Task Booking_SingleEntry_ShouldNotCommitWholeDraft_AndRemoveOnlyThatEntry()
+    public async Task Booking_SingleEntry_ShouldNotCommitWholeDraft_And_RemoveOnlyThatEntry()
     {
         var (sut, db, conn, owner) = Create();
         var (acc, _) = await AddAccountAsync(db, owner);
@@ -506,6 +506,11 @@ public sealed class StatementDraftBookingTests
         // Sum of security postings equals original entry amount
         (main.Amount + fee.Amount + tax.Amount).Should().Be(entry.Amount);
 
+        // Quantity assertions
+        main.Quantity.Should().Be(1.123456m);
+        fee.Quantity.Should().BeNull();
+        tax.Quantity.Should().BeNull();
+
         conn.Dispose();
     }
 
@@ -543,6 +548,11 @@ public sealed class StatementDraftBookingTests
         tax.Amount.Should().Be(-taxAmt);
         (main.Amount + fee.Amount + tax.Amount).Should().Be(entry.Amount);
 
+        // Quantity assertions: sell should be negative
+        main.Quantity.Should().Be(-5.0m);
+        fee.Quantity.Should().BeNull();
+        tax.Quantity.Should().BeNull();
+
         conn.Dispose();
     }
 
@@ -579,6 +589,11 @@ public sealed class StatementDraftBookingTests
         fee.Amount.Should().Be(-feeAmt);
         tax.Amount.Should().Be(-taxAmt);
         (main.Amount + fee.Amount + tax.Amount).Should().Be(entry.Amount);
+
+        // Quantity assertions: dividend should have no quantity
+        main.Quantity.Should().BeNull();
+        fee.Quantity.Should().BeNull();
+        tax.Quantity.Should().BeNull();
 
         conn.Dispose();
     }

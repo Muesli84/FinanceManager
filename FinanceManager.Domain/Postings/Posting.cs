@@ -38,6 +38,27 @@ public sealed class Posting : Entity, IAggregateRoot
         Description = description;
         SecuritySubType = securitySubType;
         GroupId = Guid.Empty; // will be set via SetGroup
+        Quantity = null;      // default: keine Menge
+    }
+
+    // Neuer Konstruktor mit Menge (für Wertpapier-Postings)
+    public Posting(
+        Guid sourceId,
+        PostingKind kind,
+        Guid? accountId,
+        Guid? contactId,
+        Guid? savingsPlanId,
+        Guid? securityId,
+        DateTime bookingDate,
+        decimal amount,
+        string? subject,
+        string? recipientName,
+        string? description,
+        SecurityPostingSubType? securitySubType,
+        decimal? quantity)
+        : this(sourceId, kind, accountId, contactId, savingsPlanId, securityId, bookingDate, amount, subject, recipientName, description, securitySubType)
+    {
+        Quantity = quantity;
     }
 
     public Guid SourceId { get; private set; }
@@ -53,6 +74,9 @@ public sealed class Posting : Entity, IAggregateRoot
     public string? RecipientName { get; private set; }
     public string? Description { get; private set; }
     public SecurityPostingSubType? SecuritySubType { get; private set; }
+
+    // Neu: Menge (nur für Wertpapier-Postings belegt)
+    public decimal? Quantity { get; private set; }
 
     public Posting SetGroup(Guid groupId)
     {

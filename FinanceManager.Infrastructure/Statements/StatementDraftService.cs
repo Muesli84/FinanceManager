@@ -647,6 +647,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
                             messages.Add(new DraftValidationMessageDto("SECURITY_MISSING_QUANTITY", "Error", prefix + "Wertpapier: Stückzahl fehlt.", draft.Id, ce.Id));
                         }
                     }
+                    if (ce.SecurityTransactionType == SecurityTransactionType.Dividend && ce.SecurityQuantity != null)
+                    {
+                        messages.Add(new DraftValidationMessageDto("SECURITY_QUANTITY_NOT_ALLOWED_FOR_DIVIDEND", "Error", prefix + "Wertpapier: Menge ist bei Dividende nicht zulässig.", draft.Id, ce.Id));
+                    }
                     var fee = ce.SecurityFeeAmount ?? 0m;
                     var tax = ce.SecurityTaxAmount ?? 0m;
                     if (fee + tax > Math.Abs(ce.Amount))
@@ -717,6 +721,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
                         {
                             Add("SECURITY_MISSING_QUANTITY", "Error", "Wertpapier: Stückzahl fehlt.", e.Id);
                         }
+                    }
+                    if (e.SecurityTransactionType == SecurityTransactionType.Dividend && e.SecurityQuantity != null)
+                    {
+                        Add("SECURITY_QUANTITY_NOT_ALLOWED_FOR_DIVIDEND", "Error", "Wertpapier: Menge ist bei Dividende nicht zulässig.", e.Id);
                     }
                     var fee = e.SecurityFeeAmount ?? 0m;
                     var tax = e.SecurityTaxAmount ?? 0m;
@@ -957,6 +965,18 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 _ => SecurityPostingSubType.Buy
             };
 
+            // Menge für Security-Posting festlegen:
+            // - Buy: positiv
+            // - Sell: negativ
+            // - Dividend: keine Menge
+            decimal? quantity = e.SecurityTransactionType switch
+            {
+                SecurityTransactionType.Buy => e.SecurityQuantity.HasValue ? Math.Abs(e.SecurityQuantity.Value) : (decimal?)null,
+                SecurityTransactionType.Sell => e.SecurityQuantity.HasValue ? -Math.Abs(e.SecurityQuantity.Value) : (decimal?)null,
+                SecurityTransactionType.Dividend => null,
+                _ => e.SecurityQuantity
+            };
+
             var main = new Domain.Postings.Posting(
                 e.Id,
                 PostingKind.Security,
@@ -969,7 +989,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 e.Subject,
                 e.RecipientName,
                 e.BookingDescription,
-                tradeSubType).SetGroup(groupId);
+                tradeSubType,
+                quantity).SetGroup(groupId);
             _db.Postings.Add(main);
             await UpsertAggregatesAsync(main, token);
 
@@ -987,7 +1008,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     e.Subject,
                     e.RecipientName,
                     e.BookingDescription,
-                    SecurityPostingSubType.Fee).SetGroup(groupId);
+                    SecurityPostingSubType.Fee,
+                    null).SetGroup(groupId);
                 _db.Postings.Add(feeP);
                 await UpsertAggregatesAsync(feeP, token);
             }
@@ -1005,7 +1027,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     e.Subject,
                     e.RecipientName,
                     e.BookingDescription,
-                    SecurityPostingSubType.Tax).SetGroup(groupId);
+                    SecurityPostingSubType.Tax,
+                    null).SetGroup(groupId);
                 _db.Postings.Add(taxP);
                 await UpsertAggregatesAsync(taxP, token);
             }
