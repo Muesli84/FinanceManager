@@ -26,7 +26,7 @@ public sealed class PostingsController : ControllerBase
         _db = db; _current = current;
     }
 
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
+    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity);
 
     [HttpGet("account/{accountId:guid}")]
     public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, CancellationToken ct = default)
@@ -90,7 +90,8 @@ public sealed class PostingsController : ControllerBase
                     x.Subject,
                     x.Recipient,
                     x.Description,
-                    x.P.SecuritySubType))
+                    x.P.SecuritySubType,
+                    x.P.Quantity))
                 .ToListAsync(ct);
 
             return Ok(result);
@@ -144,7 +145,8 @@ public sealed class PostingsController : ControllerBase
                                 p.Subject ?? seOpt.Subject,
                                 p.RecipientName ?? seOpt.RecipientName,
                                 p.Description ?? seOpt.BookingDescription,
-                                p.SecuritySubType))
+                                p.SecuritySubType,
+                                p.Quantity))
             .ToListAsync(ct);
         return Ok(result);
     }
@@ -176,7 +178,8 @@ public sealed class PostingsController : ControllerBase
                                 p.Subject ?? seOpt.Subject,
                                 p.RecipientName ?? seOpt.RecipientName,
                                 p.Description ?? seOpt.BookingDescription,
-                                p.SecuritySubType))
+                                p.SecuritySubType,
+                                p.Quantity))
             .ToListAsync(ct);
         return Ok(result);
     }
@@ -208,7 +211,8 @@ public sealed class PostingsController : ControllerBase
                                 p.Subject ?? seOpt.Subject,
                                 p.RecipientName ?? seOpt.RecipientName,
                                 p.Description ?? seOpt.BookingDescription,
-                                p.SecuritySubType))
+                                p.SecuritySubType,
+                                p.Quantity))
             .ToListAsync(ct);
         return Ok(result);
     }

@@ -21,7 +21,7 @@ else
                 <th style="width:7rem;">Datum</th>
                 <th style="width:7rem;text-align:right;">Betrag</th>
                 <th style="width:10rem;">Postenart</th>
-                <th style="width:18%;">Empfänger</th>
+                <th style="width:18%;">Menge</th>
                 <th style="width:22%;">Verwendungszweck</th>
                 <th>Buchungsbeschreibung</th>
             </tr>
@@ -33,7 +33,8 @@ else
                     <td>@p.BookingDate.ToShortDateString()</td>
                     <td style="text-align:right;">@p.Amount</td>
                     <td>@(p.Kind == PostingKind.Security && p.SecuritySubType!=null ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
-                    <td class="wrap">@(string.IsNullOrWhiteSpace(p.RecipientName)?"-":p.RecipientName)</td>
+                    <td class="wrap">
+                        @(p.Quantity.HasValue && p.Quantity.Value != 0m ? p.Quantity.Value.ToString() : "")</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.Subject)?"-":p.Subject)</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.Description)?"-":p.Description)</td>
                 </tr>
@@ -75,7 +76,22 @@ else
     private enum PostingKind { Bank=0, Contact=1, SavingsPlan=2, Security=3 }
     // Align with server enum: Buy=0, Sell=1, Dividend=2, Fee=3, Tax=4
     private enum SecurityPostingSubType { Buy=0, Sell=1, Dividend=2, Fee=3, Tax=4 }
-    private sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
+
+    private sealed record PostingDto(
+        Guid Id,
+        DateTime BookingDate,
+        decimal Amount,
+        PostingKind Kind,
+        Guid? AccountId,
+        Guid? ContactId,
+        Guid? SavingsPlanId,
+        Guid? SecurityId,
+        Guid SourceId,
+        string? Subject,
+        string? RecipientName,
+        string? Description,
+        SecurityPostingSubType? SecuritySubType,
+        decimal? Quantity);
 
     protected override async Task OnParametersSetAsync()
     {
