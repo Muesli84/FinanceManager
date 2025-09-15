@@ -196,8 +196,8 @@ else
             {
                 try
                 {
-                    await RefreshClassifyStatusAsync();
-                    await RefreshBookStatusAsync();
+                    await RefreshClassifyStatusAsync(false);
+                    await RefreshBookStatusAsync(false);
                     await LoadAsync();
                 }
                 catch { }
@@ -342,7 +342,7 @@ else
         }
     }
 
-    private async Task RefreshClassifyStatusAsync()
+    private async Task RefreshClassifyStatusAsync(bool reloadOnFinish = true)
     {
         var s = await Http.GetFromJsonAsync<TempStatus>("api/statement-drafts/classify/status");
         if (s != null)
@@ -351,7 +351,7 @@ else
             await InvokeAsync(() => UpdateClassifyUi(s));
             if (!isStarted && _isClassifying)
                 _ = PollUntilFinishedAsync();
-            if (!s.running && s.total > 0)
+            if (!s.running && s.total > 0 && reloadOnFinish)
             {
                 await Reload();
             }
@@ -423,7 +423,7 @@ else
         }
     }
 
-    private async Task RefreshBookStatusAsync()
+    private async Task RefreshBookStatusAsync(bool reloadOnFinish = true)
     {
         var s = await Http.GetFromJsonAsync<BookStatus>("api/statement-drafts/book-all/status");
         if (s != null)
@@ -432,7 +432,7 @@ else
             await InvokeAsync(() => UpdateBookingUi(s));
             if (!isStarted && _isBooking)
                 _ = PollBookingUntilFinishedAsync();
-            if (!s.running && s.total > 0)
+            if (!s.running && s.total > 0 && reloadOnFinish)
             {
                 await Reload();
             }
