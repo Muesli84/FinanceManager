@@ -2,7 +2,7 @@ namespace FinanceManager.Web.Services;
 
 public interface IBookingCoordinator
 {
-    Task<BookingStatus> ProcessAsync(Guid userId, bool ignoreWarnings, bool abortOnFirstIssue, TimeSpan maxDuration, CancellationToken ct);
+    Task<BookingStatus> ProcessAsync(Guid userId, bool ignoreWarnings, bool abortOnFirstIssue, bool bookEntriesIndividually, TimeSpan maxDuration, CancellationToken ct);
     BookingStatus? GetStatus(Guid userId);
     void Cancel(Guid userId);
 }

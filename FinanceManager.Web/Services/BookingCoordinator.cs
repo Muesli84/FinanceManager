@@ -22,6 +22,7 @@ public sealed class BookingCoordinator : IBookingCoordinator
         public string? Message;
         public bool IgnoreWarnings;
         public bool AbortOnFirstIssue;
+        public bool BookEntriesIndividually;
         public List<BookingIssue> Issues = new();
     }
 
@@ -38,7 +39,7 @@ public sealed class BookingCoordinator : IBookingCoordinator
         if (_states.TryGetValue(userId, out var s))
         {
             if (!s.Running)
-                _states.TryRemove(userId, out var sOut);
+                _states.TryRemove(userId, out var _);
             return new BookingStatus(s.Running, s.Processed, s.Failed, s.Total, s.Message, s.Warnings, s.Errors, s.Issues.ToList());
         }
         return null;
@@ -52,7 +53,7 @@ public sealed class BookingCoordinator : IBookingCoordinator
         }
     }
 
-    public async Task<BookingStatus> ProcessAsync(Guid userId, bool ignoreWarnings, bool abortOnFirstIssue, TimeSpan maxDuration, CancellationToken ct)
+    public async Task<BookingStatus> ProcessAsync(Guid userId, bool ignoreWarnings, bool abortOnFirstIssue, bool bookEntriesIndividually, TimeSpan maxDuration, CancellationToken ct)
     {
         var state = _states.GetOrAdd(userId, _ => new State());
         if (!state.Running)
@@ -66,6 +67,7 @@ public sealed class BookingCoordinator : IBookingCoordinator
             state.Message = null;
             state.IgnoreWarnings = ignoreWarnings;
             state.AbortOnFirstIssue = abortOnFirstIssue;
+            state.BookEntriesIndividually = bookEntriesIndividually;
             state.Issues.Clear();
             state.Cts.Dispose();
             state.Cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -87,11 +89,11 @@ public sealed class BookingCoordinator : IBookingCoordinator
     {
         try
         {
-            const int pageSize = 2;
-            int skip = 0;
             using var scope = _scopeFactory.CreateScope();
             var drafts = scope.ServiceProvider.GetRequiredService<IStatementDraftService>();
             state.Total = await drafts.GetOpenDraftsCountAsync(userId, state.Cts.Token);
+            const int pageSize = 2;
+            int skip = 0;
             while (!state.Cts.IsCancellationRequested)
             {
                 var batch = await drafts.GetOpenDraftsAsync(userId, skip, pageSize, state.Cts.Token);
@@ -101,50 +103,113 @@ public sealed class BookingCoordinator : IBookingCoordinator
                 {
                     if (state.Cts.IsCancellationRequested) { return; }
 
-                    var result = await drafts.BookAsync(draft.DraftId, null, userId, state.IgnoreWarnings, state.Cts.Token);
-
-                    var errorMsgs = result.Validation.Messages.Where(m => string.Equals(m.Severity, "Error", StringComparison.OrdinalIgnoreCase)).ToList();
-                    var warnMsgs = result.Validation.Messages.Where(m => string.Equals(m.Severity, "Warning", StringComparison.OrdinalIgnoreCase)).ToList();
-
-                    var errorCount = errorMsgs.Count;
-                    var warnCount = warnMsgs.Count;
-
-                    if (errorCount > 0)
+                    if (state.BookEntriesIndividually)
                     {
-                        state.Errors += errorCount;
-                        state.Failed++;
-                        foreach (var em in errorMsgs)
+                        // Alle offenen/angekündigten Einträge einzeln buchen
+                        var openEntries = draft.Entries
+                            .Where(e => e.Status is Domain.Statements.StatementDraftEntryStatus.Accounted)
+                            .OrderBy(e => e.BookingDate)
+                            .ThenBy(e => e.Id)
+                            .ToList();
+
+                        foreach (var entry in openEntries)
                         {
-                            state.Issues.Add(new BookingIssue(draft.DraftId, em.EntryId, em.Code, em.Message));
-                        }
-                        state.Message = $"Error on draft {draft.Description}";
-                        if (state.AbortOnFirstIssue) { return; }
-                        skip++;
-                        continue;
-                    }
+                            if (state.Cts.IsCancellationRequested) { return; }
 
-                    if (!result.Success && result.HasWarnings)
+                            var result = await drafts.BookAsync(draft.DraftId, entry.Id, userId, state.IgnoreWarnings, state.Cts.Token);
+
+                            var errorMsgs = result.Validation.Messages.Where(m => string.Equals(m.Severity, "Error", StringComparison.OrdinalIgnoreCase)).ToList();
+                            var warnMsgs = result.Validation.Messages.Where(m => string.Equals(m.Severity, "Warning", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                            var errorCount = errorMsgs.Count;
+                            var warnCount = warnMsgs.Count;
+
+                            if (errorCount > 0)
+                            {
+                                state.Errors += errorCount;
+                                foreach (var em in errorMsgs)
+                                {
+                                    state.Issues.Add(new BookingIssue(draft.DraftId, em.EntryId, em.Code, em.Message));
+                                }
+                                state.Message = $"Error on entry {entry.Id} of draft {draft.Description}";
+                                if (state.AbortOnFirstIssue) { return; }
+                            }
+                            else if (!result.Success && result.HasWarnings)
+                            {
+                                state.Warnings += warnCount;
+                                foreach (var wm in warnMsgs)
+                                {
+                                    state.Issues.Add(new BookingIssue(draft.DraftId, wm.EntryId, wm.Code, wm.Message));
+                                }
+                                state.Message = $"Warning on entry {entry.Id} of draft {draft.Description}";
+                                if (state.AbortOnFirstIssue) { return; }
+                            }
+                            else
+                            {
+                                // Erfolg (ggf. mit ignorierten Warnungen)
+                                state.Warnings += warnCount;
+                                foreach (var wm in warnMsgs)
+                                {
+                                    state.Issues.Add(new BookingIssue(draft.DraftId, wm.EntryId, wm.Code, wm.Message));
+                                }
+                            }
+                        }
+
+                        var checkDraft = await drafts.GetDraftAsync(draft.DraftId, userId, state.Cts.Token);
+                        if (checkDraft is null)
+                            state.Processed++;
+                        else if (checkDraft.Status == Domain.StatementDraftStatus.Committed)
+                            state.Processed++;
+                        else
+                            state.Failed++;
+                    }
+                    else
                     {
-                        state.Warnings += warnCount;
-                        state.Failed++;
-                        foreach (var wm in warnMsgs)
+                        // Draft als Ganzes buchen
+                        var result = await drafts.BookAsync(draft.DraftId, null, userId, state.IgnoreWarnings, state.Cts.Token);
+
+                        var errorMsgs = result.Validation.Messages.Where(m => string.Equals(m.Severity, "Error", StringComparison.OrdinalIgnoreCase)).ToList();
+                        var warnMsgs = result.Validation.Messages.Where(m => string.Equals(m.Severity, "Warning", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                        var errorCount = errorMsgs.Count;
+                        var warnCount = warnMsgs.Count;
+
+                        if (errorCount > 0)
                         {
-                            state.Issues.Add(new BookingIssue(draft.DraftId, wm.EntryId, wm.Code, wm.Message));
+                            state.Errors += errorCount;
+                            state.Failed++;
+                            foreach (var em in errorMsgs)
+                            {
+                                state.Issues.Add(new BookingIssue(draft.DraftId, em.EntryId, em.Code, em.Message));
+                            }
+                            state.Message = $"Error on draft {draft.Description}";
+                            if (state.AbortOnFirstIssue) { return; }
                         }
-                        state.Message = $"Warning on draft {draft.Description}";
-                        if (state.AbortOnFirstIssue) { return; }
-                        skip++;
-                        continue;
+                        else if (!result.Success && result.HasWarnings)
+                        {
+                            state.Warnings += warnCount;
+                            state.Failed++;
+                            foreach (var wm in warnMsgs)
+                            {
+                                state.Issues.Add(new BookingIssue(draft.DraftId, wm.EntryId, wm.Code, wm.Message));
+                            }
+                            state.Message = $"Warning on draft {draft.Description}";
+                            if (state.AbortOnFirstIssue) { return; }
+                        }
+                        else
+                        {
+                            // Erfolg (ggf. mit ignorierten Warnungen)
+                            state.Warnings += warnCount;
+                            foreach (var wm in warnMsgs)
+                            {
+                                state.Issues.Add(new BookingIssue(draft.DraftId, wm.EntryId, wm.Code, wm.Message));
+                            }
+                            state.Processed++;
+                        }
                     }
-
-                    // Erfolg (ggf. mit ignorierten Warnungen)
-                    state.Warnings += warnCount;
-                    foreach (var wm in warnMsgs)
-                    {
-                        state.Issues.Add(new BookingIssue(draft.DraftId, wm.EntryId, wm.Code, wm.Message));
-                    }
-                    state.Processed++;
                 }
+
+                skip++;
             }
         }
         catch (OperationCanceledException)

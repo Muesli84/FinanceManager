@@ -99,6 +99,10 @@
                     <input id="opt-abort" type="checkbox" @bind="_bookAbortOnFirst" style="margin:0;width:unset;" />
                     <label for="opt-abort" style="cursor:pointer;">Bei erster Warnung/Fehler abbrechen</label>
                 </div>
+                <div style="display:flex;align-items:center;gap:.6rem;">
+                    <input id="opt-individual" type="checkbox" @bind="_bookEntriesIndividually" style="margin:0;width:unset;" />
+                    <label for="opt-individual" style="cursor:pointer;">Einträge einzeln buchen</label>
+                </div>
             </div>
             <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;">
                 <button class="btn btn-secondary" @onclick="CancelBookAllDialog" style="background:#333;color:#fff;border:1px solid var(--border);padding:.35rem .7rem;border-radius:.25rem;">Abbrechen</button>
@@ -176,6 +180,7 @@ else
     private bool _showBookDialog;
     private bool _bookIgnoreWarnings;
     private bool _bookAbortOnFirst;
+    private bool _bookEntriesIndividually;
     private bool _isBooking;
     private int _bookingProcessed;
     private int _bookingTotal;
@@ -373,6 +378,7 @@ else
     {
         _bookIgnoreWarnings = false;
         _bookAbortOnFirst = false;
+        _bookEntriesIndividually = false;
         _showBookDialog = true;
     }
 
@@ -385,7 +391,12 @@ else
     {
         _showBookDialog = false;
         _bookingCts ??= new CancellationTokenSource();
-        var payload = new { ignoreWarnings = _bookIgnoreWarnings, abortOnFirstIssue = _bookAbortOnFirst };
+        var payload = new
+        {
+            ignoreWarnings = _bookIgnoreWarnings,
+            abortOnFirstIssue = _bookAbortOnFirst,
+            bookEntriesIndividually = _bookEntriesIndividually
+        };
         try
         {
             var resp = await Http.PostAsJsonAsync("api/statement-drafts/book-all", payload, _bookingCts.Token);

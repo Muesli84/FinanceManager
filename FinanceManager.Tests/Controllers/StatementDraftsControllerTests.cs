@@ -15,10 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
-using System.Net;
-using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
@@ -69,7 +66,7 @@ public sealed class StatementDraftsControllerTests
 
     private sealed class DummyBookingCoordinator : IBookingCoordinator
     {
-        public Task<BookingStatus> ProcessAsync(Guid userId, bool ignoreWarnings, bool abortOnFirstIssue, TimeSpan maxDuration, System.Threading.CancellationToken ct)
+        public Task<BookingStatus> ProcessAsync(Guid userId, bool ignoreWarnings, bool abortOnFirstIssue, bool bookEntriesIndividually, TimeSpan maxDuration, System.Threading.CancellationToken ct)
         {
             var status = new BookingStatus(false, 0, 0, 0, null, 0, 0, Array.Empty<BookingIssue>());
             return Task.FromResult(status);

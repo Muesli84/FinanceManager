@@ -100,7 +100,7 @@ public sealed class StatementDraftsController : ControllerBase
     {
         try
         {
-            var status = await _booking.ProcessAsync(_current.UserId, req.IgnoreWarnings, req.AbortOnFirstIssue, TimeSpan.FromSeconds(2), ct);
+            var status = await _booking.ProcessAsync(_current.UserId, req.IgnoreWarnings, req.AbortOnFirstIssue, req.BookEntriesIndividually, TimeSpan.FromSeconds(2), ct);
             if (status.Running)
             {
                 return Accepted(new { running = true, message = status.Message, processed = status.Processed, failed = status.Failed, total = status.Total, warnings = status.Warnings, errors = status.Errors, issues = status.ErrorDetails });
@@ -121,7 +121,7 @@ public sealed class StatementDraftsController : ControllerBase
         return Accepted();
     }
 
-    public sealed record MassBookRequest(bool IgnoreWarnings, bool AbortOnFirstIssue);
+    public sealed record MassBookRequest(bool IgnoreWarnings, bool AbortOnFirstIssue, bool BookEntriesIndividually);
 
     [HttpGet("{draftId:guid}")]
     public async Task<IActionResult> GetAsync(Guid draftId, [FromQuery] bool headerOnly = false, CancellationToken ct = default)
