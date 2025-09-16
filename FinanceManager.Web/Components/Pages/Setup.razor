@@ -3,31 +3,129 @@
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
 
-<h3>Einrichtung / Datenimport</h3>
+<h3>Einrichtung</h3>
 <div class="action-bar" style="margin-bottom:1rem;">
     <button class="icon-btn" @onclick="Back" title="Zurück">
         <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
     </button>
 </div>
 
-<InputFile OnChange="OnFileSelected" />
-@if (_fileName != null)
-{
-    <div style="margin-top:1rem;">
-        <p>Datei: @_fileName</p>
-        <label>
-            <input type="checkbox" @bind="_replaceExisting" />
-            Bestehende Daten löschen und ersetzen
-        </label>
-        <button class="icon-btn" @onclick="UploadAsync" disabled="@_busy">
-            <svg class="icon"><use href="icons/sprite.svg#save"></use></svg> Importieren
+<details style="margin-bottom:1rem;">
+    <summary style="cursor:pointer;font-weight:600;">Backup</summary>
+    <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+        <button class="icon-btn" @onclick="CreateBackupAsync" disabled="@_busy">
+            <svg class="icon"><use href="icons/sprite.svg#save" /></svg> Backup erstellen
         </button>
+        <div class="icon-btn" title="Backup hochladen" style="padding:.3rem .6rem;">
+            <InputFile OnChange="OnBackupUploadSelected" />
+        </div>
     </div>
-}
-@if (!string.IsNullOrWhiteSpace(_error))
-{
-    <div class="error" style="margin-top:.5rem;">@_error</div>
-}
+
+    @if (!string.IsNullOrWhiteSpace(_backupError))
+    {
+        <div class="error" style="margin-top:.5rem;">@_backupError</div>
+    }
+
+    @if (_restoreRunning || !string.IsNullOrWhiteSpace(_restoreError))
+    {
+        <div class="panel" style="margin-top:.75rem;padding:.5rem 1rem;border:1px solid #444;border-radius:6px;max-width:720px;">
+            <div style="display:flex;align-items:center;gap:.75rem;">
+                <svg class="icon"><use href="/icons/sprite.svg#refresh" /></svg>
+                <div>
+                    <div><strong>@(_restoreRunning ? "Wiederherstellung läuft…" : (string.IsNullOrWhiteSpace(_restoreError) ? "Wiederherstellung abgeschlossen" : "Wiederherstellung fehlgeschlagen"))</strong></div>
+                    <div style="font-size:.9rem;opacity:.85;">@_restoreMessage</div>
+                    <div style="margin-top:.35rem;width:320px;height:6px;background:#2a2a33;border-radius:3px;overflow:hidden;">
+                        <div style="height:100%;background:#2d6cdf;width:@_restoreProgress%;transition:width .2s;"></div>
+                    </div>
+                </div>
+                @if (_restoreRunning)
+                {
+                    <button class="icon-btn" @onclick="CancelRestore" title="Abbrechen">
+                        <svg class="icon"><use href="/icons/sprite.svg#close" /></svg>
+                    </button>
+                }
+            </div>
+            @if(!string.IsNullOrWhiteSpace(_restoreError))
+            {
+                <div class="error" style="margin-top:.5rem;">@_restoreError</div>
+            }
+        </div>
+    }
+
+    <div class="table-responsive" style="margin-top:.75rem;">
+        <table class="fm-table">
+            <thead>
+                <tr>
+                    <th>Erstellt</th>
+                    <th>Datei</th>
+                    <th>Größe</th>
+                    <th>Quelle</th>
+                    <th style="width:1%;white-space:nowrap;">Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (_backups == null)
+            {
+                <tr><td colspan="5">Lade Daten...</td></tr>
+            }
+            else if (_backups.Count == 0)
+            {
+                <tr><td colspan="5">Keine Backups vorhanden.</td></tr>
+            }
+            else
+            {
+                @foreach (var b in _backups)
+                {
+                    <tr>
+                        <td>@b.CreatedUtc.ToLocalTime().ToString("g")</td>
+                        <td>@b.FileName</td>
+                        <td>@FormatSize(b.SizeBytes)</td>
+                        <td>@b.Source</td>
+                        <td style="white-space:nowrap;">
+                            <button class="icon-btn" title="Anwenden (Hintergrund)" @onclick="(() => StartApplyBackgroundAsync(b.Id))" disabled="@(_busy || _restoreRunning)">
+                                <svg class="icon"><use href="icons/sprite.svg#play" /></svg>
+                            </button>
+                            <a class="icon-btn" title="Herunterladen" href="@($"/api/setup/backups/{b.Id}/download")" download>
+                                <svg class="icon"><use href="icons/sprite.svg#download" /></svg>
+                            </a>
+                            <button class="icon-btn danger" title="Löschen" @onclick="(() => DeleteBackupAsync(b.Id))" disabled="@_busy">
+                                <svg class="icon"><use href="icons/sprite.svg#delete" /></svg>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</details>
+
+<details>
+    <summary style="cursor:pointer;font-weight:600;">Legacy</summary>
+    <div style="margin-top:.75rem;">
+        <p>Übergangsweiser Datenimport (altes Format)</p>
+        <div class="icon-btn" title="Datei wählen" style="padding:.3rem .6rem;">
+            <InputFile OnChange="OnFileSelected" />
+        </div>
+        @if (_fileName != null)
+        {
+            <div style="margin-top:1rem;">
+                <p>Datei: @_fileName</p>
+                <label>
+                    <input type="checkbox" @bind="_replaceExisting" />
+                    Bestehende Daten löschen und ersetzen
+                </label>
+                <button class="icon-btn" @onclick="UploadAsync" disabled="@_busy">
+                    <svg class="icon"><use href="icons/sprite.svg#save"></use></svg> Importieren
+                </button>
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div class="error" style="margin-top:.5rem;">@_error</div>
+        }
+    </div>
+</details>
 
 @code {
     private IBrowserFile? _file;
@@ -35,6 +133,22 @@
     private bool _replaceExisting;
     private bool _busy;
     private string? _error;
+
+    private List<BackupVm>? _backups;
+    private string? _backupError;
+
+    // Restore progress state
+    private bool _restoreRunning;
+    private int _restoreProgress;
+    private string? _restoreMessage;
+    private string? _restoreError;
+    private System.Timers.Timer? _restoreTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBackupsAsync();
+        await CheckRestoreStatusOnce();
+    }
 
     private void Back() => Navigation.NavigateTo("/");
 
@@ -52,7 +166,7 @@
         {
             var http = ClientFactory.CreateClient("Api");
             using var content = new MultipartFormDataContent();
-            var stream = _file.OpenReadStream(50 * 1024 * 1024);
+            await using var stream = _file.OpenReadStream(1024L * 1024L * 1024L); // allow up to 1GB
             content.Add(new StreamContent(stream), "file", _file.Name);
             content.Add(new StringContent(_replaceExisting.ToString()), "replaceExisting");
             var resp = await http.PostAsync("/api/setup/import", content);
@@ -70,5 +184,271 @@
             _error = ex.Message;
         }
         _busy = false;
+    }
+
+    // Backup UI
+    private async Task LoadBackupsAsync()
+    {
+        try
+        {
+            _backupError = null;
+            var http = ClientFactory.CreateClient("Api");
+            _backups = await http.GetFromJsonAsync<List<BackupVm>>("/api/setup/backups") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _backupError = ex.Message;
+            _backups = new();
+        }
+        StateHasChanged();
+    }
+
+    private async Task CreateBackupAsync()
+    {
+        _busy = true; _backupError = null;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.PostAsync("/api/setup/backups", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                var created = await resp.Content.ReadFromJsonAsync<BackupVm>();
+                _backups ??= new();
+                if (created != null) _backups.Insert(0, created);
+            }
+            else
+            {
+                _backupError = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _backupError = ex.Message;
+        }
+        _busy = false;
+    }
+
+    private async Task StartApplyBackgroundAsync(Guid id)
+    {
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.PostAsync($"/api/setup/backups/{id}/apply/start", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            var s = await resp.Content.ReadFromJsonAsync<RestoreStatusVm>();
+            if (s != null && !s.Running && !string.IsNullOrWhiteSpace(s.Error))
+            {
+                // Immediate error returned
+                _restoreRunning = false;
+                _restoreError = s.Error;
+                _restoreMessage = s.Message;
+                _restoreProgress = 0;
+                StateHasChanged();
+                return;
+            }
+            _restoreRunning = true;
+            _restoreProgress = 0;
+            _restoreMessage = "Gestartet";
+            _restoreError = null;
+            StartRestorePolling();
+        }
+        else
+        {
+            _backupError = await resp.Content.ReadAsStringAsync();
+        }
+    }
+
+    private void StartRestorePolling()
+    {
+        _restoreTimer?.Stop();
+        _restoreTimer?.Dispose();
+        _restoreTimer = new System.Timers.Timer(400);
+        _restoreTimer.Elapsed += async (_, __) => await PollRestoreAsync();
+        _restoreTimer.AutoReset = true;
+        _restoreTimer.Enabled = true;
+        _restoreTimer.Start();
+    }
+
+    private async Task CheckRestoreStatusOnce()
+    {
+        var http = ClientFactory.CreateClient("Api");
+        var resp = await http.GetAsync("/api/setup/backups/restore/status");
+        if (!resp.IsSuccessStatusCode) return;
+        var s = await resp.Content.ReadFromJsonAsync<RestoreStatusVm>();
+        if (s == null) return;
+        if (s.Running)
+        {
+            _restoreRunning = true;
+            _restoreMessage = s.Message;
+            _restoreError = s.Error;
+            _restoreProgress = s.Total > 0 ? (int)(100 * (double)s.Processed / s.Total) : 0;
+            StartRestorePolling();
+        }
+        else if (!string.IsNullOrWhiteSpace(s.Error))
+        {
+            // Show last error if any
+            _restoreRunning = false;
+            _restoreMessage = s.Message;
+            _restoreError = s.Error;
+            _restoreProgress = 0;
+        }
+    }
+
+    private async Task PollRestoreAsync()
+    {
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.GetAsync("/api/setup/backups/restore/status");
+            if (!resp.IsSuccessStatusCode) return;
+            var s = await resp.Content.ReadFromJsonAsync<RestoreStatusVm>();
+            if (s == null) return;
+            _restoreRunning = s.Running;
+            _restoreMessage = s.Message;
+            _restoreError = s.Error;
+            _restoreProgress = s.Total > 0 ? (int)(100 * (double)s.Processed / s.Total) : (_restoreRunning ? _restoreProgress : 100);
+            await InvokeAsync(StateHasChanged);
+            if (!s.Running)
+            {
+                _restoreTimer?.Stop();
+                _restoreTimer?.Dispose();
+                _restoreTimer = null;
+            }
+        }
+        catch
+        {
+            _restoreTimer?.Stop();
+            _restoreTimer?.Dispose();
+            _restoreTimer = null;
+        }
+    }
+
+    private async Task CancelRestore()
+    {
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            await http.PostAsync("/api/setup/backups/restore/cancel", null);
+        }
+        catch { }
+    }
+
+    private async Task ApplyBackupAsync(Guid id)
+    {
+        if (!await ConfirmAsync("Backup anwenden? Alle aktuellen Daten dieses Benutzers werden gelöscht und durch die Backupdatei ersetzt.")) { return; }
+        _busy = true; _backupError = null;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.PostAsync($"/api/setup/backups/{id}/apply", null);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _backupError = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _backupError = ex.Message;
+        }
+        _busy = false;
+    }
+
+    private async Task DeleteBackupAsync(Guid id)
+    {
+        if (!await ConfirmAsync("Backup endgültig löschen?")) { return; }
+        _busy = true; _backupError = null;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.DeleteAsync($"/api/setup/backups/{id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                _backups?.RemoveAll(x => x.Id == id);
+            }
+            else
+            {
+                _backupError = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _backupError = ex.Message;
+        }
+        _busy = false;
+    }
+
+    private IBrowserFile? _backupUploadFile;
+    private void OnBackupUploadSelected(InputFileChangeEventArgs e)
+    {
+        _backupUploadFile = e.File;
+        _ = UploadBackupAsync();
+    }
+
+    private async Task UploadBackupAsync()
+    {
+        if (_backupUploadFile == null) return;
+        _busy = true; _backupError = null;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            using var content = new MultipartFormDataContent();
+            await using var stream = _backupUploadFile.OpenReadStream(1024L * 1024L * 1024L); // allow up to 1GB
+            content.Add(new StreamContent(stream), "file", _backupUploadFile.Name);
+            var resp = await http.PostAsync("/api/setup/backups/upload", content);
+            if (resp.IsSuccessStatusCode)
+            {
+                var created = await resp.Content.ReadFromJsonAsync<BackupVm>();
+                _backups ??= new();
+                if (created != null) _backups.Insert(0, created);
+            }
+            else
+            {
+                _backupError = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _backupError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] units = new[] { "B", "KB", "MB", "GB" };
+        double size = bytes;
+        int unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+        return $"{size:N1} {units[unit]}";
+    }
+
+    private async Task<bool> ConfirmAsync(string message)
+    {
+        try { return await Task.FromResult(true); } catch { return true; }
+    }
+
+    private sealed class BackupVm
+    {
+        public Guid Id { get; set; }
+        public DateTime CreatedUtc { get; set; }
+        public string FileName { get; set; } = string.Empty;
+        public long SizeBytes { get; set; }
+        public string Source { get; set; } = string.Empty;
+    }
+
+    private sealed class RestoreStatusVm
+    {
+        public bool Running { get; set; }
+        public int Processed { get; set; }
+        public int Total { get; set; }
+        public string? Message { get; set; }
+        public string? Error { get; set; }
     }
 }

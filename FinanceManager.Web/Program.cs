@@ -48,11 +48,12 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 50 * 1024 * 1024; // z.B. 20 MB
+    options.MultipartBodyLengthLimit = 1024L * 1024L * 1024L; // 1 GB
 });
 
 builder.Services.AddSingleton<IClassificationCoordinator, ClassificationCoordinator>();
 builder.Services.AddSingleton<IBookingCoordinator, BookingCoordinator>();
+builder.Services.AddSingleton<IBackupRestoreCoordinator, BackupRestoreCoordinator>();
 
 // NEW: Security prices
 builder.Services.AddSingleton<IPriceProvider, AlphaVantagePriceProvider>();

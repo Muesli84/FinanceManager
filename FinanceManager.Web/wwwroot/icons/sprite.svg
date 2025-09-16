@@ -29,6 +29,11 @@
     <path d="M18 6 6 18" />
     <path d="M6 6l12 12" />
   </symbol>
+  <!-- alias for close to match UI references -->
+  <symbol id="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 6 6 18" />
+    <path d="M6 6l12 12" />
+  </symbol>
   <symbol id="groups" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="9" cy="8" r="4" />
     <path d="M17 11c1.657 0 3-1.79 3-4s-1.343-4-3-4" />
@@ -49,10 +54,6 @@
 	<symbol id="forward" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 		<path d="M15 5l7 7-7 7"/>
 		<path d="M2 12h20"/>
-	</symbol>
-	<symbol id="arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-		<path d="M5 12h14" />
-		<path d="M13 18l6-6-6-6" />
 	</symbol>
     <symbol id="archive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="3" width="18" height="4" />
@@ -94,5 +95,15 @@
     <path d="M3 5h18" />
     <path d="M3 12h18" />
     <path d="M3 19h18" />
+  </symbol>
+  <!-- Added: play icon -->
+  <symbol id="play" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <path d="M8 5v14l11-7z" />
+  </symbol>
+  <!-- Added: download icon -->
+  <symbol id="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3v12" />
+    <path d="M7 10l5 5 5-5" />
+    <path d="M5 19h14" />
   </symbol>
 </svg>

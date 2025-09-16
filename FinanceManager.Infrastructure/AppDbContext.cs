@@ -8,6 +8,7 @@ using FinanceManager.Domain.Savings;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Domain.Securities;
+using FinanceManager.Infrastructure.Backups;
 
 namespace FinanceManager.Infrastructure;
 
@@ -32,6 +33,7 @@ public class AppDbContext : DbContext
     public DbSet<SecurityCategory> SecurityCategories => Set<SecurityCategory>();
     public DbSet<PostingAggregate> PostingAggregates => Set<PostingAggregate>();
     public DbSet<SecurityPrice> SecurityPrices => Set<SecurityPrice>();
+    public DbSet<BackupRecord> Backups => Set<BackupRecord>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -214,6 +216,15 @@ public class AppDbContext : DbContext
             b.Property(x => x.Date).IsRequired();
             b.Property(x => x.Close).HasPrecision(18,4).IsRequired();
         });
+
+        modelBuilder.Entity<BackupRecord>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.OwnerUserId, x.CreatedUtc });
+            b.Property(x => x.FileName).HasMaxLength(255).IsRequired();
+            b.Property(x => x.Source).HasMaxLength(40).IsRequired();
+            b.Property(x => x.StoragePath).HasMaxLength(400).IsRequired();
+        });
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -240,5 +251,6 @@ public class AppDbContext : DbContext
         AccountShares.RemoveRange(AccountShares.Where(s => s.UserId == userId || Accounts.Any(a => a.OwnerUserId == userId && a.Id == s.AccountId)));
         Accounts.RemoveRange(Accounts.Where(a => a.OwnerUserId == userId));
         Securities.RemoveRange(Securities.Where(s => s.OwnerUserId == userId));
+        SecurityCategories.RemoveRange(SecurityCategories.Where(c => c.OwnerUserId == userId));
     }
 }

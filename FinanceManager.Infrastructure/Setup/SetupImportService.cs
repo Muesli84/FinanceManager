@@ -1,8 +1,11 @@
 using FinanceManager.Application.Statements;
+using FinanceManager.Domain; // for enums like AccountType, PostingKind
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Securities;
+using FinanceManager.Domain.Statements; // for StatementDraft
+using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +28,19 @@ public sealed class SetupImportService : ISetupImportService
         _statementDraftService = statementDraftService;
     }
 
+    public struct ImportProgress
+    {
+        public int Step { get; set; }
+        public int Total { get; set; }
+
+        internal ImportProgress Inc()
+        {
+            Step++;
+            return this;
+        }
+    }
+    public event EventHandler<ImportProgress> ProgressChanged;
+
     public async Task ImportAsync(Guid userId, Stream fileStream, bool replaceExisting, CancellationToken ct)
     {
         using var reader = new StreamReader(fileStream, Encoding.UTF8);
@@ -35,11 +51,397 @@ public sealed class SetupImportService : ISetupImportService
             throw new InvalidOperationException("Backup-Metadaten fehlen.");
 
         var meta = JsonSerializer.Deserialize<BackupMeta>(metaLine);
-        if (meta == null || meta.Type != "Backup" || meta.Version != 2)
+        if (meta == null || meta.Type != "Backup" || meta.Version < 2)
             throw new InvalidOperationException("Ungültiges Backup-Format.");
-
-        // Rest der Datei: eigentlicher Datenbestand
         var jsonData = await reader.ReadToEndAsync();
+        switch (meta.Version)
+        {
+            case 2:
+                await ImportVersion2(jsonData, replaceExisting, userId, meta, ct);
+                break;
+            case 3:
+                await ImportVersion3(jsonData, userId, replaceExisting, ct);
+                break;
+        }
+    }
+
+    private async Task ImportVersion3(string jsonData, Guid userId, bool replaceExisting, CancellationToken ct)
+    {
+        using var doc = JsonDocument.Parse(jsonData);
+        var root = doc.RootElement;
+
+        var progress = new ImportProgress()
+        {
+            Step = 0,
+            Total = replaceExisting ? 13 : 12
+        };
+        ProgressChanged?.Invoke(this, progress);
+
+        if (replaceExisting)
+        {
+            _db.ClearUserData(userId);
+            await _db.SaveChangesAsync(ct);            
+            ProgressChanged?.Invoke(this, progress.Inc());
+        }        
+
+        // Maps from backup Id -> new Id
+        var contactCatMap = new Dictionary<Guid, Guid>();
+        var contactMap = new Dictionary<Guid, Guid>();
+        var aliasMap = new Dictionary<Guid, Guid>();
+        var securityCatMap = new Dictionary<Guid, Guid>();
+        var securityMap = new Dictionary<Guid, Guid>();
+        var savingsCatMap = new Dictionary<Guid, Guid>();
+        var savingsMap = new Dictionary<Guid, Guid>();
+        var accountMap = new Dictionary<Guid, Guid>();
+        var draftMap = new Dictionary<Guid, Guid>();
+
+        // ContactCategories
+        if (root.TryGetProperty("ContactCategories", out var contactCategories) && contactCategories.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var c in contactCategories.EnumerateArray())
+            {
+                var id = c.GetProperty("Id").GetGuid();
+                var name = c.GetProperty("Name").GetString() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(name)) { continue; }
+                var entity = new ContactCategory(userId, name);
+                _db.ContactCategories.Add(entity);
+                await _db.SaveChangesAsync(ct);
+                contactCatMap[id] = entity.Id;
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // Contacts
+        if (root.TryGetProperty("Contacts", out var contacts) && contacts.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var c in contacts.EnumerateArray())
+            {
+                var id = c.GetProperty("Id").GetGuid();
+                var name = c.GetProperty("Name").GetString() ?? string.Empty;
+                var type = (ContactType)c.GetProperty("Type").GetInt32();
+                Guid? categoryId = null;
+                if (c.TryGetProperty("CategoryId", out var cat) && cat.ValueKind == JsonValueKind.String)
+                {
+                    var old = cat.GetGuid();
+                    if (contactCatMap.TryGetValue(old, out var mapped)) { categoryId = mapped; }
+                }
+                var description = c.TryGetProperty("Description", out var desc) && desc.ValueKind == JsonValueKind.String ? desc.GetString() : null;
+                var isIntermediary = c.TryGetProperty("IsPaymentIntermediary", out var inter) && inter.ValueKind == JsonValueKind.True;
+                var entity = new Contact(userId, name, type, categoryId, description, isIntermediary);
+                _db.Contacts.Add(entity);
+                await _db.SaveChangesAsync(ct);
+                contactMap[id] = entity.Id;
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // AliasNames
+        if (root.TryGetProperty("AliasNames", out var aliases) && aliases.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var a in aliases.EnumerateArray())
+            {
+                var id = a.GetProperty("Id").GetGuid();
+                var pattern = a.GetProperty("Pattern").GetString() ?? string.Empty;
+                var contactId = a.TryGetProperty("ContactId", out var cid) && cid.ValueKind == JsonValueKind.String ? cid.GetGuid() : Guid.Empty;
+                if (!contactMap.TryGetValue(contactId, out var mappedContact)) { continue; }
+                var entity = new AliasName(mappedContact, pattern);
+                _db.AliasNames.Add(entity);
+                await _db.SaveChangesAsync(ct);
+                aliasMap[id] = entity.Id;
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // SecurityCategories
+        if (root.TryGetProperty("SecurityCategories", out var secCats) && secCats.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var sc in secCats.EnumerateArray())
+            {
+                var id = sc.GetProperty("Id").GetGuid();
+                var name = sc.GetProperty("Name").GetString() ?? string.Empty;
+                var entity = new SecurityCategory(userId, name);
+                _db.SecurityCategories.Add(entity);
+                await _db.SaveChangesAsync(ct);
+                securityCatMap[id] = entity.Id;
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // Securities
+        if (root.TryGetProperty("Securities", out var secs) && secs.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var s in secs.EnumerateArray())
+            {
+                var id = s.GetProperty("Id").GetGuid();
+                var name = s.GetProperty("Name").GetString() ?? string.Empty;
+                var identifier = s.GetProperty("Identifier").GetString() ?? string.Empty;
+                var description = s.TryGetProperty("Description", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString() : null;
+                var av = s.TryGetProperty("AlphaVantageCode", out var avc) && avc.ValueKind == JsonValueKind.String ? avc.GetString() : null;
+                var cur = s.GetProperty("CurrencyCode").GetString() ?? "EUR";
+                Guid? categoryId = null;
+                if (s.TryGetProperty("CategoryId", out var scid) && scid.ValueKind == JsonValueKind.String)
+                {
+                    var old = scid.GetGuid();
+                    if (securityCatMap.TryGetValue(old, out var mapped)) { categoryId = mapped; }
+                }
+                var entity = new Security(userId, name, identifier, description, av, cur, categoryId);
+                _db.Securities.Add(entity);
+                await _db.SaveChangesAsync(ct);
+                securityMap[id] = entity.Id;
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // SecurityPrices
+        if (root.TryGetProperty("SecurityPrices", out var prices) && prices.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var p in prices.EnumerateArray())
+            {
+                var sid = p.GetProperty("SecurityId").GetGuid();
+                if (!securityMap.TryGetValue(sid, out var mappedSid)) { continue; }
+                var date = p.GetProperty("Date").GetDateTime();
+                var close = p.GetProperty("Close").GetDecimal();
+                var entity = new SecurityPrice(mappedSid, date, close);
+                _db.SecurityPrices.Add(entity);
+            }
+            await _db.SaveChangesAsync(ct);
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // SavingsPlanCategories
+        if (root.TryGetProperty("SavingsPlanCategories", out var spCats) && spCats.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var sc in spCats.EnumerateArray())
+            {
+                var id = sc.GetProperty("Id").GetGuid();
+                var name = sc.GetProperty("Name").GetString() ?? string.Empty;
+                var entity = new SavingsPlanCategory(userId, name);
+                _db.SavingsPlanCategories.Add(entity);
+                await _db.SaveChangesAsync(ct);
+                savingsCatMap[id] = entity.Id;
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // SavingsPlans
+        if (root.TryGetProperty("SavingsPlans", out var sps) && sps.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var sp in sps.EnumerateArray())
+            {
+                var id = sp.GetProperty("Id").GetGuid();
+                var name = sp.GetProperty("Name").GetString() ?? string.Empty;
+                var type = (SavingsPlanType)sp.GetProperty("Type").GetInt32();
+                var targetAmount = sp.TryGetProperty("TargetAmount", out var ta) && ta.ValueKind != JsonValueKind.Null ? ta.GetDecimal() : (decimal?)null;
+                var targetDate = sp.TryGetProperty("TargetDate", out var td) && td.ValueKind != JsonValueKind.Null ? td.GetDateTime() : (DateTime?)null;
+                var interval = sp.TryGetProperty("Interval", out var iv) && iv.ValueKind != JsonValueKind.Null ? (SavingsPlanInterval?)iv.GetInt32() : null;
+                Guid? categoryId = null;
+                if (sp.TryGetProperty("CategoryId", out var cid) && cid.ValueKind == JsonValueKind.String)
+                {
+                    var old = cid.GetGuid();
+                    if (savingsCatMap.TryGetValue(old, out var mapped)) { categoryId = mapped; }
+                }
+                var entity = new SavingsPlan(userId, name, type, targetAmount, targetDate, interval, categoryId);
+                if (sp.TryGetProperty("ContractNumber", out var cn) && cn.ValueKind == JsonValueKind.String)
+                {
+                    entity.SetContractNumber(cn.GetString());
+                }
+                _db.SavingsPlans.Add(entity);
+                await _db.SaveChangesAsync(ct);
+                savingsMap[id] = entity.Id;
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // Accounts
+        if (root.TryGetProperty("Accounts", out var accounts) && accounts.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var a in accounts.EnumerateArray())
+            {
+                var id = a.GetProperty("Id").GetGuid();
+                var name = a.GetProperty("Name").GetString() ?? string.Empty;
+                var type = (AccountType)a.GetProperty("Type").GetInt32();
+                var iban = a.TryGetProperty("Iban", out var ib) && ib.ValueKind == JsonValueKind.String ? ib.GetString() : null;
+                var bankContactId = a.TryGetProperty("BankContactId", out var bc) && bc.ValueKind == JsonValueKind.String ? bc.GetGuid() : Guid.Empty;
+                if (!contactMap.TryGetValue(bankContactId, out var mappedBankContact))
+                {
+                    // Fallback: create bank contact
+                    var bank = new Contact(userId, "Bank", ContactType.Bank, null);
+                    _db.Contacts.Add(bank);
+                    await _db.SaveChangesAsync(ct);
+                    mappedBankContact = bank.Id;
+                }
+                var entity = new Account(userId, type, name, iban, mappedBankContact);
+                _db.Accounts.Add(entity);
+                await _db.SaveChangesAsync(ct);
+                accountMap[id] = entity.Id;
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // Postings
+        if (root.TryGetProperty("Postings", out var postArr) && postArr.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var p in postArr.EnumerateArray())
+            {
+                Guid? accountId = null, contactId = null, savingsPlanId = null, securityId = null;
+                if (p.TryGetProperty("AccountId", out var aid) && aid.ValueKind == JsonValueKind.String)
+                {
+                    var old = aid.GetGuid(); if (accountMap.TryGetValue(old, out var mapped)) accountId = mapped;
+                }
+                if (p.TryGetProperty("ContactId", out var cid) && cid.ValueKind == JsonValueKind.String)
+                {
+                    var old = cid.GetGuid(); if (contactMap.TryGetValue(old, out var mapped)) contactId = mapped;
+                }
+                if (p.TryGetProperty("SavingsPlanId", out var spid) && spid.ValueKind == JsonValueKind.String)
+                {
+                    var old = spid.GetGuid(); if (savingsMap.TryGetValue(old, out var mapped)) savingsPlanId = mapped;
+                }
+                if (p.TryGetProperty("SecurityId", out var sid) && sid.ValueKind == JsonValueKind.String)
+                {
+                    var old = sid.GetGuid(); if (securityMap.TryGetValue(old, out var mapped)) securityId = mapped;
+                }
+                var kind = (PostingKind)p.GetProperty("Kind").GetInt32();
+                var sourceId = p.TryGetProperty("SourceId", out var src) && src.ValueKind == JsonValueKind.String ? src.GetGuid() : Guid.NewGuid();
+                var bookingDate = p.GetProperty("BookingDate").GetDateTime();
+                var amount = p.GetProperty("Amount").GetDecimal();
+                var subject = p.TryGetProperty("Subject", out var sub) && sub.ValueKind == JsonValueKind.String ? sub.GetString() : null;
+                var recipient = p.TryGetProperty("RecipientName", out var rn) && rn.ValueKind == JsonValueKind.String ? rn.GetString() : null;
+                var description = p.TryGetProperty("Description", out var desc) && desc.ValueKind == JsonValueKind.String ? desc.GetString() : null;
+                SecurityPostingSubType? subType = null;
+                if (p.TryGetProperty("SecuritySubType", out var sst) && sst.ValueKind != JsonValueKind.Null)
+                {
+                    subType = (SecurityPostingSubType)sst.GetInt32();
+                }
+                decimal? quantity = null;
+                if (p.TryGetProperty("Quantity", out var q) && q.ValueKind != JsonValueKind.Null)
+                {
+                    quantity = q.GetDecimal();
+                }
+                var entity = new FinanceManager.Domain.Postings.Posting(
+                    sourceId,
+                    kind,
+                    accountId,
+                    contactId,
+                    savingsPlanId,
+                    securityId,
+                    bookingDate,
+                    amount,
+                    subject,
+                    recipient,
+                    description,
+                    subType,
+                    quantity);
+                if (p.TryGetProperty("GroupId", out var gid) && gid.ValueKind == JsonValueKind.String)
+                {
+                    var grp = gid.GetGuid(); if (grp != Guid.Empty) entity.SetGroup(grp);
+                }
+                _db.Postings.Add(entity);
+            }
+            await _db.SaveChangesAsync(ct);
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        // StatementDrafts + Entries
+        if (root.TryGetProperty("StatementDrafts", out var drafts) && drafts.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var d in drafts.EnumerateArray())
+            {
+                var id = d.GetProperty("Id").GetGuid();
+                var originalFileName = d.TryGetProperty("OriginalFileName", out var of) && of.ValueKind == JsonValueKind.String ? of.GetString() : "backup";
+                var accountName = d.TryGetProperty("AccountName", out var an) && an.ValueKind == JsonValueKind.String ? an.GetString() : null;
+                var description = d.TryGetProperty("Description", out var de) && de.ValueKind == JsonValueKind.String ? de.GetString() : null;
+                var entity = new StatementDraft(userId, originalFileName!, accountName, description);
+                if (d.TryGetProperty("DetectedAccountId", out var da) && da.ValueKind == JsonValueKind.String)
+                {
+                    var old = da.GetGuid(); if (accountMap.TryGetValue(old, out var mapped)) entity.SetDetectedAccount(mapped);
+                }
+                if (d.TryGetProperty("OriginalFileContent", out var ofc) && ofc.ValueKind == JsonValueKind.Array)
+                {
+                    try
+                    {
+                        var bytes = ofc.EnumerateArray().Select(x => (byte)x.GetInt32()).ToArray();
+                        var ctype = d.TryGetProperty("OriginalFileContentType", out var ctpe) && ctpe.ValueKind == JsonValueKind.String ? ctpe.GetString() : null;
+                        if (bytes.Length > 0) entity.SetOriginalFile(bytes, ctype);
+                    }
+                    catch { }
+                }
+                _db.StatementDrafts.Add(entity);
+                await _db.SaveChangesAsync(ct);
+                draftMap[id] = entity.Id;
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        if (root.TryGetProperty("StatementDraftEntries", out var draftEntries) && draftEntries.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in draftEntries.EnumerateArray())
+            {
+                var draftIdOld = e.GetProperty("DraftId").GetGuid();
+                if (!draftMap.TryGetValue(draftIdOld, out var draftId)) { continue; }
+                var bookingDate = e.GetProperty("BookingDate").GetDateTime();
+                var amount = e.GetProperty("Amount").GetDecimal();
+                var subject = e.GetProperty("Subject").GetString() ?? string.Empty;
+                var recipient = e.TryGetProperty("RecipientName", out var rn) && rn.ValueKind == JsonValueKind.String ? rn.GetString() : null;
+                var valuta = e.TryGetProperty("ValutaDate", out var vd) && vd.ValueKind != JsonValueKind.Null ? vd.GetDateTime() : (DateTime?)null;
+                var currency = e.TryGetProperty("CurrencyCode", out var cc) && cc.ValueKind == JsonValueKind.String ? cc.GetString() : null;
+                var bookingDesc = e.TryGetProperty("BookingDescription", out var bd) && bd.ValueKind == JsonValueKind.String ? bd.GetString() : null;
+                var isAnnounced = e.TryGetProperty("IsAnnounced", out var ia) && ia.ValueKind == JsonValueKind.True;
+                var isCostNeutral = e.TryGetProperty("IsCostNeutral", out var ic) && ic.ValueKind == JsonValueKind.True;
+
+                // Load draft entity
+                var draft = await _db.StatementDrafts.FirstAsync(x => x.Id == draftId, ct);
+                //var entry = draft.AddEntry(bookingDate, amount, subject, recipient, valuta, currency, bookingDesc, isAnnounced, isCostNeutral);
+
+                var status = isAnnounced ? StatementDraftEntryStatus.Announced : StatementDraftEntryStatus.Open;
+                var entry = new StatementDraftEntry(
+                    draft.Id,
+                    bookingDate,
+                    amount,
+                    subject,
+                    recipient,
+                    valuta,
+                    currency,
+                    bookingDesc,
+                    isAnnounced,
+                    isCostNeutral,
+                    status);
+                _db.StatementDraftEntries.Add(entry);
+
+                if (e.TryGetProperty("ContactId", out var cid) && cid.ValueKind == JsonValueKind.String)
+                {
+                    var old = cid.GetGuid(); if (contactMap.TryGetValue(old, out var mapped)) { entry.AssignContactWithoutAccounting(mapped); }
+                }
+                if (e.TryGetProperty("SavingsPlanId", out var spid) && spid.ValueKind == JsonValueKind.String)
+                {
+                    var old = spid.GetGuid(); if (savingsMap.TryGetValue(old, out var mapped)) { entry.AssignSavingsPlan(mapped); }
+                }
+                if (e.TryGetProperty("ArchiveSavingsPlanOnBooking", out var arch) && arch.ValueKind != JsonValueKind.Null && arch.GetBoolean())
+                {
+                    entry.SetArchiveSavingsPlanOnBooking(true);
+                }
+                if (e.TryGetProperty("SplitDraftId", out var sdid) && sdid.ValueKind == JsonValueKind.String)
+                {
+                    var old = sdid.GetGuid(); if (draftMap.TryGetValue(old, out var mapped)) { entry.AssignSplitDraft(mapped); }
+                }
+                if (e.TryGetProperty("SecurityId", out var secid) && secid.ValueKind == JsonValueKind.String)
+                {
+                    var old = secid.GetGuid();
+                    Guid? mapped = null; if (securityMap.TryGetValue(old, out var m)) mapped = m;
+                    SecurityTransactionType? tx = null; decimal? qty = null; decimal? fee = null; decimal? tax = null;
+                    if (e.TryGetProperty("SecurityTransactionType", out var stt) && stt.ValueKind != JsonValueKind.Null) tx = (SecurityTransactionType)stt.GetInt32();
+                    if (e.TryGetProperty("SecurityQuantity", out var q) && q.ValueKind != JsonValueKind.Null) qty = q.GetDecimal();
+                    if (e.TryGetProperty("SecurityFeeAmount", out var f) && f.ValueKind != JsonValueKind.Null) fee = f.GetDecimal();
+                    if (e.TryGetProperty("SecurityTaxAmount", out var t) && t.ValueKind != JsonValueKind.Null) tax = t.GetDecimal();
+                    entry.SetSecurity(mapped, tx, qty, fee, tax);
+                }
+                await _db.SaveChangesAsync(ct);
+            }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+    }
+
+    private async Task ImportVersion2(string jsonData, bool replaceExisting, Guid userId, BackupMeta meta, CancellationToken ct)
+    {
         var backupData = JsonSerializer.Deserialize<BackupData>(jsonData);
         if (backupData == null)
             throw new InvalidOperationException("Backup-Daten konnten nicht gelesen werden.");

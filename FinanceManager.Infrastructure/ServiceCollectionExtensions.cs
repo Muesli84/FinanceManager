@@ -14,6 +14,8 @@ using FinanceManager.Infrastructure.Setup;
 using FinanceManager.Infrastructure.Statements;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Application.Backups;
+using FinanceManager.Infrastructure.Backups;
 
 namespace FinanceManager.Infrastructure;
 
@@ -42,6 +44,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<ISecurityCategoryService, SecurityCategoryService>();
         services.AddScoped< IAutoInitializationService , AutoInitializationService>();
+        services.AddScoped<IBackupService, BackupService>();
         return services;
     }
 }

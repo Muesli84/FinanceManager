@@ -23,6 +23,11 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-013 | Status offen bei Zahlungsintermediär bis vollständig gesplittet | StatementDraftService: TryAutoAssignContact & ReevaluateParentEntryStatusAsync       | ✔      |
 | FA-AUSZ-014 | Originaldatei speichern & Download / Inline-Ansicht             | StatementDraft: OriginalFileContent; Controller /file Endpoint; Detail-Viewer        | ✔      |
 | FA-AUSZ-015 | Massenbuchung Kontoauszüge (inkl. optionaler Einzelbuchung pro Eintrag) | BookingCoordinator, StatementDraftsController (`/api/statement-drafts/book-all`), UI `StatementDrafts.razor` Dialogoption „Einträge einzeln buchen“ – nur Einträge mit Warnung/Fehler bleiben offen | ✔      |
+| FA-BACK-001 | Backup erstellen                                                | BackupService.CreateAsync, BackupsController POST, UI `Setup.razor`                  | ✔      |
+| FA-BACK-002 | Backups auflisten & herunterladen                               | BackupService.List/OpenDownload, BackupsController GET/Download, UI `Setup.razor`    | ✔      |
+| FA-BACK-003 | Backup hochladen                                                | BackupsController `/upload` (NDJSON/ZIP), BackupService.UploadAsync, UI `Setup.razor`| ✔      |
+| FA-BACK-004 | Backup wiederherstellen (asynchron) mit Fortschrittsanzeige     | BackupRestoreCoordinator (Hintergrund), BackupsController Start/Status/Cancel, UI Fortschrittsbox in `Setup.razor` | ✔      |
+| FA-BACK-005 | Backup löschen                                                  | BackupService.DeleteAsync, BackupsController DELETE, UI `Setup.razor`                | ✔      |
 | FA-KON-001  | Kontakte verwalten (CRUD)                                       | ContactService, ContactsController, UI                                               | ✔      |
 | FA-KON-002  | Kontakte können Kategorie zugeordnet werden                     | ContactService, UI                                                                   | ✔      |
 | FA-KON-003  | Anwender als Kontakt angelegt                                   | ContactService, Initialisierung                                                      | ✔      |
@@ -74,12 +79,12 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUTH-005 | Konto teilen mit Benutzer                                       | Noch nicht implementiert                                                             | ✖      |
 | FA-AUTH-006 | Schreibrechte konfigurierbar                                    | Noch nicht implementiert                                                             | ✖      |
 | FA-AUTH-007 | Entzug von Freigaben                                            | Noch nicht implementiert                                                             | ✖      |
-| FA-AUTH-008 | Passworthashing                                                 | Noch nicht implementiert (nur JWT)                                                   | ✖      |
-| FA-AUTH-009 | Admin-Oberfläche Benutzerverwaltung                             | Noch nicht implementiert                                                             | ✖      |
+| FA-AUTH-008 | Passworthashing                                                 | Implementiert via `Pbkdf2PasswordHasher`; Registrierung in DI                        | ✔      |
+| FA-AUTH-009 | Admin-Oberfläche Benutzerverwaltung                             | AdminUsersController, UI `Users.razor`                                               | ✔      |
 | FA-AUTH-010 | Erster Benutzer = Admin                                         | Noch nicht implementiert                                                             | ✖      |
-| FA-AUTH-011 | Admin kann Benutzer bearbeiten/löschen                          | Noch nicht implementiert                                                             | ✖      |
+| FA-AUTH-011 | Admin kann Benutzer bearbeiten/löschen                          | AdminUsersController: Update/Delete; UI `Users.razor`                                | ✔      |
 | FA-AUTH-012 | Löschen entfernt private Daten                                  | Noch nicht implementiert                                                             | ✖      |
-| FA-AUTH-013 | Admin kann Sperren aufheben                                     | Noch nicht implementiert                                                             | ✖      |
+| FA-AUTH-013 | Admin kann Sperren aufheben                                     | AdminUsersController Unlock; UI `Users.razor`                                        | ✔      |
 | FA-I18N-001 | UI-Texte in Deutsch/Englisch                                    | Ressourcenstruktur, Program.cs                                                       | ✔      |
 | FA-I18N-002 | Sprache im Profil einstellen                                    | Noch nicht implementiert                                                             | ✖      |
 | FA-I18N-003 | Fallback auf Browser/Systemsprache                              | Program.cs: SupportedCultures                                                        | ✔      |
@@ -91,13 +96,15 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-SEC-001 | Endpunkte geschützt                                             | Program.cs, Controller `[Authorize]`                                                 | ✔      |
 | NFA-SEC-002 | Idempotenz bei Verbuchung                                       | StatementDraftService: Duplikatprüfung                                               | ✔      |
 | NFA-SEC-003 | Access Scope Enforcement                                        | Services, Controller: UserId-Scoping                                                 | ✔      |
-| NFA-SEC-004 | Passwort-Hashing (Argon2id/bcrypt)                              | Noch nicht implementiert                                                             | ✖      |
+| NFA-SEC-004 | Passwort-Hashing (Argon2id/bcrypt)                              | Ziel bleibt Argon2id/bcrypt; aktuell PBKDF2 im Einsatz                               | ✖      |
 | NFA-SEC-005 | Token-Lebensdauer/Refresh-Token                                 | Noch nicht implementiert                                                             | ✖      |
 | NFA-SEC-006 | Audit Logging sicherheitsrelevanter Aktionen                    | Noch nicht implementiert                                                             | ✖      |
 | NFA-SEC-007 | Login-Sperre nach Fehlversuchen                                 | Noch nicht implementiert                                                             | ✖      |
 | NFA-SEC-008 | Admin-Audit Logging                                             | Noch nicht implementiert                                                             | ✖      |
 | NFA-REL-001 | Fehler beim Kursabruf blockiert Hauptfunktionen nicht           | Worker isoliert, Fehler/Rate‑Limit werden gefangen und verhindern keine UI/API       | ✔      |
+| NFA-REL-002 | Langläufer im Hintergrund mit Fortschritt (Restore)             | BackupRestoreCoordinator + REST Endpunkte + UI Fortschrittsanzeige                   | ✔      |
 | NFA-USAB-001| Responsive UI                                                   | UI: Blazor, Responsive Design teilweise                                              | ~      |
+| NFA-USAB-002| Einheitliche Aktions‑Symbole via Sprite                         | `wwwroot/icons/sprite.svg` gepflegt (u.a. play, download, close ergänzt)             | ✔      |
 | NFA-ARCH-001| Trennung Domäne/Präsentation                                   | Shared Library, Blazor, Services                                                     | ✔      |
 | NFA-LOG-001 | Zentrales Logging                                               | Program.cs, Serilog                                                                  | ✔      |
 | NFA-I18N-001| Zwei Sprachen, Fallback                                         | Program.cs, Ressourcenstruktur                                                       | ✔      |
@@ -113,6 +120,10 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - PDF-Detailimport (ING) erweitert: Erkennung Kauf/Verkauf/Dividende, Ordernummer, Provision, robustere Betrags-/Vorzeichenlogik (inkl. „EUR - 1,67“), Nominale auch mit „Stück“ vor/nach der Zahl. Steuern (KESt/SolZ/KiSt) und Provision werden übernommen. Automatische Zuordnung von Steuer/Provision in Draft-Einträge bei Details-Import.
 - FA-AUSZ-009 Beschreibung aktualisiert (PDF-Details, automatische Übernahme). Status bleibt ~ wegen offener Depot-/Positionslogik.
 - FA-WERT-002 Beschreibung aktualisiert (Ableitung Transaktionstyp/Menge/Gebühren/Steuern aus PDF). Status bleibt ~.
+- Backup-Funktionalität ergänzt: Erstellen, Auflisten/Download, Upload, asynchrones Wiederherstellen mit Fortschrittsanzeige, Löschen (BackupsController, BackupService, `Setup.razor`, `BackupRestoreCoordinator`).
+- UI: SVG-Sprite um fehlende Aktionssymbole erweitert (`play`, `download`, `close`).
+- Admin-Benutzerverwaltung implementiert: AdminUsersController + `Users.razor` (Bearbeiten/Löschen/Passwort zurücksetzen/Entsperren). Anforderungen FA-AUTH-009/011/013 auf ✔.
+- Sicherheit: Passwort-Hashing via PBKDF2 implementiert (FA-AUTH-008 ✔). Langfristiges Ziel weiterhin Argon2id/bcrypt (NFA-SEC-004 bleibt ✖).
 
 Änderungen (15.09.2025) – Ergänzung 2:
 - NEU: FA-AUSZ-015 Massenbuchung mit optionaler Einzelbuchung pro Eintrag (UI Dialogoption „Einträge einzeln buchen“). Backend: BookingCoordinator erweitert; Controller & UI aktualisiert.
