@@ -4,6 +4,7 @@ using FinanceManager.Infrastructure.Setup;
 using FinanceManager.Web.Components;
 using FinanceManager.Web.Infrastructure;
 using FinanceManager.Web.Services;
+using FinanceManager.Web.Infrastructure.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer; // NEU
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Localization;
@@ -162,6 +163,9 @@ app.UseAntiforgery();
 // Authentication / Authorization einschleusen
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Add JWT refresh middleware after authentication so User is populated, before endpoints
+app.UseMiddleware<JwtRefreshMiddleware>();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
