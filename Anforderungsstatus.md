@@ -16,7 +16,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-006 | Kostenneutral bei eigenen Kontakten                             | StatementDraftService: Status-/CostNeutral-Logik                                     | ✔      |
 | FA-AUSZ-007 | Kontaktposten beim Buchen entstehen                             | StatementDraftService.BookAsync → `PostingKind.Contact`                              | ✔      |
 | FA-AUSZ-008 | Empfänger muss Kontakt zugeordnet werden                        | StatementDraftService, UI                                                            | ✔      |
-| FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | UI & API: Auswahl, Neuanlage und Zuordnung in StatementDraftEntryDetail; Persistierung via `/security` Endpoint. Buchungs-/Transaktionslogik (Positions-/Depotbuchungen) noch offen; Security-Postings (Trade/Fee/Tax) werden erzeugt. Menge wird bei Buchung in `Posting.Quantity` gespeichert (Buy positiv, Sell negativ, Dividend keine Menge); Validierung angepasst. | ~      |
+| FA-AUSZ-009 | Wertpapierzuordnung bei eigener Bank                            | UI & API: Auswahl, Neuanlage und Zuordnung in StatementDraftEntryDetail; PDF-Detailimport (ING) erkennt Dividende/Kauf/Verkauf, ISIN, Nominale (inkl. „Stück“ vor/nach Zahl), Ordernummer, Steuern und Provision; automatische Übernahme von Steuer/Provision in den Eintrag; Security-Postings (Trade/Fee/Tax) werden erzeugt; Menge bei Dividende optional; Validierung angepasst. Positions-/Depotlogik weiter offen. | ~      |
 | FA-AUSZ-010 | PDF-Parsing mit Tabellenextraktion                              | ING_StatementFileReader, Barclays_StatementFileReader, erweiterbar                   | ✔      |
 | FA-AUSZ-011 | Import-Pipeline mit Format-Strategie                            | StatementDraftService, Reader-Interface                                              | ✔      |
 | FA-AUSZ-012 | Anzeige Gesamtbetrag verknüpfter Aufteilungs-Auszüge im Eintrag | StatementDraftsController GetEntry: SplitSum/Difference; EntryDetail UI Amount-Zeile | ✔      |
@@ -43,7 +43,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-SPAR-011 | Sparplanposten bei Buchung                                      | StatementDraftService.BookEntryAsync → `PostingKind.SavingsPlan` (negierter Betrag)  | ✔      |
 | FA-SPAR-012 | Umschalten aktive/archivierte Sparpläne                         | Noch nicht implementiert                                                             | ✖      |
 | FA-WERT-001 | Wertpapiere verwalten                                           | SecurityService, SecuritiesController, UI (Liste, Detail, Kategorien), Erstellung & Rücksprung aus Kontoauszug | ✔      |
-| FA-WERT-002 | Wertpapiertransaktionen                                         | Transaktionstyp und Menge werden bei Buchung erfasst (Buy +, Sell −, Dividend ohne Menge); Positions-/Depot-/FIFO‑Logik noch offen | ~      |
+| FA-WERT-002 | Wertpapiertransaktionen                                         | Transaktionstyp und Menge werden bei Buchung erfasst (Buy +, Sell −, Dividend ohne Menge); aus PDF-Details (ING) werden Kauf/Verkauf/Dividende, Nominale, Steuern und Provision erkannt und übernommen. Positions-/Depot-/FIFO‑Logik noch offen. | ~      |
 | FA-WERT-003 | Wertpapierposten bei Buchung                                    | StatementDraftService.BookAsync → `PostingKind.Security` (Trade/Fee/Tax)             | ✔      |
 | FA-WERT-004 | Kursabruf AlphaVantage API                                      | Hintergrund‑Worker ruft tägliche Kurse (TIME_SERIES_DAILY) ab; optionaler API‑Key (ohne Key inaktiv); Erkennung des Request‑Limits (Backoff bis Folgetag); Abruf 1×/Tag bis Vortag; Wochenenden übersprungen | ~      |
 | FA-WERT-005 | Historische Kurse nachholen                                     | Initiales Backfill (bis ca. 2 Jahre, dann inkrementell seit letztem Eintrag)         | ~      |
@@ -109,6 +109,11 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
+Änderungen (16.09.2025):
+- PDF-Detailimport (ING) erweitert: Erkennung Kauf/Verkauf/Dividende, Ordernummer, Provision, robustere Betrags-/Vorzeichenlogik (inkl. „EUR - 1,67“), Nominale auch mit „Stück“ vor/nach der Zahl. Steuern (KESt/SolZ/KiSt) und Provision werden übernommen. Automatische Zuordnung von Steuer/Provision in Draft-Einträge bei Details-Import.
+- FA-AUSZ-009 Beschreibung aktualisiert (PDF-Details, automatische Übernahme). Status bleibt ~ wegen offener Depot-/Positionslogik.
+- FA-WERT-002 Beschreibung aktualisiert (Ableitung Transaktionstyp/Menge/Gebühren/Steuern aus PDF). Status bleibt ~.
+
 Änderungen (15.09.2025) – Ergänzung 2:
 - NEU: FA-AUSZ-015 Massenbuchung mit optionaler Einzelbuchung pro Eintrag (UI Dialogoption „Einträge einzeln buchen“). Backend: BookingCoordinator erweitert; Controller & UI aktualisiert.
 - UX: Rückkehrpfad nach Öffnen eines Kontakts aus Kontoauszugseintrag via `returnUrl` (kein eigener Requirement-Eintrag, inkrementelle Verbesserung von FA-KON-001 / FA-AUSZ-003).
@@ -127,7 +132,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 Änderungen (13.09.2025):
 - FA-SPAR-002 von ✖ auf ✔: Sparplan-Typen (OneTime, Recurring, Open) in DTO/Domain + UI/Service nutzbar.
 - FA-SPAR-003 von ✖ auf ~: Bei Buchung wird bei wiederkehrenden Sparplänen das Fälligkeitsdatum um das Intervall erhöht.
-- FA-SPAR-006 Beschreibung erweitert: Kontoauszugs‑Prüfung meldet zusätzlich fällige Sparpläne (ohne Monatsbuchung, nicht in offenem Auszug) als Information.
+- FA-SPAR-006 Beschreibung erweitert: Kontoauszugs‑Prüfung meldet zusätzlich fällige Pläne (ohne Monatsbuchung, nicht in offenem Auszug) als Information.
 - FA-SPAR-001 erweitert: Neuanlage eines Sparplans direkt aus Kontoauszugseintrag inkl. automatischer Zuordnung und Rücksprung.
 - FA-SPAR-009 von ✖ auf ✔: Archivierung bei Ausbuchung via Archivierungs-Flag am Kontoauszugseintrag; Validierung `SAVINGSPLAN_ARCHIVE_MISMATCH` bei Abweichung; Archivierung und Info `SAVINGSPLAN_ARCHIVED` bei Buchung.
 - FA-AUSZ-003 Beschreibung erweitert: Archivierungs-Flag pro Eintrag in der Entry‑Detail‑UI; Persistierung über neuen API‑Endpoint.
@@ -156,4 +161,4 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
 - Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
-*Letzte Aktualisierung: 15.09.2025*
+*Letzte Aktualisierung: 16.09.2025*

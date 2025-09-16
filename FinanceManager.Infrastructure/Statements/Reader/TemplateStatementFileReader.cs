@@ -43,6 +43,11 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             return null;
         }
 
+        public StatementParseResult? ParseDetails(string originalFileName, byte[] fileBytes)
+        {
+            return Parse(originalFileName, fileBytes);
+        }
+
         protected abstract string[] Templates { get; }
         protected abstract IEnumerable<string> ReadContent(byte[] fileBytes);
 

@@ -13,7 +13,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
         {
             public JsonElement BankAccounts { get; set; }
             public JsonElement BankAccountLedgerEntries { get; set; }
-            public JsonElement BankAccountJournalLines { get; set; }    
+            public JsonElement BankAccountJournalLines { get; set; }
         }
         private void Load(byte[] fileBytes)
         {
@@ -77,6 +77,18 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             }
         }
         public StatementParseResult? Parse(string fileName, byte[] fileBytes)
+        {
+            try
+            {
+                Load(fileBytes);
+                return new StatementParseResult(_GlobalHeader, ReadData().ToList());
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        public StatementParseResult? ParseDetails(string originalFileName, byte[] fileBytes)
         {
             try
             {

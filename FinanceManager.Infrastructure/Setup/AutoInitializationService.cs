@@ -138,6 +138,21 @@ namespace FinanceManager.Infrastructure.Setup
                 }
                 _logger.LogInformation("AutoInit: Initialisierung abgeschlossen. SetupFiles={SetupCount}, DraftFiles={DraftCount}.", setupFiles.Count, draftFiles.Count);
 
+                var statementDetailsFiles = Directory.EnumerateFiles(initDir, "statement-detail*.pdf", SearchOption.TopDirectoryOnly);
+                foreach (var file in statementDetailsFiles)
+                {
+                    try
+                    {
+                        _logger.LogInformation("AutoInit: Importiere Statement-Detail-Datei '{File}'.", Path.GetFileName(file));
+                        var bytes = await File.ReadAllBytesAsync(file, ct);
+                        await _statementDraftService.AddStatementDetailsAsync(admin.Id, Path.GetFileName(file), bytes, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "AutoInit: Fehler beim Import der Statement-Detail-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(file));
+                    }
+                }
+
                 await ExecuteActions(admin, initDir, drafts, ct);
             }
             catch (Exception ex)

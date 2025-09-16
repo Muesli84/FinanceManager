@@ -179,13 +179,12 @@ public sealed partial class StatementDraftService
 
             if (matched.Count == 1)
             {
-                entry.SetSecurity(matched[0].Id, null, null, null, null);
+                entry.SetSecurity(matched[0].Id, entry.SecurityTransactionType, entry.SecurityQuantity, entry.SecurityFeeAmount, entry.SecurityTaxAmount);
             }
             else if (matched.Count > 1)
             {
                 var first = matched.First();
-                entry.SetSecurity(first.Id, null, null, null, null);
-                // Mehrdeutige Zuordnung → Status auf Offen lassen
+                entry.SetSecurity(first.Id, entry.SecurityTransactionType, entry.SecurityQuantity, entry.SecurityFeeAmount, entry.SecurityTaxAmount);
                 entry.ResetOpen();
             }
             else

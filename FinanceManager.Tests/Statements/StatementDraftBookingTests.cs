@@ -635,4 +635,82 @@ public sealed class StatementDraftBookingTests
 
         conn.Dispose();
     }
+
+    [Fact]
+    public async Task Booking_Dividend_Storno_NegativeValues_ShouldCreateMainMinus184_TaxPlus022()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId);
+
+        // Entry: -1.62 EUR storno dividend
+        var entry = draft.AddEntry(new DateTime(2024, 5, 10), -1.62m, "Dividend Storno", bank.Name, new DateTime(2024, 5, 10), "EUR", null, false);
+        db.Entry(entry).State = EntityState.Added;
+        entry.MarkAccounted(account!.BankContactId);
+        await db.SaveChangesAsync();
+
+        // USD security
+        var sec = new Security(owner, "US ETF", "US000XYZ", null, null, "USD", null);
+        db.Securities.Add(sec);
+        await db.SaveChangesAsync();
+
+        // Assign Dividend with tax -0.22 EUR
+        await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Dividend, null, null, -0.22m, owner, CancellationToken.None);
+
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+
+        var securityPosts = db.Postings.Where(p => p.Kind == PostingKind.Security).ToList();
+        securityPosts.Count.Should().Be(2);
+
+        var main = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Dividend);
+        var tax = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Tax);
+
+        // Expect main -1.84; tax +0.22; total equals entry amount
+        main.Amount.Should().Be(-1.84m);
+        tax.Amount.Should().Be(0.22m);
+        (main.Amount + tax.Amount).Should().Be(entry.Amount);
+
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_Dividend_PositiveValues_ShouldCreateMainPlus184_TaxMinus022()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, bank) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var account = await db.Accounts.FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId);
+
+        // Entry: +1.62 EUR dividend
+        var entry = draft.AddEntry(new DateTime(2024, 5, 10), 1.62m, "Dividend", bank.Name, new DateTime(2024, 5, 10), "EUR", null, false);
+        db.Entry(entry).State = EntityState.Added;
+        entry.MarkAccounted(account!.BankContactId);
+        await db.SaveChangesAsync();
+
+        // USD security
+        var sec = new Security(owner, "US ETF", "US000XYZ", null, null, "USD", null);
+        db.Securities.Add(sec);
+        await db.SaveChangesAsync();
+
+        // Assign Dividend with tax +0.22 EUR
+        await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Dividend, null, null, 0.22m, owner, CancellationToken.None);
+
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+
+        var securityPosts = db.Postings.Where(p => p.Kind == PostingKind.Security).ToList();
+        securityPosts.Count.Should().Be(2);
+
+        var main = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Dividend);
+        var tax = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Tax);
+
+        // Expect main +1.84; tax -0.22; total equals entry amount
+        main.Amount.Should().Be(1.84m);
+        tax.Amount.Should().Be(-0.22m);
+        (main.Amount + tax.Amount).Should().Be(entry.Amount);
+
+        conn.Dispose();
+    }
 }

@@ -1,13 +1,14 @@
 ﻿using FinanceManager.Application.Statements;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts;
+using FinanceManager.Domain.Postings;
 using FinanceManager.Domain.Savings;
+using FinanceManager.Domain.Securities;
 using FinanceManager.Domain.Statements;
+using FinanceManager.Infrastructure.Migrations;
 using FinanceManager.Infrastructure.Statements.Reader;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Domain.Postings;
-using FinanceManager.Domain.Securities;
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -15,15 +16,19 @@ public sealed partial class StatementDraftService : IStatementDraftService
 {
     private readonly AppDbContext _db;
     private readonly IReadOnlyList<IStatementFileReader> _statementFileReaders;
+    private List<StatementDraftDto> allDrafts = null;
+    private List<Security> allSecurities = null;
+    private List<Domain.Accounts.Account> allAccounts = null;
 
     public StatementDraftService(AppDbContext db)
     {
         _db = db;
         _statementFileReaders = new List<IStatementFileReader>
         {
+            new ING_PDfReader(),
             new ING_StatementFileReader(),
             new Barclays_StatementFileReader(),
-            new BackupStatementFileReader()
+            new BackupStatementFileReader()            
         };
     }
 
@@ -124,6 +129,61 @@ public sealed partial class StatementDraftService : IStatementDraftService
             entry.SecurityTaxAmount);
     }
 
+    // updated to also set fees from parsed details
+    public async Task AddStatementDetailsAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct)
+    {
+        var parsedDraft = _statementFileReaders
+            .Select(reader => reader.ParseDetails(originalFileName, fileBytes))
+            .Where(result => result is not null && result.Movements.Any())
+            .FirstOrDefault();
+        if (parsedDraft is null)
+        {
+            throw new InvalidOperationException("No valid statement file reader found or no movements detected.");
+        }
+
+        if (allAccounts is null)
+            allAccounts = await _db.Accounts.Where(a => a.OwnerUserId == ownerUserId).ToListAsync(ct);
+        if (allDrafts is null)
+            allDrafts = (await GetOpenDraftsAsync(ownerUserId, ct)).ToList();
+        if (allSecurities is null)
+            allSecurities = (await _db.Securities.Where(s => s.IsActive).ToListAsync(ct)).ToList();
+
+        var account = allAccounts.FirstOrDefault(acc => acc.Iban == parsedDraft.Header.IBAN);
+        var line = parsedDraft.Movements.FirstOrDefault();
+        var security = allSecurities.FirstOrDefault(s => s.IsActive && line.Subject.Contains(s.Identifier, StringComparison.OrdinalIgnoreCase));
+        if (security is not null)
+            foreach (var draft in allDrafts.Where(draft => draft.DetectedAccountId == account.Id))
+            {
+                var draftEntries = await _db.StatementDraftEntries
+                    .Where(e => e.DraftId == draft.DraftId)
+                    .Where(e => e.ContactId == account.BankContactId)
+                    .Where(e => e.SecurityId == security.Id)
+                    .Where(e => e.Amount == line.Amount)
+                    .Where(e => e.BookingDate == line.BookingDate)
+                    .ToListAsync(ct);
+                if (!draftEntries.Any()) continue;
+                var entries = draftEntries.ToList();
+                if (entries.Count == 0) continue;
+
+                if (entries.Count > 1) continue;
+                var entry = entries.FirstOrDefault();
+                entry.SetSecurity(entry.SecurityId, line.PostingDescription switch
+                {
+                    "Dividend" => SecurityTransactionType.Dividend,
+                    "Sell" => SecurityTransactionType.Sell,
+                    "Buy" => SecurityTransactionType.Buy,
+                    _ => entry.SecurityTransactionType
+                }, line.PostingDescription switch {
+                    "Dividend" => null,
+                    "Sell" => line.Quantity ?? entry.SecurityQuantity,
+                    "Buy" => line.Quantity ?? entry.SecurityQuantity,
+                    _ => entry.SecurityQuantity
+                }, line.FeeAmount ?? entry.SecurityFeeAmount, line.TaxAmount ?? entry.SecurityTaxAmount);
+                await _db.SaveChangesAsync();
+                break;
+            }
+
+    }
     public async IAsyncEnumerable<StatementDraftDto> CreateDraftAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct)
     {
         var parsedDraft = _statementFileReaders

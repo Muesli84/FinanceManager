@@ -52,6 +52,7 @@ public interface IStatementDraftService
         decimal? feeAmount,
         decimal? taxAmount,
         CancellationToken ct);
+    Task AddStatementDetailsAsync(Guid id, string fileName, byte[] fileData, CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(

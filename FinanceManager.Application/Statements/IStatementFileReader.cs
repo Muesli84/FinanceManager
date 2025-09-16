@@ -16,6 +16,7 @@ public interface IStatementFileReader
     /// <param name="fileBytes">File content as byte array.</param>
     /// <returns>ParseResult with header and movements, or null if format not supported.</returns>
     StatementParseResult? Parse(string fileName, byte[] fileBytes);
+    StatementParseResult? ParseDetails(string originalFileName, byte[] fileBytes);
 }
 
 /// <summary>
@@ -55,4 +56,7 @@ public sealed record StatementMovement()
     public bool IsPreview { get; set; }
     public bool IsError { get; set; }
     public Guid ContactId { get; set; }
+    public decimal? Quantity { get; set; }
+    public decimal? TaxAmount { get; set; }
+    public decimal? FeeAmount { get; set; }
 };
