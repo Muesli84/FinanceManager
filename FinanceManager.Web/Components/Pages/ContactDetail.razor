@@ -112,11 +112,14 @@ else
         }
     </EditForm>
 
-    <ContactMergeDialog Visible="@_showMergeDialog"
-                        CurrentContactId="@Id!.Value"
-                        CurrentContactType="@_model.Type"
-                        OnConfirm="PerformMergeAsync"
-                        OnCancel="CloseMergeDialog" />
+    @if (IsEdit)
+    {
+        <ContactMergeDialog Visible="@_showMergeDialog"
+                            CurrentContactId="@Id!.Value"
+                            CurrentContactType="@_model.Type"
+                            OnConfirm="PerformMergeAsync"
+                            OnCancel="CloseMergeDialog" />
+    }
 }
 
 @code {
