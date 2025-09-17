@@ -150,4 +150,7 @@
   <data name="Error_Reload" xml:space="preserve">
     <value>Reload</value>
   </data>
+  <data name="Nav_Setup" xml:space="preserve">
+    <value>Setup</value>
+  </data>
 </root>
