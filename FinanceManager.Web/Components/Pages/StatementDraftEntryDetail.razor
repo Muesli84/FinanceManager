@@ -616,7 +616,7 @@ else
     }
     private void OpenSavingsPlanDetail()
     {
-        if (_selectedSavingsPlanId != null) { Nav.NavigateTo($"/savings-plans/{_selectedSavingsPlanId}"); }
+        if (_selectedSavingsPlanId != null) { Nav.NavigateTo($"/savings-plans/{_selectedSavingsPlanId}?&draftId={DraftId}&entryId={EntryId}"); }
     }
     private async Task GoPrevAsync()
     {

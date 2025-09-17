@@ -12,6 +12,9 @@
 
 <h3>@(IsEdit ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
 <div class="action-bar" style="margin-bottom:1rem;">
+    <button class="icon-btn" @onclick="Back" title="@Localizer["BtnBack"]">
+        <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
+    </button>
     <button class="icon-btn" @onclick="SaveAsync" type="submit" title="@Localizer["BtnSave"]">
         <svg class="icon"><use href="icons/sprite.svg#save"></use></svg>
     </button>
@@ -26,10 +29,7 @@
         <button class="icon-btn" @onclick="OpenPostings" title="@Localizer["BtnPostings"]">
             <svg class="icon"><use href="icons/sprite.svg#postings"></use></svg>
         </button>
-    }
-    <button class="icon-btn" @onclick="Back" title="@Localizer["BtnBack"]">
-        <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
-    </button>
+    }   
     <button class="icon-btn" @onclick="OpenCategoryList" title="@Localizer["BtnCategories"]">
         <svg class="icon"><use href="icons/sprite.svg#groups"></use></svg>
     </button>
@@ -280,7 +280,17 @@
         }
     }
 
-    private void Back() => Navigation.NavigateTo("/savings-plans");
+    private void Back()
+    {
+        if (_returnDraftId != null && _returnEntryId != null)
+        {
+            Navigation.NavigateTo($"/statement-drafts/{_returnDraftId}/entries/{_returnEntryId}", true);
+        }
+        else
+        {
+            Navigation.NavigateTo("/savings-plans");
+        }
+    }
     private void OpenCategoryList() => Navigation.NavigateTo("/savings-plan-categories");
     private void OpenPostings()
     {
