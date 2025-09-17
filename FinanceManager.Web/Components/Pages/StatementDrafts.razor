@@ -375,18 +375,9 @@ else
     }
 
     // Massenbuchung: Dialog + Trigger + Polling
-    private void OpenBookAllDialog()
-    {
-        _bookIgnoreWarnings = false;
-        _bookAbortOnFirst = false;
-        _bookEntriesIndividually = false;
-        _showBookDialog = true;
-    }
+    private void OpenBookAllDialog() { _bookIgnoreWarnings = false; _bookAbortOnFirst = false; _bookEntriesIndividually = false; _showBookDialog = true; }
 
-    private void CancelBookAllDialog()
-    {
-        _showBookDialog = false;
-    }
+    private void CancelBookAllDialog() { _showBookDialog = false; }
 
     private async Task ConfirmBookAllAsync()
     {
@@ -472,6 +463,20 @@ else
         _bookingWarnings = s.warnings;
         _bookingIssues = s.issues ?? new();
         StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task LoadMoreFromJs()
+    {
+        await LoadAsync();
+        if (_canLoadMore)
+        {
+            await JS.InvokeVoidAsync("fmInfinite.refresh");
+        }
+        else
+        {
+            StateHasChanged();
+        }
     }
 
     private sealed class TempStatus
