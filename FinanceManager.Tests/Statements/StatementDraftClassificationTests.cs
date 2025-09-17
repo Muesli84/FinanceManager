@@ -1,18 +1,19 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 public sealed class StatementDraftClassificationTests
@@ -34,7 +35,7 @@ public sealed class StatementDraftClassificationTests
         db.Contacts.Add(ownerContact);
         db.SaveChanges();
 
-        var sut = new StatementDraftService(db);
+        var sut = new StatementDraftService(db, new PostingAggregateService(db));
         return (sut, db, conn, owner.Id);
     }
 

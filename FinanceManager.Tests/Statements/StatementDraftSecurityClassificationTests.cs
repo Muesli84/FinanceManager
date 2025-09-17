@@ -14,6 +14,7 @@ using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using FinanceManager.Infrastructure.Aggregates;
 
 namespace FinanceManager.Tests.Statements;
 
@@ -37,7 +38,7 @@ public sealed class StatementDraftSecurityClassificationTests
         db.Contacts.Add(self);
         db.SaveChanges();
 
-        var sut = new StatementDraftService(db);
+        var sut = new StatementDraftService(db, new PostingAggregateService(db));
         return (sut, db, conn, ownerUser.Id);
     }
 

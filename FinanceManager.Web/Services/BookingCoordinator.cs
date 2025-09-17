@@ -161,7 +161,10 @@ public sealed class BookingCoordinator : IBookingCoordinator
                         else if (checkDraft.Status == Domain.StatementDraftStatus.Committed)
                             state.Processed++;
                         else
+                        {
                             state.Failed++;
+                            skip++;
+                        }
                     }
                     else
                     {
@@ -205,11 +208,10 @@ public sealed class BookingCoordinator : IBookingCoordinator
                                 state.Issues.Add(new BookingIssue(draft.DraftId, wm.EntryId, wm.Code, wm.Message));
                             }
                             state.Processed++;
+                            skip++;
                         }
                     }
                 }
-
-                skip++;
             }
         }
         catch (OperationCanceledException)

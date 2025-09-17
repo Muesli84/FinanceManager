@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Domain.Securities;
 using FinanceManager.Infrastructure.Backups;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace FinanceManager.Infrastructure;
 
@@ -232,25 +234,134 @@ public class AppDbContext : DbContext
         optionsBuilder.ConfigureWarnings(w => w.Ignore(RelationalEventId.NonTransactionalMigrationOperationWarning));
     }
 
-    internal void ClearUserData(Guid userId)
+    internal async Task ClearUserDataAsync(Guid userId, Action<int, int> progressCallback, CancellationToken ct)
     {
-        PostingAggregates.RemoveRange(PostingAggregates.Where(p => Accounts.Any(a => a.Id == p.AccountId && a.OwnerUserId == userId)));
-        PostingAggregates.RemoveRange(PostingAggregates.Where(p => Contacts.Any(a => a.Id == p.ContactId && a.OwnerUserId == userId)));
-        PostingAggregates.RemoveRange(PostingAggregates.Where(p => Securities.Any(a => a.Id == p.SecurityId && a.OwnerUserId == userId)));
-        PostingAggregates.RemoveRange(PostingAggregates.Where(p => SavingsPlans.Any(a => a.Id == p.SavingsPlanId && a.OwnerUserId == userId)));
-        Postings.RemoveRange(Postings.Where(p => Accounts.Any(a => a.Id == p.AccountId && a.OwnerUserId == userId)));
-        StatementEntries.RemoveRange(StatementEntries.Where(e => StatementImports.Any(i => Accounts.Any(a => a.Id == i.AccountId && a.OwnerUserId == userId) && e.StatementImportId == e.StatementImportId)));
-        StatementImports.RemoveRange(StatementImports.Where(i => Accounts.Any(a => a.Id == i.AccountId && a.OwnerUserId == userId)));
-        StatementDraftEntries.RemoveRange(StatementDraftEntries.Where(e => StatementDrafts.Any(d => d.Id == e.DraftId && d.OwnerUserId == userId)));
-        StatementDrafts.RemoveRange(StatementDrafts.Where(d => d.OwnerUserId == userId));
-        SavingsPlans.RemoveRange(SavingsPlans.Where(s => s.OwnerUserId == userId));
-        SavingsPlanCategories.RemoveRange(SavingsPlanCategories.Where(c => c.OwnerUserId == userId));
-        Contacts.RemoveRange(Contacts.Where(c => c.OwnerUserId == userId && c.Type != ContactType.Self));
-        ContactCategories.RemoveRange(ContactCategories.Where(c => c.OwnerUserId == userId));
-        AliasNames.RemoveRange(AliasNames.Where(a => Contacts.Any(c => c.Id == a.ContactId && c.OwnerUserId == userId)));
-        AccountShares.RemoveRange(AccountShares.Where(s => s.UserId == userId || Accounts.Any(a => a.OwnerUserId == userId && a.Id == s.AccountId)));
-        Accounts.RemoveRange(Accounts.Where(a => a.OwnerUserId == userId));
-        Securities.RemoveRange(Securities.Where(s => s.OwnerUserId == userId));
-        SecurityCategories.RemoveRange(SecurityCategories.Where(c => c.OwnerUserId == userId));
+        var total = 21;
+        var count = 0;
+
+        // PostingAggregates (pro Dimension)
+        await PostingAggregates
+            .Where(p => p.AccountId != null && Accounts.Any(a => a.OwnerUserId == userId && a.Id == p.AccountId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        await PostingAggregates
+            .Where(p => p.ContactId != null && Contacts.Any(c => c.OwnerUserId == userId && c.Id == p.ContactId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        await PostingAggregates
+            .Where(p => p.SecurityId != null && Securities.Any(s => s.OwnerUserId == userId && s.Id == p.SecurityId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        await PostingAggregates
+            .Where(p => p.SavingsPlanId != null && SavingsPlans.Any(s => s.OwnerUserId == userId && s.Id == p.SavingsPlanId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // Postings (pro Dimension)
+        await Postings
+            .Where(p => p.AccountId != null && Accounts.Any(a => a.OwnerUserId == userId && a.Id == p.AccountId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        await Postings
+            .Where(p => p.ContactId != null && Contacts.Any(c => c.OwnerUserId == userId && c.Id == p.ContactId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        await Postings
+            .Where(p => p.SavingsPlanId != null && SavingsPlans.Any(s => s.OwnerUserId == userId && s.Id == p.SavingsPlanId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        await Postings
+            .Where(p => p.SecurityId != null && Securities.Any(s => s.OwnerUserId == userId && s.Id == p.SecurityId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // StatementEntries (korrekter Join auf StatementImports)
+        await StatementEntries
+            .Where(e => StatementImports
+                .Any(i => Accounts.Any(a => a.OwnerUserId == userId && a.Id == i.AccountId) && e.StatementImportId == i.Id))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // StatementImports
+        await StatementImports
+            .Where(i => Accounts.Any(a => a.OwnerUserId == userId && a.Id == i.AccountId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // StatementDraftEntries
+        await StatementDraftEntries
+            .Where(e => StatementDrafts.Any(d => d.Id == e.DraftId && d.OwnerUserId == userId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // StatementDrafts
+        await StatementDrafts
+            .Where(d => d.OwnerUserId == userId)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // SavingsPlans
+        await SavingsPlans
+            .Where(s => s.OwnerUserId == userId)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // SavingsPlanCategories
+        await SavingsPlanCategories
+            .Where(c => c.OwnerUserId == userId)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // AliasNames (vor Contacts zur Sicherheit – alternativ würde FK-Cascade greifen)
+        await AliasNames
+            .Where(a => Contacts.Any(c => c.OwnerUserId == userId && c.Id == a.ContactId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // Contacts (ohne Self)
+        await Contacts
+            .Where(c => c.OwnerUserId == userId && c.Type != ContactType.Self)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // ContactCategories
+        await ContactCategories
+            .Where(c => c.OwnerUserId == userId)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // AccountShares (User direkt oder Accounts des Users)
+        await AccountShares
+            .Where(s => s.UserId == userId || Accounts.Any(a => a.OwnerUserId == userId && a.Id == s.AccountId))
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // Accounts
+        await Accounts
+            .Where(a => a.OwnerUserId == userId)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // Securities (SecurityPrices werden per FK-Cascade entfernt)
+        await Securities
+            .Where(s => s.OwnerUserId == userId)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
+        // SecurityCategories
+        await SecurityCategories
+            .Where(c => c.OwnerUserId == userId)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
     }
+
+    // Bestehende sync-Methode (legacy) ruft neue Async-Variante
+    internal void ClearUserData(Guid userId, Action<int, int> progressCallback)
+        => ClearUserDataAsync(userId, progressCallback, CancellationToken.None).GetAwaiter().GetResult();
 }

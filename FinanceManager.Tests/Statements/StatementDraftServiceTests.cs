@@ -2,6 +2,7 @@ using FinanceManager.Application.Statements;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
 using FluentAssertions;
@@ -46,7 +47,7 @@ public sealed class StatementDraftServiceTests
             UserId = owner.Id
         };
 
-        var sut = new StatementDraftService(db);
+        var sut = new StatementDraftService(db, new PostingAggregateService(db));
         return (sut, db, owner.Id);
     }
 

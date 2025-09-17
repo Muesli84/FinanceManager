@@ -43,7 +43,7 @@ public sealed class BackupsController : ControllerBase
         }
         catch(FileLoadException)
         {
-            return BadRequest("Ein Backup mit dem Dateinamen ist ebereits vorhanden.");
+            return BadRequest("Ein Backup mit dem Dateinamen ist bereits vorhanden.");
         }
     }
 
@@ -60,7 +60,7 @@ public sealed class BackupsController : ControllerBase
     [HttpPost("{id:guid}/apply")]
     public async Task<IActionResult> ApplyAsync(Guid id, CancellationToken ct)
     {
-        var ok = await _svc.ApplyAsync(_current.UserId, id, (i1, i2) => { }, ct);
+        var ok = await _svc.ApplyAsync(_current.UserId, id, (s1, i1, i2, i3, i4) => { }, ct);
         return ok ? NoContent() : NotFound();
     }
 

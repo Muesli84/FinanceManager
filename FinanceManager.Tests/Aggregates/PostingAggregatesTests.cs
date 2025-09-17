@@ -9,6 +9,8 @@ using FinanceManager.Infrastructure.Statements;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using FinanceManager.Application.Aggregates;
+using FinanceManager.Infrastructure.Aggregates;
 
 namespace FinanceManager.Tests.Aggregates;
 
@@ -26,11 +28,17 @@ public sealed class PostingAggregatesTests
         return db;
     }
 
+    private static StatementDraftService CreateService(AppDbContext db)
+    {
+        IPostingAggregateService agg = new PostingAggregateService(db);
+        return new StatementDraftService(db, agg);
+    }
+
     [Fact]
     public async Task UpsertAggregates_ShouldNotCreateDuplicates_ForSameKey_InSingleContextSession()
     {
         using var db = CreateSqliteContext();
-        var svc = new StatementDraftService(db);
+        var svc = CreateService(db);
 
         var accountId = Guid.NewGuid();
         var bookingDate = new DateTime(2017, 1, 15);
@@ -55,7 +63,7 @@ public sealed class PostingAggregatesTests
     public async Task UpsertAggregates_ShouldHonorUniqueIndex_AcrossSaves()
     {
         using var db = CreateSqliteContext();
-        var svc = new StatementDraftService(db);
+        var svc = CreateService(db);
 
         var accountId = Guid.NewGuid();
         var bookingDate = new DateTime(2017, 1, 10);

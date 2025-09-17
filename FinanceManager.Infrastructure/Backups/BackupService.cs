@@ -6,6 +6,9 @@ using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using static iText.StyledXmlParser.Jsoup.Select.Evaluator;
+using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Application.Aggregates;
+using FinanceManager.Application.Statements;
 
 namespace FinanceManager.Infrastructure.Backups;
 
@@ -14,10 +17,11 @@ public sealed class BackupService : IBackupService
     private readonly AppDbContext _db;
     private readonly IHostEnvironment _env;
     private readonly ILogger<BackupService> _logger;
+    private readonly IServiceProvider _services;
 
-    public BackupService(AppDbContext db, IHostEnvironment env, ILogger<BackupService> logger)
+    public BackupService(AppDbContext db, IHostEnvironment env, ILogger<BackupService> logger, IServiceProvider services)
     {
-        _db = db; _env = env; _logger = logger;
+        _db = db; _env = env; _logger = logger; _services = services;
     }
 
     private string GetRoot()
@@ -133,7 +137,7 @@ public sealed class BackupService : IBackupService
         return File.OpenRead(full);
     }
 
-    public async Task<bool> ApplyAsync(Guid userId, Guid id, Action<int, int> progressCallback, CancellationToken ct)
+    public async Task<bool> ApplyAsync(Guid userId, Guid id, Action<string, int, int, int, int> progressCallback, CancellationToken ct)
     {
         var rec = await _db.Backups.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id && b.OwnerUserId == userId, ct);
         if (rec == null) return false;
@@ -152,8 +156,19 @@ public sealed class BackupService : IBackupService
         using var metaDoc = JsonDocument.Parse(metaLine);
         var versionProp = metaDoc.RootElement.TryGetProperty("Version", out var vEl) ? vEl.GetInt32() : 3;
         ndjson.Position = 0;
-        var importerLegacy = new SetupImportService(_db, new Statements.StatementDraftService(_db));
-        importerLegacy.ProgressChanged += (sender, e) => { progressCallback(e.Step, e.Total);  };
+
+        // Resolve services scoped to this operation
+        using var scope = _services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var draftSvc = scope.ServiceProvider.GetRequiredService<IStatementDraftService>();
+        var aggSvc = scope.ServiceProvider.GetRequiredService<FinanceManager.Application.Aggregates.IPostingAggregateService>();
+        var importerLegacy = new SetupImportService(db, draftSvc, aggSvc);
+
+        // propagate nested progress: main step 1 = reading, step 2 = importing (with subprogress)
+        importerLegacy.ProgressChanged += (sender, e) =>
+        {
+            progressCallback(e.StepDescription, e.Step, e.Total, e.SubStep, e.SubTotal);
+        };
         await importerLegacy.ImportAsync(userId, ndjson, replaceExisting: true, ct);
         return true;        
     }

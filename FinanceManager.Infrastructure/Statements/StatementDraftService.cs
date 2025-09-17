@@ -9,6 +9,7 @@ using FinanceManager.Infrastructure.Migrations;
 using FinanceManager.Infrastructure.Statements.Reader;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
+using FinanceManager.Application.Aggregates;
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -16,13 +17,15 @@ public sealed partial class StatementDraftService : IStatementDraftService
 {
     private readonly AppDbContext _db;
     private readonly IReadOnlyList<IStatementFileReader> _statementFileReaders;
+    private readonly IPostingAggregateService _aggregateService;
     private List<StatementDraftDto> allDrafts = null;
     private List<Security> allSecurities = null;
     private List<Domain.Accounts.Account> allAccounts = null;
 
-    public StatementDraftService(AppDbContext db)
+    public StatementDraftService(AppDbContext db, IPostingAggregateService aggregateService)
     {
         _db = db;
+        _aggregateService = aggregateService;
         _statementFileReaders = new List<IStatementFileReader>
         {
             new ING_PDfReader(),

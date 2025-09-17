@@ -19,6 +19,9 @@ public sealed class BackupRestoreCoordinator : IBackupRestoreCoordinator
         public int Total;
         public string? Message;
         public string? Error;
+        public int Processed2;
+        public int Total2;
+        public string? Message2;
         public CancellationTokenSource Cts = new();
         public Task? CurrentTask;
     }
@@ -39,7 +42,7 @@ public sealed class BackupRestoreCoordinator : IBackupRestoreCoordinator
             {
                 _states.TryRemove(userId, out _);
             }
-            return new BackupRestoreStatus(s.Running, s.Processed, s.Total, s.Message, s.Error);
+            return new BackupRestoreStatus(s.Running, s.Processed, s.Total, s.Message, s.Error, s.Processed2, s.Total2, s.Message2);
         }
         return null;
     }
@@ -62,6 +65,7 @@ public sealed class BackupRestoreCoordinator : IBackupRestoreCoordinator
             state.Total = 2; // steps: load + import
             state.Message = null;
             state.Error = null;
+            state.Processed2 = 0; state.Total2 = 0; state.Message2 = null;
             state.Cts.Dispose();
             state.Cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             state.CurrentTask = Task.Run(() => RunAsync(userId, backupId, state), state.Cts.Token);
@@ -74,7 +78,7 @@ public sealed class BackupRestoreCoordinator : IBackupRestoreCoordinator
         }
         var msg = state.Running ? "Still working" : (state.Error == null ? "Completed" : "Failed");
         state.Message = msg;
-        return new BackupRestoreStatus(state.Running, state.Processed, state.Total, msg, state.Error);
+        return new BackupRestoreStatus(state.Running, state.Processed, state.Total, msg, state.Error, state.Processed2, state.Total2, state.Message2);
     }
 
     private async Task RunAsync(Guid userId, Guid backupId, State state)
@@ -83,21 +87,32 @@ public sealed class BackupRestoreCoordinator : IBackupRestoreCoordinator
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var svc = new BackupService(db, scope.ServiceProvider.GetRequiredService<IHostEnvironment>(), scope.ServiceProvider.GetRequiredService<ILogger<BackupService>>());
+            var svc = new BackupService(db, scope.ServiceProvider.GetRequiredService<IHostEnvironment>(), scope.ServiceProvider.GetRequiredService<ILogger<BackupService>>(), scope.ServiceProvider);
 
             state.Message = "Reading backup";
             state.Processed = 1;
-            state.Total = 2;
+            state.Total = 100;
+            state.Processed2 = 0;
+            state.Total2 = 0;
             if (state.Cts.Token.IsCancellationRequested) { return; }
 
-            var ok = await svc.ApplyAsync(userId, backupId, (step, count) => { state.Total = count + 1; state.Processed = 1 + step; }, state.Cts.Token);
+            var ok = await svc.ApplyAsync(userId, backupId, (description, step, total, subStep, subTotal) =>
+            {
+                state.Message = (!string.IsNullOrWhiteSpace(description)) ? description: null;
+                state.Processed = step + 1;
+                state.Total = total + 1;
+                state.Processed2 = subStep;
+                state.Total2 = subTotal;
+                state.Message2 = null;
+            }, state.Cts.Token);
             if (!ok)
             {
                 state.Error = "Apply failed";
                 return;
             }
             state.Message = "Imported";
-            state.Processed = 2;
+            state.Processed = state.Total;            
+            state.Processed2 = state.Total2; // completed
         }
         catch (OperationCanceledException)
         {

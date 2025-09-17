@@ -16,16 +16,20 @@ using System.Linq;
 using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
+using FinanceManager.Domain.Postings; // AggregatePeriod, PostingAggregate
+using FinanceManager.Application.Aggregates;
 
 public sealed class SetupImportService : ISetupImportService
 {
     private readonly AppDbContext _db;
     private readonly IStatementDraftService _statementDraftService;
+    private readonly IPostingAggregateService _aggregateService;
 
-    public SetupImportService(AppDbContext db, IStatementDraftService statementDraftService)
+    public SetupImportService(AppDbContext db, IStatementDraftService statementDraftService, IPostingAggregateService aggregateService)
     {
         _db = db;
         _statementDraftService = statementDraftService;
+        _aggregateService = aggregateService;
     }
 
     public struct ImportProgress
@@ -33,9 +37,33 @@ public sealed class SetupImportService : ISetupImportService
         public int Step { get; set; }
         public int Total { get; set; }
 
+        public int SubStep { get; set; }
+        public int SubTotal { get; set; }
+        public string StepDescription { get; internal set; }
+
         internal ImportProgress Inc()
         {
             Step++;
+            InitSub(0);
+            return this;
+        }
+        internal ImportProgress IncSub(int subTotal = 0)
+        {
+            if (subTotal > 0) SubTotal = subTotal;
+            SubStep++;
+            return this;
+        }
+
+        internal ImportProgress InitSub(int count)
+        {
+            SubTotal = count;
+            SubStep = 0;
+            return this;
+        }
+
+        internal ImportProgress SetDescription(string description)
+        {
+            StepDescription = description;
             return this;
         }
     }
@@ -72,17 +100,25 @@ public sealed class SetupImportService : ISetupImportService
 
         var progress = new ImportProgress()
         {
+            StepDescription = "",
             Step = 0,
-            Total = replaceExisting ? 13 : 12
+            Total = replaceExisting ? 14 : 13,
+            SubStep = 0,
+            SubTotal = 0
         };
         ProgressChanged?.Invoke(this, progress);
 
         if (replaceExisting)
         {
-            _db.ClearUserData(userId);
-            await _db.SaveChangesAsync(ct);            
+            ProgressChanged?.Invoke(this, progress.SetDescription("Clearing user data"));
+            await _db.ClearUserDataAsync(userId, (step, count) => {
+                progress.SubStep = step;
+                progress.SubTotal = count;
+                ProgressChanged?.Invoke(this, progress);
+            }, ct);
+            await _db.SaveChangesAsync(ct);
             ProgressChanged?.Invoke(this, progress.Inc());
-        }        
+        }
 
         // Maps from backup Id -> new Id
         var contactCatMap = new Dictionary<Guid, Guid>();
@@ -96,8 +132,10 @@ public sealed class SetupImportService : ISetupImportService
         var draftMap = new Dictionary<Guid, Guid>();
 
         // ContactCategories
+        ProgressChanged?.Invoke(this, progress.SetDescription("Contact Categories"));
         if (root.TryGetProperty("ContactCategories", out var contactCategories) && contactCategories.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(contactCategories.GetArrayLength()));
             foreach (var c in contactCategories.EnumerateArray())
             {
                 var id = c.GetProperty("Id").GetGuid();
@@ -107,13 +145,16 @@ public sealed class SetupImportService : ISetupImportService
                 _db.ContactCategories.Add(entity);
                 await _db.SaveChangesAsync(ct);
                 contactCatMap[id] = entity.Id;
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // Contacts
+        ProgressChanged?.Invoke(this, progress.SetDescription("Contacts"));
         if (root.TryGetProperty("Contacts", out var contacts) && contacts.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(contacts.GetArrayLength()));
             foreach (var c in contacts.EnumerateArray())
             {
                 var id = c.GetProperty("Id").GetGuid();
@@ -131,13 +172,16 @@ public sealed class SetupImportService : ISetupImportService
                 _db.Contacts.Add(entity);
                 await _db.SaveChangesAsync(ct);
                 contactMap[id] = entity.Id;
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // AliasNames
+        ProgressChanged?.Invoke(this, progress.SetDescription("Contact Alias Names"));
         if (root.TryGetProperty("AliasNames", out var aliases) && aliases.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(aliases.GetArrayLength()));
             foreach (var a in aliases.EnumerateArray())
             {
                 var id = a.GetProperty("Id").GetGuid();
@@ -148,13 +192,16 @@ public sealed class SetupImportService : ISetupImportService
                 _db.AliasNames.Add(entity);
                 await _db.SaveChangesAsync(ct);
                 aliasMap[id] = entity.Id;
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // SecurityCategories
+        ProgressChanged?.Invoke(this, progress.SetDescription("Security Categories"));
         if (root.TryGetProperty("SecurityCategories", out var secCats) && secCats.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(secCats.GetArrayLength()));
             foreach (var sc in secCats.EnumerateArray())
             {
                 var id = sc.GetProperty("Id").GetGuid();
@@ -164,12 +211,15 @@ public sealed class SetupImportService : ISetupImportService
                 await _db.SaveChangesAsync(ct);
                 securityCatMap[id] = entity.Id;
             }
+            ProgressChanged?.Invoke(this, progress.IncSub());
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // Securities
+        ProgressChanged?.Invoke(this, progress.SetDescription("Securities"));
         if (root.TryGetProperty("Securities", out var secs) && secs.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(secs.GetArrayLength()));
             foreach (var s in secs.EnumerateArray())
             {
                 var id = s.GetProperty("Id").GetGuid();
@@ -188,13 +238,16 @@ public sealed class SetupImportService : ISetupImportService
                 _db.Securities.Add(entity);
                 await _db.SaveChangesAsync(ct);
                 securityMap[id] = entity.Id;
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // SecurityPrices
+        ProgressChanged?.Invoke(this, progress.SetDescription("Security Prices"));
         if (root.TryGetProperty("SecurityPrices", out var prices) && prices.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(prices.GetArrayLength()));
             foreach (var p in prices.EnumerateArray())
             {
                 var sid = p.GetProperty("SecurityId").GetGuid();
@@ -203,14 +256,19 @@ public sealed class SetupImportService : ISetupImportService
                 var close = p.GetProperty("Close").GetDecimal();
                 var entity = new SecurityPrice(mappedSid, date, close);
                 _db.SecurityPrices.Add(entity);
+                if (progress.SubStep % 100 == 0)
+                    await _db.SaveChangesAsync(ct);
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
             await _db.SaveChangesAsync(ct);
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // SavingsPlanCategories
+        ProgressChanged?.Invoke(this, progress.SetDescription("Savings Plan Categories"));
         if (root.TryGetProperty("SavingsPlanCategories", out var spCats) && spCats.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(spCats.GetArrayLength()));
             foreach (var sc in spCats.EnumerateArray())
             {
                 var id = sc.GetProperty("Id").GetGuid();
@@ -219,13 +277,16 @@ public sealed class SetupImportService : ISetupImportService
                 _db.SavingsPlanCategories.Add(entity);
                 await _db.SaveChangesAsync(ct);
                 savingsCatMap[id] = entity.Id;
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // SavingsPlans
+        ProgressChanged?.Invoke(this, progress.SetDescription("Savings Plans"));
         if (root.TryGetProperty("SavingsPlans", out var sps) && sps.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(sps.GetArrayLength()));
             foreach (var sp in sps.EnumerateArray())
             {
                 var id = sp.GetProperty("Id").GetGuid();
@@ -248,13 +309,16 @@ public sealed class SetupImportService : ISetupImportService
                 _db.SavingsPlans.Add(entity);
                 await _db.SaveChangesAsync(ct);
                 savingsMap[id] = entity.Id;
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // Accounts
+        ProgressChanged?.Invoke(this, progress.SetDescription("Bank Accounts"));
         if (root.TryGetProperty("Accounts", out var accounts) && accounts.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(accounts.GetArrayLength()));
             foreach (var a in accounts.EnumerateArray())
             {
                 var id = a.GetProperty("Id").GetGuid();
@@ -274,13 +338,18 @@ public sealed class SetupImportService : ISetupImportService
                 _db.Accounts.Add(entity);
                 await _db.SaveChangesAsync(ct);
                 accountMap[id] = entity.Id;
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // Postings
+        var postingCount = 0;
+        ProgressChanged?.Invoke(this, progress.SetDescription("Postings"));
         if (root.TryGetProperty("Postings", out var postArr) && postArr.ValueKind == JsonValueKind.Array)
         {
+            postingCount = postArr.GetArrayLength();
+            ProgressChanged?.Invoke(this, progress.InitSub(postingCount));
             foreach (var p in postArr.EnumerateArray())
             {
                 Guid? accountId = null, contactId = null, savingsPlanId = null, securityId = null;
@@ -336,14 +405,18 @@ public sealed class SetupImportService : ISetupImportService
                     var grp = gid.GetGuid(); if (grp != Guid.Empty) entity.SetGroup(grp);
                 }
                 _db.Postings.Add(entity);
+                if (progress.SubStep % 100 == 0)
+                    await _db.SaveChangesAsync(ct);
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
-            await _db.SaveChangesAsync(ct);
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
         // StatementDrafts + Entries
+        ProgressChanged?.Invoke(this, progress.SetDescription("Statement Drafts"));
         if (root.TryGetProperty("StatementDrafts", out var drafts) && drafts.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(drafts.GetArrayLength()));
             foreach (var d in drafts.EnumerateArray())
             {
                 var id = d.GetProperty("Id").GetGuid();
@@ -368,12 +441,15 @@ public sealed class SetupImportService : ISetupImportService
                 _db.StatementDrafts.Add(entity);
                 await _db.SaveChangesAsync(ct);
                 draftMap[id] = entity.Id;
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 
+        ProgressChanged?.Invoke(this, progress.SetDescription("Statement Draft Entries"));
         if (root.TryGetProperty("StatementDraftEntries", out var draftEntries) && draftEntries.ValueKind == JsonValueKind.Array)
         {
+            ProgressChanged?.Invoke(this, progress.InitSub(draftEntries.GetArrayLength()));
             foreach (var e in draftEntries.EnumerateArray())
             {
                 var draftIdOld = e.GetProperty("DraftId").GetGuid();
@@ -387,12 +463,12 @@ public sealed class SetupImportService : ISetupImportService
                 var bookingDesc = e.TryGetProperty("BookingDescription", out var bd) && bd.ValueKind == JsonValueKind.String ? bd.GetString() : null;
                 var isAnnounced = e.TryGetProperty("IsAnnounced", out var ia) && ia.ValueKind == JsonValueKind.True;
                 var isCostNeutral = e.TryGetProperty("IsCostNeutral", out var ic) && ic.ValueKind == JsonValueKind.True;
+                var status = e.TryGetProperty("Status", out var st) && st.ValueKind == JsonValueKind.Number ? (StatementDraftEntryStatus)st.GetInt32(): isAnnounced ? StatementDraftEntryStatus.Announced : StatementDraftEntryStatus.Open;
 
+                
                 // Load draft entity
                 var draft = await _db.StatementDrafts.FirstAsync(x => x.Id == draftId, ct);
-                //var entry = draft.AddEntry(bookingDate, amount, subject, recipient, valuta, currency, bookingDesc, isAnnounced, isCostNeutral);
 
-                var status = isAnnounced ? StatementDraftEntryStatus.Announced : StatementDraftEntryStatus.Open;
                 var entry = new StatementDraftEntry(
                     draft.Id,
                     bookingDate,
@@ -434,10 +510,133 @@ public sealed class SetupImportService : ISetupImportService
                     if (e.TryGetProperty("SecurityTaxAmount", out var t) && t.ValueKind != JsonValueKind.Null) tax = t.GetDecimal();
                     entry.SetSecurity(mapped, tx, qty, fee, tax);
                 }
-                await _db.SaveChangesAsync(ct);
+                if (progress.SubStep % 100 ==  0)
+                    await _db.SaveChangesAsync(ct);
+                ProgressChanged?.Invoke(this, progress.IncSub());
             }
         }
         ProgressChanged?.Invoke(this, progress.Inc());
+
+        ProgressChanged?.Invoke(this, progress.SetDescription("Build Aggregate Postings"));
+        ProgressChanged?.Invoke(this, progress.InitSub(postingCount));
+        await _aggregateService.RebuildForUserAsync(userId, (step, count) => {
+            progress.SubStep = step;
+            progress.SubTotal = count;
+            ProgressChanged?.Invoke(this, progress);
+        }, ct);
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        await _db.SaveChangesAsync(ct);
+    }
+
+    private static DateTime GetPeriodStart(DateTime date, AggregatePeriod p)
+    {
+        var d = date.Date;
+        return p switch
+        {
+            AggregatePeriod.Month => new DateTime(d.Year, d.Month, 1),
+            AggregatePeriod.Quarter => new DateTime(d.Year, ((d.Month - 1) / 3) * 3 + 1, 1),
+            AggregatePeriod.HalfYear => new DateTime(d.Year, (d.Month <= 6 ? 1 : 7), 1),
+            AggregatePeriod.Year => new DateTime(d.Year, 1, 1),
+            _ => new DateTime(d.Year, d.Month, 1)
+        };
+    }
+
+    private async Task RebuildAggregatesForUserAsync(Guid userId, CancellationToken ct)
+    {
+        // Collect owned entity IDs
+        var accountIds = await _db.Accounts.AsNoTracking().Where(a => a.OwnerUserId == userId).Select(a => a.Id).ToListAsync(ct);
+        var contactIds = await _db.Contacts.AsNoTracking().Where(c => c.OwnerUserId == userId).Select(c => c.Id).ToListAsync(ct);
+        var savingsPlanIds = await _db.SavingsPlans.AsNoTracking().Where(s => s.OwnerUserId == userId).Select(s => s.Id).ToListAsync(ct);
+        var securityIds = await _db.Securities.AsNoTracking().Where(s => s.OwnerUserId == userId).Select(s => s.Id).ToListAsync(ct);
+
+        // Delete existing aggregates for this user's scope
+        var aggsToDelete = _db.PostingAggregates
+            .Where(p => (p.AccountId != null && accountIds.Contains(p.AccountId.Value))
+                     || (p.ContactId != null && contactIds.Contains(p.ContactId.Value))
+                     || (p.SavingsPlanId != null && savingsPlanIds.Contains(p.SavingsPlanId.Value))
+                     || (p.SecurityId != null && securityIds.Contains(p.SecurityId.Value)));
+        _db.PostingAggregates.RemoveRange(aggsToDelete);
+        await _db.SaveChangesAsync(ct);
+
+        // Load postings belonging to this user
+        var postings = await _db.Postings.AsNoTracking()
+            .Where(p => (p.AccountId != null && accountIds.Contains(p.AccountId.Value))
+                     || (p.ContactId != null && contactIds.Contains(p.ContactId.Value))
+                     || (p.SavingsPlanId != null && savingsPlanIds.Contains(p.SavingsPlanId.Value))
+                     || (p.SecurityId != null && securityIds.Contains(p.SecurityId.Value)))
+            .Select(p => new
+            {
+                p.Kind,
+                p.AccountId,
+                p.ContactId,
+                p.SavingsPlanId,
+                p.SecurityId,
+                p.BookingDate,
+                p.Amount
+            })
+            .ToListAsync(ct);
+
+        // Upsert aggregates in memory; rely on unique indexes for consistency across saves
+        var periods = new[] { AggregatePeriod.Month, AggregatePeriod.Quarter, AggregatePeriod.HalfYear, AggregatePeriod.Year };
+        foreach (var p in postings)
+        {
+            if (p.Amount == 0m) { continue; }
+            foreach (var period in periods)
+            {
+                var periodStart = GetPeriodStart(p.BookingDate, period);
+
+                async Task Upsert(Guid? accountId, Guid? contactId, Guid? savingsPlanId, Guid? securityId)
+                {
+                    var agg = _db.PostingAggregates.Local.FirstOrDefault(x => x.Kind == p.Kind
+                        && x.AccountId == accountId
+                        && x.ContactId == contactId
+                        && x.SavingsPlanId == savingsPlanId
+                        && x.SecurityId == securityId
+                        && x.Period == period
+                        && x.PeriodStart == periodStart);
+
+                    if (agg == null)
+                    {
+                        agg = await _db.PostingAggregates
+                            .FirstOrDefaultAsync(x => x.Kind == p.Kind
+                                && x.AccountId == accountId
+                                && x.ContactId == contactId
+                                && x.SavingsPlanId == savingsPlanId
+                                && x.SecurityId == securityId
+                                && x.Period == period
+                                && x.PeriodStart == periodStart, ct);
+                    }
+
+                    if (agg == null)
+                    {
+                        agg = new PostingAggregate(p.Kind, accountId, contactId, savingsPlanId, securityId, periodStart, period);
+                        _db.PostingAggregates.Add(agg);
+                    }
+                    agg.Add(p.Amount);
+                }
+
+                switch (p.Kind)
+                {
+                    case PostingKind.Bank:
+                        await Upsert(p.AccountId, null, null, null);
+                        break;
+                    case PostingKind.Contact:
+                        await Upsert(null, p.ContactId, null, null);
+                        break;
+                    case PostingKind.SavingsPlan:
+                        await Upsert(null, null, p.SavingsPlanId, null);
+                        break;
+                    case PostingKind.Security:
+                        await Upsert(null, null, null, p.SecurityId);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        await _db.SaveChangesAsync(ct);
     }
 
     private async Task ImportVersion2(string jsonData, bool replaceExisting, Guid userId, BackupMeta meta, CancellationToken ct)
@@ -447,7 +646,7 @@ public sealed class SetupImportService : ISetupImportService
             throw new InvalidOperationException("Backup-Daten konnten nicht gelesen werden.");
         if (replaceExisting)
         {
-            _db.ClearUserData(userId);
+            await _db.ClearUserDataAsync(userId, (i1, i2) => { }, ct);
             await _db.SaveChangesAsync();
         }
 

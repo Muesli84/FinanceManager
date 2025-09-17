@@ -1,7 +1,3 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
@@ -9,11 +5,16 @@ using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Securities;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace FinanceManager.Tests.Statements;
@@ -36,7 +37,7 @@ public sealed class StatementDraftBookingTests
         var self = new Contact(ownerUser.Id, "Ich", ContactType.Self, null, null);
         db.Contacts.Add(self);
         db.SaveChanges();
-        var sut = new StatementDraftService(db);
+        var sut = new StatementDraftService(db, new PostingAggregateService(db));
         return (sut, db, conn, ownerUser.Id);
     }
 
@@ -86,7 +87,7 @@ public sealed class StatementDraftBookingTests
         // IMPORTANT: simulate production by using a fresh DbContext (new scope)
         var freshOptions = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options;
         using var freshDb = new AppDbContext(freshOptions);
-        var freshSut = new StatementDraftService(freshDb);
+        var freshSut = new StatementDraftService(freshDb, new PostingAggregateService(freshDb));
 
         // Act: book only first entry on fresh context
         var res = await freshSut.BookAsync(draft.Id, e1.Id, owner, false, CancellationToken.None);

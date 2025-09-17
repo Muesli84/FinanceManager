@@ -2,6 +2,7 @@ using FinanceManager.Application.Statements;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
@@ -49,7 +50,7 @@ public sealed class StatementDraftsControllerTests
         services.AddLogging();
         var sp = services.BuildServiceProvider();
         db = sp.GetRequiredService<AppDbContext>();
-        var draftService = new StatementDraftService(db);        
+        var draftService = new StatementDraftService(db, new PostingAggregateService(db));        
         var logger = sp.GetRequiredService<ILogger<StatementDraftsController>>();
         var classification = new DummyClassificationCoordinator();
         var booking = new DummyBookingCoordinator();
