@@ -3,6 +3,9 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Components.Pages.SecurityPrices> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h3>Kurse</h3>
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">

@@ -127,4 +127,16 @@
   <data name="WelcomeTitle" xml:space="preserve">
     <value>Welcome</value>
   </data>
+  <data name="Import_Button" xml:space="preserve">
+    <value>Import statement</value>
+  </data>
+  <data name="Import_Success" xml:space="preserve">
+    <value>Import successful.</value>
+  </data>
+  <data name="Import_ShowDetails" xml:space="preserve">
+    <value>Show details</value>
+  </data>
+  <data name="KPI_Placeholders" xml:space="preserve">
+    <value>KPI placeholders will appear here.</value>
+  </data>
 </root>

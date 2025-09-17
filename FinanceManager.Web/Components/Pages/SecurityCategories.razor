@@ -3,6 +3,9 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @using FinanceManager.Shared.Dtos
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Components.Pages.SecurityCategories> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h3>Wertpapierkategorien</h3>
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;">

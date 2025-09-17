@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Security</value></data>
+  <data name="TitleNew" xml:space="preserve"><value>New security</value></data>
+  <data name="TitleEdit" xml:space="preserve"><value>Edit security</value></data>
+  <data name="BtnBack" xml:space="preserve"><value>Back</value></data>
+  <data name="BtnSave" xml:space="preserve"><value>Save</value></data>
+  <data name="BtnArchive" xml:space="preserve"><value>Archive</value></data>
+  <data name="BtnDelete" xml:space="preserve"><value>Delete</value></data>
+  <data name="BtnPostings" xml:space="preserve"><value>Postings</value></data>
+  <data name="BtnPrices" xml:space="preserve"><value>Prices</value></data>
+  <data name="LabelName" xml:space="preserve"><value>Name</value></data>
+  <data name="LabelIdentifier" xml:space="preserve"><value>Identifier (WKN/ISIN)</value></data>
+  <data name="LabelCurrencyCode" xml:space="preserve"><value>Currency</value></data>
+  <data name="LabelAlphaVantage" xml:space="preserve"><value>AlphaVantage Code</value></data>
+  <data name="LabelCategory" xml:space="preserve"><value>Category</value></data>
+  <data name="LabelDescription" xml:space="preserve"><value>Description</value></data>
+  <data name="LabelStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="StatusActive" xml:space="preserve"><value>Active</value></data>
+  <data name="StatusArchived" xml:space="preserve"><value>Archived</value></data>
+  <data name="ErrorNotFound" xml:space="preserve"><value>Not found.</value></data>
+</root>

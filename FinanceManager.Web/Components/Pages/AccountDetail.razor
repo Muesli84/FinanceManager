@@ -5,27 +5,29 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.AccountDetail> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h1>@(IsNew ? "New Account" : "Edit Account")</h1>
+<h1>@(IsNew ? Localizer["TitleNew"] : Localizer["TitleEdit"])</h1>
 
 @if (!_loaded)
 {
-    <p>Loading...</p>
+    <p>@Localizer["Loading"]</p>
 }
 else if (!CurrentUser.IsAuthenticated)
 {
-    <p>Please login.</p>
+    <p>@Localizer["PleaseLogin"]</p>
 }
 else
 {
     <div class="action-bar">
-        <button type="button" @onclick="Back" aria-label="Back" title="Back" class="icon-btn"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-        <button type="button" @onclick="SaveAsync" disabled="@_busy" aria-label="Save" title="Save" class="icon-btn"><svg><use href="/icons/sprite.svg#save" /></svg></button>
+        <button type="button" @onclick="Back" aria-label='@Localizer["BtnBack"]' title='@Localizer["BtnBack"]' class="icon-btn"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+        <button type="button" @onclick="SaveAsync" disabled="@_busy" aria-label='@Localizer["BtnSave"]' title='@Localizer["BtnSave"]' class="icon-btn"><svg><use href="/icons/sprite.svg#save" /></svg></button>
         @if (!IsNew)
         {
-            <button type="button" @onclick="DeleteAsync" disabled="@_busy" aria-label="Delete" title="Delete" class="icon-btn danger"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
-            <button type="button" @onclick="OpenBankContact" disabled="@_busy" aria-label="Bank Contact" title="Bank Contact" class="icon-btn"><svg><use href="/icons/sprite.svg#bank" /></svg></button>
-            <button type="button" @onclick="OpenPostings" aria-label="Postings" title="Postings" class="icon-btn"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
+            <button type="button" @onclick="DeleteAsync" disabled="@_busy" aria-label='@Localizer["BtnDelete"]' title='@Localizer["BtnDelete"]' class="icon-btn danger"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
+            <button type="button" @onclick="OpenBankContact" disabled="@_busy" aria-label='@Localizer["BtnBankContact"]' title='@Localizer["BtnBankContact"]' class="icon-btn"><svg><use href="/icons/sprite.svg#bank" /></svg></button>
+            <button type="button" @onclick="OpenPostings" aria-label='@Localizer["BtnPostings"]' title='@Localizer["BtnPostings"]' class="icon-btn"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
         }
     </div>
     <EditForm Model="_model" OnValidSubmit="@SaveAsync">
@@ -33,24 +35,24 @@ else
         <ValidationSummary />
         <div style="display:grid;gap:.6rem;max-width:520px;">
             <div>
-                <label>Name</label><br />
+                <label>@Localizer["LabelName"]</label><br />
                 <InputText @bind-Value="_model.Name" />
             </div>
             <div>
-                <label>Type</label><br />
+                <label>@Localizer["LabelType"]</label><br />
                 <select @bind="_model.Type">
-                    <option value="Giro">Giro</option>
-                    <option value="Savings">Savings</option>
+                    <option value="Giro">@Localizer["Type_Giro"]</option>
+                    <option value="Savings">@Localizer["Type_Savings"]</option>
                 </select>
             </div>
             <div>
-                <label>IBAN</label><br />
+                <label>@Localizer["LabelIban"]</label><br />
                 <InputText @bind-Value="_model.Iban" />
             </div>
             <div>
-                <label>Bank Contact</label><br />
+                <label>@Localizer["LabelBankContact"]</label><br />
                 <select @bind="_model.BankContactId" @bind:after="OnBankContactAfterChanged">
-                    <option value="">-- select --</option>
+                    <option value="">-- @Localizer["Select"] --</option>
                     @foreach (var c in _bankContacts)
                     {
                         <option value="@c.Id">@c.Name</option>
@@ -60,7 +62,7 @@ else
             @if (string.IsNullOrWhiteSpace(_model.BankContactId))
             {
                 <div>
-                    <label>Create new bank contact</label><br />
+                    <label>@Localizer["LabelCreateNewBankContact"]</label><br />
                     <InputText @bind-Value="_newBankContactName" />
                 </div>
             }
@@ -75,17 +77,17 @@ else
     {
         <div style="margin-top:1.5rem;">
             <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.5rem;">
-                <label>Intervall:</label>
+                <label>@Localizer["LabelInterval"]:</label>
                 <select @bind="_period" @bind:after="async () => await LoadAggregatesAsync()">
-                    <option value="Month">Monat</option>
-                    <option value="Quarter">Quartal</option>
-                    <option value="Year">Jahr</option>
+                    <option value="Month">@Localizer["Interval_Month"]</option>
+                    <option value="Quarter">@Localizer["Interval_Quarter"]</option>
+                    <option value="Year">@Localizer["Interval_Year"]</option>
                 </select>
             </div>
             <div class="chart" style="--bar-color:#2d6cdf;--bar-neg:#c94;--axis:#555;border:1px solid var(--border);padding:.5rem 1rem;border-radius:.35rem;">
                 @if (_points.Count == 0)
                 {
-                    <div style="opacity:.7;font-size:.85rem;">Keine Daten.</div>
+                    <div style="opacity:.7;font-size:.85rem;">@Localizer["NoData"]</div>
                 }
                 else
                 {
@@ -160,11 +162,11 @@ else
                 }
                 else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    _error = "Not found";
+                    _error = Localizer["ErrorNotFound"];
                 }
                 else
                 {
-                    _error = "Load failed";
+                    _error = Localizer["ErrorLoadFailed"];
                 }
             }
         }

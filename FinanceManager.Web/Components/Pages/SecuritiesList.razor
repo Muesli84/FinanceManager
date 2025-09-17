@@ -3,23 +3,26 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @using FinanceManager.Shared.Dtos
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Components.Pages.SecuritiesList> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h3>Wertpapiere</h3>
+<h3>@Localizer["Title"]</h3>
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
-    <button class="icon-btn" @onclick="NewSecurity" title="Neu" aria-label="Neu"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
-    <button class="icon-btn" @onclick="OpenCategories" title="Kategorien verwalten" aria-label="Kategorien verwalten"><svg><use href="/icons/sprite.svg#groups" /></svg></button>
+    <button class="icon-btn" @onclick="NewSecurity" title='@Localizer["BtnNew"]' aria-label='@Localizer["BtnNew"]'><svg><use href="/icons/sprite.svg#plus" /></svg></button>
+    <button class="icon-btn" @onclick="OpenCategories" title='@Localizer["BtnCategories"]' aria-label='@Localizer["BtnCategories"]'><svg><use href="/icons/sprite.svg#groups" /></svg></button>
     <label style="margin-left:1rem;font-size:.8rem;display:flex;gap:.35rem;align-items:center;">
-        <input type="checkbox" @bind="_onlyActive" @bind:after="(()=>LoadAsync())" /> nur aktive
+        <input type="checkbox" @bind="_onlyActive" @bind:after="(()=>LoadAsync())" /> @Localizer["OnlyActive"]
     </label>
 </div>
 <table class="fm-table wide">
     <thead>
         <tr>
-            <th>Name</th>
-            <th>Identifikation</th>
-            <th>AlphaVantage</th>
-            <th>Kategorie</th>
-            <th>Status</th>
+            <th>@Localizer["Th_Name"]</th>
+            <th>@Localizer["Th_Identifier"]</th>
+            <th>@Localizer["Th_AlphaVantage"]</th>
+            <th>@Localizer["Th_Category"]</th>
+            <th>@Localizer["Th_Status"]</th>
         </tr>
     </thead>
     <tbody>
@@ -30,12 +33,12 @@
                 <td>@s.Identifier</td>
                 <td>@(string.IsNullOrWhiteSpace(s.AlphaVantageCode)?"-":s.AlphaVantageCode)</td>
                 <td>@(string.IsNullOrWhiteSpace(s.CategoryName)?"-":s.CategoryName)</td>
-                <td>@(s.IsActive?"Aktiv":"Archiviert")</td>
+                <td>@(s.IsActive?Localizer["StatusActive"]:Localizer["StatusArchived"])</td>
             </tr>
         }
         @if(_items.Count==0)
         {
-            <tr><td colspan="5" style="opacity:.6;">Keine Einträge</td></tr>
+            <tr><td colspan="5" style="opacity:.6;">@Localizer["NoEntries"]</td></tr>
         }
     </tbody>
 </table>

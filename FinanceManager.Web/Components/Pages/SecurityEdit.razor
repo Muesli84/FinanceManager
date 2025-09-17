@@ -5,17 +5,20 @@
 @inject NavigationManager Nav
 @using FinanceManager.Shared.Dtos
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Components.Pages.SecurityEdit> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h3>@(IsEdit?"Wertpapier bearbeiten":"Neues Wertpapier")</h3>
+<h3>@(IsEdit? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
-    <button class="icon-btn" @onclick="Back" title="Zurück" aria-label="Zurück"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-    <button class="icon-btn" @onclick="SaveAsync" title="Speichern" aria-label="Speichern"><svg><use href="/icons/sprite.svg#save" /></svg></button>
+    <button class="icon-btn" @onclick="Back" title='@Localizer["BtnBack"]' aria-label='@Localizer["BtnBack"]'><svg><use href="/icons/sprite.svg#back" /></svg></button>
+    <button class="icon-btn" @onclick="SaveAsync" title='@Localizer["BtnSave"]' aria-label='@Localizer["BtnSave"]'><svg><use href="/icons/sprite.svg#save" /></svg></button>
     @if(IsEdit)
     {
-        <button class="icon-btn" @onclick="ArchiveAsync" disabled="@(!_loaded || !_model.IsActive)" title="Archivieren" aria-label="Archivieren"><svg><use href="/icons/sprite.svg#archive" /></svg></button>
-        <button class="icon-btn danger" @onclick="DeleteAsync" disabled="@(!_loaded || _model.IsActive)" title="Löschen" aria-label="Löschen"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
-        <button class="icon-btn" @onclick="OpenPostings" disabled="@(!_loaded)" title="Postings" aria-label="Postings"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
-        <button class="icon-btn" @onclick="OpenPrices" disabled="@(!_loaded)" title="Kurse" aria-label="Kurse"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
+        <button class="icon-btn" @onclick="ArchiveAsync" disabled="@(!_loaded || !_model.IsActive)" title='@Localizer["BtnArchive"]' aria-label='@Localizer["BtnArchive"]'><svg><use href="/icons/sprite.svg#archive" /></svg></button>
+        <button class="icon-btn danger" @onclick="DeleteAsync" disabled="@(!_loaded || _model.IsActive)" title='@Localizer["BtnDelete"]' aria-label='@Localizer["BtnDelete"]'><svg><use href="/icons/sprite.svg#delete" /></svg></button>
+        <button class="icon-btn" @onclick="OpenPostings" disabled="@(!_loaded)" title='@Localizer["BtnPostings"]' aria-label='@Localizer["BtnPostings"]'><svg><use href="/icons/sprite.svg#postings" /></svg></button>
+        <button class="icon-btn" @onclick="OpenPrices" disabled="@(!_loaded)" title='@Localizer["BtnPrices"]' aria-label='@Localizer["BtnPrices"]'><svg><use href="/icons/sprite.svg#postings" /></svg></button>
     }    
 </div>
 
@@ -24,26 +27,26 @@
     <ValidationSummary />
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;max-width:860px;">
         <div>
-            <label>Name</label>
+            <label>@Localizer["LabelName"]</label>
             <InputText @bind-Value="_edit.Name" />
             <ValidationMessage For="()=>_edit.Name" />
         </div>
         <div>
-            <label>Identifikation (WKN/ISIN)</label>
+            <label>@Localizer["LabelIdentifier"]</label>
             <InputText @bind-Value="_edit.Identifier" />
             <ValidationMessage For="()=>_edit.Identifier" />
         </div>
         <div>
-            <label>Currency Code</label>
+            <label>@Localizer["LabelCurrencyCode"]</label>
             <InputText @bind-Value="_edit.CurrencyCode" />
             <ValidationMessage For="() => _edit.CurrencyCode" />
         </div>
         <div>
-            <label>AlphaVantage Code</label>
+            <label>@Localizer["LabelAlphaVantage"]</label>
             <InputText @bind-Value="_edit.AlphaVantageCode" />
         </div>
         <div>
-            <label>Kategorie</label>
+            <label>@Localizer["LabelCategory"]</label>
             <InputSelect @bind-Value="_edit.CategoryId">
                 <option value="">--</option>
                 @foreach(var c in _categories)
@@ -53,11 +56,11 @@
             </InputSelect>
         </div>
         <div style="grid-column:1/-1;">
-            <label>Beschreibung</label>
+            <label>@Localizer["LabelDescription"]</label>
             <textarea rows="4" style="width:100%;" @bind="_edit.Description"></textarea>
         </div>
         <div style="grid-column:1/-1;font-size:.8rem;opacity:.6;">
-            Status: @(_model.IsActive?"Aktiv":"Archiviert")
+            @Localizer["LabelStatus"]: @(_model.IsActive? Localizer["StatusActive"] : Localizer["StatusArchived"]) 
         </div>
         @if(!string.IsNullOrEmpty(_error))
         {
@@ -97,7 +100,7 @@
             }
             else
             {
-                _error = "Nicht gefunden"; _loaded = false;
+                _error = Localizer["ErrorNotFound"]; _loaded = false;
             }
         }
         else

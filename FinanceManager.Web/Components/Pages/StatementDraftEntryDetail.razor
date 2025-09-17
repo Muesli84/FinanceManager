@@ -4,68 +4,71 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @using FinanceManager.Domain.Statements
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Components.Pages.StatementDraftEntryDetail> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 @code { enum StatementDraftStatus { Draft=0, Committed=1, Expired=2 } }
 
-<h3>Statement Draft Entry</h3>
+<h3>@Localizer["Title"]</h3>
 @if (_vm == null)
 {
-    <p>Loading...</p>
+    <p>@Localizer["Loading"]</p>
 }
 else
 {
     <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" @onclick="BackAsync" title="Back" aria-label="Back"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+            <button class="icon-btn" @onclick="BackAsync" title='@Localizer["BtnBack"]' aria-label='@Localizer["BtnBack"]'><svg><use href="/icons/sprite.svg#back" /></svg></button>
         </div>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" disabled="@(_pendingSave)" @onclick="SaveAll" title="Save Changes" aria-label="Save Changes"><svg><use href="/icons/sprite.svg#save" /></svg></button>
-            <button class="icon-btn" @onclick="Reclassify" disabled="@_hasUnsavedChanges" title="Reclassify Draft" aria-label="Reclassify Draft"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
-            <button class="icon-btn" @onclick="ValidateEntry" disabled="@_hasUnsavedChanges" title="Eintrag prüfen" aria-label="Eintrag prüfen">
+            <button class="icon-btn" disabled="@(_pendingSave)" @onclick="SaveAll" title='@Localizer["BtnSave"]' aria-label='@Localizer["BtnSave"]'><svg><use href="/icons/sprite.svg#save" /></svg></button>
+            <button class="icon-btn" @onclick="Reclassify" disabled="@_hasUnsavedChanges" title='@Localizer["BtnReclassify"]' aria-label='@Localizer["BtnReclassify"]'><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
+            <button class="icon-btn" @onclick="ValidateEntry" disabled="@_hasUnsavedChanges" title='@Localizer["BtnValidate"]' aria-label='@Localizer["BtnValidate"]'>
                 <svg><use href="/icons/sprite.svg#check" /></svg>
             </button>
-            <button class="icon-btn" @onclick="OpenSplitDialog" disabled="@_hasUnsavedChanges" title="Split-Auszug zuordnen" aria-label="Split-Auszug zuordnen">
+            <button class="icon-btn" @onclick="OpenSplitDialog" disabled="@_hasUnsavedChanges" title='@Localizer["BtnAssignSplit"]' aria-label='@Localizer["BtnAssignSplit"]'>
                 <svg><use href="/icons/sprite.svg#link" /></svg>
             </button>
-            <button class="icon-btn" @onclick="BookEntry" disabled="@_hasUnsavedChanges" title="Eintrag buchen" aria-label="Eintrag buchen">
+            <button class="icon-btn" @onclick="BookEntry" disabled="@_hasUnsavedChanges" title='@Localizer["BtnBook"]' aria-label='@Localizer["BtnBook"]'>
                 <svg><use href="/icons/sprite.svg#postings" /></svg>
             </button>
         </div>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" disabled="@(_selectedContactId==null || _hasUnsavedChanges)" @onclick="OpenContactDetail" title="Kontakt anzeigen" aria-label="Kontakt anzeigen">
+            <button class="icon-btn" disabled="@(_selectedContactId==null || _hasUnsavedChanges)" @onclick="OpenContactDetail" title='@Localizer["BtnOpenContact"]' aria-label='@Localizer["BtnOpenContact"]'>
                 <svg><use href="/icons/sprite.svg#groups" /></svg>
             </button>
-            <button class="icon-btn" disabled="@(_selectedSecurityId == null || _hasUnsavedChanges)" title="Wertpapier anzeigen" aria-label="Wertpapier anzeigen" @onclick="OpenSecurityDetail">
+            <button class="icon-btn" disabled="@(_selectedSecurityId == null || _hasUnsavedChanges)" title='@Localizer["BtnOpenSecurity"]' aria-label='@Localizer["BtnOpenSecurity"]' @onclick="OpenSecurityDetail">
                 <svg><use href="/icons/sprite.svg#security" /></svg>
             </button>
-            <button class="icon-btn" disabled="@(_selectedSavingsPlanId == null || _hasUnsavedChanges)" title="Sparplan anzeigen" aria-label="Sparplan anzeigen" @onclick="OpenSavingsPlanDetail">
+            <button class="icon-btn" disabled="@(_selectedSavingsPlanId == null || _hasUnsavedChanges)" title='@Localizer["BtnOpenSavingsPlan"]' aria-label='@Localizer["BtnOpenSavingsPlan"]' @onclick="OpenSavingsPlanDetail">
                 <svg><use href="/icons/sprite.svg#external" /></svg>
             </button>
             @if(_vm?.Entry.SplitDraftId != null)
             {
-                <button class="icon-btn" @onclick="OpenAssignedSplitDraft" title="Verknüpften Auszug öffnen" aria-label="Verknüpften Auszug öffnen">
+                <button class="icon-btn" @onclick="OpenAssignedSplitDraft" title='@Localizer["BtnOpenLinkedSplit"]' aria-label='@Localizer["BtnOpenLinkedSplit"]'>
                     <svg><use href="/icons/sprite.svg#external" /></svg>
                 </button>
-                <button class="icon-btn" @onclick="RemoveSplit" title="Zuordnung entfernen" aria-label="Zuordnung entfernen">
+                <button class="icon-btn" @onclick="RemoveSplit" title='@Localizer["BtnRemoveAssignment"]' aria-label='@Localizer["BtnRemoveAssignment"]'>
                     <svg><use href="/icons/sprite.svg#unlink" /></svg>
                 </button>
             }
         </div>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrevAsync" title="Previous Entry" aria-label="Previous Entry"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-            <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpenAsync" title="Nächster offener Eintrag" aria-label="Nächster offener Eintrag">
+            <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrevAsync" title='@Localizer["BtnPrevEntry"]' aria-label='@Localizer["BtnPrevEntry"]'><svg><use href="/icons/sprite.svg#back" /></svg></button>
+            <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpenAsync" title='@Localizer["BtnNextOpenEntry"]' aria-label='@Localizer["BtnNextOpenEntry"]'>
                 <svg><use href="/icons/sprite.svg#arrow-right" /></svg>
             </button>
         </div>
     </div>
-    <p><strong>Draft File:</strong> @_vm.OriginalFileName</p>
+    <p><strong>@Localizer["DraftFile"]</strong> @_vm.OriginalFileName</p>
     @if(_entryValidation != null)
     {
         <div style="margin-bottom:1rem;padding:.5rem .75rem;border:1px solid #444;border-radius:4px;background:#181818;max-width:960px;">
-            <h4 style="margin:.2rem 0 .4rem 0;font-size:.8rem;">Prüfung Eintrag</h4>
+            <h4 style="margin:.2rem 0 .4rem 0;font-size:.8rem;">@Localizer["Validation_Header"]</h4>
             @if(!_entryValidation.Messages.Any())
             {
-                <p style="margin:0;font-size:.7rem;color:#6c6;">Keine Hinweise oder Fehler.</p>
+                <p style="margin:0;font-size:.7rem;color:#6c6;">@Localizer["Validation_NoIssues"]</p>
             }
             else
             {
@@ -82,7 +85,7 @@ else
     @if(_showBookWarnings && _lastBookingResult != null)
     {
         <div class="panel" style="margin-bottom:1rem;padding:.5rem .75rem;border:1px solid #665;border-radius:4px;background:#2a1f1f;max-width:960px;">
-            <h4 style="margin:.2rem 0 .4rem 0;font-size:.8rem;">Warnungen</h4>
+            <h4 style="margin:.2rem 0 .4rem 0;font-size:.8rem;">@Localizer["Warnings"]</h4>
             <ul style="margin:.25rem 0 0 1rem;padding:0;font-size:.65rem;">
                 @foreach(var m in _lastBookingResult.Validation.Messages.Where(m=>m.Severity=="Warning"))
                 {
@@ -90,47 +93,47 @@ else
                 }
             </ul>
             <div style="margin-top:.5rem;display:flex;gap:.5rem;">
-                <button class="icon-btn" @onclick="ConfirmBookEntry"><svg><use href="/icons/sprite.svg#check" /></svg>&nbsp;Trotzdem buchen</button>
-                <button class="icon-btn" @onclick="(()=>{_showBookWarnings=false;})"><svg><use href="/icons/sprite.svg#clear" /></svg>&nbsp;Abbrechen</button>
+                <button class="icon-btn" @onclick="ConfirmBookEntry"><svg><use href="/icons/sprite.svg#check" /></svg>&nbsp;@Localizer["BtnBookAnyway"]</button>
+                <button class="icon-btn" @onclick="(()=>{_showBookWarnings=false;})"><svg><use href="/icons/sprite.svg#clear" /></svg>&nbsp;@Localizer["Cancel"]</button>
             </div>
         </div>
     }
     <div style="margin-bottom:1rem;">
-        <label><input type="checkbox" @bind="_editMode" /> Editiermodus</label>
+        <label><input type="checkbox" @bind="_editMode" /> @Localizer["EditMode"]</label>
         @if (_editMode && _vm != null)
         {
             <div class="edit-core" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin-top:.5rem;max-width:960px;">
                 <div>
-                    <label>Buchungsdatum</label>
+                    <label>@Localizer["Label_BookingDate"]</label>
                     <InputDate @bind-Value="_editBookingDate" />
                 </div>
                 <div>
-                    <label>Valuta</label>
+                    <label>@Localizer["Label_ValutaDate"]</label>
                     <InputDate @bind-Value="_editValutaDate" />
                 </div>
                 <div>
-                    <label>Betrag</label>
+                    <label>@Localizer["Label_Amount"]</label>
                     <InputNumber @bind-Value="_editAmount" />
                 </div>
                 <div>
-                    <label>Währung</label>
+                    <label>@Localizer["Label_Currency"]</label>
                     <InputText @bind-Value="_editCurrency" />
                 </div>
                 <div style="grid-column:1/-1;">
-                    <label>Betreff</label>
+                    <label>@Localizer["Label_Subject"]</label>
                     <InputText @bind-Value="_editSubject" style="width:100%;" />
                 </div>
                 <div style="grid-column:1/-1;">
-                    <label>Empfänger</label>
+                    <label>@Localizer["Label_Recipient"]</label>
                     <InputText @bind-Value="_editRecipient" style="width:100%;" />
                 </div>
                 <div style="grid-column:1/-1;">
-                    <label>Beschreibung</label>
+                    <label>@Localizer["Label_Description"]</label>
                     <textarea @bind="_editDescription" rows="3" style="width:100%;"></textarea>
                 </div>
                 <div style="grid-column:1/-1;display:flex;gap:.5rem;">
-                    <button class="icon-btn" disabled="@_savingCore" @onclick="SaveCoreAsync"><svg><use href="/icons/sprite.svg#save" /></svg>&nbsp;Speichern</button>
-                    <button type="button" class="icon-btn" disabled="@_savingCore" @onclick="ResetCoreEdits">Zurücksetzen</button>
+                    <button class="icon-btn" disabled="@_savingCore" @onclick="SaveCoreAsync"><svg><use href="/icons/sprite.svg#save" /></svg>&nbsp;@Localizer["BtnSave"]</button>
+                    <button type="button" class="icon-btn" disabled="@_savingCore" @onclick="ResetCoreEdits">@Localizer["BtnReset"]</button>
                 </div>
                 @if(!string.IsNullOrEmpty(_coreError))
                 {
@@ -141,46 +144,46 @@ else
     </div>
     <table class="fm-table" style="max-width:960px;">
         <tbody>
-            <tr><th style="width:180px;">Booking Date</th><td>@_vm.Entry.BookingDate.ToShortDateString()</td></tr>
-            <tr><th>Valuta Date</th><td>@(_vm.Entry.ValutaDate?.ToShortDateString() ?? "-")</td></tr>
+            <tr><th style="width:180px;">@Localizer["Th_BookingDate"]</th><td>@_vm.Entry.BookingDate.ToShortDateString()</td></tr>
+            <tr><th>@Localizer["Th_ValutaDate"]</th><td>@(_vm.Entry.ValutaDate?.ToShortDateString() ?? "-")</td></tr>
             <tr>
-                <th>Amount</th>
+                <th>@Localizer["Th_Amount"]</th>
                 <td>
                     @_vm.Entry.Amount @_vm.Entry.CurrencyCode
                     @if(_vm.SplitSum != null)
                     {
-                        <span style="opacity:.7;"> (Summe Aufteilung: @_vm.SplitSum
+                        <span style="opacity:.7;"> (@Localizer["SplitSum"]: @_vm.SplitSum
                             @if(_vm.Difference is decimal d && d != 0)
                             {
-                                <text>; Diff: @d</text>
+                                <text>; @Localizer["Diff"]: @d</text>
                             }
                             )</span>
                     }
                 </td>
             </tr>
-            <tr><th>Subject</th><td class="wrap">@_vm.Entry.Subject</td></tr>
-            <tr><th>Recipient</th><td class="wrap">@(_vm.Entry.RecipientName ?? "-")</td></tr>
-            <tr><th>Description</th><td class="wrap">@(_vm.Entry.BookingDescription ?? "-")</td></tr>
-            <tr><th>Announced</th><td>@(_vm.Entry.IsAnnounced ? "Yes" : "No")</td></tr>
-            <tr><th>Status</th><td>@_vm.Entry.Status</td></tr>
+            <tr><th>@Localizer["Th_Subject"]</th><td class="wrap">@_vm.Entry.Subject</td></tr>
+            <tr><th>@Localizer["Th_Recipient"]</th><td class="wrap">@(_vm.Entry.RecipientName ?? "-")</td></tr>
+            <tr><th>@Localizer["Th_Description"]</th><td class="wrap">@(_vm.Entry.BookingDescription ?? "-")</td></tr>
+            <tr><th>@Localizer["Th_Announced"]</th><td>@(_vm.Entry.IsAnnounced ? Localizer["Yes"] : Localizer["No"])</td></tr>
+            <tr><th>@Localizer["Th_Status"]</th><td>@_vm.Entry.Status</td></tr>
             <tr>
-                <th>Contact</th>
+                <th>@Localizer["Th_Contact"]</th>
                 <td>
                     <div class="contact-combobox" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:420px;margin-bottom:1rem;">
                         <div style="position:relative;min-width:0;">
-                            <input type="text" style="width:95%;" @bind="_contactFilter" @bind:event="oninput" @bind:after="(()=>OnContactFilterAfterChanged())" placeholder="Type to filter contacts" @onfocus="ShowDropdown" />
+                            <input type="text" style="width:95%;" @bind="_contactFilter" @bind:event="oninput" @bind:after="(()=>OnContactFilterAfterChanged())" placeholder='@Localizer["Placeholder_FilterContacts"]' @onfocus="ShowDropdown" />
                             <input type="hidden" value="@_selectedContactId" />
                             @if (_dropdownVisible)
                             {
                                 <ul class="combo-list" style="list-style:none;margin:0;padding:.25rem .25rem;position:absolute;z-index:10;left:0;right:0;max-height:9.5rem;overflow:auto;background:#222;border:1px solid #444;border-radius:4px;box-shadow:0 3px 12px #0005;">
-                                    <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectContact(null))" class="@( _selectedContactId==null?"active":string.Empty)">-- none --</li>
+                                    <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectContact(null))" class="@( _selectedContactId==null?"active":string.Empty)">-- @Localizer["None"] --</li>
                                     @foreach(var c in FilteredContacts)
                                     {
                                         <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectContact(c.Id))" class="@( _selectedContactId==c.Id?"active":string.Empty)" title="@c.Name">@c.Name</li>
                                     }
                                     @if(!FilteredContacts.Any())
                                     {
-                                        <li style="padding:.3rem .4rem;opacity:.6;">No matches</li>
+                                        <li style="padding:.3rem .4rem;opacity:.6;">@Localizer["NoMatches"]</li>
                                     }
                                 </ul>
                             }
@@ -190,46 +193,46 @@ else
                             }
                         </div>
                         <div>
-                            <button class="icon-btn" title="New Contact" aria-label="New Contact" @onclick="OpenCreateContact"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
+                            <button class="icon-btn" title='@Localizer["BtnNewContact"]' aria-label='@Localizer["BtnNewContact"]' @onclick="OpenCreateContact"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
                         </div>
                     </div>
                 </td>
             </tr>
             <tr>
-                <th>Cost Neutral</th>
+                <th>@Localizer["Th_CostNeutral"]</th>
                 <td><InputCheckbox @bind-Value="IsCostNeutral" @bind-Value:after="(()=> MarkDirty())" /></td>
             </tr>
             <tr>
-                <th>Sparplan</th>
+                <th>@Localizer["Th_SavingsPlan"]</th>
                 <td>
                     <div class="savingsplan-combobox" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:420px;margin-bottom:1rem;">
                         <div style="position:relative;min-width:0;">
-                            <input type="text" style="width:95%;" @bind="_savingsPlanFilter" @bind:event="oninput" @bind:after="(()=>OnSavingsPlanFilterAfterChanged())" placeholder="Sparplan suchen..." @onfocus="ShowSavingsPlanDropdown" />
+                            <input type="text" style="width:95%;" @bind="_savingsPlanFilter" @bind:event="oninput" @bind:after="(()=>OnSavingsPlanFilterAfterChanged())" placeholder='@Localizer["Placeholder_FilterSavingsPlans"]' @onfocus="ShowSavingsPlanDropdown" />
                             <input type="hidden" value="@_selectedSavingsPlanId" />
                             @if (_savingsPlanDropdownVisible)
                             {
                                 <ul class="combo-list" style="list-style:none;margin:0;padding:.25rem .25rem;position:absolute;z-index:10;left:0;right:0;max-height:9.5rem;overflow:auto;background:#222;border:1px solid #444;border-radius:4px;box-shadow:0 3px 12px #0005;">
-                                    <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectSavingsPlan(null))" class="@( _selectedSavingsPlanId==null?"active":string.Empty)">-- none --</li>
+                                    <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectSavingsPlan(null))" class="@( _selectedSavingsPlanId==null?"active":string.Empty)">-- @Localizer["None"] --</li>
                                     @foreach(var plan in FilteredSavingsPlans)
                                     {
                                         <li style="padding:.3rem .4rem;cursor:pointer;" @onclick="(()=>SelectSavingsPlan(plan.Id))" class="@( _selectedSavingsPlanId==plan.Id?"active":string.Empty)" title="@plan.Name">@plan.Name</li>
                                     }
                                     @if(!FilteredSavingsPlans.Any())
                                     {
-                                        <li style="padding:.3rem .4rem;opacity:.6;">No matches</li>
+                                        <li style="padding:.3rem .4rem;opacity:.6;">@Localizer["NoMatches"]</li>
                                     }
                                 </ul>
                             }
                         </div>
                         <div style="display:flex;gap:.35rem;">
-                            <button class="icon-btn" title="Neuen Sparplan anlegen" aria-label="Neuen Sparplan anlegen" @onclick="OpenCreateSavingsPlan" disabled="@(!CanCreateSavingsPlan)"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
+                            <button class="icon-btn" title='@Localizer["BtnNewSavingsPlan"]' aria-label='@Localizer["BtnNewSavingsPlan"]' @onclick="OpenCreateSavingsPlan" disabled="@(!CanCreateSavingsPlan)"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
                         </div>
                     </div>
                     @if(_selectedSavingsPlanId != null)
                     {
                         <div style="display:flex;align-items:center;gap:.5rem;margin:.25rem 0 .5rem 0;max-width:420px;">
                             <InputCheckbox @bind-Value="_archiveSavingsPlanOnBooking" @bind-Value:after="(()=> MarkDirty())" />
-                            <span>Sparplan nach Buchung archivieren</span>
+                            <span>@Localizer["ArchiveSavingsPlanOnBooking"]</span>
                         </div>
                     }
                 </td>
@@ -237,7 +240,7 @@ else
             @if(ShowSecuritySection)
             {
                 <tr>
-                    <th>Wertpapier</th>
+                    <th>@Localizer["Th_Security"]</th>
                     <td>
                         <div style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:480px;margin-bottom:.75rem;">
                             <div style="position:relative;min-width:0;">
@@ -246,7 +249,7 @@ else
                                        @bind="_securityFilter"
                                        @bind:event="oninput"
                                        @bind:after="(()=>OnSecurityFilterChanged())"
-                                       placeholder="Wertpapier suchen..."
+                                       placeholder='@Localizer["Placeholder_FilterSecurities"]'
                                        @onfocus="ShowSecurityDropdown" />
                                 <input type="hidden" value="@_selectedSecurityId" />
                                 @if (_securityDropdownVisible)
@@ -254,7 +257,7 @@ else
                                     <ul class="combo-list" style="list-style:none;margin:0;padding:.25rem .25rem;position:absolute;z-index:10;left:0;right:0;max-height:9.5rem;overflow:auto;background:#222;border:1px solid #444;border-radius:4px;box-shadow:0 3px 12px #0005;">
                                         <li style="padding:.3rem .4rem;cursor:pointer;"
                                             @onclick="(()=>SelectSecurity(null))"
-                                            class="@(_selectedSecurityId==null?"active":string.Empty)">-- none --</li>
+                                            class="@(_selectedSecurityId==null?"active":string.Empty)">-- @Localizer["None"] --</li>
                                         @foreach(var s in FilteredSecurities)
                                         {
                                             <li style="padding:.3rem .4rem;cursor:pointer;"
@@ -264,7 +267,7 @@ else
                                         }
                                         @if(!FilteredSecurities.Any())
                                         {
-                                            <li style="padding:.3rem .4rem;opacity:.6;">Keine Treffer</li>
+                                            <li style="padding:.3rem .4rem;opacity:.6;">@Localizer["NoMatches"]</li>
                                         }
                                     </ul>
                                 }
@@ -274,31 +277,31 @@ else
                                 }
                             </div>
                             <div>
-                                <button class="icon-btn" title="Neues Wertpapier" aria-label="Neues Wertpapier" @onclick="OpenCreateSecurity"><svg><use href="/icons/sprite.svg#plus" /></svg></button>                                
+                                <button class="icon-btn" title='@Localizer["BtnNewSecurity"]' aria-label='@Localizer["BtnNewSecurity"]' @onclick="OpenCreateSecurity"><svg><use href="/icons/sprite.svg#plus" /></svg></button>                                
                             </div>
                         </div>
                         @if (_selectedSecurityId != null)
                         {
                             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;max-width:720px;margin-top:.25rem;">
                                 <div>
-                                    <label>Art</label>
+                                    <label>@Localizer["Label_TxType"]</label>
                                     <select @bind="_securityTxType" @bind:after="()=> MarkDirty()">
                                         <option value="">--</option>
-                                        <option value="Buy">Kauf</option>
-                                        <option value="Sell">Verkauf</option>
-                                        <option value="DividendOrInterest">Zins/Dividende</option>
+                                        <option value="Buy">@Localizer["Tx_Buy"]</option>
+                                        <option value="Sell">@Localizer["Tx_Sell"]</option>
+                                        <option value="DividendOrInterest">@Localizer["Tx_DividendOrInterest"]</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label>Menge</label>
+                                    <label>@Localizer["Label_Quantity"]</label>
                                     <input type="text" @bind="_securityQuantityExpr" @bind:event="oninput" @bind:after="MarkDirty" @onblur="ParseSecurityQuantity" />
                                 </div>
                                 <div>
-                                    <label>Gebühr (enthalten)</label>
+                                    <label>@Localizer["Label_Fee"]</label>
                                     <input type="text" @bind="_securityFeeExpr" @bind:event="oninput" @bind:after="MarkDirty" @onblur="ParseSecurityFee" />
                                 </div>
                                 <div>
-                                    <label>Steuer (enthalten)</label>
+                                    <label>@Localizer["Label_Tax"]</label>
                                     <input type="text" @bind="_securityTaxExpr" @bind:event="oninput" @bind:after="MarkDirty" @onblur="ParseSecurityTax" />
                                 </div>
                             </div>
@@ -316,18 +319,18 @@ else
     @if (_showSplitDialog)
     {
         <div class="modal-backdrop split-center">
-            <div class="modal split-dialog" role="dialog" aria-modal="true" aria-label="Split-Auszug auswählen">
-                <h3 style="margin-top:0;">Split-Auszug auswählen</h3>
+            <div class="modal split-dialog" role="dialog" aria-modal="true" aria-label='@Localizer["Split_SelectTitle"]'>
+                <h3 style="margin-top:0;">@Localizer["Split_SelectTitle"]</h3>
                 @if(_vm?.Entry.SplitDraftId != null)
                 {
-                    <p style="margin:.15rem 0 .4rem 0;font-size:.7rem;opacity:.7;">Aktuell verknüpft mit Draft <strong>@_vm.Entry.SplitDraftId</strong>. Wähle einen anderen Auszug oder Abbrechen.</p>
+                    <p style="margin:.15rem 0 .4rem 0;font-size:.7rem;opacity:.7;">@Localizer["Split_CurrentlyLinked"] @_vm.Entry.SplitDraftId</p>
                 }
-                <p style="margin-top:.2rem;opacity:.8;font-size:.85rem;">Wähle einen unzugeordneten Auszug ohne Konto.</p>
-                <input type="text" @bind="_splitFilter" placeholder="Filter..." style="width:100%;margin:.5rem 0 .75rem 0;" />
+                <p style="margin-top:.2rem;opacity:.8;font-size:.85rem;">@Localizer["Split_SelectHint"]</p>
+                <input type="text" @bind="_splitFilter" placeholder='@Localizer["Filter"]' style="width:100%;margin:.5rem 0 .75rem 0;" />
                 <div class="split-scroll">
                     @if(_loadingSplits)
                     {
-                        <div class="split-hint">Lade...</div>
+                        <div class="split-hint">@Localizer["Loading"]</div>
                     }
                     else
                     {
@@ -335,12 +338,12 @@ else
                         {
                             <div class="split-row @(d.DraftId==_selectedSplitDraftId? "active" : string.Empty)" @onclick="(()=>SelectSplit(d.DraftId))">
                                 <div class="name">@d.OriginalFileName</div>
-                                <div class="meta">@d.EntriesCount Einträge · Summe @d.TotalAmount</div>
+                                <div class="meta">@d.EntriesCount @Localizer["Entries"] · @Localizer["Total"] @d.TotalAmount</div>
                             </div>
                         }
                         @if(!FilteredSplitDrafts.Any())
                         {
-                            <div class="split-hint">Keine Treffer</div>
+                            <div class="split-hint">@Localizer["NoMatches"]</div>
                         }
                     }
                 </div>
@@ -349,8 +352,8 @@ else
                     <div class="split-error">@_splitError</div>
                 }
                 <div class="split-actions">
-                    <button class="icon-btn" disabled="@(_selectedSplitDraftId==null)" @onclick="ConfirmSplit" title="Übernehmen" aria-label="Übernehmen"><svg><use href="/icons/sprite.svg#check" /></svg></button>
-                    <button class="icon-btn" @onclick="CloseSplitDialog" title="Abbrechen" aria-label="Abbrechen"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+                    <button class="icon-btn" disabled="@(_selectedSplitDraftId==null)" @onclick="ConfirmSplit" title='@Localizer["Apply"]' aria-label='@Localizer["Apply"]'><svg><use href="/icons/sprite.svg#check" /></svg></button>
+                    <button class="icon-btn" @onclick="CloseSplitDialog" title='@Localizer["Cancel"]' aria-label='@Localizer["Cancel"]'><svg><use href="/icons/sprite.svg#clear" /></svg></button>
                 </div>
             </div>
         </div>
@@ -498,7 +501,7 @@ else
         if (!_hasUnsavedChanges) { return true; }
         try
         {
-            return await JS.InvokeAsync<bool>("confirm", "Es gibt ungespeicherte Änderungen. Wirklich fortfahren?");
+            return await JS.InvokeAsync<bool>("confirm", Localizer["ConfirmUnsavedChanges"].Value);
         }
         catch { return true; }
     }
@@ -891,7 +894,7 @@ else
         {
             _securityQuantity = v; _securityQuantityExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty();
         }
-        else { _securityExprError = "Ungültige Menge."; }
+        else { _securityExprError = Localizer["Err_InvalidQuantity"]; }
     }
     private void ParseSecurityFee(FocusEventArgs _)
     {
@@ -899,7 +902,7 @@ else
         {
             _securityFee = v; _securityFeeExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty();
         }
-        else { _securityExprError = "Ungültige Gebühr."; }
+        else { _securityExprError = Localizer["Err_InvalidFee"]; }
     }
     private void ParseSecurityTax(FocusEventArgs _)
     {
@@ -907,7 +910,7 @@ else
         {
             _securityTax = v; _securityTaxExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty();
         }
-        else { _securityExprError = "Ungültige Steuer."; }
+        else { _securityExprError = Localizer["Err_InvalidTax"]; }
     }
 
     private static bool TryEvalDecimal(string? expr, out decimal? value)
@@ -1007,7 +1010,7 @@ else
             if (!resp.IsSuccessStatusCode)
             {
                 var text = await resp.Content.ReadAsStringAsync();
-                _contactError = string.IsNullOrWhiteSpace(text) ? "Fehler beim Buchen." : text;
+                _contactError = string.IsNullOrWhiteSpace(text) ? Localizer["Err_Book"] : text;
                 return;
             }
             _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();

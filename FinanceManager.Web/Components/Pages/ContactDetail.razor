@@ -9,53 +9,55 @@
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ContactDetail> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h1>Contact</h1>
+<h1>@Localizer["Title"]</h1>
 
 @if (!_loaded)
 {
-    <p>Loading...</p>
+    <p>@Localizer["Loading"]</p>
 }
 else if (!CurrentUser.IsAuthenticated)
 {
-    <p>Please login.</p>
+    <p>@Localizer["PleaseLogin"]</p>
 }
 else
 {
     <div class="action-bar">
-        <button type="button" @onclick="Back" aria-label="Back" title="Back" class="icon-btn"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-        <button type="button" @onclick="SaveAsync" disabled="@_busy" aria-label="Save" title="Save" class="icon-btn"><svg><use href="/icons/sprite.svg#save" /></svg></button>
+        <button type="button" @onclick="Back" aria-label='@Localizer["BtnBack"]' title='@Localizer["BtnBack"]' class="icon-btn"><svg><use href="/icons/sprite.svg#back" /></svg></button>
+        <button type="button" @onclick="SaveAsync" disabled="@_busy" aria-label='@Localizer["BtnSave"]' title='@Localizer["BtnSave"]' class="icon-btn"><svg><use href="/icons/sprite.svg#save" /></svg></button>
         @if (IsEdit)
         {
-            <button type="button" @onclick="DeleteAsync" disabled="@_busy" aria-label="Delete" title="Delete" class="icon-btn danger"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
+            <button type="button" @onclick="DeleteAsync" disabled="@_busy" aria-label='@Localizer["BtnDelete"]' title='@Localizer["BtnDelete"]' class="icon-btn danger"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
             @if (Enum.Parse<ContactType>(_model.Type) == ContactType.Bank)
             {
-                <button type="button" @onclick="OpenBankAccounts" disabled="@_busy" aria-label="Accounts" title="Accounts" class="icon-btn"><svg><use href="/icons/sprite.svg#accounts" /></svg></button>
+                <button type="button" @onclick="OpenBankAccounts" disabled="@_busy" aria-label='@Localizer["BtnAccounts"]' title='@Localizer["BtnAccounts"]' class="icon-btn"><svg><use href="/icons/sprite.svg#accounts" /></svg></button>
             }
             @if (!IsSelfContact)
             {
                 <button type="button"
                         @onclick="OpenMergeDialog"
                         disabled="@_busy"
-                        aria-label="Merge"
-                        title="Merge"
+                        aria-label='@Localizer["BtnMerge"]'
+                        title='@Localizer["BtnMerge"]'
                         class="icon-btn">
                     <svg><use href="/icons/sprite.svg#merge" /></svg>
                 </button>
             }
-            <button type="button" @onclick="OpenPostings" disabled="@_busy" aria-label="Postings" title="Postings" class="icon-btn"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
+            <button type="button" @onclick="OpenPostings" disabled="@_busy" aria-label='@Localizer["BtnPostings"]' title='@Localizer["BtnPostings"]' class="icon-btn"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
         }
     </div>
     <EditForm Model="_model" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator />
         <ValidationSummary />
         <div>
-            <label>Name</label>
+            <label>@Localizer["LabelName"]</label>
             <InputText @bind-Value="_model.Name" />
             <ValidationMessage For="()=>_model.Name" />
         </div>
         <div>
-            <label>Type</label>
+            <label>@Localizer["LabelType"]</label>
             <InputSelect @bind-Value="_model.Type">
                 @foreach (var t in Enum.GetValues<ContactType>())
                 {
@@ -64,9 +66,9 @@ else
             </InputSelect>
         </div>
         <div>
-            <label>Group</label>
+            <label>@Localizer["LabelGroup"]</label>
             <InputSelect @bind-Value="_model.CategoryId">
-                <option value="">-- none --</option>
+                <option value="">-- @Localizer["None"] --</option>
                 @foreach (var g in _categories.OrderBy(c=>c.Name))
                 {
                     <option value="@g.Id">@g.Name</option>
@@ -74,28 +76,28 @@ else
             </InputSelect>
         </div>
         <div>
-            <label>Description</label>
+            <label>@Localizer["LabelDescription"]</label>
             <textarea @bind="_model.Description" rows="4" style="width:100%;max-width:520px;"></textarea>
         </div>
         <div>
-            <label><input type="checkbox" @bind="_model.IsPaymentIntermediary" /> Zahlungsvermittler</label>
+            <label><input type="checkbox" @bind="_model.IsPaymentIntermediary" /> @Localizer["LabelIntermediary"]</label>
         </div>
         <div>
-            <label>Alternative Namen</label>
+            <label>@Localizer["LabelAliases"]</label>
             <ul style="margin-bottom:.5rem;">
                 @foreach (var alias in _aliases)
                 {
                     <li style="display:flex;align-items:left;gap:.5rem;">
                         <span>@alias.Pattern</span>
-                        <button type="button" class="icon-btn danger" title="Alias löschen" @onclick="() => DeleteAliasAsync(alias.Id)">
+                        <button type="button" class="icon-btn danger" title='@Localizer["BtnDeleteAlias"]' @onclick="() => DeleteAliasAsync(alias.Id)">
                             <svg><use href="/icons/sprite.svg#clear" /></svg>
                         </button>
                     </li>
                 }
             </ul>
             <div style="display:flex;gap:.5rem;">
-                <InputText @bind-Value="_newAlias" placeholder="Neuer Alias" style="flex:1;" />
-                <button type="button" class="icon-btn" title="Alias hinzufügen" @onclick="AddAliasAsync">
+                <InputText @bind-Value="_newAlias" placeholder='@Localizer["PlaceholderNewAlias"]' style="flex:1;" />
+                <button type="button" class="icon-btn" title='@Localizer["BtnAddAlias"]' @onclick="AddAliasAsync">
                     <svg><use href="/icons/sprite.svg#plus" /></svg>
                 </button>
             </div>
@@ -155,11 +157,11 @@ else
                 }
                 else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
                 {
-                    _error = "Not found";
+                    _error = Localizer["ErrorNotFound"];
                 }
                 else
                 {
-                    _error = "Load failed";
+                    _error = Localizer["ErrorLoadFailed"];
                 }
                 await LoadAliasesAsync();
             }
@@ -207,7 +209,7 @@ else
             {
                 var update = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId, Description = _model.Description, IsPaymentIntermediary = _model.IsPaymentIntermediary };
                 var resp = await http.PutAsJsonAsync($"/api/contacts/{Id}", update);
-                if (!resp.IsSuccessStatusCode) { _error = "Save failed"; }
+                if (!resp.IsSuccessStatusCode) { _error = Localizer["ErrorSaveFailed"]; }
                 else { await AfterSaveAssignToDraftIfNeeded(Id!.Value); }
             }
             else
@@ -222,7 +224,7 @@ else
                         await AfterSaveAssignToDraftIfNeeded(dto.Id);
                     }
                 }
-                else _error = "Create failed";
+                else _error = Localizer["ErrorCreateFailed"];
             }
         }
         catch (Exception ex)
@@ -264,7 +266,7 @@ else
         {
             var http = ClientFactory.CreateClient("Api");
             var resp = await http.DeleteAsync($"/api/contacts/{Id}");
-            if (resp.IsSuccessStatusCode) Back(); else _error = "Delete failed";
+            if (resp.IsSuccessStatusCode) Back(); else _error = Localizer["ErrorDeleteFailed"];
         }
         catch (Exception ex) { _error = ex.Message; }
         _busy = false;
@@ -327,7 +329,7 @@ else
     {
         _aliasError = null;
         var pattern = _newAlias.Trim();
-        if (string.IsNullOrWhiteSpace(pattern)) { _aliasError = "Alias darf nicht leer sein."; return; }
+        if (string.IsNullOrWhiteSpace(pattern)) { _aliasError = Localizer["ErrorAliasEmpty"]; return; }
         var http = ClientFactory.CreateClient("Api");
         var resp = await http.PostAsJsonAsync($"/api/contacts/{Id}/aliases", new { Pattern = pattern });
         if (resp.IsSuccessStatusCode)

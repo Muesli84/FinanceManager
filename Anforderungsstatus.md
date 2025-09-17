@@ -116,6 +116,10 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
+Änderungen (17.09.2025):
+- I18N Clean-up: `Home.razor` (Import-Button, KPI-Platzhalter) vollständig lokalisiert; neue Ressourcen-Schlüssel ergänzt.
+- I18N Clean-up: `SavingsPlanEdit.razor` vollständig lokalisiert (Aktionen, Felder inkl. Vertragsnummer, Analyse-Panel inkl. Status/Labels/Tooltips); passende `*.resx`-Einträge in DE/EN ergänzt.
+
 Änderungen (16.09.2025):
 - PDF-Detailimport (ING) erweitert: Erkennung Kauf/Verkauf/Dividende, Ordernummer, Provision, robustere Betrags-/Vorzeichenlogik (inkl. „EUR - 1,67“), Nominale auch mit „Stück“ vor/nach der Zahl. Steuern (KESt/SolZ/KiSt) und Provision werden übernommen. Automatische Zuordnung von Steuer/Provision in Draft-Einträge bei Details-Import.
 - FA-AUSZ-009 Beschreibung aktualisiert (PDF-Details, automatische Übernahme). Status bleibt ~ wegen offener Depot-/Positionslogik.
@@ -172,4 +176,4 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
 - Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
-*Letzte Aktualisierung: 16.09.2025*
+*Letzte Aktualisierung: 17.09.2025*

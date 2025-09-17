@@ -2,6 +2,8 @@
 @rendermode InteractiveServer
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Setup> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h3>Einrichtung</h3>
 <div class="action-bar" style="margin-bottom:1rem;">
@@ -28,7 +30,7 @@
 
     @if (_restoreRunning || !string.IsNullOrWhiteSpace(_restoreError))
     {
-        <div class="panel" style="margin-top:.75rem;padding:.5rem 1rem;border:1px solid #444;border-radius:6px;max-width:720px;">
+        <div class="panel" style="margin-top:.75rem;padding:.5rem 1rem;border:1px solid #444;border-radius:6px;">
             <div style="display:flex;align-items:center;gap:.75rem;">
                 <svg class="icon"><use href="/icons/sprite.svg#refresh" /></svg>
                 <div>
@@ -37,6 +39,13 @@
                     <div style="margin-top:.35rem;width:320px;height:6px;background:#2a2a33;border-radius:3px;overflow:hidden;">
                         <div style="height:100%;background:#2d6cdf;width:@_restoreProgress%;transition:width .2s;"></div>
                     </div>
+                    @if(_restoreSubTotal > 0)
+                    {
+                        <div style="margin-top:.35rem;font-size:.85rem;opacity:.85;">@_restoreSubMessage</div>
+                        <div style="margin-top:.15rem;width:320px;height:4px;background:#2a2a33;border-radius:3px;overflow:hidden;">
+                            <div style="height:100%;background:#6aa84f;width:@_restoreSubProgress%;transition:width .2s;"></div>
+                        </div>
+                    }
                 </div>
                 @if (_restoreRunning)
                 {
@@ -143,6 +152,9 @@
     private string? _restoreMessage;
     private string? _restoreError;
     private System.Timers.Timer? _restoreTimer;
+    private int _restoreSubProgress;
+    private int _restoreSubTotal;
+    private string? _restoreSubMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -249,6 +261,7 @@
             _restoreProgress = 0;
             _restoreMessage = "Gestartet";
             _restoreError = null;
+            _restoreSubProgress = 0; _restoreSubTotal = 0; _restoreSubMessage = null;
             StartRestorePolling();
         }
         else
@@ -281,6 +294,7 @@
             _restoreMessage = s.Message;
             _restoreError = s.Error;
             _restoreProgress = s.Total > 0 ? (int)(100 * (double)s.Processed / s.Total) : 0;
+            if (s.Total2 > 0) { _restoreSubProgress = (int)(100 * (double)s.Processed2 / s.Total2); _restoreSubTotal = s.Total2; _restoreSubMessage = s.Message2; }
             StartRestorePolling();
         }
         else if (!string.IsNullOrWhiteSpace(s.Error))
@@ -306,6 +320,7 @@
             _restoreMessage = s.Message;
             _restoreError = s.Error;
             _restoreProgress = s.Total > 0 ? (int)(100 * (double)s.Processed / s.Total) : (_restoreRunning ? _restoreProgress : 100);
+            if (s.Total2 > 0) { _restoreSubProgress = (int)(100 * (double)s.Processed2 / s.Total2); _restoreSubTotal = s.Total2; _restoreSubMessage = s.Message2; }
             await InvokeAsync(StateHasChanged);
             if (!s.Running)
             {
@@ -450,5 +465,8 @@
         public int Total { get; set; }
         public string? Message { get; set; }
         public string? Error { get; set; }
+        public int Processed2 { get; set; }
+        public int Total2 { get; set; }
+        public string? Message2 { get; set; }
     }
 }

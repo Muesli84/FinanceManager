@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Statement</value></data>
+  <data name="Title" xml:space="preserve"><value>Statement Entry</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading...</value></data>
+  <data name="BtnBack" xml:space="preserve"><value>Back</value></data>
+  <data name="BtnSave" xml:space="preserve"><value>Save</value></data>
+  <data name="BtnReclassify" xml:space="preserve"><value>Reclassify</value></data>
+  <data name="BtnValidate" xml:space="preserve"><value>Validate</value></data>
+  <data name="BtnAssignSplit" xml:space="preserve"><value>Assign split draft</value></data>
+  <data name="BtnBook" xml:space="preserve"><value>Book</value></data>
+  <data name="BtnOpenContact" xml:space="preserve"><value>Open contact</value></data>
+  <data name="BtnOpenSecurity" xml:space="preserve"><value>Open security</value></data>
+  <data name="BtnOpenSavingsPlan" xml:space="preserve"><value>Open savings plan</value></data>
+  <data name="BtnOpenLinkedSplit" xml:space="preserve"><value>Open linked split draft</value></data>
+  <data name="BtnRemoveAssignment" xml:space="preserve"><value>Remove assignment</value></data>
+  <data name="BtnPrevEntry" xml:space="preserve"><value>Prev entry</value></data>
+  <data name="BtnNextOpenEntry" xml:space="preserve"><value>Next open entry</value></data>
+  <data name="DraftFile" xml:space="preserve"><value>File</value></data>
+  <data name="Validation_Header" xml:space="preserve"><value>Validation</value></data>
+  <data name="Validation_NoIssues" xml:space="preserve"><value>No issues found.</value></data>
+  <data name="Warnings" xml:space="preserve"><value>Warnings</value></data>
+  <data name="BtnBookAnyway" xml:space="preserve"><value>Book anyway</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="EditMode" xml:space="preserve"><value>Edit mode</value></data>
+  <data name="Label_BookingDate" xml:space="preserve"><value>Booking date</value></data>
+  <data name="Label_ValutaDate" xml:space="preserve"><value>Valuta date</value></data>
+  <data name="Label_Amount" xml:space="preserve"><value>Amount</value></data>
+  <data name="Label_Currency" xml:space="preserve"><value>Currency</value></data>
+  <data name="Label_Subject" xml:space="preserve"><value>Subject</value></data>
+  <data name="Label_Recipient" xml:space="preserve"><value>Recipient</value></data>
+  <data name="Label_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="BtnReset" xml:space="preserve"><value>Reset</value></data>
+  <data name="Th_BookingDate" xml:space="preserve"><value>Booking date</value></data>
+  <data name="Th_ValutaDate" xml:space="preserve"><value>Valuta</value></data>
+  <data name="Th_Amount" xml:space="preserve"><value>Amount</value></data>
+  <data name="SplitSum" xml:space="preserve"><value>Split sum</value></data>
+  <data name="Diff" xml:space="preserve"><value>Diff</value></data>
+  <data name="Th_Subject" xml:space="preserve"><value>Subject</value></data>
+  <data name="Th_Recipient" xml:space="preserve"><value>Recipient</value></data>
+  <data name="Th_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="No" xml:space="preserve"><value>No</value></data>
+  <data name="Th_Announced" xml:space="preserve"><value>Announced</value></data>
+  <data name="Th_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Th_Contact" xml:space="preserve"><value>Contact</value></data>
+  <data name="Placeholder_FilterContacts" xml:space="preserve"><value>Filter contacts...</value></data>
+  <data name="None" xml:space="preserve"><value>None</value></data>
+  <data name="NoMatches" xml:space="preserve"><value>No matches</value></data>
+  <data name="BtnNewContact" xml:space="preserve"><value>New contact</value></data>
+  <data name="Th_CostNeutral" xml:space="preserve"><value>Cost neutral</value></data>
+  <data name="Th_SavingsPlan" xml:space="preserve"><value>Savings plan</value></data>
+  <data name="Placeholder_FilterSavingsPlans" xml:space="preserve"><value>Filter savings plans...</value></data>
+  <data name="BtnNewSavingsPlan" xml:space="preserve"><value>New savings plan</value></data>
+  <data name="ArchiveSavingsPlanOnBooking" xml:space="preserve"><value>Archive savings plan on booking</value></data>
+  <data name="Th_Security" xml:space="preserve"><value>Security</value></data>
+  <data name="Placeholder_FilterSecurities" xml:space="preserve"><value>Filter securities...</value></data>
+  <data name="BtnNewSecurity" xml:space="preserve"><value>New security</value></data>
+  <data name="Label_TxType" xml:space="preserve"><value>Transaction type</value></data>
+  <data name="Tx_Buy" xml:space="preserve"><value>Buy</value></data>
+  <data name="Tx_Sell" xml:space="preserve"><value>Sell</value></data>
+  <data name="Tx_DividendOrInterest" xml:space="preserve"><value>Dividend/Interest</value></data>
+  <data name="Label_Quantity" xml:space="preserve"><value>Quantity</value></data>
+  <data name="Label_Fee" xml:space="preserve"><value>Fee</value></data>
+  <data name="Label_Tax" xml:space="preserve"><value>Tax</value></data>
+  <data name="Split_SelectTitle" xml:space="preserve"><value>Select split draft</value></data>
+  <data name="Split_CurrentlyLinked" xml:space="preserve"><value>Currently linked:</value></data>
+  <data name="Split_SelectHint" xml:space="preserve"><value>Please select a split draft matching this entry.</value></data>
+  <data name="Filter" xml:space="preserve"><value>Filter</value></data>
+  <data name="Entries" xml:space="preserve"><value>Entries</value></data>
+  <data name="Total" xml:space="preserve"><value>Total</value></data>
+  <data name="Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="ConfirmUnsavedChanges" xml:space="preserve"><value>There are unsaved changes. Continue anyway?</value></data>
+  <data name="Err_InvalidQuantity" xml:space="preserve"><value>Invalid quantity.</value></data>
+  <data name="Err_InvalidFee" xml:space="preserve"><value>Invalid fee.</value></data>
+  <data name="Err_InvalidTax" xml:space="preserve"><value>Invalid tax.</value></data>
+  <data name="Err_Book" xml:space="preserve"><value>Booking failed.</value></data>
+</root>

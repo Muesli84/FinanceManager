@@ -4,12 +4,13 @@
 @rendermode InteractiveServer
 @using FinanceManager.Shared.Dtos
 @using Microsoft.Extensions.Localization
-@inject IStringLocalizer<Components.Pages.SavingsPlanEdit> Localizer
+@inject IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanList> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h3>@Localizer["TitleList"]</h3>
 
 <div class="action-bar">
-    <button @onclick="NewPlan" aria-label="@Localizer["BtnNew"]" title="@Localizer["BtnNew"]" class="icon-btn">
+    <button @onclick="NewPlan" aria-label='@Localizer["BtnNew"]' title='@Localizer["BtnNew"]' class="icon-btn">
         <svg><use href="/icons/sprite.svg#plus" /></svg>
     </button>
 </div>

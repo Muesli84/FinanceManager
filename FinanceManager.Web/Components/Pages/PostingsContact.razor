@@ -3,27 +3,29 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.PostingsContact> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h3>Kontaktposten</h3>
+<h3>@Localizer["Title"]</h3>
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
-    <button class="icon-btn" @onclick="Back" title="Zurück" aria-label="Zurück"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-    <input placeholder="Suche (Empfänger / Betreff / Zweck / Datum / Betrag)" @bind="_search" @bind:after="OnSearchChanged" style="min-width:260px;" />
+    <button class="icon-btn" @onclick="Back" title='@Localizer["BtnBack"]' aria-label='@Localizer["BtnBack"]'><svg><use href="/icons/sprite.svg#back" /></svg></button>
+    <input placeholder='@Localizer["SearchPlaceholder"]' @bind="_search" @bind:after="OnSearchChanged" style="min-width:260px;" />
 </div>
 @if(_loading && _items.Count==0)
 {
-    <p>Lade...</p>
+    <p>@Localizer["Loading"]</p>
 }
 else
 {
     <table class="fm-table wide">
         <thead>
             <tr>
-                <th style="width:7rem;">Datum</th>
-                <th style="width:7rem;text-align:right;">Betrag</th>
-                <th style="width:6rem;">Postenart</th>
-                <th style="width:18%;">Empfänger</th>
-                <th style="width:22%;">Verwendungszweck</th>
-                <th>Buchungsbeschreibung</th>
+                <th style="width:7rem;">@Localizer["Th_Date"]</th>
+                <th style="width:7rem;text-align:right;">@Localizer["Th_Amount"]</th>
+                <th style="width:6rem;">@Localizer["Th_Kind"]</th>
+                <th style="width:18%;">@Localizer["Th_Recipient"]</th>
+                <th style="width:22%;">@Localizer["Th_Subject"]</th>
+                <th>@Localizer["Th_Description"]</th>
             </tr>
         </thead>
         <tbody>
@@ -40,7 +42,7 @@ else
             }
             @if(_loading)
             {
-                <tr><td colspan="6" style="opacity:.6;">Lade...</td></tr>
+                <tr><td colspan="6" style="opacity:.6;">@Localizer["Loading"]</td></tr>
             }
         </tbody>
     </table>
@@ -51,11 +53,11 @@ else
         }
         else if(_items.Count==0 && !_loading)
         {
-            <span style="opacity:.6;font-size:.75rem;">Keine Posten vorhanden.</span>
+            <span style="opacity:.6;font-size:.75rem;">@Localizer["NoItems"]</span>
         }
         else if(!_canLoadMore)
         {
-            <div class="end-of-list" style="opacity:.6;font-size:.65rem;">Ende erreicht.</div>
+            <div class="end-of-list" style="opacity:.6;font-size:.65rem;">@Localizer["EndOfList"]</div>
         }
     </div>
 }

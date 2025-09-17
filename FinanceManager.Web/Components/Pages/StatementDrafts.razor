@@ -5,14 +5,15 @@
 @inject IJSRuntime JS
 @using FinanceManager.Application.Statements
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.StatementDrafts> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h3>@Localizer["Nav_StatementDrafts"]</h3>
 
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
-    <button @onclick="ClassifyAsync" class="icon-btn" title="Reclassify" aria-label="Reclassify">
+    <button @onclick="ClassifyAsync" class="icon-btn" title='@Localizer["Btn_Reclassify"]' aria-label='@Localizer["Btn_Reclassify"]'>
         <svg><use href="/icons/sprite.svg#refresh" /></svg>
     </button>
-    <button @onclick="OpenBookAllDialog" class="icon-btn" title="Massenbuchung" aria-label="Massenbuchung" style="padding:.3rem .6rem;">
+    <button @onclick="OpenBookAllDialog" class="icon-btn" title='@Localizer["Btn_MassBooking"]' aria-label='@Localizer["Btn_MassBooking"]' style="padding:.3rem .6rem;">
         <svg><use href="/icons/sprite.svg#save" /></svg>
     </button>
 </div>
@@ -23,12 +24,12 @@
         <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
             <div style="display:flex;align-items:center;gap:.6rem;">
                 <svg style="width:1rem;height:1rem;fill:#7fb3ff;"><use href="/icons/sprite.svg#clock" /></svg>
-                <strong>Klassifizierung läuft…</strong>
+                <strong>@Localizer["Classify_RunningTitle"]</strong>
             </div>
         </div>
         <div style="margin-top:.5rem;font-size:.85rem;opacity:.9;">@_classifyMessage</div>
         <div style="margin-top:.6rem;display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;">
-            <span>Fortschritt: @_processed / @_total</span>
+            <span>@Localizer["Progress"]: @_processed / @_total</span>
         </div>
         <div style="margin-top:.6rem;height:.5rem;border-radius:.25rem;background:#222;overflow:hidden;">
             @{
@@ -45,16 +46,16 @@
         <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
             <div style="display:flex;align-items:center;gap:.6rem;">
                 <svg style="width:1rem;height:1rem;fill:#7fb3ff;"><use href="/icons/sprite.svg#clock" /></svg>
-                <strong>Buchung läuft…</strong>
+                <strong>@Localizer["Booking_RunningTitle"]</strong>
             </div>
-            <button class="icon-btn" style="padding:.25rem .5rem;background:#7a1e1e;color:#fff;border-radius:.25rem;" @onclick="CancelMassBooking">Abbrechen</button>
+            <button class="icon-btn" style="padding:.25rem .5rem;background:#7a1e1e;color:#fff;border-radius:.25rem;" @onclick="CancelMassBooking">@Localizer["Cancel"]</button>
         </div>
         <div style="margin-top:.5rem;font-size:.85rem;opacity:.9;">@_bookingMessage</div>
         <div style="margin-top:.6rem;display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;">
-            <span>Fortschritt: @_bookingProcessed / @_bookingTotal</span>
-            <span>Fehlgeschlagen: @_bookingFailed</span>
-            <span style="color:#cc6;">Warnungen: @_bookingWarnings</span>
-            <span style="color:#e66;">Fehler: @_bookingErrors</span>
+            <span>@Localizer["Progress"]: @_bookingProcessed / @_bookingTotal</span>
+            <span>@Localizer["Failed"]: @_bookingFailed</span>
+            <span style="color:#cc6;">@Localizer["Warnings"]: @_bookingWarnings</span>
+            <span style="color:#e66;">@Localizer["Errors"]: @_bookingErrors</span>
         </div>
         <div style="margin-top:.6rem;height:.5rem;border-radius:.25rem;background:#222;overflow:hidden;">
             @{
@@ -71,15 +72,15 @@
     var warnCount = _bookingIssues.Count(i => i.code != null && i.code.Contains("SAVINGSPLAN_", StringComparison.OrdinalIgnoreCase) && !i.code.EndsWith("_ARCHIVE_MISMATCH", StringComparison.OrdinalIgnoreCase));
     <div class="alert" style="margin-top:1rem;border:1px solid #444;background:#181818;padding:.6rem .8rem;">
         <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;font-size:.8rem;">
-            <strong>Ergebnis der Massenbuchung</strong>
-            <span style="color:#e66;">Fehler: @_bookingErrors</span>
-            <span style="color:#cc6;">Hinweise: @_bookingWarnings</span>
+            <strong>@Localizer["Booking_ResultTitle"]</strong>
+            <span style="color:#e66;">@Localizer["Errors"]: @_bookingErrors</span>
+            <span style="color:#cc6;">@Localizer["Warnings"]: @_bookingWarnings</span>
         </div>
         <ul style="margin:.5rem 0 0 1rem;font-size:.7rem;">
             @foreach (var issue in _bookingIssues)
             {
                 var c = issue.code != null && (issue.code.Contains("ERROR", StringComparison.OrdinalIgnoreCase) || issue.code is "NO_ACCOUNT" or "ENTRY_NO_CONTACT" or "INTERMEDIARY_NO_SPLIT" or "SPLIT_AMOUNT_MISMATCH") ? "#e66" : "#cc6";
-                <li style="margin:.2rem 0;color:@c;">Entwurf @issue.draftId: @issue.message</li>
+                <li style="margin:.2rem 0;color:@c;">@Localizer["IssueForDraft"] @issue.draftId: @issue.message</li>
             }
         </ul>
     </div>
@@ -89,24 +90,24 @@
 {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;" role="dialog" aria-modal="true">
         <div style="background:#111;color:#eee;border:1px solid var(--border);padding:1rem;border-radius:.4rem;min-width:22rem;max-width:90vw;box-shadow:0 8px 24px rgba(0,0,0,.5);">
-            <h4 style="margin-top:0;color:#fff;">Massenbuchung starten</h4>
+            <h4 style="margin-top:0;color:#fff;">@Localizer["Dialog_MassBook_Title"]</h4>
             <div style="display:flex;flex-direction:column;gap:.5rem;align-items:flex-start;text-align:left;">
                 <div style="display:flex;align-items:center;gap:.6rem;">
                     <input id="opt-ignore" type="checkbox" @bind="_bookIgnoreWarnings" style="margin:0;width:unset;" />
-                    <label for="opt-ignore" style="cursor:pointer;">Warnungen ignorieren</label>
+                    <label for="opt-ignore" style="cursor:pointer;">@Localizer["Dialog_IgnoreWarnings"]</label>
                 </div>
                 <div style="display:flex;align-items:center;gap:.6rem;">
                     <input id="opt-abort" type="checkbox" @bind="_bookAbortOnFirst" style="margin:0;width:unset;" />
-                    <label for="opt-abort" style="cursor:pointer;">Bei erster Warnung/Fehler abbrechen</label>
+                    <label for="opt-abort" style="cursor:pointer;">@Localizer["Dialog_AbortOnFirst"]</label>
                 </div>
                 <div style="display:flex;align-items:center;gap:.6rem;">
                     <input id="opt-individual" type="checkbox" @bind="_bookEntriesIndividually" style="margin:0;width:unset;" />
-                    <label for="opt-individual" style="cursor:pointer;">Einträge einzeln buchen</label>
+                    <label for="opt-individual" style="cursor:pointer;">@Localizer["Dialog_BookIndividually"]</label>
                 </div>
             </div>
             <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;">
-                <button class="btn btn-secondary" @onclick="CancelBookAllDialog" style="background:#333;color:#fff;border:1px solid var(--border);padding:.35rem .7rem;border-radius:.25rem;">Abbrechen</button>
-                <button class="btn btn-primary" @onclick="ConfirmBookAllAsync" style="background:#2d6cdf;color:#fff;border:0;padding:.35rem .7rem;border-radius:.25rem;">Starten</button>
+                <button class="btn btn-secondary" @onclick="CancelBookAllDialog" style="background:#333;color:#fff;border:1px solid var(--border);padding:.35rem .7rem;border-radius:.25rem;">@Localizer["Dialog_Cancel"]</button>
+                <button class="btn btn-primary" @onclick="ConfirmBookAllAsync" style="background:#2d6cdf;color:#fff;border:0;padding:.35rem .7rem;border-radius:.25rem;">@Localizer["Dialog_Start"]</button>
             </div>
         </div>
     </div>

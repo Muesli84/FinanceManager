@@ -126,4 +126,16 @@
   <data name="WelcomeTitle" xml:space="preserve">
     <value>Willkommen</value>
   </data>
+  <data name="Import_Button" xml:space="preserve">
+    <value>Auszug importieren</value>
+  </data>
+  <data name="Import_Success" xml:space="preserve">
+    <value>Import erfolgreich.</value>
+  </data>
+  <data name="Import_ShowDetails" xml:space="preserve">
+    <value>Details anzeigen</value>
+  </data>
+  <data name="KPI_Placeholders" xml:space="preserve">
+    <value>KPI-Platzhalter werden hier angezeigt.</value>
+  </data>
 </root>

@@ -4,6 +4,8 @@
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ContactCategories> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h1>Contact Groups</h1>
 

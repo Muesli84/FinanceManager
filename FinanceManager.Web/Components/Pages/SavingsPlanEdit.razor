@@ -8,6 +8,7 @@
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Components.Pages.SavingsPlanEdit> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h3>@(IsEdit ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
 <div class="action-bar" style="margin-bottom:1rem;">
@@ -22,7 +23,7 @@
         <button class="icon-btn danger" @onclick="DeleteAsync" title="@Localizer["BtnDelete"]">
             <svg class="icon"><use href="icons/sprite.svg#delete"></use></svg>
         </button>
-        <button class="icon-btn" @onclick="OpenPostings" title="Postings">
+        <button class="icon-btn" @onclick="OpenPostings" title="@Localizer["BtnPostings"]">
             <svg class="icon"><use href="icons/sprite.svg#postings"></use></svg>
         </button>
     }
@@ -80,7 +81,7 @@
         </InputSelect>
     </div>
     <div>
-        <label>Vertragsnummer</label>
+        <label>@Localizer["LabelContractNumber"]</label>
         <InputText @bind-Value="_model.ContractNumber" />
     </div>
     @if (!string.IsNullOrWhiteSpace(_error))
@@ -92,23 +93,23 @@
 @if (IsEdit)
 {
     <div class="panel" style="margin-top:1rem;padding:0.75rem 1rem;border:1px solid #444;border-radius:6px;max-width:720px;">
-        <h4 style="margin:.2rem 0 .6rem 0;">Analyse</h4>
+        <h4 style="margin:.2rem 0 .6rem 0;">@Localizer["Analysis_Title"]</h4>
         @if(_analysis == null)
         {
-            <button class="icon-btn" @onclick="LoadAnalysis" title="Analyse neu berechnen"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
+            <button class="icon-btn" @onclick="LoadAnalysis" title="@Localizer["Analysis_Recalculate"]"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
         }
         else
         {
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.5rem;">
-                <div><strong>Zielbetrag:</strong> @_analysis.TargetAmount?.ToString("N2") ?? "-"</div>
-                <div><strong>Zieldatum:</strong> @_analysis.TargetDate?.ToShortDateString() ?? "-"</div>
-                <div><strong>Monate verbleibend:</strong> @_analysis.MonthsRemaining</div>
-                <div><strong>Bisher gespart:</strong> @_analysis.AccumulatedAmount.ToString("N2")</div>
-                <div><strong>Erforderlich/Monat:</strong> @_analysis.RequiredMonthly.ToString("N2")</div>
-                <div><strong>Status:</strong> @(_analysis.TargetReachable ? "erreichbar" : "nicht erreichbar")</div>
+                <div><strong>@Localizer["Analysis_TargetAmount"]:</strong> @_analysis.TargetAmount?.ToString("N2") ?? "-"</div>
+                <div><strong>@Localizer["Analysis_TargetDate"]:</strong> @_analysis.TargetDate?.ToShortDateString() ?? "-"</div>
+                <div><strong>@Localizer["Analysis_MonthsRemaining"]:</strong> @_analysis.MonthsRemaining</div>
+                <div><strong>@Localizer["Analysis_Accumulated"]:</strong> @_analysis.AccumulatedAmount.ToString("N2")</div>
+                <div><strong>@Localizer["Analysis_RequiredMonthly"]:</strong> @_analysis.RequiredMonthly.ToString("N2")</div>
+                <div><strong>@Localizer["Analysis_Status"]:</strong> @(_analysis.TargetReachable ? Localizer["Analysis_Status_Reachable"] : Localizer["Analysis_Status_Unreachable"])</div>
             </div>
             <div style="margin-top:.5rem;">
-                <button class="icon-btn" @onclick="LoadAnalysis" title="Neu berechnen"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
+                <button class="icon-btn" @onclick="LoadAnalysis" title="@Localizer["Analysis_RecalculateShort"]"><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
             </div>
         }
     </div>
@@ -164,7 +165,7 @@
             }
             else
             {
-                _error = "Sparplan nicht gefunden.";
+                _error = Localizer["ErrorNotFound"]; // localized error
             }
         }
         else

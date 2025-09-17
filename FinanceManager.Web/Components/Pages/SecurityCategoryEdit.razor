@@ -5,6 +5,9 @@
 @inject NavigationManager Nav
 @using FinanceManager.Shared.Dtos
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Components.Pages.SecurityCategoryEdit> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h3>@(IsEdit ? "Kategorie bearbeiten" : "Neue Kategorie")</h3>
 <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;">

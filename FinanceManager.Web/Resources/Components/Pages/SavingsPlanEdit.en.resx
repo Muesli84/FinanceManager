@@ -9,6 +9,9 @@
   <data name="TitleList" xml:space="preserve">
     <value>Savings Plans</value>
   </data>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Savings Plan</value>
+  </data>
   <data name="LabelName" xml:space="preserve">
     <value>Name</value>
   </data>
@@ -23,6 +26,12 @@
   </data>
   <data name="LabelInterval" xml:space="preserve">
     <value>Interval</value>
+  </data>
+  <data name="LabelCategory" xml:space="preserve">
+    <value>Category</value>
+  </data>
+  <data name="LabelContractNumber" xml:space="preserve">
+    <value>Contract number</value>
   </data>
   <data name="LabelStatus" xml:space="preserve">
     <value>Status</value>
@@ -42,11 +51,17 @@
   <data name="BtnBack" xml:space="preserve">
     <value>Back</value>
   </data>
+  <data name="BtnPostings" xml:space="preserve">
+    <value>Postings</value>
+  </data>
+  <data name="BtnCategories" xml:space="preserve">
+    <value>Categories</value>
+  </data>
   <data name="ErrorNotFound" xml:space="preserve">
     <value>Savings plan not found.</value>
   </data>
   <data name="OnlyActive" xml:space="preserve">
-    <value>Show only active</value>
+    <value>Only active</value>
   </data>
   <data name="Type_OneTime" xml:space="preserve">
     <value>One-time</value>
@@ -77,5 +92,38 @@
   </data>
   <data name="StatusArchived" xml:space="preserve">
     <value>Archived</value>
+  </data>
+  <data name="Analysis_Title" xml:space="preserve">
+    <value>Analysis</value>
+  </data>
+  <data name="Analysis_Recalculate" xml:space="preserve">
+    <value>Recalculate analysis</value>
+  </data>
+  <data name="Analysis_RecalculateShort" xml:space="preserve">
+    <value>Recalculate</value>
+  </data>
+  <data name="Analysis_TargetAmount" xml:space="preserve">
+    <value>Target amount</value>
+  </data>
+  <data name="Analysis_TargetDate" xml:space="preserve">
+    <value>Target date</value>
+  </data>
+  <data name="Analysis_MonthsRemaining" xml:space="preserve">
+    <value>Months remaining</value>
+  </data>
+  <data name="Analysis_Accumulated" xml:space="preserve">
+    <value>Accumulated so far</value>
+  </data>
+  <data name="Analysis_RequiredMonthly" xml:space="preserve">
+    <value>Required per month</value>
+  </data>
+  <data name="Analysis_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Analysis_Status_Reachable" xml:space="preserve">
+    <value>reachable</value>
+  </data>
+  <data name="Analysis_Status_Unreachable" xml:space="preserve">
+    <value>not reachable</value>
   </data>
 </root>

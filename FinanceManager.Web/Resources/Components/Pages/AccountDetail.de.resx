@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Konto</value></data>
+  <data name="TitleNew" xml:space="preserve"><value>Neues Konto</value></data>
+  <data name="TitleEdit" xml:space="preserve"><value>Konto bearbeiten</value></data>
+  <data name="Loading" xml:space="preserve"><value>Lade...</value></data>
+  <data name="PleaseLogin" xml:space="preserve"><value>Bitte anmelden.</value></data>
+  <data name="BtnBack" xml:space="preserve"><value>Zurück</value></data>
+  <data name="BtnSave" xml:space="preserve"><value>Speichern</value></data>
+  <data name="BtnDelete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="BtnBankContact" xml:space="preserve"><value>Bankkontakt</value></data>
+  <data name="BtnPostings" xml:space="preserve"><value>Posten</value></data>
+  <data name="LabelName" xml:space="preserve"><value>Name</value></data>
+  <data name="LabelType" xml:space="preserve"><value>Typ</value></data>
+  <data name="Type_Giro" xml:space="preserve"><value>Giro</value></data>
+  <data name="Type_Savings" xml:space="preserve"><value>Sparen</value></data>
+  <data name="LabelIban" xml:space="preserve"><value>IBAN</value></data>
+  <data name="LabelBankContact" xml:space="preserve"><value>Bankkontakt</value></data>
+  <data name="Select" xml:space="preserve"><value>Auswählen</value></data>
+  <data name="LabelCreateNewBankContact" xml:space="preserve"><value>Neuen Bankkontakt anlegen</value></data>
+  <data name="LabelInterval" xml:space="preserve"><value>Intervall</value></data>
+  <data name="Interval_Month" xml:space="preserve"><value>Monat</value></data>
+  <data name="Interval_Quarter" xml:space="preserve"><value>Quartal</value></data>
+  <data name="Interval_Year" xml:space="preserve"><value>Jahr</value></data>
+  <data name="NoData" xml:space="preserve"><value>Keine Daten.</value></data>
+  <data name="ErrorNotFound" xml:space="preserve"><value>Nicht gefunden</value></data>
+  <data name="ErrorLoadFailed" xml:space="preserve"><value>Laden fehlgeschlagen</value></data>
+</root>

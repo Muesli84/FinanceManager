@@ -3,6 +3,8 @@
 @using FinanceManager.Shared.Dtos
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanCategories> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h3>Kategorien verwalten</h3>
 <div class="action-bar" style="margin-bottom:1rem;">

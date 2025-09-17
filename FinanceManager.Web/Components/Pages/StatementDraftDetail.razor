@@ -5,37 +5,40 @@
 @using FinanceManager.Application.Statements
 @using FinanceManager.Domain.Statements
 @using FinanceManager.Shared.Dtos
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Components.Pages.StatementDraftDetail> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h3>Statement Draft Detail</h3>
+<h3>@Localizer["Title"]</h3>
 @if (_draft == null)
 {
-    <p>Loading...</p>
+    <p>@Localizer["Loading"]</p>
 }
 else
 {
     <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
         @if (_draft.IsSplitDraft && _draft.ParentDraftId != null && _draft.ParentEntryId != null)
         {
-            <button @onclick="BackToParent" class="icon-btn" title="Zurück zum Ursprungs-Eintrag" aria-label="Zurück">
+            <button @onclick="BackToParent" class="icon-btn" title='@Localizer["Btn_BackToParent"]' aria-label='@Localizer["Btn_Back"]'>
                 <svg><use href="/icons/sprite.svg#back" /></svg>
             </button>
         }
-        <button @onclick="ToggleViewer" class="icon-btn" disabled="@(!_hasFile)" title="Originaldatei anzeigen" aria-label="Original anzeigen">
+        <button @onclick="ToggleViewer" class="icon-btn" disabled="@(!_hasFile)" title='@Localizer["Btn_ShowOriginal"]' aria-label='@Localizer["Btn_ShowOriginal"]'>
             <svg><use href="/icons/sprite.svg#external" /></svg>
         </button>
-        <button @onclick="DownloadFile" class="icon-btn" disabled="@(!_hasFile)" title="Originaldatei herunterladen" aria-label="Download">
+        <button @onclick="DownloadFile" class="icon-btn" disabled="@(!_hasFile)" title='@Localizer["Btn_Download"]' aria-label='@Localizer["Btn_Download"]'>
             <svg><use href="/icons/sprite.svg#save" /></svg>
         </button>
-        <button @onclick="DeleteDraftAsync" class="icon-btn" title="Delete Draft" aria-label="Delete Draft">
+        <button @onclick="DeleteDraftAsync" class="icon-btn" title='@Localizer["Btn_Delete"]' aria-label='@Localizer["Btn_Delete"]'>
             <svg><use href="/icons/sprite.svg#delete" /></svg>
         </button>
-        <button @onclick="ClassifyAsync" class="icon-btn" title="Reclassify" aria-label="Reclassify">
+        <button @onclick="ClassifyAsync" class="icon-btn" title='@Localizer["Btn_Reclassify"]' aria-label='@Localizer["Btn_Reclassify"]'>
             <svg><use href="/icons/sprite.svg#refresh" /></svg>
         </button>
-        <button @onclick="ValidateDraft" class="icon-btn" title="Prüfung ausführen" aria-label="Validieren">
+        <button @onclick="ValidateDraft" class="icon-btn" title='@Localizer["Btn_Validate"]' aria-label='@Localizer["Btn_Validate"]'>
             <svg><use href="/icons/sprite.svg#check" /></svg>
         </button>
-        <button class="icon-btn" @onclick="BookDraft" disabled="@_booking" title="Buchen" aria-label="Buchen">
+        <button class="icon-btn" @onclick="BookDraft" disabled="@_booking" title='@Localizer["Btn_Book"]' aria-label='@Localizer["Btn_Book"]'>
             <svg><use href="/icons/sprite.svg#save" /></svg>
         </button>
         @if(_validation != null)
@@ -43,8 +46,8 @@ else
             var errorCount = _validation.Messages.Count(m=>m.Severity=="Error");
             var warnCount = _validation.Messages.Count(m=>m.Severity=="Warning");
             <span style="margin-left:.75rem;font-size:.75rem;display:flex;gap:.6rem;align-items:center;">
-                <span style="color:#e66;">Fehler: @errorCount</span>
-                <span style="color:#cc6;">Hinweise: @warnCount</span>
+                <span style="color:#e66;">@Localizer["Errors"]: @errorCount</span>
+                <span style="color:#cc6;">@Localizer["Warnings"]: @warnCount</span>
             </span>
         }
     </div>
@@ -55,23 +58,23 @@ else
     @if(_pendingWarningConfirmation && _lastValidation != null)
     {
         <div style="margin:.75rem 0;padding:.6rem .8rem;border:1px solid #665500;background:#221e00;font-size:.7rem;max-width:960px;">
-            <strong>@_lastValidation.Messages.Count(m=>m.Severity=="Warning") Warnungen gefunden.</strong> Soll trotzdem gebucht werden?
+            <strong>@_lastValidation.Messages.Count(m=>m.Severity=="Warning") @Localizer["WarningsFound"]</strong> @Localizer["ProceedAnywayQuestion"]
             <div style="margin-top:.5rem;display:flex;gap:.5rem;">
-                <button class="icon-btn" @onclick="ForceBook">Ja</button>
-                <button class="icon-btn" @onclick="(()=>{_pendingWarningConfirmation=false;})">Abbrechen</button>
+                <button class="icon-btn" @onclick="ForceBook">@Localizer["Yes"]</button>
+                <button class="icon-btn" @onclick="(()=>{_pendingWarningConfirmation=false;})">@Localizer["Cancel"]</button>
             </div>
         </div>
     }
-    <p><strong>File:</strong> @_draft.OriginalFileName</p>
+    <p><strong>@Localizer["File"]:</strong> @_draft.OriginalFileName</p>
     @if (_hasFile)
     {
-        <p style="margin-top:-.6rem;font-size:.65rem;opacity:.6;">Originaldatei gespeichert</p>
+        <p style="margin-top:-.6rem;font-size:.65rem;opacity:.6;">@Localizer["OriginalStored"]</p>
     }
-    <p><strong>Status:</strong> @_draft.Status</p>
+    <p><strong>@Localizer["Status"]:</strong> @_draft.Status</p>
     <p>
-        <strong>Account:</strong> 
+        <strong>@Localizer["Account"]:</strong> 
         <select @onchange="OnAccountChanged" value="@_selectedAccountId">
-            <option value="">-- select --</option>
+            <option value="">-- @Localizer["Select"] --</option>
             @foreach (var grp in _groupedAccounts)
             {
                 <optgroup label="@grp.Key">
@@ -90,7 +93,7 @@ else
         if(globalMessages.Any())
         {
             <div style="margin:.5rem 0 1rem 0;padding:.6rem .75rem;border:1px solid #444;border-radius:4px;background:#181818;max-width:960px;">
-                <h4 style="margin:.1rem 0 .4rem 0;font-size:.75rem;">Allgemeine Meldungen</h4>
+                <h4 style="margin:.1rem 0 .4rem 0;font-size:.75rem;">@Localizer["GlobalMessages"]</h4>
                 <ul style="margin:0;padding-left:1.1rem;font-size:.65rem;">
                     @foreach(var gm in globalMessages)
                     {
@@ -102,28 +105,28 @@ else
         }
     }
 
-    <p><strong>Gesamtsumme:</strong> @_draft.Entries.Sum(e => e.Amount)</p>
+    <p><strong>@Localizer["TotalAmount"]:</strong> @_draft.Entries.Sum(e => e.Amount)</p>
     @if (_draft.ParentEntryAmount != null)
     {
-        <p style="color:#ccc;"><strong>Betrag Ursprungs-Eintrag:</strong> @_draft.ParentEntryAmount</p>
+        <p style="color:#ccc;"><strong>@Localizer["ParentEntryAmount"]:</strong> @_draft.ParentEntryAmount</p>
     }
 
-    <h4>Entries (@_draft.Entries.Count)</h4>
+    <h4>@Localizer["EntriesHeader"] (@_draft.Entries.Count)</h4>
     <div class="draft-entries-container">
         <table class="fm-table wide">
             <thead>
                 <tr>
                     <th style="width:1.4rem;"></th>
-                    <th style="width:7rem;">Date</th>
-                    <th style="width:7rem;">Valuta</th>
-                    <th style="width:7rem;text-align:right;">Amount</th>
-                    <th style="width:6rem;">Currency</th>
-                    <th>Subject</th>
-                    <th style="width:14%;">Recipient</th>
-                    <th style="width:12%;">Sparplan</th>
-                    <th>Description</th>
-                    <th style="width:6rem;">Announced</th>
-                    <th style="width:9rem;">Status</th>
+                    <th style="width:7rem;">@Localizer["Th_Date"]</th>
+                    <th style="width:7rem;">@Localizer["Th_Valuta"]</th>
+                    <th style="width:7rem;text-align:right;">@Localizer["Th_Amount"]</th>
+                    <th style="width:6rem;">@Localizer["Th_Currency"]</th>
+                    <th>@Localizer["Th_Subject"]</th>
+                    <th style="width:14%;">@Localizer["Th_Recipient"]</th>
+                    <th style="width:12%;">@Localizer["Th_SavingsPlan"]</th>
+                    <th>@Localizer["Th_Description"]</th>
+                    <th style="width:6rem;">@Localizer["Th_Announced"]</th>
+                    <th style="width:9rem;">@Localizer["Th_Status"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -136,7 +139,7 @@ else
                         <td>
                             @if (e.SplitDraftId != null)
                             {
-                                <svg title="Aufteilungs-Auszug verknüpft" aria-label="Split" style="width:1rem;height:1rem;">
+                                <svg title='@Localizer["LinkedSplitDraft"]' aria-label="Split" style="width:1rem;height:1rem;">
                                     <use href="/icons/sprite.svg#link" />
                                 </svg>
                             }
@@ -182,8 +185,8 @@ else
                             <td colspan="11" style="padding:.4rem .75rem;">
                                 <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
                                     <div style="display:flex;gap:.6rem;font-size:.65rem;">
-                                        @if(entryErrors>0){<span style="color:#e66;">Fehler: @entryErrors</span>}
-                                        @if(entryWarnings>0){<span style="color:#cc6;">Hinweise: @entryWarnings</span>}
+                                        @if(entryErrors>0){<span style="color:#e66;">@Localizer["Errors"]: @entryErrors</span>}
+                                        @if(entryWarnings>0){<span style="color:#cc6;">@Localizer["Warnings"]: @entryWarnings</span>}
                                     </div>
                                     <ul style="margin:0;padding-left:1rem;flex:1;list-style:disc;">
                                         @foreach(var m in entryMessages)
@@ -203,13 +206,13 @@ else
 
     @if (_draft.Status == FinanceManager.Domain.StatementDraftStatus.Draft)
     {
-        <h4>Add Entry</h4>
+        <h4>@Localizer["AddEntryHeader"]</h4>
         <EditForm Model="_form" OnValidSubmit="AddEntryAsync">
             <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
                 <InputDate @bind-Value="_form.BookingDate" />
                 <InputNumber @bind-Value="_form.Amount" />
                 <InputText @bind-Value="_form.Subject" />
-                <button type="submit" class="icon-btn">Add</button>
+                <button type="submit" class="icon-btn">@Localizer["Btn_Add"]</button>
             </div>
         </EditForm>
     }
@@ -223,8 +226,8 @@ else
     {
         <div style="width:420px;max-width:45%;height:70vh;position:sticky;top:1rem;border:1px solid var(--border);border-radius:var(--radius);background:#111;display:flex;flex-direction:column;">
             <div style="padding:.35rem .6rem;font-size:.7rem;letter-spacing:.05em;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
-                <span>Originaldatei</span>
-                <button class="icon-btn" style="padding:.25rem .4rem;" @onclick="ToggleViewer" title="Schließen" aria-label="Schließen"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+                <span>@Localizer["OriginalFileTitle"]</span>
+                <button class="icon-btn" style="padding:.25rem .4rem;" @onclick="ToggleViewer" title='@Localizer["Btn_Close"]' aria-label='@Localizer["Btn_Close"]'><svg><use href="/icons/sprite.svg#clear" /></svg></button>
             </div>
             <iframe src="@_fileUrl" style="flex:1;border:0;width:100%;"></iframe>
         </div>
@@ -287,7 +290,7 @@ else
                 if (resObj?.Validation != null)
                 {
                     _validation = resObj.Validation;
-                    _bookingError = "Es liegen Fehler vor. Bitte korrigieren.";
+                    _bookingError = Localizer["Error_FixIssues"];
                 }
                 else
                 {
@@ -322,7 +325,7 @@ else
                 if (resObj?.Validation != null)
                 {
                     _validation = resObj.Validation;
-                    _bookingError = "Es liegen Fehler vor. Bitte korrigieren.";
+                    _bookingError = Localizer["Error_FixIssues"];
                 }
                 else
                 {
@@ -439,7 +442,7 @@ else
         _showViewer = !_showViewer;
         _fileUrl = _showViewer ? $"/api/statement-drafts/{Id}/file" : null;
     }
-    private async Task DownloadFile()
+    private void DownloadFile()
     {
         if (!_hasFile) { return; }
         var url = $"/api/statement-drafts/{Id}/file";
@@ -486,6 +489,6 @@ else
     private sealed record AccountDto(Guid Id, string Name, int Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
-
+    private sealed record SavingsPlanDto(Guid Id, string Name);
     private sealed class AccountVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid BankContactId { get; set; } }
 }

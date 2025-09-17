@@ -6,26 +6,28 @@
 @inject HttpClient Http
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject IJSRuntime JS
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Contacts> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <div class="page-contacts-full">
-    <h1>Contacts</h1>
+    <h1>@Localizer["Title"]</h1>
 
     @if (!_loaded)
     {
-        <p>Loading...</p>
+        <p>@Localizer["Loading"]</p>
     }
     else if (!CurrentUser.IsAuthenticated)
     {
-        <p>Please login.</p>
+        <p>@Localizer["PleaseLogin"]</p>
     }
     else
     {
         <div class="action-bar" style="gap:.5rem;align-items:center;">
-            <button @onclick="CreateNew" aria-label="New Contact" title="New Contact" class="icon-btn">
+            <button @onclick="CreateNew" aria-label='@Localizer["BtnNew"]' title='@Localizer["BtnNew"]' class="icon-btn">
                 <svg><use href="/icons/sprite.svg#plus" /></svg>
             </button>
             <input class="filter-input"
-                   placeholder="Filter name..."
+                   placeholder='@Localizer["FilterPlaceholder"]'
                    @bind="_filter"
                    @bind:after="OnFilterAfterChanged" />
         </div>
@@ -33,9 +35,9 @@
         <table class="fm-table contacts-table">
             <thead>
             <tr>
-                <th>Name</th>
-                <th>Group</th>
-                <th>Type</th>
+                <th>@Localizer["Th_Name"]</th>
+                <th>@Localizer["Th_Group"]</th>
+                <th>@Localizer["Th_Type"]</th>
             </tr>
             </thead>
             <tbody>
@@ -49,14 +51,14 @@
             }
             @if (_contacts.Count == 0 && !_loadingMore)
             {
-                <tr><td colspan="3" style="opacity:.6;">No contacts.</td></tr>
+                <tr><td colspan="3" style="opacity:.6;">@Localizer["NoContacts"]</td></tr>
             }
             </tbody>
         </table>
 
         @if (_loadingMore)
         {
-            <div style="opacity:.6; font-size:.8rem; margin-top:.5rem;">Loading...</div>
+            <div style="opacity:.6; font-size:.8rem; margin-top:.5rem;">@Localizer["Loading"]</div>
         }
 
         @if (!_allLoaded)
@@ -65,7 +67,7 @@
         }
         else if (_contacts.Count > 0)
         {
-            <div class="end-of-list">Ende</div>
+            <div class="end-of-list">@Localizer["EndOfList"]</div>
         }
     }
 </div>

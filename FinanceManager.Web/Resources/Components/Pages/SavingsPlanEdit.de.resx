@@ -6,6 +6,9 @@
   <data name="TitleEdit" xml:space="preserve">
     <value>Sparplan bearbeiten</value>
   </data>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Sparplan</value>
+  </data>
   <data name="LabelName" xml:space="preserve">
     <value>Name</value>
   </data>
@@ -21,6 +24,12 @@
   <data name="LabelInterval" xml:space="preserve">
     <value>Intervall</value>
   </data>
+  <data name="LabelCategory" xml:space="preserve">
+    <value>Kategorie</value>
+  </data>
+  <data name="LabelContractNumber" xml:space="preserve">
+    <value>Vertragsnummer</value>
+  </data>
   <data name="BtnSave" xml:space="preserve">
     <value>Speichern</value>
   </data>
@@ -32,6 +41,12 @@
   </data>
   <data name="BtnBack" xml:space="preserve">
     <value>Zurück</value>
+  </data>
+  <data name="BtnPostings" xml:space="preserve">
+    <value>Posten</value>
+  </data>
+  <data name="BtnCategories" xml:space="preserve">
+    <value>Kategorien</value>
   </data>
   <data name="ErrorNotFound" xml:space="preserve">
     <value>Sparplan nicht gefunden.</value>
@@ -77,5 +92,38 @@
   </data>
   <data name="StatusArchived" xml:space="preserve">
     <value>Archiviert</value>
+  </data>
+  <data name="Analysis_Title" xml:space="preserve">
+    <value>Analyse</value>
+  </data>
+  <data name="Analysis_Recalculate" xml:space="preserve">
+    <value>Analyse neu berechnen</value>
+  </data>
+  <data name="Analysis_RecalculateShort" xml:space="preserve">
+    <value>Neu berechnen</value>
+  </data>
+  <data name="Analysis_TargetAmount" xml:space="preserve">
+    <value>Zielbetrag</value>
+  </data>
+  <data name="Analysis_TargetDate" xml:space="preserve">
+    <value>Zieldatum</value>
+  </data>
+  <data name="Analysis_MonthsRemaining" xml:space="preserve">
+    <value>Monate verbleibend</value>
+  </data>
+  <data name="Analysis_Accumulated" xml:space="preserve">
+    <value>Bisher gespart</value>
+  </data>
+  <data name="Analysis_RequiredMonthly" xml:space="preserve">
+    <value>Erforderlich/Monat</value>
+  </data>
+  <data name="Analysis_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Analysis_Status_Reachable" xml:space="preserve">
+    <value>erreichbar</value>
+  </data>
+  <data name="Analysis_Status_Unreachable" xml:space="preserve">
+    <value>nicht erreichbar</value>
   </data>
 </root>

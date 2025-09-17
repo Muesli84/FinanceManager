@@ -117,6 +117,9 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Statement Drafts</value>
+  </data>
   <data name="Nav_StatementDrafts" xml:space="preserve">
     <value>Statement Drafts</value>
   </data>
@@ -140,5 +143,59 @@
   </data>
   <data name="Nav_StatementDrafts_Description" xml:space="preserve">
     <value>Description</value>
+  </data>
+  <data name="Btn_Reclassify" xml:space="preserve">
+    <value>Reclassify</value>
+  </data>
+  <data name="Btn_MassBooking" xml:space="preserve">
+    <value>Mass booking</value>
+  </data>
+  <data name="Classify_RunningTitle" xml:space="preserve">
+    <value>Classification running…</value>
+  </data>
+  <data name="Progress" xml:space="preserve">
+    <value>Progress</value>
+  </data>
+  <data name="Booking_RunningTitle" xml:space="preserve">
+    <value>Booking running…</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Warnings" xml:space="preserve">
+    <value>Warnings</value>
+  </data>
+  <data name="Errors" xml:space="preserve">
+    <value>Errors</value>
+  </data>
+  <data name="Booking_ResultTitle" xml:space="preserve">
+    <value>Mass booking result</value>
+  </data>
+  <data name="IssueForDraft" xml:space="preserve">
+    <value>Draft</value>
+  </data>
+  <data name="Dialog_MassBook_Title" xml:space="preserve">
+    <value>Start mass booking</value>
+  </data>
+  <data name="Dialog_IgnoreWarnings" xml:space="preserve">
+    <value>Ignore warnings</value>
+  </data>
+  <data name="Dialog_AbortOnFirst" xml:space="preserve">
+    <value>Abort on first warning/error</value>
+  </data>
+  <data name="Dialog_BookIndividually" xml:space="preserve">
+    <value>Book entries individually</value>
+  </data>
+  <data name="Dialog_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Dialog_Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="Nav_StatementDrafts_Import" xml:space="preserve">
+    <value>Import</value>
   </data>
 </root>

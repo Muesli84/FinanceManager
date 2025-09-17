@@ -4,42 +4,44 @@
 @inject NavigationManager Nav
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @using FinanceManager.Domain
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Accounts> Localizer
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h1>Accounts</h1>
+<h1>@Localizer["Title"]</h1>
 
 @if (!_loaded)
 {
-    <p>Loading...</p>
+    <p>@Localizer["Loading"]</p>
 }
 else if (!CurrentUser.IsAuthenticated)
 {
-    <p>Please login.</p>
+    <p>@Localizer["PleaseLogin"]</p>
 }
 else
 {
     <div class="action-bar">
-        <button @onclick="CreateNew" aria-label="New Account" title="New Account" class="icon-btn">
+        <button @onclick="CreateNew" aria-label='@Localizer["NewAccount"]' title='@Localizer["NewAccount"]' class="icon-btn">
             <svg><use href="/icons/sprite.svg#plus" /></svg>
         </button>
         @if (_filterContactId != null)
         {
-            <button @onclick="ClearFilter" aria-label="Clear Filter" title="Clear Filter" class="icon-btn">
+            <button @onclick="ClearFilter" aria-label='@Localizer["ClearFilter"]' title='@Localizer["ClearFilter"]' class="icon-btn">
                 <svg><use href="/icons/sprite.svg#clear" /></svg>
             </button>
         }
     </div>
     @if (_filterContactId != null)
     {
-        <p style="opacity:.75;">Filtered by bank contact @(_filterContactId)</p>
+        <p style="opacity:.75;">@Localizer["FilteredByBankContact"] @_filterContactId</p>
     }
     <div class="table-responsive">
         <table class="fm-table">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>IBAN</th>
-                    <th style="text-align:right;">Balance</th>
+                    <th>@Localizer["Col_Name"]</th>
+                    <th>@Localizer["Col_Type"]</th>
+                    <th>@Localizer["Col_Iban"]</th>
+                    <th style="text-align:right;">@Localizer["Col_Balance"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -54,7 +56,7 @@ else
                 }
                 @if (_accounts.Count == 0)
                 {
-                    <tr><td colspan="4" style="opacity:.6;">No accounts.</td></tr>
+                    <tr><td colspan="4" style="opacity:.6;">@Localizer["NoAccounts"]</td></tr>
                 }
             </tbody>
         </table>

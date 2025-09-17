@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Savings Plans</value></data>
+  <data name="TitleList" xml:space="preserve"><value>Savings Plans</value></data>
+  <data name="BtnNew" xml:space="preserve"><value>New</value></data>
+  <data name="OnlyActive" xml:space="preserve"><value>Only active</value></data>
+  <data name="LabelName" xml:space="preserve"><value>Name</value></data>
+  <data name="LabelType" xml:space="preserve"><value>Type</value></data>
+  <data name="LabelTargetAmount" xml:space="preserve"><value>Target amount</value></data>
+  <data name="LabelTargetDate" xml:space="preserve"><value>Target date</value></data>
+  <data name="LabelInterval" xml:space="preserve"><value>Interval</value></data>
+  <data name="LabelStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="Type_Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Type_Recurring" xml:space="preserve"><value>Recurring</value></data>
+  <data name="Type_OneTime" xml:space="preserve"><value>One-time</value></data>
+  <data name="Interval_Monthly" xml:space="preserve"><value>Monthly</value></data>
+  <data name="Interval_Quarterly" xml:space="preserve"><value>Quarterly</value></data>
+  <data name="Interval_Yearly" xml:space="preserve"><value>Yearly</value></data>
+  <data name="StatusActive" xml:space="preserve"><value>Active</value></data>
+  <data name="StatusArchived" xml:space="preserve"><value>Archived</value></data>
+</root>
