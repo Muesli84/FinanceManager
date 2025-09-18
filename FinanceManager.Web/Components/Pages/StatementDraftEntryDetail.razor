@@ -205,7 +205,7 @@ else
             <tr>
                 <th>@Localizer["Th_SavingsPlan"]</th>
                 <td>
-                    <div class="savingsplan-combobox" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:420px;margin-bottom:1rem;">
+                    <div class="savingsplan-combobox" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:420px;margin-bottom:.75rem;">
                         <div style="position:relative;min-width:0;">
                             <input type="text" style="width:95%;" @bind="_savingsPlanFilter" @bind:event="oninput" @bind:after="(()=>OnSavingsPlanFilterAfterChanged())" placeholder='@Localizer["Placeholder_FilterSavingsPlans"]' @onfocus="ShowSavingsPlanDropdown" />
                             <input type="hidden" value="@_selectedSavingsPlanId" />
@@ -522,12 +522,14 @@ else
             _archiveSavingsPlanOnBooking = _vm.Entry.ArchiveSavingsPlanOnBooking;
         }
         else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             _vm = null;
+        }
     }
 
     private async Task LoadContactsAsync()
     {
-        var resp = await Http.GetAsync("/api/contacts?skip=0&take=500");
+        var resp = await Http.GetAsync("/api/contacts?all=true");
         if (resp.IsSuccessStatusCode)
         {
             var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
