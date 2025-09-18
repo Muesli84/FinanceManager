@@ -1,0 +1,93 @@
+@using FinanceManager.Shared.Dtos
+@inject HttpClient Http
+@code {
+    [Parameter] public string TaskListEndpoint { get; set; } = "/api/background-tasks/active";
+    [Parameter] public int PollInterval { get; set; } = 2000;
+    private List<BackgroundTaskInfo> Tasks = new();
+    private BackgroundTaskInfo? ActiveTask => Tasks.FirstOrDefault(t => t.Status == BackgroundTaskStatus.Running);
+    private List<BackgroundTaskInfo> QueuedTasks => Tasks.Where(t => t.Status == BackgroundTaskStatus.Queued).OrderBy(t => t.EnqueuedUtc).ToList();
+    private System.Timers.Timer? _timer;
+    protected override void OnInitialized()
+    {
+        _timer = new System.Timers.Timer(PollInterval);
+        _timer.Elapsed += async (_, _) => await LoadTasksAsync();
+        _timer.AutoReset = true;
+        _timer.Start();
+        _ = LoadTasksAsync();
+    }
+    private async Task LoadTasksAsync()
+    {
+        var result = await Http.GetFromJsonAsync<List<BackgroundTaskInfo>>(TaskListEndpoint);
+        if (result != null) Tasks = result;
+        StateHasChanged();
+    }
+    public async Task CancelTaskAsync(Guid id)
+    {
+        await Http.DeleteAsync($"/api/background-tasks/{id}");
+        await LoadTasksAsync();
+    }
+    public async Task RemoveQueuedAsync(Guid id)
+    {
+        await Http.DeleteAsync($"/api/background-tasks/{id}");
+        await LoadTasksAsync();
+    }
+    public void Dispose()
+    {
+        _timer?.Stop();
+        _timer?.Dispose();
+    }
+}
+<div class="bgt-panel">
+    <h3>@Localizer["Bgt_Title"]</h3>
+    <div>
+        <h4>@Localizer["Bgt_ActiveNone"]</h4>
+        @if (ActiveTask != null)
+        {
+            <div class="bgt-active">
+                <span class="bgt-type">@ActiveTask.Type</span>
+                <span class="bgt-status bgt-badge bgt-running">@Localizer[$"Bgt_Status_{ActiveTask.Status}"]</span>
+                <div class="bgt-progress">
+                    @if (ActiveTask.Total.HasValue && ActiveTask.Total > 0)
+                    {
+                        <progress value="@ActiveTask.Processed" max="@ActiveTask.Total"></progress>
+                        <span>@(ActiveTask.Processed ?? 0) / @(ActiveTask.Total ?? 0)</span>
+                    }
+                    else
+                    {
+                        <div class="bgt-indeterminate"></div>
+                    }
+                </div>
+                <span>@ActiveTask.Message</span>
+                <span class="bgt-warn">@Localizer["Bgt_Warnings"]: @ActiveTask.Warnings</span>
+                <span class="bgt-err">@Localizer["Bgt_Errors"]: @ActiveTask.Errors</span>
+                <button @onclick="() => CancelTaskAsync(ActiveTask.Id)">@Localizer["Bgt_Cancel"]</button>
+            </div>
+        }
+        else
+        {
+            <span>@Localizer["Bgt_ActiveNone"]</span>
+        }
+    </div>
+    <div>
+        <h4>@Localizer["Bgt_QueuedTitle"]</h4>
+        @if (QueuedTasks.Any())
+        {
+            <ul>
+                @foreach (var (task, idx) in QueuedTasks.Select((t, i) => (t, i)))
+                {
+                    <li>
+                        <span class="bgt-type">@task.Type</span>
+                        <span class="bgt-status bgt-badge bgt-queued">@Localizer[$"Bgt_Status_{task.Status}"]</span>
+                        <span>@task.EnqueuedUtc.ToLocalTime()</span>
+                        <span>@Localizer["Bgt_Position"]: @(idx + 1)</span>
+                        <button @onclick="() => RemoveQueuedAsync(task.Id)">@Localizer["Bgt_Remove"]</button>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <span>@Localizer["Bgt_ActiveNone"]</span>
+        }
+    </div>
+</div>
