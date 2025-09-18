@@ -7,9 +7,19 @@
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <h3>@Localizer["Title"]</h3>
-<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
+<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
     <button class="icon-btn" @onclick="Back" title='@Localizer["BtnBack"]' aria-label='@Localizer["BtnBack"]'><svg><use href="/icons/sprite.svg#back" /></svg></button>
-    <input placeholder='@Localizer["SearchPlaceholder"]' @bind="_search" @bind:after="OnSearchChanged" style="min-width:260px;" />
+    <input placeholder='@Localizer["SearchPlaceholder"]' @bind="_search" @bind:after="OnSearchChanged" style="min-width:220px;" />
+    <div style="display:flex;align-items:center;gap:.25rem;font-size:.7rem;">
+        <label>@Localizer["From"]:</label>
+        <InputDate @bind-Value="_from" @bind-Value:after="(()=>OnRangeChanged())" />
+        <label>@Localizer["To"]:</label>
+        <InputDate @bind-Value="_to" @bind-Value:after="(()=>OnRangeChanged())" />
+        @if(_from.HasValue || _to.HasValue)
+        {
+            <button class="icon-btn" title='@Localizer["ClearRange"]' aria-label='@Localizer["ClearRange"]' @onclick="ClearRange"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+        }
+    </div>
 </div>
 @if(_loading && _items.Count==0)
 {
@@ -73,6 +83,7 @@ else
     private bool _observerAttached;
     private string _search = string.Empty;
     private CancellationTokenSource? _searchCts;
+    private DateTime? _from; private DateTime? _to;
 
     private enum PostingKind { Bank=0, Contact=1, SavingsPlan=2, Security=3 }
     private enum SecurityPostingSubType { Trade=0, Fee=1, Tax=2, Dividend=3 }
@@ -130,6 +141,17 @@ else
         });
     }
 
+    private void OnRangeChanged()
+    {
+        ResetAndSearch();
+        _ = LoadMoreAsync();
+    }
+
+    private void ClearRange()
+    {
+        _from = null; _to = null; OnRangeChanged();
+    }
+
     private void ResetAndSearch()
     {
         _items.Clear();
@@ -158,8 +180,14 @@ else
         _loading = true;
         try
         {
-            var query = string.IsNullOrWhiteSpace(_search) ? string.Empty : $"&q={Uri.EscapeDataString(_search)}";
-            var resp = await Http.GetAsync($"/api/postings/account/{AccountId}?skip={_skip}&take={PageSize}{query}");
+            var query = new List<string>();
+            query.Add($"skip={_skip}");
+            query.Add($"take={PageSize}");
+            if(!string.IsNullOrWhiteSpace(_search)) query.Add($"q={Uri.EscapeDataString(_search)}");
+            if(_from.HasValue) query.Add($"from={_from:yyyy-MM-dd}");
+            if(_to.HasValue) query.Add($"to={_to:yyyy-MM-dd}");
+            var qs = string.Join('&', query);
+            var resp = await Http.GetAsync($"/api/postings/account/{AccountId}?{qs}");
             if(resp.IsSuccessStatusCode)
             {
                 var chunk = await resp.Content.ReadFromJsonAsync<List<PostingDto>>() ?? new();

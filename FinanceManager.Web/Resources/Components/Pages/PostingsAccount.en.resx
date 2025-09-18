@@ -17,4 +17,7 @@
   <data name="Th_Description" xml:space="preserve"><value>Description</value></data>
   <data name="NoItems" xml:space="preserve"><value>No items</value></data>
   <data name="EndOfList" xml:space="preserve"><value>End of list</value></data>
+  <data name="From" xml:space="preserve"><value>From</value></data>
+  <data name="To" xml:space="preserve"><value>To</value></data>
+  <data name="ClearRange" xml:space="preserve"><value>Reset range</value></data>
 </root>

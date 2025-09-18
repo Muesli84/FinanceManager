@@ -29,7 +29,7 @@ public sealed class PostingsController : ControllerBase
     public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity);
 
     [HttpGet("account/{accountId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, CancellationToken ct = default)
+    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         try
         {
@@ -40,6 +40,18 @@ public sealed class PostingsController : ControllerBase
             // Base postings (bank) for account
             var postings = _db.Postings.AsNoTracking()
                 .Where(p => p.AccountId == accountId && p.Kind == PostingKind.Bank);
+
+            // Filter by date range if specified
+            if (from.HasValue)
+            {
+                var f = from.Value.Date;
+                postings = postings.Where(p => p.BookingDate >= f);
+            }
+            if (to.HasValue)
+            {
+                var t = to.Value.Date.AddDays(1); // inclusive upper bound
+                postings = postings.Where(p => p.BookingDate < t);
+            }
 
             // Left join statement entries for enrichment BEFORE projection
             var joined = from p in postings
@@ -119,14 +131,24 @@ public sealed class PostingsController : ControllerBase
     }
 
     [HttpGet("contact/{contactId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetContactPostings(Guid contactId, int skip = 0, int take = 50, CancellationToken ct = default)
+    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetContactPostings(Guid contactId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
         bool owned = await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == contactId && c.OwnerUserId == _current.UserId, ct);
         if (!owned) { return NotFound(); }
         var query = _db.Postings.AsNoTracking()
-            .Where(p => p.ContactId == contactId && p.Kind == PostingKind.Contact)
-            .OrderByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
+            .Where(p => p.ContactId == contactId && p.Kind == PostingKind.Contact);
+
+        if (from.HasValue)
+        {
+            var f = from.Value.Date; query = query.Where(p => p.BookingDate >= f);
+        }
+        if (to.HasValue)
+        {
+            var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
+        }
+
+        query = query.OrderByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
             .Skip(skip).Take(take);
 
         var result = await (from p in query
@@ -152,14 +174,24 @@ public sealed class PostingsController : ControllerBase
     }
 
     [HttpGet("savings-plan/{planId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetSavingsPlanPostings(Guid planId, int skip = 0, int take = 50, CancellationToken ct = default)
+    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetSavingsPlanPostings(Guid planId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
         bool owned = await _db.SavingsPlans.AsNoTracking().AnyAsync(s => s.Id == planId && s.OwnerUserId == _current.UserId, ct);
         if (!owned) { return NotFound(); }
         var query = _db.Postings.AsNoTracking()
-            .Where(p => p.SavingsPlanId == planId && p.Kind == PostingKind.SavingsPlan)
-            .OrderByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
+            .Where(p => p.SavingsPlanId == planId && p.Kind == PostingKind.SavingsPlan);
+
+        if (from.HasValue)
+        {
+            var f = from.Value.Date; query = query.Where(p => p.BookingDate >= f);
+        }
+        if (to.HasValue)
+        {
+            var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
+        }
+
+        query = query.OrderByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
             .Skip(skip).Take(take);
 
         var result = await (from p in query
@@ -185,14 +217,24 @@ public sealed class PostingsController : ControllerBase
     }
 
     [HttpGet("security/{securityId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetSecurityPostings(Guid securityId, int skip = 0, int take = 50, CancellationToken ct = default)
+    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetSecurityPostings(Guid securityId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
         bool owned = await _db.Securities.AsNoTracking().AnyAsync(s => s.Id == securityId && s.OwnerUserId == _current.UserId, ct);
         if (!owned) { return NotFound(); }
         var query = _db.Postings.AsNoTracking()
-            .Where(p => p.SecurityId == securityId && p.Kind == PostingKind.Security)
-            .OrderByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
+            .Where(p => p.SecurityId == securityId && p.Kind == PostingKind.Security);
+
+        if (from.HasValue)
+        {
+            var f = from.Value.Date; query = query.Where(p => p.BookingDate >= f);
+        }
+        if (to.HasValue)
+        {
+            var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
+        }
+
+        query = query.OrderByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
             .Skip(skip).Take(take);
 
         var result = await (from p in query
