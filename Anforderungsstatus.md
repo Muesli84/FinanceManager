@@ -62,6 +62,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-REP-004  | GuV pro Monat/Kategorie                                         | Noch nicht implementiert                                                             | ✖      |
 | FA-REP-005  | Renditekennzahlen Wertpapiere                                   | Noch nicht implementiert                                                             | ✖      |
 | FA-REP-006  | Umsatz‑Auswertungsgraphen für alle Entitäten mit Postings       | Noch nicht implementiert                                                             | ✖      |
+| FA-REP-007  | Export von Postenlisten (CSV & Excel)                           | Noch nicht implementiert                                                             | ✖      |
 | FA-KPI-001  | Dividenden aktueller Monat                                      | Noch nicht implementiert                                                             | ✖      |
 | FA-KPI-002  | Dividenden aktuelles Jahr                                       | Noch nicht implementiert                                                             | ✖      |
 | FA-KPI-003  | Einnahmen/Ausgaben pro Monat                                    | Erste Graphen auf Bankkontodetailseite                                               | ~      |
