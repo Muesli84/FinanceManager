@@ -105,6 +105,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-REL-002 | Langläufer im Hintergrund mit Fortschritt (Restore)             | BackupRestoreCoordinator + REST Endpunkte + UI Fortschrittsanzeige                   | ✔      |
 | NFA-USAB-001| Responsive UI                                                   | UI: Blazor, Responsive Design teilweise                                              | ~      |
 | NFA-USAB-002| Einheitliche Aktions‑Symbole via Sprite                         | `wwwroot/icons/sprite.svg` gepflegt (u.a. play, download, close ergänzt)             | ✔      |
+| NFA-USAB-003| Bestätigungsdialoge für kritische Aktionen + globale Abschalt-Option | Noch nicht implementiert (geplanter zentraler `IConfirmationService`, Dialog-Component, UserPreference `ShowConfirmations`) | ✖      |
 | NFA-ARCH-001| Trennung Domäne/Präsentation                                   | Shared Library, Blazor, Services                                                     | ✔      |
 | NFA-LOG-001 | Zentrales Logging                                               | Program.cs, Serilog                                                                  | ✔      |
 | NFA-I18N-001| Zwei Sprachen, Fallback                                         | Program.cs, Ressourcenstruktur                                                       | ✔      |
@@ -115,6 +116,9 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✔ = umgesetzt / vorhanden  
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
+
+Änderungen (18.09.2025):
+- Neu: NFA-USAB-003 hinzugefügt: Einheitliche Bestätigungsdialoge für kritische/irreversible Aktionen inkl. globaler Benutzerpräferenz zum Unterdrücken (Default aktiv). Umsetzung: geplanter `IConfirmationService`, zentrales `ConfirmDialog` Component, UserPreference `ShowConfirmations`.
 
 Änderungen (17.09.2025):
 - I18N Clean-up: `Home.razor` (Import-Button, KPI-Platzhalter) vollständig lokalisiert; neue Ressourcen-Schlüssel ergänzt.
@@ -150,7 +154,6 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - FA-SPAR-006 Beschreibung erweitert: Kontoauszugs‑Prüfung meldet zusätzlich fällige Pläne (ohne Monatsbuchung, nicht in offenem Auszug) als Information.
 - FA-SPAR-001 erweitert: Neuanlage eines Sparplans direkt aus Kontoauszugseintrag inkl. automatischer Zuordnung und Rücksprung.
 - FA-SPAR-009 von ✖ auf ✔: Archivierung bei Ausbuchung via Archivierungs-Flag am Kontoauszugseintrag; Validierung `SAVINGSPLAN_ARCHIVE_MISMATCH` bei Abweichung; Archivierung und Info `SAVINGSPLAN_ARCHIVED` bei Buchung.
-- FA-AUSZ-003 Beschreibung erweitert: Archivierungs-Flag pro Eintrag in der Entry‑Detail‑UI; Persistierung über neuen API‑Endpoint.
 - Tests ergänzt: Unit-Tests für Fehlfall (Mismatch) und Erfolgsfall (Archivierung) der Archivierungsfunktion.
 
 Änderungen (12.09.2025):
@@ -176,4 +179,4 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
 - Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
-*Letzte Aktualisierung: 17.09.2025*
+*Letzte Aktualisierung: 18.09.2025*
