@@ -106,6 +106,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-SEC-008 | Admin-Audit Logging                                                     | Noch nicht implementiert                                                             | ✖      |
 | NFA-REL-001 | Fehler beim Kursabruf blockiert Hauptfunktionen nicht                   | Worker isoliert, Fehler/Rate‑Limit werden gefangen und verhindern keine UI/API       | ✔      |
 | NFA-REL-002 | Langläufer im Hintergrund mit Fortschritt (Restore)                     | BackupRestoreCoordinator + REST Endpunkte + UI Fortschrittsanzeige                   | ✔      |
+| NFA-REL-003 | Vereinheitlichte Hintergrundaufgaben-Verwaltung (Single Runner + Queue) | Noch nicht implementiert                                                             | ✖      |
 | NFA-USAB-001| Responsive UI                                                           | UI: Blazor, Responsive Design teilweise                                              | ~      |
 | NFA-USAB-002| Einheitliche Aktions‑Symbole via Sprite                                 | `wwwroot/icons/sprite.svg` gepflegt (u.a. play, download, close ergänzt)             | ✔      |
 | NFA-USAB-003| Bestätigungsdialoge für kritische Aktionen + globale Abschalt-Option    | Noch nicht implementiert (geplanter zentraler `IConfirmationService`, Dialog-Component, UserPreference `ShowConfirmations`) | ✖      |
