@@ -1256,4 +1256,17 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 nextDraft = await _db.StatementDrafts.OrderBy(d => d.Id).Where(d => d.Status == StatementDraftStatus.Draft).LastOrDefaultAsync();
         return nextDraft?.Id;
     }
+
+    public async Task<bool> DeleteEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return false; }
+        if (draft.Status != StatementDraftStatus.Draft) { return false; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return false; }
+        _db.StatementDraftEntries.Remove(entry);
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
 }

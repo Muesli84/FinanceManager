@@ -33,6 +33,9 @@ else
             <button class="icon-btn" @onclick="BookEntry" disabled="@_hasUnsavedChanges" title='@Localizer["BtnBook"]' aria-label='@Localizer["BtnBook"]'>
                 <svg><use href="/icons/sprite.svg#postings" /></svg>
             </button>
+            <button class="icon-btn danger" @onclick="DeleteEntry" disabled="@_hasUnsavedChanges" title='@Localizer["BtnDelete"]' aria-label='@Localizer["BtnDelete"]'>
+                <svg><use href="/icons/sprite.svg#clear" /></svg>
+            </button>
         </div>
         <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
             <button class="icon-btn" disabled="@(_selectedContactId==null || _hasUnsavedChanges)" @onclick="OpenContactDetail" title='@Localizer["BtnOpenContact"]' aria-label='@Localizer["BtnOpenContact"]'>
@@ -524,6 +527,15 @@ else
         else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             _vm = null;
+        }
+    }
+
+    private async Task DeleteEntry()
+    {
+        var resp = await Http.DeleteAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}");
+        if (resp.IsSuccessStatusCode)
+        {
+            Nav.NavigateTo($"/statement-drafts/{DraftId}");
         }
     }
 

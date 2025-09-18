@@ -456,4 +456,11 @@ public sealed class StatementDraftsController : ControllerBase
             ct);
         return dto == null ? NotFound() : Ok(dto);
     }
+
+    [HttpDelete("{draftId:guid}/entries/{entryId:guid}")]
+    public async Task<IActionResult> DeleteEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
+    {
+        var ok = await _drafts.DeleteEntryAsync(draftId, entryId, _current.UserId, ct);
+        return ok ? NoContent() : NotFound();
+    }
 }

@@ -1,128 +1,348 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-	<xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
-		<xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
-		<xsd:element name="root" msdata:IsDataSet="true">
-			<xsd:complexType>
-				<xsd:choice maxOccurs="unbounded">
-					<xsd:element name="metadata">
-						<xsd:complexType>
-							<xsd:sequence>
-								<xsd:element name="value" type="xsd:string" minOccurs="0" />
-							</xsd:sequence>
-							<xsd:attribute name="name" use="required" type="xsd:string" />
-							<xsd:attribute name="type" type="xsd:string" />
-							<xsd:attribute name="mimetype" type="xsd:string" />
-							<xsd:attribute ref="xml:space" />
-						</xsd:complexType>
-					</xsd:element>
-					<xsd:element name="assembly">
-						<xsd:complexType>
-							<xsd:attribute name="alias" type="xsd:string" />
-							<xsd:attribute name="name" type="xsd:string" />
-						</xsd:complexType>
-					</xsd:element>
-					<xsd:element name="data">
-						<xsd:complexType>
-							<xsd:sequence>
-								<xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
-								<xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
-							</xsd:sequence>
-							<xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
-							<xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
-							<xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
-							<xsd:attribute ref="xml:space" />
-						</xsd:complexType>
-					</xsd:element>
-					<xsd:element name="resheader">
-						<xsd:complexType>
-							<xsd:sequence>
-								<xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
-							</xsd:sequence>
-							<xsd:attribute name="name" type="xsd:string" use="required" />
-						</xsd:complexType>
-					</xsd:element>
-				</xsd:choice>
-			</xsd:complexType>
-		</xsd:element>
-	</xsd:schema>
-  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
-  <resheader name="version"><value>2.0</value></resheader>
-  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="PageTitle" xml:space="preserve"><value>Kontoauszug</value></data>
-  <data name="Title" xml:space="preserve"><value>Kontoauszug-Eintrag</value></data>
-  <data name="Loading" xml:space="preserve"><value>Lade...</value></data>
-  <data name="BtnBack" xml:space="preserve"><value>Zurück</value></data>
-  <data name="BtnSave" xml:space="preserve"><value>Speichern</value></data>
-  <data name="BtnReclassify" xml:space="preserve"><value>Neu klassifizieren</value></data>
-  <data name="BtnValidate" xml:space="preserve"><value>Prüfen</value></data>
-  <data name="BtnAssignSplit" xml:space="preserve"><value>Aufteilungs-Auszug zuordnen</value></data>
-  <data name="BtnBook" xml:space="preserve"><value>Buchen</value></data>
-  <data name="BtnOpenContact" xml:space="preserve"><value>Kontakt öffnen</value></data>
-  <data name="BtnOpenSecurity" xml:space="preserve"><value>Wertpapier öffnen</value></data>
-  <data name="BtnOpenSavingsPlan" xml:space="preserve"><value>Sparplan öffnen</value></data>
-  <data name="BtnOpenLinkedSplit" xml:space="preserve"><value>Verknüpften Aufteilungs-Auszug öffnen</value></data>
-  <data name="BtnRemoveAssignment" xml:space="preserve"><value>Zuordnung entfernen</value></data>
-  <data name="BtnPrevEntry" xml:space="preserve"><value>Vorheriger Eintrag</value></data>
-  <data name="BtnNextOpenEntry" xml:space="preserve"><value>Nächster offener Eintrag</value></data>
-  <data name="DraftFile" xml:space="preserve"><value>Datei</value></data>
-  <data name="Validation_Header" xml:space="preserve"><value>Validierung</value></data>
-  <data name="Validation_NoIssues" xml:space="preserve"><value>Keine Probleme gefunden.</value></data>
-  <data name="Warnings" xml:space="preserve"><value>Warnungen</value></data>
-  <data name="BtnBookAnyway" xml:space="preserve"><value>Trotzdem buchen</value></data>
-  <data name="Cancel" xml:space="preserve"><value>Abbrechen</value></data>
-  <data name="EditMode" xml:space="preserve"><value>Bearbeitungsmodus</value></data>
-  <data name="Label_BookingDate" xml:space="preserve"><value>Buchungsdatum</value></data>
-  <data name="Label_ValutaDate" xml:space="preserve"><value>Valutadatum</value></data>
-  <data name="Label_Amount" xml:space="preserve"><value>Betrag</value></data>
-  <data name="Label_Currency" xml:space="preserve"><value>Währung</value></data>
-  <data name="Label_Subject" xml:space="preserve"><value>Betreff</value></data>
-  <data name="Label_Recipient" xml:space="preserve"><value>Empfänger</value></data>
-  <data name="Label_Description" xml:space="preserve"><value>Beschreibung</value></data>
-  <data name="BtnReset" xml:space="preserve"><value>Zurücksetzen</value></data>
-  <data name="Th_BookingDate" xml:space="preserve"><value>Buchungsdatum</value></data>
-  <data name="Th_ValutaDate" xml:space="preserve"><value>Valuta</value></data>
-  <data name="Th_Amount" xml:space="preserve"><value>Betrag</value></data>
-  <data name="SplitSum" xml:space="preserve"><value>Summe Aufteilungen</value></data>
-  <data name="Diff" xml:space="preserve"><value>Differenz</value></data>
-  <data name="Th_Subject" xml:space="preserve"><value>Betreff</value></data>
-  <data name="Th_Recipient" xml:space="preserve"><value>Empfänger</value></data>
-  <data name="Th_Description" xml:space="preserve"><value>Beschreibung</value></data>
-  <data name="Yes" xml:space="preserve"><value>Ja</value></data>
-  <data name="No" xml:space="preserve"><value>Nein</value></data>
-  <data name="Th_Announced" xml:space="preserve"><value>Angekündigt</value></data>
-  <data name="Th_Status" xml:space="preserve"><value>Status</value></data>
-  <data name="Th_Contact" xml:space="preserve"><value>Kontakt</value></data>
-  <data name="Placeholder_FilterContacts" xml:space="preserve"><value>Kontakte filtern...</value></data>
-  <data name="None" xml:space="preserve"><value>Keiner</value></data>
-  <data name="NoMatches" xml:space="preserve"><value>Keine Treffer</value></data>
-  <data name="BtnNewContact" xml:space="preserve"><value>Neuer Kontakt</value></data>
-  <data name="Th_CostNeutral" xml:space="preserve"><value>Kostenneutral</value></data>
-  <data name="Th_SavingsPlan" xml:space="preserve"><value>Sparplan</value></data>
-  <data name="Placeholder_FilterSavingsPlans" xml:space="preserve"><value>Sparpläne filtern...</value></data>
-  <data name="BtnNewSavingsPlan" xml:space="preserve"><value>Neuer Sparplan</value></data>
-  <data name="ArchiveSavingsPlanOnBooking" xml:space="preserve"><value>Sparplan nach Buchung archivieren</value></data>
-  <data name="Th_Security" xml:space="preserve"><value>Wertpapier</value></data>
-  <data name="Placeholder_FilterSecurities" xml:space="preserve"><value>Wertpapiere filtern...</value></data>
-  <data name="BtnNewSecurity" xml:space="preserve"><value>Neues Wertpapier</value></data>
-  <data name="Label_TxType" xml:space="preserve"><value>Transaktionstyp</value></data>
-  <data name="Tx_Buy" xml:space="preserve"><value>Kauf</value></data>
-  <data name="Tx_Sell" xml:space="preserve"><value>Verkauf</value></data>
-  <data name="Tx_DividendOrInterest" xml:space="preserve"><value>Dividende/Zinsen</value></data>
-  <data name="Label_Quantity" xml:space="preserve"><value>Menge</value></data>
-  <data name="Label_Fee" xml:space="preserve"><value>Gebühr</value></data>
-  <data name="Label_Tax" xml:space="preserve"><value>Steuer</value></data>
-  <data name="Split_SelectTitle" xml:space="preserve"><value>Aufteilungs-Auszug auswählen</value></data>
-  <data name="Split_CurrentlyLinked" xml:space="preserve"><value>Aktuell verknüpft:</value></data>
-  <data name="Split_SelectHint" xml:space="preserve"><value>Bitte wählen Sie einen Aufteilungs-Auszug aus, der zu diesem Eintrag passt.</value></data>
-  <data name="Filter" xml:space="preserve"><value>Filter</value></data>
-  <data name="Entries" xml:space="preserve"><value>Einträge</value></data>
-  <data name="Total" xml:space="preserve"><value>Summe</value></data>
-  <data name="Apply" xml:space="preserve"><value>Übernehmen</value></data>
-  <data name="ConfirmUnsavedChanges" xml:space="preserve"><value>Es gibt ungespeicherte Änderungen. Trotzdem fortfahren?</value></data>
-  <data name="Err_InvalidQuantity" xml:space="preserve"><value>Ungültige Menge.</value></data>
-  <data name="Err_InvalidFee" xml:space="preserve"><value>Ungültige Gebühr.</value></data>
-  <data name="Err_InvalidTax" xml:space="preserve"><value>Ungültige Steuer.</value></data>
-  <data name="Err_Book" xml:space="preserve"><value>Buchung fehlgeschlagen.</value></data>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Kontoauszug</value>
+  </data>
+  <data name="Title" xml:space="preserve">
+    <value>Kontoauszug-Eintrag</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Lade...</value>
+  </data>
+  <data name="BtnBack" xml:space="preserve">
+    <value>Zurück</value>
+  </data>
+  <data name="BtnSave" xml:space="preserve">
+    <value>Speichern</value>
+  </data>
+  <data name="BtnReclassify" xml:space="preserve">
+    <value>Neu klassifizieren</value>
+  </data>
+  <data name="BtnValidate" xml:space="preserve">
+    <value>Prüfen</value>
+  </data>
+  <data name="BtnAssignSplit" xml:space="preserve">
+    <value>Aufteilungs-Auszug zuordnen</value>
+  </data>
+  <data name="BtnBook" xml:space="preserve">
+    <value>Buchen</value>
+  </data>
+  <data name="BtnOpenContact" xml:space="preserve">
+    <value>Kontakt öffnen</value>
+  </data>
+  <data name="BtnOpenSecurity" xml:space="preserve">
+    <value>Wertpapier öffnen</value>
+  </data>
+  <data name="BtnOpenSavingsPlan" xml:space="preserve">
+    <value>Sparplan öffnen</value>
+  </data>
+  <data name="BtnOpenLinkedSplit" xml:space="preserve">
+    <value>Verknüpften Aufteilungs-Auszug öffnen</value>
+  </data>
+  <data name="BtnRemoveAssignment" xml:space="preserve">
+    <value>Zuordnung entfernen</value>
+  </data>
+  <data name="BtnPrevEntry" xml:space="preserve">
+    <value>Vorheriger Eintrag</value>
+  </data>
+  <data name="BtnNextOpenEntry" xml:space="preserve">
+    <value>Nächster offener Eintrag</value>
+  </data>
+  <data name="DraftFile" xml:space="preserve">
+    <value>Datei</value>
+  </data>
+  <data name="Validation_Header" xml:space="preserve">
+    <value>Validierung</value>
+  </data>
+  <data name="Validation_NoIssues" xml:space="preserve">
+    <value>Keine Probleme gefunden.</value>
+  </data>
+  <data name="Warnings" xml:space="preserve">
+    <value>Warnungen</value>
+  </data>
+  <data name="BtnBookAnyway" xml:space="preserve">
+    <value>Trotzdem buchen</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="EditMode" xml:space="preserve">
+    <value>Bearbeitungsmodus</value>
+  </data>
+  <data name="Label_BookingDate" xml:space="preserve">
+    <value>Buchungsdatum</value>
+  </data>
+  <data name="Label_ValutaDate" xml:space="preserve">
+    <value>Valutadatum</value>
+  </data>
+  <data name="Label_Amount" xml:space="preserve">
+    <value>Betrag</value>
+  </data>
+  <data name="Label_Currency" xml:space="preserve">
+    <value>Währung</value>
+  </data>
+  <data name="Label_Subject" xml:space="preserve">
+    <value>Betreff</value>
+  </data>
+  <data name="Label_Recipient" xml:space="preserve">
+    <value>Empfänger</value>
+  </data>
+  <data name="Label_Description" xml:space="preserve">
+    <value>Beschreibung</value>
+  </data>
+  <data name="BtnReset" xml:space="preserve">
+    <value>Zurücksetzen</value>
+  </data>
+  <data name="Th_BookingDate" xml:space="preserve">
+    <value>Buchungsdatum</value>
+  </data>
+  <data name="Th_ValutaDate" xml:space="preserve">
+    <value>Valuta</value>
+  </data>
+  <data name="Th_Amount" xml:space="preserve">
+    <value>Betrag</value>
+  </data>
+  <data name="SplitSum" xml:space="preserve">
+    <value>Summe Aufteilungen</value>
+  </data>
+  <data name="Diff" xml:space="preserve">
+    <value>Differenz</value>
+  </data>
+  <data name="Th_Subject" xml:space="preserve">
+    <value>Betreff</value>
+  </data>
+  <data name="Th_Recipient" xml:space="preserve">
+    <value>Empfänger</value>
+  </data>
+  <data name="Th_Description" xml:space="preserve">
+    <value>Beschreibung</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Ja</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>Nein</value>
+  </data>
+  <data name="Th_Announced" xml:space="preserve">
+    <value>Angekündigt</value>
+  </data>
+  <data name="Th_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Th_Contact" xml:space="preserve">
+    <value>Kontakt</value>
+  </data>
+  <data name="Placeholder_FilterContacts" xml:space="preserve">
+    <value>Kontakte filtern...</value>
+  </data>
+  <data name="None" xml:space="preserve">
+    <value>Keiner</value>
+  </data>
+  <data name="NoMatches" xml:space="preserve">
+    <value>Keine Treffer</value>
+  </data>
+  <data name="BtnNewContact" xml:space="preserve">
+    <value>Neuer Kontakt</value>
+  </data>
+  <data name="Th_CostNeutral" xml:space="preserve">
+    <value>Kostenneutral</value>
+  </data>
+  <data name="Th_SavingsPlan" xml:space="preserve">
+    <value>Sparplan</value>
+  </data>
+  <data name="Placeholder_FilterSavingsPlans" xml:space="preserve">
+    <value>Sparpläne filtern...</value>
+  </data>
+  <data name="BtnNewSavingsPlan" xml:space="preserve">
+    <value>Neuer Sparplan</value>
+  </data>
+  <data name="ArchiveSavingsPlanOnBooking" xml:space="preserve">
+    <value>Sparplan nach Buchung archivieren</value>
+  </data>
+  <data name="Th_Security" xml:space="preserve">
+    <value>Wertpapier</value>
+  </data>
+  <data name="Placeholder_FilterSecurities" xml:space="preserve">
+    <value>Wertpapiere filtern...</value>
+  </data>
+  <data name="BtnNewSecurity" xml:space="preserve">
+    <value>Neues Wertpapier</value>
+  </data>
+  <data name="Label_TxType" xml:space="preserve">
+    <value>Transaktionstyp</value>
+  </data>
+  <data name="Tx_Buy" xml:space="preserve">
+    <value>Kauf</value>
+  </data>
+  <data name="Tx_Sell" xml:space="preserve">
+    <value>Verkauf</value>
+  </data>
+  <data name="Tx_DividendOrInterest" xml:space="preserve">
+    <value>Dividende/Zinsen</value>
+  </data>
+  <data name="Label_Quantity" xml:space="preserve">
+    <value>Menge</value>
+  </data>
+  <data name="Label_Fee" xml:space="preserve">
+    <value>Gebühr</value>
+  </data>
+  <data name="Label_Tax" xml:space="preserve">
+    <value>Steuer</value>
+  </data>
+  <data name="Split_SelectTitle" xml:space="preserve">
+    <value>Aufteilungs-Auszug auswählen</value>
+  </data>
+  <data name="Split_CurrentlyLinked" xml:space="preserve">
+    <value>Aktuell verknüpft:</value>
+  </data>
+  <data name="Split_SelectHint" xml:space="preserve">
+    <value>Bitte wählen Sie einen Aufteilungs-Auszug aus, der zu diesem Eintrag passt.</value>
+  </data>
+  <data name="Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="Entries" xml:space="preserve">
+    <value>Einträge</value>
+  </data>
+  <data name="Total" xml:space="preserve">
+    <value>Summe</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>Übernehmen</value>
+  </data>
+  <data name="ConfirmUnsavedChanges" xml:space="preserve">
+    <value>Es gibt ungespeicherte Änderungen. Trotzdem fortfahren?</value>
+  </data>
+  <data name="Err_InvalidQuantity" xml:space="preserve">
+    <value>Ungültige Menge.</value>
+  </data>
+  <data name="Err_InvalidFee" xml:space="preserve">
+    <value>Ungültige Gebühr.</value>
+  </data>
+  <data name="Err_InvalidTax" xml:space="preserve">
+    <value>Ungültige Steuer.</value>
+  </data>
+  <data name="Err_Book" xml:space="preserve">
+    <value>Buchung fehlgeschlagen.</value>
+  </data>
+  <data name="BtnDelete" xml:space="preserve">
+    <value>Eintrag löschen</value>
+  </data>
 </root>
