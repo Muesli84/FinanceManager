@@ -5,4 +5,16 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="PageTitle" xml:space="preserve"><value>Buchungen (Konto)</value></data>
+  <data name="Title" xml:space="preserve"><value>Konto-Buchungen</value></data>
+  <data name="BtnBack" xml:space="preserve"><value>Zurück</value></data>
+  <data name="SearchPlaceholder" xml:space="preserve"><value>Suchen…</value></data>
+  <data name="Loading" xml:space="preserve"><value>Laden…</value></data>
+  <data name="Th_Date" xml:space="preserve"><value>Datum</value></data>
+  <data name="Th_Amount" xml:space="preserve"><value>Betrag</value></data>
+  <data name="Th_Kind" xml:space="preserve"><value>Art</value></data>
+  <data name="Th_Recipient" xml:space="preserve"><value>Empfänger</value></data>
+  <data name="Th_Subject" xml:space="preserve"><value>Verwendungszweck</value></data>
+  <data name="Th_Description" xml:space="preserve"><value>Beschreibung</value></data>
+  <data name="NoItems" xml:space="preserve"><value>Keine Einträge</value></data>
+  <data name="EndOfList" xml:space="preserve"><value>Ende der Liste</value></data>
 </root>

@@ -322,7 +322,11 @@ public sealed class StatementDraftsController : ControllerBase
         return File(entity.OriginalFileContent, contentType, entity.OriginalFileName);
     }
 
-    public sealed record AddEntryRequest([property:Required] DateTime BookingDate, [property:Required] decimal Amount, [property:Required, MaxLength(500)] string Subject);
+    // FIX: Apply DataAnnotations to constructor parameters (not properties) for record validation
+    public sealed record AddEntryRequest(
+        [Required] DateTime BookingDate,
+        [Required] decimal Amount,
+        [Required, MaxLength(500)] string Subject);
     public sealed record CommitRequest(Guid AccountId, ImportFormat Format);
     public sealed record SetContactRequest(Guid? ContactId);
     public sealed record SetCostNeutralRequest(bool? IsCostNeutral);
@@ -352,7 +356,7 @@ public sealed class StatementDraftsController : ControllerBase
         [FromBody] SetEntrySecurityRequest body,
         CancellationToken ct)
     {
-        // Service-Aufruf / Persistenz: hier exemplarisch direkt über Draft-Service
+        // Service-Aufruf / Persistenz: hier exemplarisch direkt ?ber Draft-Service
         var draft = await _drafts.SetEntrySecurityAsync(
             draftId,
             entryId,

@@ -730,13 +730,14 @@ else
                 await LoadEntryAsync();
                 InitCoreEdit();
                 ClearDirty();
+                _editMode = false;
             }
         }
         catch(Exception ex)
         {
             _coreError = ex.Message;
         }
-        _savingCore = false;
+        _savingCore = false;        
     }
     private void ResetCoreEdits() { InitCoreEdit(); ClearDirty(); }
 
