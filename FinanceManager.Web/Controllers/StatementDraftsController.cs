@@ -15,6 +15,7 @@ using System.Linq;
 using System.Net.Mime;
 using FinanceManager.Domain.Securities;
 using FinanceManager.Web.Services;
+using System.Text.Json;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -27,10 +28,19 @@ public sealed class StatementDraftsController : ControllerBase
     private readonly IStatementDraftService _drafts;
     private readonly ICurrentUserService _current;
     private readonly ILogger<StatementDraftsController> _logger;
-    private readonly IClassificationCoordinator _classification;
-    private readonly IBookingCoordinator _booking;
-    public StatementDraftsController(IStatementDraftService drafts, ICurrentUserService current, ILogger<StatementDraftsController> logger, IClassificationCoordinator classification, IBookingCoordinator booking)
-    { _drafts = drafts; _current = current; _logger = logger; _classification = classification; _booking = booking; }
+    private readonly IBackgroundTaskManager _taskManager; // unified background task system
+
+    public StatementDraftsController(
+        IStatementDraftService drafts,
+        ICurrentUserService current,
+        ILogger<StatementDraftsController> logger,
+        IBackgroundTaskManager taskManager)
+    {
+        _drafts = drafts;
+        _current = current;
+        _logger = logger;
+        _taskManager = taskManager;
+    }
 
     public sealed record UploadRequest([Required] string FileName);
 
@@ -46,95 +56,101 @@ public sealed class StatementDraftsController : ControllerBase
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> UploadAsync([FromForm] IFormFile file, CancellationToken ct)
     {
-        if (file == null || file.Length == 0) return BadRequest(new { error = "File required" });
+        if (file == null || file.Length == 0) { return BadRequest(new { error = "File required" }); }
         await using var ms = new MemoryStream();
         await file.CopyToAsync(ms, ct);
-        StatementDraftDto firstDraft = null;
+        StatementDraftDto? firstDraft = null;
         await foreach (var draft in _drafts.CreateDraftAsync(_current.UserId, file.FileName, ms.ToArray(), ct))
         {
-            firstDraft = firstDraft ?? draft;
+            firstDraft ??= draft;
         }
         return Ok(firstDraft);
     }
 
+    // Classification status via background task queue
     [HttpGet("classify/status")]
     public IActionResult GetClassifyStatus()
     {
-        var s = _classification.GetStatus(_current.UserId);
-        if (s == null) { return Ok(new { running = false, processed = 0, total = 0, message = (string?)null }); }
-        return Ok(new { running = s.Running, processed = s.Processed, total = s.Total, message = s.Message });
+        var task = _taskManager.GetAll()
+            .Where(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.ClassifyAllDrafts)
+            .OrderByDescending(t => t.EnqueuedUtc)
+            .FirstOrDefault(t => t.Status is BackgroundTaskStatus.Running or BackgroundTaskStatus.Queued);
+
+        if (task == null)
+        {
+            return Ok(new { running = false, processed = 0, total = 0, message = (string?)null });
+        }
+
+        return Ok(new
+        {
+            running = task.Status == BackgroundTaskStatus.Running || task.Status == BackgroundTaskStatus.Queued,
+            processed = task.Processed ?? 0,
+            total = task.Total ?? 0,
+            message = task.Message
+        });
     }
 
-    [HttpPost("classify")] // trigger or continue
-    public async Task<IActionResult> ClassifyAllAsync(CancellationToken ct)
+    [HttpPost("classify")]
+    public IActionResult ClassifyAllAsync()
     {
-        try
+        var existing = _taskManager.GetAll()
+            .FirstOrDefault(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.ClassifyAllDrafts && (t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued));
+        if (existing != null)
         {
-            // allow up to 2 seconds per request before returning a "still working" message
-            var status = await _classification.ProcessAsync(_current.UserId, TimeSpan.FromSeconds(2), ct);
-            if (status.Running)
-            {
-                return Accepted(new { running = true, message = status.Message, processed = status.Processed, total = status.Total });
-            }
-            // finished -> return latest drafts snapshot
-            var drafts = await _drafts.GetOpenDraftsAsync(_current.UserId, 0, 3, ct);
-            return Ok(new { running = false, processed = status.Processed, total = status.Total, drafts });
+            return Accepted(new { running = true, processed = existing.Processed ?? 0, total = existing.Total ?? 0, message = existing.Message });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "ClassifyAll failed");
-            return BadRequest(new { error = ex.Message });
-        }
+
+        var info = _taskManager.Enqueue(BackgroundTaskType.ClassifyAllDrafts, _current.UserId);
+        _logger.LogInformation("Enqueued classification background task {TaskId} for user {UserId}", info.Id, _current.UserId);
+        return Accepted(new { running = true, processed = 0, total = 0, message = "Queued" });
     }
 
     [HttpGet("book-all/status")]
     public IActionResult GetBookAllStatus()
     {
-        var s = _booking.GetStatus(_current.UserId);
-        if (s == null) { return Ok(new { running = false, processed = 0, failed = 0, total = 0, warnings = 0, errors = 0, message = (string?)null, issues = Array.Empty<object>() }); }
-        return Ok(new { running = s.Running, processed = s.Processed, failed = s.Failed, total = s.Total, warnings = s.Warnings, errors = s.Errors, message = s.Message, issues = s.ErrorDetails });
+        var task = _taskManager.GetAll()
+            .Where(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.BookAllDrafts)
+            .OrderByDescending(t => t.EnqueuedUtc)
+            .FirstOrDefault(t => t.Status is BackgroundTaskStatus.Running or BackgroundTaskStatus.Queued);
+        if (task == null)
+        {
+            return Ok(new { running = false, processed = 0, failed = 0, total = 0, warnings = 0, errors = 0, message = (string?)null, issues = Array.Empty<object>() });
+        }
+        return Ok(new { running = task.Status == BackgroundTaskStatus.Running, processed = task.Processed ?? 0, failed = 0, total = task.Total ?? 0, warnings = task.Warnings, errors = task.Errors, message = task.Message, issues = Array.Empty<object>() });
     }
 
-    [HttpPost("book-all")] // trigger/continue
-    public async Task<IActionResult> BookAllAsync([FromBody] MassBookRequest req, CancellationToken ct)
+    public sealed record MassBookRequest(bool IgnoreWarnings, bool AbortOnFirstIssue, bool BookEntriesIndividually);
+
+    [HttpPost("book-all")]
+    public IActionResult BookAllAsync([FromBody] MassBookRequest req)
     {
-        try
+        var existing = _taskManager.GetAll()
+            .FirstOrDefault(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.BookAllDrafts && (t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued));
+        if (existing != null)
         {
-            var status = await _booking.ProcessAsync(_current.UserId, req.IgnoreWarnings, req.AbortOnFirstIssue, req.BookEntriesIndividually, TimeSpan.FromSeconds(2), ct);
-            if (status.Running)
-            {
-                return Accepted(new { running = true, message = status.Message, processed = status.Processed, failed = status.Failed, total = status.Total, warnings = status.Warnings, errors = status.Errors, issues = status.ErrorDetails });
-            }
-            return Ok(new { running = false, processed = status.Processed, failed = status.Failed, total = status.Total, warnings = status.Warnings, errors = status.Errors, issues = status.ErrorDetails });
+            return Accepted(new { running = true, processed = existing.Processed ?? 0, failed = 0, total = existing.Total ?? 0, warnings = existing.Warnings, errors = existing.Errors, message = existing.Message, issues = Array.Empty<object>() });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "BookAll failed");
-            return BadRequest(new { error = ex.Message });
-        }
+        var payload = new { req.IgnoreWarnings, req.AbortOnFirstIssue, req.BookEntriesIndividually };
+        var info = _taskManager.Enqueue(BackgroundTaskType.BookAllDrafts, _current.UserId, payload, allowDuplicate: false);
+        _logger.LogInformation("Enqueued booking background task {TaskId} for user {UserId}", info.Id, _current.UserId);
+        return Accepted(new { running = true, processed = 0, failed = 0, total = 0, warnings = 0, errors = 0, message = "Queued", issues = Array.Empty<object>() });
     }
 
     [HttpPost("book-all/cancel")]
     public IActionResult CancelBookAll()
     {
-        _booking.Cancel(_current.UserId);
+        var task = _taskManager.GetAll().FirstOrDefault(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.BookAllDrafts && t.Status == BackgroundTaskStatus.Running);
+        if (task == null) { return Accepted(); }
+        _taskManager.TryCancel(task.Id);
         return Accepted();
     }
-
-    public sealed record MassBookRequest(bool IgnoreWarnings, bool AbortOnFirstIssue, bool BookEntriesIndividually);
 
     [HttpGet("{draftId:guid}")]
     public async Task<IActionResult> GetAsync(Guid draftId, [FromQuery] bool headerOnly = false, CancellationToken ct = default)
     {
-        StatementDraftDto? draft;
-        if (headerOnly)
-        {
-            draft = await _drafts.GetDraftHeaderAsync(draftId, _current.UserId, ct);
-        }
-        else
-        {
-            draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
-        }
+        StatementDraftDto? draft = headerOnly
+            ? await _drafts.GetDraftHeaderAsync(draftId, _current.UserId, ct)
+            : await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
         return draft is null ? NotFound() : Ok(draft);
     }
 
@@ -144,10 +160,7 @@ public sealed class StatementDraftsController : ControllerBase
         var draft = await _drafts.GetDraftHeaderAsync(draftId, _current.UserId, ct);
         var ordered = (await _drafts.GetDraftEntriesAsync(draftId, ct)).OrderBy(e => e.BookingDate).ThenBy(e => e.Id).ToList();
         var entry = await _drafts.GetDraftEntryAsync(draftId, entryId, ct);
-
-
         if (entry is null) { return NotFound(); }
-
         var index = ordered.FindIndex(e => e.Id == entryId);
         var prev = index > 0 ? ordered[index - 1].Id : (Guid?)null;
         var next = index < ordered.Count - 1 ? ordered[index + 1].Id : (Guid?)null;
@@ -166,7 +179,7 @@ public sealed class StatementDraftsController : ControllerBase
         }
 
         Guid? bankContactId = null;
-        if (draft.DetectedAccountId.HasValue)
+        if (draft!.DetectedAccountId.HasValue)
         {
             var accountService = HttpContext.RequestServices.GetRequiredService<IAccountService>();
             var account = await accountService.GetAsync(draft.DetectedAccountId.Value, _current.UserId, ct);
@@ -190,7 +203,7 @@ public sealed class StatementDraftsController : ControllerBase
     [HttpPost("{draftId:guid}/entries")]
     public async Task<IActionResult> AddEntryAsync(Guid draftId, [FromBody] AddEntryRequest req, CancellationToken ct)
     {
-        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
         var draft = await _drafts.AddEntryAsync(draftId, _current.UserId, req.BookingDate, req.Amount, req.Subject, ct);
         return draft is null ? NotFound() : Ok(draft);
     }
@@ -203,14 +216,14 @@ public sealed class StatementDraftsController : ControllerBase
             var draft = await _drafts.ClassifyAsync(draftId, null, _current.UserId, ct);
             return draft is null ? NotFound() : Ok(draft);
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             return BadRequest(ex);
         }
     }
 
     [HttpPost("{draftId:guid}/classify/{entryId:guid}")]
-    public async Task<IActionResult> ClassifyEntryAsync(Guid draftId, Guid entryId,  CancellationToken ct)
+    public async Task<IActionResult> ClassifyEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
         try
         {
@@ -274,8 +287,6 @@ public sealed class StatementDraftsController : ControllerBase
             var draft = await _drafts.SetEntrySplitDraftAsync(draftId, entryId, body.SplitDraftId, _current.UserId, ct);
             if (draft == null) { return NotFound(); }
             var entry = draft.Entries.First(e => e.Id == entryId);
-
-            // Summen nur bei gesetztem SplitDraftId berechnen
             decimal? splitSum = null;
             decimal? diff = null;
             if (entry.SplitDraftId != null)
@@ -287,13 +298,7 @@ public sealed class StatementDraftsController : ControllerBase
                     .SumAsync(e => e.Amount, ct);
                 diff = entry.Amount - splitSum;
             }
-
-            return Ok(new
-            {
-                Entry = entry,
-                SplitSum = splitSum,
-                Difference = diff
-            });
+            return Ok(new { Entry = entry, SplitSum = splitSum, Difference = diff });
         }
         catch (InvalidOperationException ex)
         {
@@ -308,13 +313,11 @@ public sealed class StatementDraftsController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
-
     [HttpGet("{draftId:guid}/file")]
     public async Task<IActionResult> DownloadOriginalAsync(Guid draftId, CancellationToken ct)
     {
         var draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
         if (draft == null) { return NotFound(); }
-        // need raw bytes -> load from db directly for now
         var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
         var entity = await db.StatementDrafts.AsNoTracking().FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == _current.UserId, ct);
         if (entity == null || entity.OriginalFileContent == null) { return NotFound(); }
@@ -322,11 +325,7 @@ public sealed class StatementDraftsController : ControllerBase
         return File(entity.OriginalFileContent, contentType, entity.OriginalFileName);
     }
 
-    // FIX: Apply DataAnnotations to constructor parameters (not properties) for record validation
-    public sealed record AddEntryRequest(
-        [Required] DateTime BookingDate,
-        [Required] decimal Amount,
-        [Required, MaxLength(500)] string Subject);
+    public sealed record AddEntryRequest([Required] DateTime BookingDate, [Required] decimal Amount, [Required, MaxLength(500)] string Subject);
     public sealed record CommitRequest(Guid AccountId, ImportFormat Format);
     public sealed record SetContactRequest(Guid? ContactId);
     public sealed record SetCostNeutralRequest(bool? IsCostNeutral);
@@ -341,38 +340,14 @@ public sealed class StatementDraftsController : ControllerBase
         return updated == null ? NotFound() : Ok(updated);
     }
 
-    public sealed record SetEntrySecurityRequest(
-        Guid? SecurityId,
-        SecurityTransactionType? TransactionType,
-        decimal? Quantity,
-        decimal? FeeAmount,
-        decimal? TaxAmount);
+    public sealed record SetEntrySecurityRequest(Guid? SecurityId, SecurityTransactionType? TransactionType, decimal? Quantity, decimal? FeeAmount, decimal? TaxAmount);
 
-
-    [HttpPost("{draftId:guid}/entries/{entryId:guid}/security")]
-    public async Task<IActionResult> SetEntrySecurityAsync(
-        Guid draftId,
-        Guid entryId,
-        [FromBody] SetEntrySecurityRequest body,
-        CancellationToken ct)
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/security")
+    ]
+    public async Task<IActionResult> SetEntrySecurityAsync(Guid draftId, Guid entryId, [FromBody] SetEntrySecurityRequest body, CancellationToken ct)
     {
-        // Service-Aufruf / Persistenz: hier exemplarisch direkt ?ber Draft-Service
-        var draft = await _drafts.SetEntrySecurityAsync(
-            draftId,
-            entryId,
-            body.SecurityId,
-            body.TransactionType,
-            body.Quantity,
-            body.FeeAmount,
-            body.TaxAmount,
-            _current.UserId,
-            ct);
-
-        if (draft == null)
-        {
-            return NotFound();
-        }
-
+        var draft = await _drafts.SetEntrySecurityAsync(draftId, entryId, body.SecurityId, body.TransactionType, body.Quantity, body.FeeAmount, body.TaxAmount, _current.UserId, ct);
+        if (draft == null) { return NotFound(); }
         var entry = draft.Entries.First(e => e.Id == entryId);
         return Ok(entry);
     }
@@ -404,14 +379,8 @@ public sealed class StatementDraftsController : ControllerBase
     public async Task<IActionResult> BookAsync(Guid draftId, [FromQuery] bool forceWarnings = false, CancellationToken ct = default)
     {
         var result = await _drafts.BookAsync(draftId, null, _current.UserId, forceWarnings, ct);
-        if (!result.Success && result.Validation.Messages.Any(m=>m.Severity=="Error"))
-        {
-            return BadRequest(result);
-        }
-        if (!result.Success && result.HasWarnings)
-        {
-            return StatusCode(StatusCodes.Status428PreconditionRequired, result); // 428 indicates client needs confirmation
-        }
+        if (!result.Success && result.Validation.Messages.Any(m => m.Severity == "Error")) { return BadRequest(result); }
+        if (!result.Success && result.HasWarnings) { return StatusCode(StatusCodes.Status428PreconditionRequired, result); }
         return Ok(result);
     }
 
@@ -419,45 +388,17 @@ public sealed class StatementDraftsController : ControllerBase
     public async Task<IActionResult> BookEntryAsync(Guid draftId, Guid entryId, [FromQuery] bool forceWarnings = false, CancellationToken ct = default)
     {
         var result = await _drafts.BookAsync(draftId, entryId, _current.UserId, forceWarnings, ct);
-        if (!result.Success && result.Validation.Messages.Any(m=>m.Severity=="Error"))
-        {
-            return BadRequest(result);
-        }
-        if (!result.Success && result.HasWarnings)
-        {
-            return StatusCode(StatusCodes.Status428PreconditionRequired, result);
-        }
+        if (!result.Success && result.Validation.Messages.Any(m => m.Severity == "Error")) { return BadRequest(result); }
+        if (!result.Success && result.HasWarnings) { return StatusCode(StatusCodes.Status428PreconditionRequired, result); }
         return Ok(result);
     }
 
-    public sealed record SaveEntryAllRequest(
-        Guid? ContactId,
-        bool? IsCostNeutral,
-        Guid? SavingsPlanId,
-        bool? ArchiveOnBooking,
-        Guid? SecurityId,
-        SecurityTransactionType? TransactionType,
-        decimal? Quantity,
-        decimal? FeeAmount,
-        decimal? TaxAmount);
+    public sealed record SaveEntryAllRequest(Guid? ContactId, bool? IsCostNeutral, Guid? SavingsPlanId, bool? ArchiveOnBooking, Guid? SecurityId, SecurityTransactionType? TransactionType, decimal? Quantity, decimal? FeeAmount, decimal? TaxAmount);
 
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/save-all")]
     public async Task<IActionResult> SaveEntryAllAsync(Guid draftId, Guid entryId, [FromBody] SaveEntryAllRequest body, CancellationToken ct)
     {
-        var dto = await _drafts.SaveEntryAllAsync(
-            draftId,
-            entryId,
-            _current.UserId,
-            body.ContactId,
-            body.IsCostNeutral,
-            body.SavingsPlanId,
-            body.ArchiveOnBooking,
-            body.SecurityId,
-            body.TransactionType,
-            body.Quantity,
-            body.FeeAmount,
-            body.TaxAmount,
-            ct);
+        var dto = await _drafts.SaveEntryAllAsync(draftId, entryId, _current.UserId, body.ContactId, body.IsCostNeutral, body.SavingsPlanId, body.ArchiveOnBooking, body.SecurityId, body.TransactionType, body.Quantity, body.FeeAmount, body.TaxAmount, ct);
         return dto == null ? NotFound() : Ok(dto);
     }
 

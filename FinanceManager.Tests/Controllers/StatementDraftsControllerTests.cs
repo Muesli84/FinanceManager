@@ -6,7 +6,6 @@ using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
-using FinanceManager.Web.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,15 +17,18 @@ using System;
 using System.IO;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using FinanceManager.Application;
+using System.Collections.Generic;
 
 namespace FinanceManager.Tests.Controllers;
 
 public sealed class StatementDraftsControllerTests
 {
     private static (StatementDraftsController controller, AppDbContext db, Guid userId) Create()
-    {        
+    {
         var conn = new SqliteConnection("DataSource=:memory:");
         conn.Open();
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -41,44 +43,35 @@ public sealed class StatementDraftsControllerTests
         db.Contacts.Add(ownerContact);
         db.SaveChanges();
 
-        var current = new TestCurrentUserService()
-        {
-            UserId = owner.Id
-        };
+        var current = new TestCurrentUserService { UserId = owner.Id };
         var services = new ServiceCollection();
-        services.AddSingleton<AppDbContext>(db);
+        services.AddSingleton(db);
         services.AddLogging();
         var sp = services.BuildServiceProvider();
         db = sp.GetRequiredService<AppDbContext>();
-        var draftService = new StatementDraftService(db, new PostingAggregateService(db));        
+        var draftService = new StatementDraftService(db, new PostingAggregateService(db));
         var logger = sp.GetRequiredService<ILogger<StatementDraftsController>>();
-        var classification = new DummyClassificationCoordinator();
-        var booking = new DummyBookingCoordinator();
-        var controller = new StatementDraftsController(draftService, current, logger, classification, booking);        
+        var taskManager = new DummyBackgroundTaskManager();
+        var controller = new StatementDraftsController(draftService, current, logger, taskManager);
         return (controller, db, current.UserId);
     }
 
-    private sealed class DummyClassificationCoordinator : IClassificationCoordinator
+    private sealed class DummyBackgroundTaskManager : IBackgroundTaskManager
     {
-        public Task<ClassificationStatus> ProcessAsync(Guid userId, TimeSpan maxDuration, System.Threading.CancellationToken ct)
-            => Task.FromResult(new ClassificationStatus(false, 0, 0, null));
-        public ClassificationStatus? GetStatus(Guid userId) => new ClassificationStatus(false, 0, 0, null);
-    }
-
-    private sealed class DummyBookingCoordinator : IBookingCoordinator
-    {
-        public Task<BookingStatus> ProcessAsync(Guid userId, bool ignoreWarnings, bool abortOnFirstIssue, bool bookEntriesIndividually, TimeSpan maxDuration, System.Threading.CancellationToken ct)
+        private readonly List<BackgroundTaskInfo> _tasks = new();
+        public BackgroundTaskInfo Enqueue(BackgroundTaskType type, Guid userId, object? payload = null, bool allowDuplicate = false)
         {
-            var status = new BookingStatus(false, 0, 0, 0, null, 0, 0, Array.Empty<BookingIssue>());
-            return Task.FromResult(status);
+            var info = new BackgroundTaskInfo(Guid.NewGuid(), type, userId, DateTime.UtcNow, BackgroundTaskStatus.Queued, 0, 0, "Queued", 0, 0, null, null, null, null, null, null, null);
+            _tasks.Add(info);
+            return info;
         }
-
-        public BookingStatus? GetStatus(Guid userId)
-        {
-            return new BookingStatus(false, 0, 0, 0, null, 0, 0, Array.Empty<BookingIssue>());
-        }
-
-        public void Cancel(Guid userId) { }
+        public IReadOnlyList<BackgroundTaskInfo> GetAll() => _tasks;
+        public BackgroundTaskInfo? Get(Guid id) => _tasks.FirstOrDefault(t => t.Id == id);
+        public bool TryCancel(Guid id) => false;
+        public bool TryRemoveQueued(Guid id) => false;
+        public bool TryDequeueNext(out Guid id) { id = Guid.Empty; return false; }
+        public void UpdateTaskInfo(BackgroundTaskInfo info) { }
+        public SemaphoreSlim Semaphore => new(1, 1);
     }
 
     private sealed class TestCurrentUserService : FinanceManager.Application.ICurrentUserService

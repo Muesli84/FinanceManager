@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="BR_NoBackupId" xml:space="preserve"><value>No backup id provided</value></data>
+  <data name="BR_InvalidPayload" xml:space="preserve"><value>Invalid request payload</value></data>
+  <data name="BR_Start" xml:space="preserve"><value>Starting restore...</value></data>
+  <data name="BR_ApplyFailed" xml:space="preserve"><value>Restore failed</value></data>
+  <data name="BR_Completed" xml:space="preserve"><value>Restore completed</value></data>
+  <data name="BR_Canceled" xml:space="preserve"><value>Restore canceled</value></data>
+</root>

@@ -5,4 +5,25 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="PageTitle" xml:space="preserve"><value>Einrichtung</value></data>
+  <data name="Heading" xml:space="preserve"><value>Einrichtung &amp; Wartung</value></data>
+  <data name="Section_Backup" xml:space="preserve"><value>Backups</value></data>
+  <data name="Btn_Back" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Btn_CreateBackup" xml:space="preserve"><value>Backup erstellen</value></data>
+  <data name="Btn_UploadBackup" xml:space="preserve"><value>Backup hochladen</value></data>
+  <data name="Btn_Restore" xml:space="preserve"><value>Wiederherstellen</value></data>
+  <data name="Btn_CancelRestore" xml:space="preserve"><value>Wiederherstellung abbrechen</value></data>
+  <data name="Btn_Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Btn_Download" xml:space="preserve"><value>Download</value></data>
+  <data name="Th_Created" xml:space="preserve"><value>Erstellt</value></data>
+  <data name="Th_File" xml:space="preserve"><value>Datei</value></data>
+  <data name="Th_Size" xml:space="preserve"><value>Größe</value></data>
+  <data name="Th_Source" xml:space="preserve"><value>Quelle</value></data>
+  <data name="Th_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Msg_Loading" xml:space="preserve"><value>Lade ...</value></data>
+  <data name="Msg_NoBackups" xml:space="preserve"><value>Keine Backups vorhanden.</value></data>
+  <data name="Legacy_Import_Hint" xml:space="preserve"><value>Altes Setup-Importformat (veraltet)</value></data>
+  <data name="Legacy_ChooseFile" xml:space="preserve"><value>Datei wählen</value></data>
+  <data name="Legacy_File" xml:space="preserve"><value>Datei</value></data>
+  <data name="Legacy_ReplaceExisting" xml:space="preserve"><value>Bestehende Daten ersetzen</value></data>
+  <data name="Legacy_Import" xml:space="preserve"><value>Importieren</value></data>
 </root>
