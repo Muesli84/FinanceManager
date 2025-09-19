@@ -23,21 +23,21 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-013      | Status offen bei Zahlungsintermediär bis vollständig gesplittet         | StatementDraftService: TryAutoAssignContact & ReevaluateParentEntryStatusAsync                                                                                         | ✔      |
 | FA-AUSZ-014      | Originaldatei speichern & Download / Inline-Ansicht                     | StatementDraft: OriginalFileContent; Controller `/file`; Viewer im Detail                                                                                              | ✔      |
 | FA-AUSZ-015      | Massenbuchung Kontoauszüge (inkl. optionaler Einzelbuchung pro Eintrag) | BackgroundTask (BookingTaskExecutor + BackgroundTaskManager), Endpoint `/api/statement-drafts/book-all`, UI Dialog, Fortschritt Panel                                  | ✔      |
-| FA-AUSZ-016      | Konfigurierbare Monatsbasierte Aufteilung von Kontoauszugs-Imports      | In Unteranforderungen FA-AUSZ-016-01..10 und NFA-AUSZ-016-01..04 zerlegt; Umsetzung noch nicht begonnen                                                                | ✖      |
-| FA-AUSZ-016-01   | Neuer Konfigurationsbereich "Import-Aufteilung" im Setup (Registerkarte) | UI-Tab in `Setup.razor` geplant; noch kein Code                                                                                                                       | ✔      |
-| FA-AUSZ-016-02   | Einstellbare Werte (Modus, MaxEntriesPerDraft, MonthlySplitThreshold)    | Form + Persistenzmodell noch nicht angelegt                                                                                                                           | ✔      |
-| FA-AUSZ-016-03   | Default-Werte für neue Benutzer                                         | Geplante Migration + Initialbefüllung (AutoInitializationService) offen                                                                                                | ✔      |
-| FA-AUSZ-016-04   | Importlogik berücksichtigt Benutzereinstellungen                        | Geplante Erweiterung `StatementDraftService` (Partitionierung vor Draft-Erzeugung) offen                                                                               | ✖      |
-| FA-AUSZ-016-05   | Validierung (Grenzwerte / Abhängigkeit Threshold)                       | DataAnnotations / FluentValidation noch nicht hinzugefügt                                                                                                              | ✖      |
-| FA-AUSZ-016-06   | Logging (Modus, Draft-Anzahl, größte Draft-Größe)                       | Serilog-Infrastruktur vorhanden; spezifischer Logpunkt fehlt                                                                                                           | ✖      |
-| FA-AUSZ-016-07   | UI-Hinweis nach Import (Count + Modus, lokalisiert)                     | Geplante Erweiterung Import-Result DTO + UI Notification offen                                                                                                         | ✖      |
-| FA-AUSZ-016-08   | Rückfallverhalten bei fehlender Konfiguration (Defaults)                | Fallback-Mechanik in Resolver vorgesehen; Implementierung offen                                                                                                        | ✖      |
-| FA-AUSZ-016-09   | Performance (einmaliges Streaming / keine Mehrfach-Scans)               | Algorithmus-Design definiert (O(n)); Implementierung offen                                                                                                              | ✖      |
-| FA-AUSZ-016-10   | Reihenfolge der Drafts nach Monat / Entries nach Datum                  | Sortierlogik noch nicht implementiert                                                                                                                                  | ✖      |
-| NFA-AUSZ-016-01  | Serverseitige User-Konfiguration (UserPreferences erweitern)            | Spalten + Migration offen (Variante A bevorzugt)                                                                                                                       | ✖      |
-| NFA-AUSZ-016-02  | Erweiterbar für künftige Strategien                                    | Architektur-Entwurf (Strategy + Resolver Interface) geplant, noch nicht umgesetzt                                                                                      | ✖      |
-| NFA-AUSZ-016-03  | Unit Tests für Splitalgorithmus                                        | Testfallkatalog definiert; keine Tests vorhanden                                                                                                                       | ✖      |
-| NFA-AUSZ-016-04  | O(n) Laufzeit bestätigt                                                | Performance noch nicht messbar (keine Implementierung)                                                                                                                 | ✖      |
+| FA-AUSZ-016      | Konfigurierbare Monatsbasierte Aufteilung von Kontoauszugs-Imports      | Siehe Unteranforderungen -01..-10 / NFA -01..-04                                                                                                                       | (∑)    |
+| FA-AUSZ-016-01   | Neuer Konfigurationsbereich "Import-Aufteilung" im Setup (Registerkarte) | Tab + UI-Komponente `SetupImportSplitTab.razor` integriert in `Setup.razor`                                                                                            | ✔      |
+| FA-AUSZ-016-02   | Einstellbare Werte (Modus, MaxEntriesPerDraft, MonthlySplitThreshold)    | UI Form (`SetupImportSplitTab.razor`), DTO `ImportSplitSettingsDto`, API `UserImportSplitSettingsController`, Entity-Felder `User` + Migration                          | ✔      |
+| FA-AUSZ-016-03   | Default-Werte für neue Benutzer                                         | Defaults im `User`-Konstruktor (Mode=MonthlyOrFixed, Max=250, Threshold=250)                                                                                            | ✔      |
+| FA-AUSZ-016-04   | Importlogik berücksichtigt Benutzereinstellungen                        | Split-Algorithmus in `StatementDraftService.CreateDraftAsync` (Monthly / Fixed / Hybrid via Threshold)                                                                 | ✔      |
+| FA-AUSZ-016-05   | Validierung (Grenzwerte / Abhängigkeit Threshold)                       | UI-Validierung (SetupImportSplitTab) + API Validierung (Range + Schwellenprüfung) + Domänenprüfung in `User.SetImportSplitSettings`                                    | ✔      |
+| FA-AUSZ-016-06   | Logging (Modus, Draft-Anzahl, größte Draft-Größe)                       | Informations-Log in `StatementDraftService.CreateDraftAsync` (Mode, UseMonthly, Movements, DraftCount, MaxPerDraft, LargestDraftSize, Threshold, File)                 | ✔      |
+| FA-AUSZ-016-07   | UI-Hinweis nach Import (Count + Modus, lokalisiert)                     | Erweiterung Import-Result DTO & Notification fehlt                                                                                                                     | ✖      |
+| FA-AUSZ-016-08   | Rückfallverhalten bei fehlender Konfiguration (Defaults)                | Fallback im Code (`CreateDraftAsync` nutzt Defaults bei fehlenden UserSettings)                                                                                        | ✔      |
+| FA-AUSZ-016-09   | Performance (einmaliges Streaming / keine Mehrfach-Scans)               | Ein Durchlauf + Sort (O(n log n)); kein separater Performance-Nachweis / Optimierung auf reines Streaming                                                              | ~      |
+| FA-AUSZ-016-10   | Reihenfolge der Drafts nach Monat / Entries nach Datum                  | Sortierung in `CreateDraftAsync` (BookingDate, danach Subject); Monats-/Teil-Kennzeichnung                                                                             | ✔      |
+| NFA-AUSZ-016-01  | Serverseitige User-Konfiguration (UserPreferences erweitern)            | Felder am `User`, Migration `FixUserImportSplitSettings` (Idempotent), EF-Konfiguration                                                                                | ✔      |
+| NFA-AUSZ-016-02  | Erweiterbar für künftige Strategien                                    | Strategy/Resolver Pattern noch nicht extrahiert (Logik monolithisch im Service)                                                                                        | ✖      |
+| NFA-AUSZ-016-03  | Unit Tests für Splitalgorithmus                                        | Tests `StatementDraftImportSplitTests` (Fixed, Monthly, Hybrid, Threshold)                                                                                             | ✔      |
+| NFA-AUSZ-016-04  | O(n) Laufzeit bestätigt                                                | Noch keine Messung / Benchmark; Algorithmus konzeptionell linear außer Sortierung                                                                                      | ~      |
 | FA-BACK-001      | Backup erstellen                                                        | BackupService.CreateAsync, BackupsController POST, UI                                                                                                                  | ✔      |
 | FA-BACK-002      | Backups auflisten & herunterladen                                       | BackupService.List/OpenDownload, BackupsController GET + Download                                                                                                      | ✔      |
 | FA-BACK-003      | Backup hochladen                                                        | BackupsController `/upload` (NDJSON/ZIP), BackupService.UploadAsync                                                                                                    | ✔      |
@@ -60,7 +60,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-SPAR-008      | Prognose Zielverfehlung                                                 | AnalyzeAsync (Durchschnitt/Erfordernis)                                                                                                                                | ✔      |
 | FA-SPAR-009      | Archivierung bei Ausbuchung                                             | Archivierungs-Flag + Validate + Auto-Archiv bei saldo=0                                                                                                                 | ✔      |
 | FA-SPAR-010      | Sparplan aus Rückzahlung/Kredit                                         | Noch nicht implementiert                                                                                                                                               | ✖      |
-| FA-SPAR-011      | Sparplanposten bei Buchung                                              | StatementDraftService.BookEntryAsync → `PostingKind.SavingsPlan`                                                                                                       | ✔      |
+| FA-SPAR-011      | Sparplanposten bei Buchung                                              | StatementDraftService.BookAsync → `PostingKind.SavingsPlan`                                                                                                            | ✔      |
 | FA-SPAR-012      | Umschalten aktive/archivierte Sparpläne                                 | Noch nicht implementiert                                                                                                                                               | ✖      |
 | FA-WERT-001      | Wertpapiere verwalten                                                   | SecurityService, SecuritiesController, UI                                                                                                                              | ✔      |
 | FA-WERT-002      | Wertpapiertransaktionen                                                 | Import-/Buchungslogik inkl. PDF-Parsing (Steuern/Fees), Depot-/Positionslogik offen                                                                                    | ~      |
@@ -134,6 +134,20 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✔ = umgesetzt / vorhanden  
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
+
+Änderungen (19.09.2025) – Ergänzung 4:
+- FA-AUSZ-016-06 umgesetzt: Logging der Split-Metriken (Mode, UseMonthly, Movements, DraftCount, MaxPerDraft, LargestDraftSize, Threshold, File) bei Draft-Erstellung.
+
+Änderungen (19.09.2025) – Ergänzung 3:
+- FA-AUSZ-016 Unteranforderungen aktualisiert: Implementierung UI + Persistenz + Logik + Validierung + Defaults produktiv.
+- FA-AUSZ-016-04 (Importlogik) jetzt umgesetzt: Splitting in `StatementDraftService.CreateDraftAsync` inkl. Hybrid-Entscheidung anhand Threshold.
+- FA-AUSZ-016-05 Validierung vollständig (UI + API + Domain) → ✔.
+- FA-AUSZ-016-08 Fallback-Mechanik aktiv (Defaults bei fehlenden UserSettings) → ✔.
+- FA-AUSZ-016-10 Sortier-/Monatslogik implementiert → ✔.
+- NFA-AUSZ-016-01 (Serverseitige Konfiguration) umgesetzt (Migration + Felder) → ✔.
+- NFA-AUSZ-016-03 Unit Tests (`StatementDraftImportSplitTests`) hinzugefügt → ✔.
+- Performance / Streaming (FA-AUSZ-016-09, NFA-AUSZ-016-04) noch nicht final optimiert / gemessen → ~ belassen.
+- Logging & UI-Hinweis (FA-AUSZ-016-06 / -07) weiterhin offen.
 
 Änderungen (19.09.2025) – Ergänzung 2:
 - FA-AUSZ-016 in funktionale (FA-AUSZ-016-01 .. -10) und nicht-funktionale (NFA-AUSZ-016-01 .. -04) Unteranforderungen zerlegt.
@@ -209,4 +223,4 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
 - Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
-*Letzte Aktualisierung: 19.09.2025*
+*Letzte Aktualisierung: 19.09.2025 (Ergänzung 4)*

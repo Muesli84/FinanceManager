@@ -10,6 +10,8 @@ using FinanceManager.Infrastructure.Statements.Reader;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 using FinanceManager.Application.Aggregates;
+using Microsoft.Extensions.Logging; // added
+using Microsoft.Extensions.Logging.Abstractions; // added
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -18,15 +20,18 @@ public sealed partial class StatementDraftService : IStatementDraftService
     private readonly AppDbContext _db;
     private readonly IReadOnlyList<IStatementFileReader> _statementFileReaders;
     private readonly IPostingAggregateService _aggregateService;
+    private readonly ILogger<StatementDraftService> _logger; // added
     private List<StatementDraftDto> allDrafts = null;
     private List<Security> allSecurities = null;
     private List<Domain.Accounts.Account> allAccounts = null;
 
-    public StatementDraftService(AppDbContext db, IPostingAggregateService aggregateService)
+    public StatementDraftService(AppDbContext db, IPostingAggregateService aggregateService, IEnumerable<IStatementFileReader>? readers = null, ILogger<StatementDraftService>? logger = null) // logger param added
     {
         _db = db;
         _aggregateService = aggregateService;
-        _statementFileReaders = new List<IStatementFileReader>
+        _logger = logger ?? NullLogger<StatementDraftService>.Instance; // init logger
+        // Allow injection of custom readers (e.g. for tests). Fallback to built-in readers.
+        _statementFileReaders = readers?.ToList() ?? new List<IStatementFileReader>
         {
             new ING_PDfReader(),
             new ING_StatementFileReader(),
@@ -189,6 +194,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
     }
     public async IAsyncEnumerable<StatementDraftDto> CreateDraftAsync(Guid ownerUserId, string originalFileName, byte[] fileBytes, CancellationToken ct)
     {
+        // Parse
         var parsedDraft = _statementFileReaders
             .Select(reader => reader.Parse(originalFileName, fileBytes))
             .Where(result => result is not null && result.Movements.Any())
@@ -199,23 +205,143 @@ public sealed partial class StatementDraftService : IStatementDraftService
             throw new InvalidOperationException("No valid statement file reader found or no movements detected.");
         }
 
-        StatementDraft draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
-        var batchCounter = 1;
-        foreach (var movement in parsedDraft.Movements)
-        {
-            if (draft.Entries.Count == 100)
+        // Import-Split Einstellungen (FA-AUSZ-016-04)
+        var userSettings = await _db.Users.AsNoTracking()
+            .Where(u => u.Id == ownerUserId)
+            .Select(u => new
             {
-                draft.Description += $" ({batchCounter++})";
-                yield return await FinishDraftAsync(draft, ownerUserId, ct);
-                draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
+                u.ImportSplitMode,
+                u.ImportMaxEntriesPerDraft,
+                u.ImportMonthlySplitThreshold
+            })
+            .SingleOrDefaultAsync(ct);
+
+        var mode = userSettings?.ImportSplitMode ?? ImportSplitMode.MonthlyOrFixed;
+        var maxPerDraft = userSettings?.ImportMaxEntriesPerDraft ?? 250;
+        var monthlyThreshold = userSettings?.ImportMonthlySplitThreshold ?? maxPerDraft;
+
+        // Bewegungen sortieren (stabile Reihenfolge)
+        var allMovements = parsedDraft.Movements
+            .OrderBy(m => m.BookingDate)
+            .ThenBy(m => m.Subject)
+            .ToList();
+
+        bool useMonthly =
+            mode switch
+            {
+                ImportSplitMode.Monthly => true,
+                ImportSplitMode.FixedSize => false,
+                ImportSplitMode.MonthlyOrFixed => allMovements.Count > monthlyThreshold,
+                _ => false
+            };
+
+        // Hilfs-Funktionen
+        static IEnumerable<List<T>> Chunk<T>(IReadOnlyList<T> source, int size)
+        {
+            if (size <= 0)
+            {
+                yield return source.ToList();
+                yield break;
             }
-            var contact = _db.Contacts.AsNoTracking()
-                .FirstOrDefault(c => c.OwnerUserId == ownerUserId && c.Id == movement.ContactId);
-            draft.AddEntry(movement.BookingDate, movement.Amount, movement.Subject ?? string.Empty, contact?.Name ?? movement.Counterparty, movement.ValutaDate, movement.CurrencyCode, movement.PostingDescription, movement.IsPreview, false);
+            for (int i = 0; i < source.Count; i += size)
+            {
+                yield return source.Skip(i).Take(size).ToList();
+            }
         }
-        if (batchCounter > 1)
-            draft.Description += $" ({batchCounter++})";
-        yield return await FinishDraftAsync(draft, ownerUserId, ct);
+
+        IEnumerable<(string Label, List<StatementMovement> Movements)> EnumerateGroups()
+        {
+            if (useMonthly)
+            {
+                var groups = allMovements
+                    .GroupBy(m => new { m.BookingDate.Year, m.BookingDate.Month })
+                    .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month);
+
+                foreach (var g in groups)
+                {
+                    var monthLabel = $"{g.Key.Year:D4}-{g.Key.Month:D2}";
+                    // Falls innerhalb eines Monats weiter gesplittet werden muss
+                    var parts = Chunk(g.ToList(), maxPerDraft).ToList();
+                    if (parts.Count == 1)
+                    {
+                        yield return ($"{monthLabel}", parts[0]);
+                    }
+                    else
+                    {
+                        for (int p = 0; p < parts.Count; p++)
+                        {
+                            yield return ($"{monthLabel} (Teil {p + 1})", parts[p]);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var chunks = Chunk(allMovements, maxPerDraft).ToList();
+                if (chunks.Count == 1)
+                {
+                    yield return (string.Empty, chunks[0]);
+                }
+                else
+                {
+                    for (int i = 0; i < chunks.Count; i++)
+                    {
+                        yield return ($"(Teil {i + 1})", chunks[i]);
+                    }
+                }
+            }
+        }
+
+        // Materialisieren für Logging (FA-AUSZ-016-06)
+        var groupInfos = EnumerateGroups().ToList();
+        var largest = groupInfos.Count == 0 ? 0 : groupInfos.Max(g => g.Movements.Count);
+        _logger.LogInformation(
+            "ImportSplit result: Mode={Mode} EffectiveUseMonthly={UseMonthly} Movements={Movements} Drafts={DraftCount} MaxEntriesPerDraft={MaxPerDraft} LargestDraftSize={Largest} Threshold={Threshold} File={File}",
+            mode,
+            useMonthly,
+            allMovements.Count,
+            groupInfos.Count,
+            maxPerDraft,
+            largest,
+            monthlyThreshold,
+            originalFileName);
+
+        var baseDescription = parsedDraft.Header.Description;
+        foreach (var group in groupInfos)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // Draft Header erstellen
+            var draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
+
+            // Beschreibung anreichern (Monat / Teil)
+            if (!string.IsNullOrWhiteSpace(group.Label))
+            {
+                draft.Description = string.IsNullOrWhiteSpace(baseDescription)
+                    ? group.Label
+                    : $"{baseDescription} {group.Label}";
+            }
+
+            // Einträge hinzufügen
+            foreach (var movement in group.Movements)
+            {
+                var contact = _db.Contacts.AsNoTracking()
+                    .FirstOrDefault(c => c.OwnerUserId == ownerUserId && c.Id == movement.ContactId);
+
+                draft.AddEntry(
+                    movement.BookingDate,
+                    movement.Amount,
+                    movement.Subject ?? string.Empty,
+                    contact?.Name ?? movement.Counterparty,
+                    movement.ValutaDate,
+                    movement.CurrencyCode,
+                    movement.PostingDescription,
+                    movement.IsPreview,
+                    false);
+            }
+
+            yield return await FinishDraftAsync(draft, ownerUserId, ct);
+        }
     }
 
     private async Task<StatementDraft> CreateDraftHeader(Guid ownerUserId, string originalFileName, byte[] fileBytes, StatementParseResult parsedDraft, CancellationToken ct)
