@@ -16,6 +16,7 @@ using System.Net.Mime;
 using FinanceManager.Domain.Securities;
 using FinanceManager.Web.Services;
 using System.Text.Json;
+using FinanceManager.Infrastructure.Statements; // for ImportSplitInfo
 
 namespace FinanceManager.Web.Controllers;
 
@@ -44,6 +45,8 @@ public sealed class StatementDraftsController : ControllerBase
 
     public sealed record UploadRequest([Required] string FileName);
 
+    public sealed record UploadResult(StatementDraftDto? FirstDraft, object? SplitInfo);
+
     [HttpGet]
     public async Task<IActionResult> GetOpenAsync([FromQuery] int skip = 0, [FromQuery] int take = 3, CancellationToken ct = default)
     {
@@ -64,7 +67,23 @@ public sealed class StatementDraftsController : ControllerBase
         {
             firstDraft ??= draft;
         }
-        return Ok(firstDraft);
+        // Try to get split info (service is implementation instance)
+        object? splitInfo = null;
+        if (_drafts is StatementDraftService impl && impl.LastImportSplitInfo != null)
+        {
+            var info = impl.LastImportSplitInfo;
+            splitInfo = new
+            {
+                Mode = info.ConfiguredMode.ToString(),
+                info.EffectiveMonthly,
+                info.DraftCount,
+                info.TotalMovements,
+                info.MaxEntriesPerDraft,
+                info.LargestDraftSize,
+                info.MonthlyThreshold
+            };
+        }
+        return Ok(new UploadResult(firstDraft, splitInfo));
     }
 
     // Classification status via background task queue

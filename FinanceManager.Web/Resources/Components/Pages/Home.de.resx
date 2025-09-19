@@ -138,4 +138,13 @@
   <data name="KPI_Placeholders" xml:space="preserve">
     <value>KPI-Platzhalter werden hier angezeigt.</value>
   </data>
+  <data name="Import_SplitInfo_Monthly" xml:space="preserve">
+    <value>{0} Bewegungen auf {1} Monats-Entwurf/Entwürfe verteilt.</value>
+  </data>
+  <data name="Import_SplitInfo_Fixed" xml:space="preserve">
+    <value>{0} Bewegungen auf {1} Entwurf/Entwürfe (feste Größe) verteilt.</value>
+  </data>
+  <data name="Import_SplitInfo_Details" xml:space="preserve">
+    <value>Modus: {0}; Max/Entwurf: {1}; Größter: {2}</value>
+  </data>
 </root>

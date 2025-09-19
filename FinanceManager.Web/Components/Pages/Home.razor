@@ -25,12 +25,28 @@
         <a href="@($"/statement-drafts/{_draftId}")" class="alert-link">@Localizer["Import_ShowDetails"]</a>
     </div>
 }
+@if (_splitInfo != null)
+{
+    <div class="alert" style="margin-top:.6rem;font-size:.7rem;padding:.55rem .75rem;border:1px solid #334;background:#182028;max-width:740px;">
+        @if(_splitInfo.EffectiveMonthly)
+        {
+            <span>@string.Format(Localizer["Import_SplitInfo_Monthly"], _splitInfo.TotalMovements, _splitInfo.DraftCount)</span>
+        }
+        else
+        {
+            <span>@string.Format(Localizer["Import_SplitInfo_Fixed"], _splitInfo.TotalMovements, _splitInfo.DraftCount)</span>
+        }
+        <span style="opacity:.75;display:block;margin-top:.25rem;">@string.Format(Localizer["Import_SplitInfo_Details"], _splitInfo.Mode, _splitInfo.MaxEntriesPerDraft, _splitInfo.LargestDraftSize)</span>
+    </div>
+}
 
 <p>@Localizer["KPI_Placeholders"]</p>
 
 @code {
     private bool _importSuccess;
     private Guid? _draftId;
+
+    private SplitInfoDto? _splitInfo;
 
     private async Task OnFileChanged(InputFileChangeEventArgs e)
     {
@@ -42,15 +58,19 @@
         var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
         if (resp.IsSuccessStatusCode)
         {
-            var draft = await resp.Content.ReadFromJsonAsync<StatementDraftDto>();
-            if (draft != null)
+            var result = await resp.Content.ReadFromJsonAsync<UploadResultDto>();
+            if (result?.FirstDraft != null)
             {
-                _draftId = draft.DraftId;
+                _draftId = result.FirstDraft.DraftId; // match backend property
                 _importSuccess = true;
             }
+            _splitInfo = result?.SplitInfo;
         }
     }
 
+    private sealed record UploadResultDto(StatementDraftDto? FirstDraft, SplitInfoDto? SplitInfo);
+    private sealed record SplitInfoDto(string Mode, bool EffectiveMonthly, int DraftCount, int TotalMovements, int MaxEntriesPerDraft, int LargestDraftSize, int MonthlyThreshold);
+    // Align with backend DTO: property DraftId
     private sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, List<StatementDraftEntryDto> Entries);
     private sealed record StatementDraftEntryDto(Guid TempId, DateTime BookingDate, decimal Amount, string Subject);
 }

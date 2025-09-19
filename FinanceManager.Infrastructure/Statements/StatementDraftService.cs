@@ -25,13 +25,24 @@ public sealed partial class StatementDraftService : IStatementDraftService
     private List<Security> allSecurities = null;
     private List<Domain.Accounts.Account> allAccounts = null;
 
+    public ImportSplitInfo? LastImportSplitInfo { get; private set; } // exposes metadata of last CreateDraftAsync call (scoped service)
+
+    public sealed record ImportSplitInfo(
+        ImportSplitMode ConfiguredMode,
+        bool EffectiveMonthly,
+        int DraftCount,
+        int TotalMovements,
+        int MaxEntriesPerDraft,
+        int LargestDraftSize,
+        int MonthlyThreshold
+    );
+
     public StatementDraftService(AppDbContext db, IPostingAggregateService aggregateService, IEnumerable<IStatementFileReader>? readers = null, ILogger<StatementDraftService>? logger = null) // logger param added
     {
         _db = db;
         _aggregateService = aggregateService;
-        _logger = logger ?? NullLogger<StatementDraftService>.Instance; // init logger
-        // Allow injection of custom readers (e.g. for tests). Fallback to built-in readers.
-        _statementFileReaders = readers?.ToList() ?? new List<IStatementFileReader>
+        _logger = logger ?? NullLogger<StatementDraftService>.Instance; 
+        _statementFileReaders = (readers is not null && readers.ToList().Any()) ? readers.ToList(): new List<IStatementFileReader>
         {
             new ING_PDfReader(),
             new ING_StatementFileReader(),
@@ -292,9 +303,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
         }
 
-        // Materialisieren für Logging (FA-AUSZ-016-06)
+        // Materialisieren für Logging (FA-AUSZ-016-06) + UI Hinweis (FA-AUSZ-016-07)
         var groupInfos = EnumerateGroups().ToList();
         var largest = groupInfos.Count == 0 ? 0 : groupInfos.Max(g => g.Movements.Count);
+        LastImportSplitInfo = new ImportSplitInfo(mode, useMonthly, groupInfos.Count, allMovements.Count, maxPerDraft, largest, monthlyThreshold);
         _logger.LogInformation(
             "ImportSplit result: Mode={Mode} EffectiveUseMonthly={UseMonthly} Movements={Movements} Drafts={DraftCount} MaxEntriesPerDraft={MaxPerDraft} LargestDraftSize={Largest} Threshold={Threshold} File={File}",
             mode,

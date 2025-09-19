@@ -252,10 +252,10 @@ else
         var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
         if (resp.IsSuccessStatusCode)
         {
-            var draft = await resp.Content.ReadFromJsonAsync<StatementDraftDto>();
-            if (draft != null)
+            var uploadResult = await resp.Content.ReadFromJsonAsync<UploadResultDto>();
+            if (uploadResult?.FirstDraft != null)
             {
-                Nav.NavigateTo($"/statement-drafts/{draft.DraftId}");
+                Nav.NavigateTo($"/statement-drafts/{uploadResult.FirstDraft.DraftId}");
                 return;
             }
         }
@@ -463,6 +463,7 @@ else
         public List<BookIssue>? issues { get; set; }
     }
 
+    // Align with backend DTO naming (Id)
     private sealed class StatementDraftDto
     {
         public Guid DraftId { get; set; }
@@ -477,4 +478,6 @@ else
         public Guid Id { get; set; }
         public FinanceManager.Domain.Statements.StatementDraftEntryStatus Status { get; set; }
     }
+
+    private sealed record UploadResultDto(StatementDraftDto? FirstDraft, object? SplitInfo);
 }
