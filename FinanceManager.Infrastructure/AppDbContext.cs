@@ -47,6 +47,10 @@ public class AppDbContext : DbContext
             b.HasIndex(x => x.Username).IsUnique();
             b.Property(x => x.Username).HasMaxLength(100).IsRequired();
             b.Property(x => x.PasswordHash).IsRequired();
+            // Import split settings columns
+            b.Property(x => x.ImportSplitMode).HasConversion<short>().IsRequired();
+            b.Property(x => x.ImportMaxEntriesPerDraft).IsRequired();
+            b.Property(x => x.ImportMonthlySplitThreshold);
         });
 
         modelBuilder.Entity<Account>(b =>

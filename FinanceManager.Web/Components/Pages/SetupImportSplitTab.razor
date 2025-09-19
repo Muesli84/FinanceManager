@@ -1,0 +1,211 @@
+@using FinanceManager.Shared.Dtos
+@inject IHttpClientFactory ClientFactory
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Setup> Localizer
+
+<style>
+.help-box {
+    margin-top:1rem;
+    padding:.75rem .9rem;
+    background:#252a33;
+    border:1px solid #3a404a;
+    border-radius:6px;
+    font-size:.78rem;
+    line-height:1.35;
+}
+.help-box ul { margin:.4rem 0 .4rem 1.1rem; padding:0; }
+.help-box li { margin:.15rem 0; }
+.help-box em { font-style:normal; font-weight:600; }
+</style>
+
+<div>
+    <h4 style="margin-top:0;">@Localizer["ImportSplit_TabTitle"]</h4>
+
+    @if (_loading)
+    {
+        <div>@Localizer["Msg_Loading"]</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="error">@_error</div>
+        <button class="icon-btn" @onclick="LoadAsync" title="@Localizer["Btn_Retry"]">
+            <svg class="icon"><use href="icons/sprite.svg#refresh" /></svg>
+        </button>
+    }
+    else if (_model != null)
+    {
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+            <div class="form-grid">
+                <div class="form-row">
+                    <label>@Localizer["ImportSplit_Mode_Label"]</label>
+                    <select @bind="_model.Mode" @bind:after="OnModeChanged">
+                        <option value="@ImportSplitMode.FixedSize">@Localizer["ImportSplit_Mode_FixedSize"]</option>
+                        <option value="@ImportSplitMode.Monthly">@Localizer["ImportSplit_Mode_Monthly"]</option>
+                        <option value="@ImportSplitMode.MonthlyOrFixed">@Localizer["ImportSplit_Mode_MonthlyOrFixed"]</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>@Localizer["ImportSplit_MaxEntries"]</label>
+                    <input type="number" min="1" @bind="_model.MaxEntriesPerDraft" @bind:after="Validate" />
+                </div>
+                @if (_model.Mode == ImportSplitMode.MonthlyOrFixed)
+                {
+                    <div class="form-row">
+                        <label>@Localizer["ImportSplit_MonthlyThreshold"]</label>
+                        <input type="number" min="1" @bind="_model.MonthlySplitThreshold" @bind:after="Validate" />
+                    </div>
+                }
+            </div>
+
+            <div class="help-box">
+                <strong>@Localizer["ImportSplit_Help_Title"]</strong>
+                <ul>
+                    <li><em>@Localizer["ImportSplit_Mode_FixedSize"]:</em> @Localizer["ImportSplit_Help_Mode_FixedSize"]</li>
+                    <li><em>@Localizer["ImportSplit_Mode_Monthly"]:</em> @Localizer["ImportSplit_Help_Mode_Monthly"]</li>
+                    <li><em>@Localizer["ImportSplit_Mode_MonthlyOrFixed"]:</em> @Localizer["ImportSplit_Help_Mode_Hybrid"]</li>
+                </ul>
+                <p style="margin:.4rem 0 .3rem;"><strong>@Localizer["ImportSplit_MaxEntries"]:</strong> @Localizer["ImportSplit_Help_MaxEntries"]</p>
+                <p style="margin:.2rem 0;" hidden="@(_model.Mode != ImportSplitMode.MonthlyOrFixed)">
+                    <strong>@Localizer["ImportSplit_MonthlyThreshold"]:</strong> @Localizer["ImportSplit_Help_MonthlyThreshold"]
+                </p>
+                <p style="margin-top:.4rem;opacity:.85;">@Localizer["ImportSplit_Help_Example"]</p>
+            </div>
+
+            @if (_validationMessage != null)
+            {
+                <div class="error" style="margin-top:.5rem;">@_validationMessage</div>
+            }
+
+            <div style="margin-top:1rem;display:flex;gap:.5rem;">
+                <button type="submit" class="icon-btn" disabled="@(!_dirty || _saving || _hasValidationError)">
+                    <svg class="icon"><use href="icons/sprite.svg#save" /></svg>
+                </button>
+                <button type="button" class="icon-btn" disabled="@(!_dirty || _saving)" title="@Localizer["Btn_Reset"]" @onclick="Reset">
+                    <svg class="icon"><use href="icons/sprite.svg#undo" /></svg>
+                </button>
+            </div>
+
+            @if (_savedOk)
+            {
+                <div class="success" style="margin-top:.5rem;">@Localizer["ImportSplit_SaveSuccess"]</div>
+            }
+            else if (!string.IsNullOrWhiteSpace(_saveError))
+            {
+                <div class="error" style="margin-top:.5rem;">@_saveError</div>
+            }
+        </EditForm>
+    }
+</div>
+
+@code {
+    private ImportSplitSettingsDto? _model;
+    private ImportSplitSettingsDto? _original;
+    private bool _loading;
+    private bool _saving;
+    private bool _savedOk;
+    private string? _error;
+    private string? _saveError;
+    private string? _validationMessage;
+    private bool _hasValidationError;
+    private bool _dirty;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; _saveError = null; _savedOk = false;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var dto = await http.GetFromJsonAsync<ImportSplitSettingsDto>("/api/user/import-split-settings");
+            _model = dto ?? new ImportSplitSettingsDto();
+            _original = Clone(_model);
+            RecomputeDirty();
+            Validate();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _loading = false; }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_model == null) return; Validate(); if (_hasValidationError) return;
+        _saving = true; _savedOk = false; _saveError = null;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            using var resp = await http.PutAsJsonAsync("/api/user/import-split-settings", _model);
+            if (resp.IsSuccessStatusCode)
+            {
+                _original = Clone(_model);
+                _savedOk = true;
+                RecomputeDirty();
+            }
+            else
+            {
+                _saveError = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _saveError = ex.Message;
+        }
+        finally { _saving = false; }
+    }
+
+    private void Reset()
+    {
+        if (_model == null || _original == null) return;
+        _model.Mode = _original.Mode;
+        _model.MaxEntriesPerDraft = _original.MaxEntriesPerDraft;
+        _model.MonthlySplitThreshold = _original.MonthlySplitThreshold;
+        _savedOk = false; _saveError = null;
+        Validate();
+        RecomputeDirty();
+    }
+
+    private void OnModeChanged()
+    {
+        if (_model == null) return;
+        Validate();
+        RecomputeDirty();
+    }
+
+    private void Validate()
+    {
+        _validationMessage = null; _hasValidationError = false;
+        if (_model == null) return;
+        if (_model.MaxEntriesPerDraft < 20)
+        {
+            _validationMessage = Localizer["ImportSplit_InvalidMaxMin20"]; _hasValidationError = true; return;
+        }
+        if (_model.Mode == ImportSplitMode.MonthlyOrFixed)
+        {
+            var thr = _model.MonthlySplitThreshold ?? 0;
+            if (thr < _model.MaxEntriesPerDraft)
+            {
+                _validationMessage = Localizer["ImportSplit_InvalidThreshold"]; _hasValidationError = true; return;
+            }
+        }
+        RecomputeDirty();
+    }
+
+    private void RecomputeDirty()
+    {
+        if (_model == null || _original == null) { _dirty = false; return; }
+        _dirty =
+            _model.Mode != _original.Mode ||
+            _model.MaxEntriesPerDraft != _original.MaxEntriesPerDraft ||
+            (_model.MonthlySplitThreshold ?? 0) != (_original.MonthlySplitThreshold ?? 0);
+    }
+
+    private static ImportSplitSettingsDto Clone(ImportSplitSettingsDto src) => new()
+    {
+        Mode = src.Mode,
+        MaxEntriesPerDraft = src.MaxEntriesPerDraft,
+        MonthlySplitThreshold = src.MonthlySplitThreshold
+    };
+}

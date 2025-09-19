@@ -1,5 +1,7 @@
 namespace FinanceManager.Domain.Users;
 
+using FinanceManager.Shared.Dtos; // ImportSplitMode
+
 public sealed class User : Entity, IAggregateRoot
 {
     private User() { }
@@ -8,6 +10,10 @@ public sealed class User : Entity, IAggregateRoot
         Username = Guards.NotNullOrWhiteSpace(username, nameof(username));
         PasswordHash = Guards.NotNullOrWhiteSpace(passwordHash, nameof(passwordHash));
         IsAdmin = isAdmin;
+        // Defaults for import split settings (FA-AUSZ-016)
+        ImportSplitMode = ImportSplitMode.MonthlyOrFixed;
+        ImportMaxEntriesPerDraft = 250;
+        ImportMonthlySplitThreshold = 250; // equals Max by default
     }
 
     public string Username { get; private set; } = null!;
@@ -18,6 +24,44 @@ public sealed class User : Entity, IAggregateRoot
     public DateTime LastLoginUtc { get; private set; }
     public bool Active { get; private set; } = true;
     public int FailedLoginAttempts { get; private set; }
+
+    // --- Import Split Settings (User Preferences) ---
+    public ImportSplitMode ImportSplitMode { get; private set; } = ImportSplitMode.MonthlyOrFixed;
+    public int ImportMaxEntriesPerDraft { get; private set; } = 250;
+    public int? ImportMonthlySplitThreshold { get; private set; } = 250; // nullable to allow future unset -> fallback
+
+    public void SetImportSplitSettings(ImportSplitMode mode, int maxEntriesPerDraft, int? monthlySplitThreshold)
+    {
+        if (maxEntriesPerDraft < 20)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxEntriesPerDraft), "Max entries per draft must be >= 20.");
+        }
+        if (mode == ImportSplitMode.MonthlyOrFixed)
+        {
+            var thr = monthlySplitThreshold ?? maxEntriesPerDraft;
+            if (thr < maxEntriesPerDraft)
+            {
+                throw new ArgumentOutOfRangeException(nameof(monthlySplitThreshold), "Monthly split threshold must be >= MaxEntriesPerDraft in MonthlyOrFixed mode.");
+            }
+            ImportMonthlySplitThreshold = thr;
+        }
+        else
+        {
+            // For FixedSize / Monthly the threshold is not required; keep previous value for potential later switch.
+            if (monthlySplitThreshold.HasValue && monthlySplitThreshold.Value < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(monthlySplitThreshold));
+            }
+            if (monthlySplitThreshold.HasValue)
+            {
+                ImportMonthlySplitThreshold = monthlySplitThreshold.Value; // store if provided
+            }
+        }
+
+        ImportSplitMode = mode;
+        ImportMaxEntriesPerDraft = maxEntriesPerDraft;
+        Touch();
+    }
 
     public void MarkLogin(DateTime utcNow)
     {

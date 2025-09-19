@@ -98,7 +98,6 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
             ClockSkew = TimeSpan.FromSeconds(10)
         };
-        // Zusätzliche Quelle: Cookie falls kein Authorization Header
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = ctx =>
@@ -134,6 +133,9 @@ using (var scope = app.Services.CreateScope())
     try
     {
         db.Database.Migrate();
+        // Safety patch (ensures columns exist if DB was created before migration was added)
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SchemaPatcher");
+        SchemaPatcher.EnsureUserImportSplitSettingsColumns(db, logger);
     }
     catch (SqliteException ex) when (ex.SqliteErrorCode == 1)
     {
@@ -163,11 +165,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-// Authentication / Authorization einschleusen
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Add JWT refresh middleware after authentication so User is populated, before endpoints
 app.UseMiddleware<JwtRefreshMiddleware>();
 
 app.MapStaticAssets();

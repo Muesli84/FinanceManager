@@ -1,7 +1,6 @@
-@page "/setup"
+﻿@page "/setup"
 @rendermode InteractiveServer
 @using FinanceManager.Shared.Dtos
-@inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Setup> Localizer
 
@@ -9,7 +8,6 @@
 
 <h3>@Localizer["Heading"]</h3>
 
-<!-- Status panel only for BackupRestore tasks -->
 <BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="1500" AllowedTypes="new[]{ BackgroundTaskType.BackupRestore }" />
 
 <div class="action-bar" style="margin-bottom:1rem;">
@@ -18,375 +16,47 @@
     </button>
 </div>
 
-<details style="margin-bottom:1rem;" open>
-    <summary style="cursor:pointer;font-weight:600;">@Localizer["Section_Backup"]</summary>
-    <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-        <button class="icon-btn" @onclick="CreateBackupAsync" disabled="@_busy" title="@Localizer["Btn_CreateBackup"]">
-            <svg class="icon"><use href="icons/sprite.svg#save" /></svg>
-        </button>
-        <label class="icon-btn" title="@Localizer["Btn_UploadBackup"]" style="padding:.3rem .6rem;cursor:pointer;">
-            <InputFile OnChange="OnBackupUploadSelected" style="display:none;" />
-            <svg class="icon"><use href="icons/sprite.svg#upload" /></svg>
-        </label>
-    </div>
+<div class="fm-tabs">
+    <button class="fm-tab @(IsActiveTab(TabBackup)?"active":null)" @onclick="() => Activate(TabBackup)">@Localizer["Tab_Backup"]</button>
+    <button class="fm-tab @(IsActiveTab(TabImportSplit)?"active":null)" @onclick="() => Activate(TabImportSplit)">@Localizer["ImportSplit_TabTitle"]</button>
+    <button class="fm-tab @(IsActiveTab(TabLegacy)?"active":null)" @onclick="() => Activate(TabLegacy)">@Localizer["Tab_LegacyImport"]</button>
+</div>
 
-    @if (!string.IsNullOrWhiteSpace(_backupError))
+<div class="fm-tab-panel">
+    @switch(_activeTab)
     {
-        <div class="error" style="margin-top:.5rem;">@_backupError</div>
+        case TabBackup:
+            <SetupBackupTab />
+            break;
+        case TabImportSplit:
+            <SetupImportSplitTab />
+            break;
+        case TabLegacy:
+            <SetupLegacyImportTab />
+            break;
     }
-
-    <div class="table-responsive" style="margin-top:.75rem;">
-        <table class="fm-table">
-            <thead>
-                <tr>
-                    <th style="width:11rem;">@Localizer["Th_Created"]</th>
-                    <th>@Localizer["Th_File"]</th>
-                    <th style="width:6rem;">@Localizer["Th_Size"]</th>
-                    <th style="width:6rem;">@Localizer["Th_Source"]</th>
-                    <th style="width:1%;white-space:nowrap;">@Localizer["Th_Actions"]</th>
-                </tr>
-            </thead>
-            <tbody>
-            @if (_backups == null)
-            {
-                <tr><td colspan="5">@Localizer["Msg_Loading"]</td></tr>
-            }
-            else if (_backups.Count == 0)
-            {
-                <tr><td colspan="5">@Localizer["Msg_NoBackups"]</td></tr>
-            }
-            else
-            {
-                @foreach (var b in _backups)
-                {
-                    var isSelected = _selectedBackupId == b.Id;
-                    <tr class="@(isSelected ? "selected-row" : null)" @onclick="()=>SelectBackup(b.Id)">
-                        <td>@b.CreatedUtc.ToLocalTime().ToString("g")</td>
-                        <td>@b.FileName</td>
-                        <td>@FormatSize(b.SizeBytes)</td>
-                        <td>@b.Source</td>
-                        <td style="white-space:nowrap;display:flex;gap:.25rem;">
-                            <button class="icon-btn" title="@Localizer["Btn_Restore"]" disabled="@(_busy || _hasActiveRestore)" @onclick:stopPropagation @onclick="() => StartApplyBackgroundAsync(b.Id)">
-                                <svg class="icon"><use href="icons/sprite.svg#restore" /></svg>
-                            </button>
-                            <a class="icon-btn" title="@Localizer["Btn_Download"]" href="@($"/api/setup/backups/{b.Id}/download")" download @onclick:stopPropagation>
-                                <svg class="icon"><use href="icons/sprite.svg#download" /></svg>
-                            </a>
-                            <button class="icon-btn danger"
-                                    title="@Localizer["Btn_Delete"]"
-                                    @onclick:stopPropagation
-                                    @onclick="() => DeleteBackupAsync(b.Id)"
-                                    disabled="@_busy">
-                                <svg class="icon"><use href="icons/sprite.svg#delete" /></svg>
-                            </button>
-                        </td>
-                    </tr>
-                }
-            }
-            </tbody>
-        </table>
-    </div>
-</details>
-
-<details>
-    <summary style="cursor:pointer;font-weight:600;">Legacy</summary>
-    <div style="margin-top:.75rem;">
-        <p>@Localizer["Legacy_Import_Hint"]</p>
-        <div class="icon-btn" title="@Localizer["Legacy_ChooseFile"]" style="padding:.3rem .6rem;">
-            <InputFile OnChange="OnFileSelected" />
-        </div>
-        @if (_fileName != null)
-        {
-            <div style="margin-top:1rem;">
-                <p>@Localizer["Legacy_File"]: @_fileName</p>
-                <label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;">
-                    <input type="checkbox" @bind="_replaceExisting" />
-                    @Localizer["Legacy_ReplaceExisting"]
-                </label>
-                <button class="icon-btn" @onclick="UploadAsync" disabled="@_busy" title="@Localizer["Legacy_Import"]">
-                    <svg class="icon"><use href="icons/sprite.svg#save"></use></svg>
-                </button>
-            </div>
-        }
-        @if (!string.IsNullOrWhiteSpace(_error))
-        {
-            <div class="error" style="margin-top:.5rem;">@_error</div>
-        }
-    </div>
-</details>
+</div>
 
 <style>
-    .selected-row { background:#242430; }
-    .selected-row:hover { background:#2b2b38; }
+    .fm-tabs { display:flex; gap:.25rem; margin-bottom:1rem; flex-wrap:wrap; }
+    .fm-tab { background:#2a2d34; border:1px solid #3a3d45; padding:.45rem .9rem; cursor:pointer; font:inherit; color:#fff; border-radius:.35rem .35rem 0 0; }
+    .fm-tab.active { background:#39404c; font-weight:600; }
+    .fm-tab-panel { border:1px solid #3a3d45; padding:1rem; border-radius:0 .35rem .35rem .35rem; background:#2a2d34; }
 </style>
 
 @code {
-    private IBrowserFile? _file;
-    private string? _fileName;
-    private bool _replaceExisting;
-    private bool _busy;
-    private string? _error;
+    private const string TabBackup = "backup";
+    private const string TabImportSplit = "import-split";
+    private const string TabLegacy = "legacy";
+    private string _activeTab = TabBackup;
 
-    private List<BackupVm>? _backups;
-    private string? _backupError;
-
-    private Guid? _selectedBackupId;
-    private bool _hasActiveRestore;
-
-    private System.Timers.Timer? _restoreWatchTimer;
-
-    protected override async Task OnInitializedAsync()
+    private void Activate(string tab)
     {
-        await LoadBackupsAsync();
-        await CheckActiveRestoreAsync();
-        StartRestoreWatcher();
+        if (_activeTab != tab)
+        {
+            _activeTab = tab;
+        }
     }
-
+    private bool IsActiveTab(string tab) => _activeTab == tab;
     private void Back() => Navigation.NavigateTo("/");
-
-    private void SelectBackup(Guid id)
-    {
-        _selectedBackupId = _selectedBackupId == id ? (Guid?)null : id;
-    }
-
-    private void OnFileSelected(InputFileChangeEventArgs e)
-    {
-        _file = e.File;
-        _fileName = _file?.Name;
-    }
-
-    private async Task UploadAsync()
-    {
-        if (_file == null) { return; }
-        _busy = true; _error = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            using var content = new MultipartFormDataContent();
-            await using var stream = _file.OpenReadStream(1024L * 1024L * 1024L);
-            content.Add(new StreamContent(stream), "file", _file.Name);
-            content.Add(new StringContent(_replaceExisting.ToString()), "replaceExisting");
-            var resp = await http.PostAsync("/api/setup/import", content);
-            if (resp.IsSuccessStatusCode)
-            {
-                Navigation.NavigateTo("/", true);
-            }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busy = false;
-    }
-
-    private async Task LoadBackupsAsync()
-    {
-        try
-        {
-            _backupError = null;
-            var http = ClientFactory.CreateClient("Api");
-            _backups = await http.GetFromJsonAsync<List<BackupVm>>("/api/setup/backups") ?? new();
-        }
-        catch (Exception ex)
-        {
-            _backupError = ex.Message;
-            _backups = new();
-        }
-        StateHasChanged();
-    }
-
-    private async Task CreateBackupAsync()
-    {
-        _busy = true; _backupError = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.PostAsync("/api/setup/backups", null);
-            if (resp.IsSuccessStatusCode)
-            {
-                var created = await resp.Content.ReadFromJsonAsync<BackupVm>();
-                _backups ??= new();
-                if (created != null) { _backups.Insert(0, created); }
-            }
-            else
-            {
-                _backupError = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _backupError = ex.Message;
-        }
-        _busy = false;
-    }
-
-    private async Task StartApplyBackgroundAsync(Guid id)
-    {
-        if (id == Guid.Empty) { return; }
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.PostAsync($"/api/setup/backups/{id}/apply/start", null);
-        if (resp.IsSuccessStatusCode)
-        {
-            _hasActiveRestore = true;
-            StartRestoreWatcher();
-        }
-        else
-        {
-            _backupError = await resp.Content.ReadAsStringAsync();
-        }
-    }
-
-    private void StartRestoreWatcher()
-    {
-        _restoreWatchTimer?.Stop();
-        _restoreWatchTimer?.Dispose();
-
-        if (!_hasActiveRestore)
-        {
-            return;
-        }
-
-        _restoreWatchTimer = new System.Timers.Timer(2000);
-        _restoreWatchTimer.AutoReset = true;
-        _restoreWatchTimer.Elapsed += async (_, _) =>
-        {
-            await CheckActiveRestoreAsync();
-            if (!_hasActiveRestore)
-            {
-                _restoreWatchTimer?.Stop();
-                _restoreWatchTimer?.Dispose();
-                _restoreWatchTimer = null;
-            }
-        };
-        _restoreWatchTimer.Start();
-    }
-
-    private async Task CheckActiveRestoreAsync()
-    {
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var tasks = await http.GetFromJsonAsync<List<BackgroundTaskInfo>>("/api/background-tasks/active");
-            var active = tasks?.Any(t =>
-                t.Type == BackgroundTaskType.BackupRestore &&
-                (t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued)) ?? false;
-            if (active != _hasActiveRestore)
-            {
-                _hasActiveRestore = active;
-                await InvokeAsync(StateHasChanged);
-            }
-        }
-        catch
-        {
-            // ignore
-        }
-    }
-
-    private async Task CancelActiveRestoreAsync()
-    {
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var tasks = await http.GetFromJsonAsync<List<BackgroundTaskInfo>>("/api/background-tasks/active");
-            var running = tasks?.FirstOrDefault(t =>
-                t.Type == BackgroundTaskType.BackupRestore &&
-                (t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued));
-            if (running != null)
-            {
-                await http.DeleteAsync($"/api/background-tasks/{running.Id}");
-            }
-        }
-        catch { }
-        await CheckActiveRestoreAsync();
-    }
-
-    private async Task DeleteBackupAsync(Guid id)
-    {
-        _busy = true; _backupError = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.DeleteAsync($"/api/setup/backups/{id}");
-            if (resp.IsSuccessStatusCode)
-            {
-                _backups?.RemoveAll(x => x.Id == id);
-                if (_selectedBackupId == id) { _selectedBackupId = null; }
-            }
-            else
-            {
-                _backupError = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _backupError = ex.Message;
-        }
-        _busy = false;
-    }
-
-    private IBrowserFile? _backupUploadFile;
-    private void OnBackupUploadSelected(InputFileChangeEventArgs e)
-    {
-        _backupUploadFile = e.File;
-        _ = UploadBackupAsync();
-    }
-
-    private async Task UploadBackupAsync()
-    {
-        if (_backupUploadFile == null) { return; }
-        _busy = true; _backupError = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            using var content = new MultipartFormDataContent();
-            await using var stream = _backupUploadFile.OpenReadStream(1024L * 1024L * 1024L);
-            content.Add(new StreamContent(stream), "file", _backupUploadFile.Name);
-            var resp = await http.PostAsync("/api/setup/backups/upload", content);
-            if (resp.IsSuccessStatusCode)
-            {
-                var created = await resp.Content.ReadFromJsonAsync<BackupVm>();
-                _backups ??= new();
-                if (created != null) { _backups.Insert(0, created); }
-            }
-            else
-            {
-                _backupError = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _backupError = ex.Message;
-        }
-        finally
-        {
-            _busy = false;
-            StateHasChanged();
-        }
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        string[] units = ["B", "KB", "MB", "GB"]; // C# 12 collection expression
-        double size = bytes;
-        int unit = 0;
-        while (size >= 1024 && unit < units.Length - 1)
-        {
-            size /= 1024;
-            unit++;
-        }
-        return $"{size:N1} {units[unit]}";
-    }
-
-    private sealed class BackupVm
-    {
-        public Guid Id { get; set; }
-        public DateTime CreatedUtc { get; set; }
-        public string FileName { get; set; } = string.Empty;
-        public long SizeBytes { get; set; }
-        public string Source { get; set; } = string.Empty;
-    }
 }

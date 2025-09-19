@@ -14,6 +14,8 @@
   <data name="Btn_CancelRestore" xml:space="preserve"><value>Cancel restore</value></data>
   <data name="Btn_Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Btn_Download" xml:space="preserve"><value>Download</value></data>
+  <data name="Btn_Reset" xml:space="preserve"><value>Reset</value></data>
+  <data name="Btn_Retry" xml:space="preserve"><value>Retry</value></data>
   <data name="Th_Created" xml:space="preserve"><value>Created</value></data>
   <data name="Th_File" xml:space="preserve"><value>File</value></data>
   <data name="Th_Size" xml:space="preserve"><value>Size</value></data>
@@ -26,4 +28,24 @@
   <data name="Legacy_File" xml:space="preserve"><value>File</value></data>
   <data name="Legacy_ReplaceExisting" xml:space="preserve"><value>Replace existing data</value></data>
   <data name="Legacy_Import" xml:space="preserve"><value>Import</value></data>
+  <!-- Import Split Tab -->
+  <data name="Tab_Backup" xml:space="preserve"><value>Backups</value></data>
+  <data name="ImportSplit_TabTitle" xml:space="preserve"><value>Import splitting</value></data>
+  <data name="Tab_LegacyImport" xml:space="preserve"><value>Legacy import</value></data>
+  <data name="ImportSplit_Mode_Label" xml:space="preserve"><value>Mode</value></data>
+  <data name="ImportSplit_Mode_FixedSize" xml:space="preserve"><value>Fixed size</value></data>
+  <data name="ImportSplit_Mode_Monthly" xml:space="preserve"><value>Monthly</value></data>
+  <data name="ImportSplit_Mode_MonthlyOrFixed" xml:space="preserve"><value>Monthly (threshold) / Fixed size</value></data>
+  <data name="ImportSplit_MaxEntries" xml:space="preserve"><value>Max entries per draft</value></data>
+  <data name="ImportSplit_MonthlyThreshold" xml:space="preserve"><value>Monthly threshold</value></data>
+  <data name="ImportSplit_SaveSuccess" xml:space="preserve"><value>Settings saved.</value></data>
+  <data name="ImportSplit_InvalidMaxMin20" xml:space="preserve"><value>Max entries must be ≥ 20.</value></data>
+  <data name="ImportSplit_InvalidThreshold" xml:space="preserve"><value>Threshold must be ≥ Max entries.</value></data>
+  <data name="ImportSplit_Help_Title" xml:space="preserve"><value>Splitting guidance</value></data>
+  <data name="ImportSplit_Help_MaxEntries" xml:space="preserve"><value>Hard upper bound for a generated draft. Always used in fixed size mode or as fallback in hybrid mode.</value></data>
+  <data name="ImportSplit_Help_MonthlyThreshold" xml:space="preserve"><value>Hybrid only: Maximum size tolerated for a monthly draft. If exceeded the importer switches to fixed chunks (Max entries per draft).</value></data>
+  <data name="ImportSplit_Help_Mode_FixedSize" xml:space="preserve"><value>Always split into blocks up to the max entries. Ignores month boundaries.</value></data>
+  <data name="ImportSplit_Help_Mode_Monthly" xml:space="preserve"><value>One draft per calendar month regardless of entry count.</value></data>
+  <data name="ImportSplit_Help_Mode_Hybrid" xml:space="preserve"><value>Prefers monthly drafts. Falls back to fixed-size chunks if a month exceeds the threshold.</value></data>
+  <data name="ImportSplit_Help_Example" xml:space="preserve"><value>Example: Max=300, Threshold=1200. Month with 950 entries → monthly draft. Month with 2,400 entries → fallback: 8 drafts of 300.</value></data>
 </root>
