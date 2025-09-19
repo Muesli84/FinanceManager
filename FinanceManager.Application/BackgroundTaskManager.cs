@@ -13,6 +13,10 @@ namespace FinanceManager.Application
         BackgroundTaskInfo? Get(Guid id);
         bool TryCancel(Guid id);
         bool TryRemoveQueued(Guid id);
+        // Runner operations
+        bool TryDequeueNext(out Guid id);
+        void UpdateTaskInfo(BackgroundTaskInfo info);
+        SemaphoreSlim Semaphore { get; }
     }
 
     public sealed class BackgroundTaskManager : IBackgroundTaskManager
@@ -37,6 +41,11 @@ namespace FinanceManager.Application
                 }
                 var id = Guid.NewGuid();
                 var now = DateTime.UtcNow;
+                string? payloadJson = null;
+                if (payload != null)
+                {
+                    try { payloadJson = System.Text.Json.JsonSerializer.Serialize(payload); } catch { }
+                }
                 var taskInfo = new BackgroundTaskInfo(
                     id,
                     type,
@@ -48,6 +57,10 @@ namespace FinanceManager.Application
                     null,
                     0,
                     0,
+                    null,
+                    null,
+                    null,
+                    payloadJson,
                     null,
                     null,
                     null

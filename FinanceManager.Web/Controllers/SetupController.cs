@@ -16,10 +16,11 @@ public sealed class SetupController : ControllerBase
         _current = current;
     }
 
+    // Legacy initial import (JSON init / NDJSON)
     [HttpPost("import")]
     public async Task<IActionResult> ImportAsync([FromForm] IFormFile file, [FromForm] bool replaceExisting, CancellationToken ct)
     {
-        if (file == null || file.Length == 0) return BadRequest("Keine Datei ausgewählt.");
+        if (file == null || file.Length == 0) { return BadRequest("Keine Datei ausgewählt."); }
         await _importService.ImportAsync(_current.UserId, file.OpenReadStream(), replaceExisting, ct);
         return Ok();
     }

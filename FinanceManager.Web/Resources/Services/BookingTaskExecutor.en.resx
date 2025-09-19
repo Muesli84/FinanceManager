@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="BK_Start" xml:space="preserve"><value>Starting mass booking...</value></data>
+  <data name="BK_ErrorEntry" xml:space="preserve"><value>Error on entry {0}</value></data>
+  <data name="BK_WarnEntry" xml:space="preserve"><value>Warning on entry {0}</value></data>
+  <data name="BK_ErrorDraft" xml:space="preserve"><value>Error on statement {0}</value></data>
+  <data name="BK_WarnDraft" xml:space="preserve"><value>Warning on statement {0}</value></data>
+  <data name="BK_Progress" xml:space="preserve"><value>Processed {0}/{1}</value></data>
+  <data name="BK_Completed" xml:space="preserve"><value>Mass booking completed</value></data>
+</root>

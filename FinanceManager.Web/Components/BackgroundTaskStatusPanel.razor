@@ -1,93 +1,193 @@
 @using FinanceManager.Shared.Dtos
 @inject HttpClient Http
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.BackgroundTaskStatusPanel> Localizer
 @code {
     [Parameter] public string TaskListEndpoint { get; set; } = "/api/background-tasks/active";
-    [Parameter] public int PollInterval { get; set; } = 2000;
-    private List<BackgroundTaskInfo> Tasks = new();
+    [Parameter] public int PollInterval { get; set; } = 2000; // ms
+    [Parameter] public BackgroundTaskType[]? AllowedTypes { get; set; } // optional filter only for deciding visibility
+
+    private List<BackgroundTaskInfo> Tasks = new(); // always holds ALL active/queued tasks
     private BackgroundTaskInfo? ActiveTask => Tasks.FirstOrDefault(t => t.Status == BackgroundTaskStatus.Running);
     private List<BackgroundTaskInfo> QueuedTasks => Tasks.Where(t => t.Status == BackgroundTaskStatus.Queued).OrderBy(t => t.EnqueuedUtc).ToList();
-    private System.Timers.Timer? _timer;
-    protected override void OnInitialized()
+
+    private CancellationTokenSource? _cts;
+    private bool _loopStarted;
+    private bool _shouldShow; // render flag (based on AllowedTypes subset)
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        _timer = new System.Timers.Timer(PollInterval);
-        _timer.Elapsed += async (_, _) => await LoadTasksAsync();
-        _timer.AutoReset = true;
-        _timer.Start();
-        _ = LoadTasksAsync();
+        if (firstRender && !_loopStarted)
+        {
+            _loopStarted = true;
+            _cts = new CancellationTokenSource();
+            _ = PollLoopAsync(_cts.Token);
+            await LoadTasksAsync(_cts.Token); // initial fetch
+        }
     }
-    private async Task LoadTasksAsync()
+
+    private async Task PollLoopAsync(CancellationToken ct)
     {
-        var result = await Http.GetFromJsonAsync<List<BackgroundTaskInfo>>(TaskListEndpoint);
-        if (result != null) Tasks = result;
-        StateHasChanged();
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(PollInterval, ct);
+                if (ct.IsCancellationRequested) { break; }
+                await LoadTasksAsync(ct);
+            }
+            catch (OperationCanceledException) { break; }
+            catch { /* ignore transient */ }
+        }
     }
+
+    private async Task LoadTasksAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await Http.GetFromJsonAsync<List<BackgroundTaskInfo>>(TaskListEndpoint, ct) ?? new();
+
+            // Determine visibility using AllowedTypes filter, but always keep full list for display
+            if (AllowedTypes != null && AllowedTypes.Length > 0)
+            {
+                _shouldShow = result.Any(t => AllowedTypes.Contains(t.Type));
+            }
+            else
+            {
+                _shouldShow = result.Any();
+            }
+            Tasks = result; // show EVERYTHING if visible
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { }
+        catch { }
+    }
+
     public async Task CancelTaskAsync(Guid id)
     {
-        await Http.DeleteAsync($"/api/background-tasks/{id}");
-        await LoadTasksAsync();
+        try { await Http.DeleteAsync($"/api/background-tasks/{id}"); } catch { }
+        await LoadTasksAsync(_cts?.Token ?? CancellationToken.None);
     }
+
     public async Task RemoveQueuedAsync(Guid id)
     {
-        await Http.DeleteAsync($"/api/background-tasks/{id}");
-        await LoadTasksAsync();
+        try { await Http.DeleteAsync($"/api/background-tasks/{id}"); } catch { }
+        await LoadTasksAsync(_cts?.Token ?? CancellationToken.None);
     }
+
+    private string GetTypeLabel(BackgroundTaskType type)
+    {
+        var key = $"Bgt_Type_{type}";
+        var loc = Localizer[key];
+        return loc.ResourceNotFound ? type.ToString() : loc.Value;
+    }
+
     public void Dispose()
     {
-        _timer?.Stop();
-        _timer?.Dispose();
+        try { _cts?.Cancel(); } catch { }
+        _cts?.Dispose();
     }
 }
+@if (_shouldShow)
+{
 <div class="bgt-panel">
     <h3>@Localizer["Bgt_Title"]</h3>
-    <div>
-        <h4>@Localizer["Bgt_ActiveNone"]</h4>
-        @if (ActiveTask != null)
+
+    <section class="bgt-active-section">
+        <h4>@Localizer["Bgt_ActiveTitle"]</h4>
+        @if (ActiveTask is null)
         {
-            <div class="bgt-active">
-                <span class="bgt-type">@ActiveTask.Type</span>
-                <span class="bgt-status bgt-badge bgt-running">@Localizer[$"Bgt_Status_{ActiveTask.Status}"]</span>
-                <div class="bgt-progress">
-                    @if (ActiveTask.Total.HasValue && ActiveTask.Total > 0)
-                    {
-                        <progress value="@ActiveTask.Processed" max="@ActiveTask.Total"></progress>
-                        <span>@(ActiveTask.Processed ?? 0) / @(ActiveTask.Total ?? 0)</span>
-                    }
-                    else
-                    {
-                        <div class="bgt-indeterminate"></div>
-                    }
-                </div>
-                <span>@ActiveTask.Message</span>
-                <span class="bgt-warn">@Localizer["Bgt_Warnings"]: @ActiveTask.Warnings</span>
-                <span class="bgt-err">@Localizer["Bgt_Errors"]: @ActiveTask.Errors</span>
-                <button @onclick="() => CancelTaskAsync(ActiveTask.Id)">@Localizer["Bgt_Cancel"]</button>
-            </div>
+            <div class="bgt-empty">@Localizer["Bgt_ActiveNone"]</div>
         }
         else
         {
-            <span>@Localizer["Bgt_ActiveNone"]</span>
+            <div class="bgt-active">
+                <div class="bgt-row">
+                    <span class="bgt-type">@GetTypeLabel(ActiveTask.Type)</span>
+                    <span class="bgt-status bgt-badge bgt-@ActiveTask.Status.ToString().ToLowerInvariant()">@Localizer[$"Bgt_Status_{ActiveTask.Status}"]</span>
+                    <button class="icon-btn" @onclick="() => CancelTaskAsync(ActiveTask.Id)" title="@Localizer["Bgt_Cancel"]"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+                </div>
+                <div class="bgt-progress">
+                    @if (ActiveTask.Total.HasValue && ActiveTask.Total > 0)
+                    {
+                        var pct = (int)Math.Round(100.0 * (ActiveTask.Processed ?? 0) / ActiveTask.Total.Value);
+                        <div class="bgt-bar" title="@pct%"><div class="bgt-bar-fill" style="width:@pct%"></div></div>
+                        <div class="bgt-progress-label">@(ActiveTask.Processed ?? 0) / @(ActiveTask.Total ?? 0)</div>
+                    }
+                    else
+                    {
+                        <div class="bgt-indeterminate" title="@Localizer["Bgt_ActiveTitle"]"></div>
+                    }
+                </div>
+                @if(ActiveTask.Total2.HasValue && ActiveTask.Total2 > 0)
+                {
+                    var subPct = (int)Math.Round(100.0 * (ActiveTask.Processed2 ?? 0) / ActiveTask.Total2.Value);
+                    <div class="bgt-progress sub">
+                        <div class="bgt-bar" title="@subPct%"><div class="bgt-bar-fill" style="background:#6aa84f;width:@subPct%"></div></div>
+                        <div class="bgt-progress-label">@(ActiveTask.Processed2 ?? 0) / @(ActiveTask.Total2 ?? 0)</div>
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(ActiveTask.Message))
+                {
+                    <div class="bgt-message">@ActiveTask.Message</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(ActiveTask.Message2))
+                {
+                    <div class="bgt-message" style="opacity:.65;">@ActiveTask.Message2</div>
+                }
+                <div class="bgt-metrics">
+                    <span class="bgt-warn">@Localizer["Bgt_Warnings"]: @ActiveTask.Warnings</span>
+                    <span class="bgt-err">@Localizer["Bgt_Errors"]: @ActiveTask.Errors</span>
+                </div>
+            </div>
         }
-    </div>
-    <div>
+    </section>
+
+    <section class="bgt-queue-section">
         <h4>@Localizer["Bgt_QueuedTitle"]</h4>
-        @if (QueuedTasks.Any())
+        @if (!QueuedTasks.Any())
         {
-            <ul>
+            <div class="bgt-empty">@Localizer["Bgt_ActiveNone"]</div>
+        }
+        else
+        {
+            <ul class="bgt-queue">
                 @foreach (var (task, idx) in QueuedTasks.Select((t, i) => (t, i)))
                 {
-                    <li>
-                        <span class="bgt-type">@task.Type</span>
+                    <li class="bgt-queue-item">
+                        <span class="bgt-type">@GetTypeLabel(task.Type)</span>
                         <span class="bgt-status bgt-badge bgt-queued">@Localizer[$"Bgt_Status_{task.Status}"]</span>
-                        <span>@task.EnqueuedUtc.ToLocalTime()</span>
-                        <span>@Localizer["Bgt_Position"]: @(idx + 1)</span>
-                        <button @onclick="() => RemoveQueuedAsync(task.Id)">@Localizer["Bgt_Remove"]</button>
+                        <span class="bgt-position">@Localizer["Bgt_Position"]: @(idx + 1)</span>
+                        <button class="icon-btn" @onclick="() => RemoveQueuedAsync(task.Id)" title="@Localizer["Bgt_Remove"]"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
                     </li>
                 }
             </ul>
         }
-        else
-        {
-            <span>@Localizer["Bgt_ActiveNone"]</span>
-        }
-    </div>
+    </section>
 </div>
+}
+
+<style>
+    .bgt-panel { border:1px solid #444; padding:.75rem 1rem; border-radius:6px; background:#1e1e24; margin:1rem 0; }
+    .bgt-active, .bgt-queue-item { display:flex; flex-direction:column; gap:.4rem; }
+    .bgt-row { display:flex; gap:.5rem; align-items:center; }
+    .bgt-badge { padding:.1rem .5rem; border-radius:12px; font-size:.65rem; text-transform:uppercase; letter-spacing:.5px; background:#333; }
+    .bgt-running { background:#2d6cdf; }
+    .bgt-queued { background:#666; }
+    .bgt-completed { background:#3c7c3c; }
+    .bgt-failed { background:#8c3131; }
+    .bgt-cancelled { background:#555; }
+    .bgt-progress { display:flex; align-items:center; gap:.5rem; }
+    .bgt-bar { position:relative; width:180px; height:6px; background:#333; border-radius:3px; overflow:hidden; }
+    .bgt-bar-fill { position:absolute; left:0; top:0; bottom:0; background:#2d6cdf; transition:width .25s; }
+    .bgt-indeterminate { width:180px; height:6px; background:#333; position:relative; overflow:hidden; }
+    .bgt-indeterminate::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent 0%,#2d6cdf 50%,transparent 100%); animation:bgtInd 1s linear infinite; }
+    .bgt-queue { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem; }
+    .bgt-queue-item { padding:.4rem .5rem; border:1px solid #333; border-radius:4px; background:#26262c; display:flex; flex-direction:row; gap:.6rem; align-items:center; }
+    .bgt-empty { opacity:.6; font-size:.75rem; }
+    .bgt-type { font-weight:600; font-size:.75rem; }
+    .bgt-message { font-size:.7rem; opacity:.85; }
+    .bgt-metrics { display:flex; gap:1rem; font-size:.65rem; opacity:.8; }
+    .bgt-warn { color:#cc6; }
+    .bgt-err { color:#e66; }
+    .bgt-progress.sub { margin-top:.25rem; }
+</style>

@@ -1,10 +1,12 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using FinanceManager.Application;
 using FinanceManager.Application.Statements;
 using FinanceManager.Shared.Dtos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.Services
 {
@@ -13,11 +15,13 @@ namespace FinanceManager.Web.Services
         public BackgroundTaskType Type => BackgroundTaskType.ClassifyAllDrafts;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<ClassificationTaskExecutor> _logger;
+        private readonly IStringLocalizer<ClassificationTaskExecutor> _localizer;
 
-        public ClassificationTaskExecutor(IServiceScopeFactory scopeFactory, ILogger<ClassificationTaskExecutor> logger)
+        public ClassificationTaskExecutor(IServiceScopeFactory scopeFactory, ILogger<ClassificationTaskExecutor> logger, IStringLocalizer<ClassificationTaskExecutor> localizer)
         {
             _scopeFactory = scopeFactory;
             _logger = logger;
+            _localizer = localizer;
         }
 
         public async Task ExecuteAsync(BackgroundTaskContext context, CancellationToken ct)
@@ -27,23 +31,23 @@ namespace FinanceManager.Web.Services
             var drafts = await draftService.GetOpenDraftsAsync(context.UserId, ct);
             int total = drafts.Count;
             int processed = 0;
-            context.ReportProgress(processed, total, "Starting classification...", 0, 0);
+            context.ReportProgress(processed, total, _localizer["CL_Start"], 0, 0);
             foreach (var draft in drafts)
             {
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    await draftService.ClassifyDraftAsync(draft.Id, ct);
+                    await draftService.ClassifyAsync(draft.DraftId, null, context.UserId, ct);
                     processed++;
-                    context.ReportProgress(processed, total, $"Classified {processed}/{total}", 0, 0);
+                    context.ReportProgress(processed, total, _localizer["CL_Progress", processed, total], 0, 0);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Classification failed for draft {DraftId}", draft.Id);
-                    context.ReportProgress(processed, total, $"Error: {ex.Message}", 1, 1);
+                    _logger.LogWarning(ex, "Classification failed for draft {DraftId}", draft.DraftId);
+                    context.ReportProgress(processed, total, _localizer["CL_Error", ex.Message], 1, 1);
                 }
             }
-            context.ReportProgress(processed, total, "Classification completed.", 0, 0);
+            context.ReportProgress(processed, total, _localizer["CL_Completed"], 0, 0);
         }
     }
 }

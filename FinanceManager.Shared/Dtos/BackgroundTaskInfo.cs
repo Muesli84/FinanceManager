@@ -31,6 +31,10 @@ namespace FinanceManager.Shared.Dtos
         int Errors,
         string? ErrorDetail,
         DateTime? StartedUtc,
-        DateTime? FinishedUtc
+        DateTime? FinishedUtc,
+        string? Payload,
+        int? Processed2,
+        int? Total2,
+        string? Message2
     );
 }

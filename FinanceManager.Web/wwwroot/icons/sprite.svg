@@ -22,12 +22,11 @@
     <path d="M12 2 3 7v1h18V7l-9-5z" />
   </symbol>
   <symbol id="back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M9 5 2 12l7 7" />
-    <path d="M2 12h20" />
+    <polyline points="15 18 9 12 15 6" />
   </symbol>
   <symbol id="clear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 6 6 18" />
-    <path d="M6 6l12 12" />
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
   </symbol>
   <!-- alias for close to match UI references -->
   <symbol id="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -96,14 +95,21 @@
     <path d="M3 12h18" />
     <path d="M3 19h18" />
   </symbol>
-  <!-- Added: play icon -->
   <symbol id="play" viewBox="0 0 24 24" fill="currentColor" stroke="none">
     <path d="M8 5v14l11-7z" />
   </symbol>
-  <!-- Added: download icon -->
   <symbol id="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 3v12" />
     <path d="M7 10l5 5 5-5" />
     <path d="M5 19h14" />
+  </symbol>
+  <symbol id="upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 21v-12" />
+    <path d="M17 12l-5-5-5 5" />
+    <path d="M5 5h14" />
+  </symbol>
+  <symbol id="restore" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="3 4 3 10 9 10" />
+    <path d="M21 12a9 9 0 1 0-3.5 7" />
   </symbol>
 </svg>

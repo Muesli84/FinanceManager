@@ -4,6 +4,7 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @using FinanceManager.Application.Statements
+@using FinanceManager.Shared.Dtos
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.StatementDrafts> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -18,8 +19,8 @@
     </button>
 </div>
 
-
-<BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="2000" />
+<!-- Status panel only for classification or booking tasks -->
+<BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="2000" AllowedTypes="new[]{ BackgroundTaskType.ClassifyAllDrafts, BackgroundTaskType.BookAllDrafts }" />
 
 @if (_bookingIssues?.Count > 0 && !_isBooking)
 {

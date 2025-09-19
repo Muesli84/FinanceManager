@@ -52,7 +52,7 @@ namespace FinanceManager.Application
                 if (_manager.TryDequeueNext(out var taskId))
                 {
                     var info = _manager.Get(taskId);
-                    if (info == null) continue;
+                    if (info == null) { _manager.Semaphore.Release(); continue; }
                     var executor = _executors.FirstOrDefault(x => x.Type == info.Type);
                     if (executor == null)
                     {
@@ -68,14 +68,15 @@ namespace FinanceManager.Application
                     var context = new BackgroundTaskContext(
                         info.Id,
                         info.UserId,
-                        null,
+                        info.Payload, // pass raw JSON payload
                         (processed, total, message, warnings, errors) =>
                         {
-                            var updated = _manager.Get(info.Id) with
+                            var previous = _manager.Get(info.Id);
+                            var updated = previous with
                             {
                                 Processed = processed,
                                 Total = total,
-                                Message = message,
+                                Message = message ?? previous?.Message,
                                 Warnings = warnings,
                                 Errors = errors
                             };
