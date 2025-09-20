@@ -98,8 +98,8 @@ public sealed class UserImportSplitSettingsControllerTests
             MonthlySplitThreshold = 100
         };
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
-        resp.Should().BeOfType<ObjectResult>();
-        ((ObjectResult)resp).StatusCode.Should().Be(400);
+        var obj = resp.Should().BeOfType<ObjectResult>().Subject;
+        var details = obj.Value.Should().BeOfType<ValidationProblemDetails>().Subject;
 
         var user = await db.Users.SingleAsync();
         user.ImportMaxEntriesPerDraft.Should().Be(250); // unchanged

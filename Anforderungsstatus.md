@@ -20,7 +20,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-010      | PDF-Parsing mit Tabellenextraktion                                      | ING_StatementFileReader, Barclays_StatementFileReader, erweiterbar                                                                                                     | ✔      |
 | FA-AUSZ-011      | Import-Pipeline mit Format-Strategie                                    | StatementDraftService, Reader-Interface                                                                                                                                | ✔      |
 | FA-AUSZ-012      | Anzeige Gesamtbetrag verknüpfter Aufteilungs-Auszüge im Eintrag         | StatementDraftsController GetEntry (SplitSum/Difference); EntryDetail UI                                                                                               | ✔      |
-| FA-AUSZ-013      | Status offen bei Zahlungsintermediär bis vollständig gesplittet         | StatementDraftService: TryAutoAssignContact & ReevaluateParentEntryStatusAsync                                                                                         | ✔      |
+| FA-AUSZ-013      | Status offen bei Zahlungsintermediär bis vollständig gesplittet         | StatementDraftService: TryAutoAssignContact & ReevaluateParentEntryStatusAsync (Aktuell: berücksichtigt Summe eines Split-Drafts; TODO: Aggregation über alle zugeordneten Split-Drafts eines Parent-Eintrags erweitern) | ~      |
 | FA-AUSZ-014      | Originaldatei speichern & Download / Inline-Ansicht                     | StatementDraft: OriginalFileContent; Controller `/file`; Viewer im Detail                                                                                              | ✔      |
 | FA-AUSZ-015      | Massenbuchung Kontoauszüge (inkl. optionaler Einzelbuchung pro Eintrag) | BackgroundTask (BookingTaskExecutor + BackgroundTaskManager), Endpoint `/api/statement-drafts/book-all`, UI Dialog, Fortschritt Panel                                  | ✔      |
 | FA-AUSZ-016      | Konfigurierbare Monatsbasierte Aufteilung von Kontoauszugs-Imports      | Siehe Unteranforderungen -01..-10 / NFA -01..-04                                                                                                                       | (∑)    |
@@ -30,10 +30,12 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-016-04   | Importlogik berücksichtigt Benutzereinstellungen                        | Split-Algorithmus in `StatementDraftService.CreateDraftAsync` (Monthly / Fixed / Hybrid via Threshold)                                                                 | ✔      |
 | FA-AUSZ-016-05   | Validierung (Grenzwerte / Abhängigkeit Threshold)                       | UI-Validierung (SetupImportSplitTab) + API Validierung (Range + Schwellenprüfung) + Domänenprüfung in `User.SetImportSplitSettings`                                    | ✔      |
 | FA-AUSZ-016-06   | Logging (Modus, Draft-Anzahl, größte Draft-Größe)                       | Informations-Log in `StatementDraftService.CreateDraftAsync` (Mode, UseMonthly, Movements, DraftCount, MaxPerDraft, LargestDraftSize, Threshold, File)                 | ✔      |
-| FA-AUSZ-016-07   | UI-Hinweis nach Import (Count + Modus, lokalisiert)                     | Erweiterung Import-Result DTO & Notification fehlt                                                                                                                     | ✔      |
+| FA-AUSZ-016-07   | UI-Hinweis nach Import (Count + Modus, lokalisiert)                     | Erweiterung Import-Result DTO & Notification fehlt                                                                                                                     | ✖      |
 | FA-AUSZ-016-08   | Rückfallverhalten bei fehlender Konfiguration (Defaults)                | Fallback im Code (`CreateDraftAsync` nutzt Defaults bei fehlenden UserSettings)                                                                                        | ✔      |
-| FA-AUSZ-016-09   | Performance (einmaliges Streaming / keine Mehrfach-Scans)               | Ein Durchlauf + Sort (O(n log n)); Performance ausrichend                                                                                                              | ✔      |
+| FA-AUSZ-016-09   | Performance (einmaliges Streaming / keine Mehrfach-Scans)               | Ein Durchlauf + Sort (O(n log n)); Performance ausreichend                                                                                                             | ✔      |
 | FA-AUSZ-016-10   | Reihenfolge der Drafts nach Monat / Entries nach Datum                  | Sortierung in `CreateDraftAsync` (BookingDate, danach Subject); Monats-/Teil-Kennzeichnung                                                                             | ✔      |
+| FA-AUSZ-016-11   | Berücksichtigung der Aufteilungskontoauszüge                            | Ein Kontoauszug wird zugeordnet; Alle Auszüge mit gleicher UploadId zählen als Zugeordnet.                                                                             | ✔      |
+| FA-AUSZ-017      | Persistenter Navigationskontext Entry ↔ verknüpfte Drafts               | Query-Parameter (`src=entry&fromEntryDraftId&fromEntryId`) in `StatementDraftDetail.razor` & `StatementDraftEntryDetail.razor`; Kontextweitergabe bei Draft-/Entry-Navigation | ✔      |
 | NFA-AUSZ-016-01  | Serverseitige User-Konfiguration (UserPreferences erweitern)            | Felder am `User`, Migration `FixUserImportSplitSettings` (Idempotent), EF-Konfiguration                                                                                | ✔      |
 | NFA-AUSZ-016-02  | Erweiterbar für künftige Strategien                                    | Strategy/Resolver Pattern noch nicht extrahiert (Logik monolithisch im Service)                                                                                        | ✖      |
 | NFA-AUSZ-016-03  | Unit Tests für Splitalgorithmus                                        | Tests `StatementDraftImportSplitTests` (Fixed, Monthly, Hybrid, Threshold)                                                                                             | ✔      |
@@ -135,6 +137,10 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
+Änderungen (20.09.2025) – Ergänzung 5:
+- Neu: FA-AUSZ-017 hinzugefügt (Persistenter Navigationskontext Entry ↔ verknüpfte Drafts) → ✔.
+- FA-AUSZ-013 Beschreibung präzisiert (fehlende Gesamtaggregation über alle Split-Drafts noch offen) → Status weiterhin ~.
+
 Änderungen (19.09.2025) – Ergänzung 4:
 - FA-AUSZ-016-06 umgesetzt: Logging der Split-Metriken (Mode, UseMonthly, Movements, DraftCount, MaxPerDraft, LargestDraftSize, Threshold, File) bei Draft-Erstellung.
 
@@ -223,4 +229,4 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Neu: FA-API-002 Suchkriterien für API (Kontakte: type + q Filter ergänzt; weitere Entitäten offen).
 - Neu: NFA-USAB-001 Responsive UI (Blazor, Responsive Design teilweise umgesetzt).
 
-*Letzte Aktualisierung: 19.09.2025 (Ergänzung 4)*
+*Letzte Aktualisierung: 20.09.2025 (Ergänzung 5)*

@@ -116,4 +116,62 @@ public sealed class StatementDraftsControllerTests
         var response = await controller.CommitAsync(Guid.NewGuid(), new StatementDraftsController.CommitRequest(Guid.NewGuid(), FinanceManager.Domain.ImportFormat.Csv), default);
         response.Should().BeOfType<NotFoundResult>();
     }
+
+    [Fact]
+    public async Task GetEntryAsync_ShouldReturnSplitSumAcrossUploadGroup()
+    {
+        var (controller, db, user) = Create();
+        // Parent draft (no upload group, no account required for this test)
+        var parent = new FinanceManager.Domain.Statements.StatementDraft(user, "parent.pdf", null, null);
+        db.StatementDrafts.Add(parent);
+        await db.SaveChangesAsync();
+
+        // Intermediary contact for parent entry
+        var intermediary = new Contact(user, "PayService", ContactType.Organization, null, null, isPaymentIntermediary: true);
+        db.Contacts.Add(intermediary);
+        await db.SaveChangesAsync();
+
+        var parentEntry = parent.AddEntry(DateTime.Today, 300m, "Root", intermediary.Name, DateTime.Today, "EUR", null, false);
+        parentEntry.MarkAccounted(intermediary.Id);
+        db.Entry(parentEntry).State = EntityState.Added;
+        await db.SaveChangesAsync();
+
+        // Child drafts in SAME upload group (group of split parts)
+        var groupId = Guid.NewGuid();
+        var child1 = new FinanceManager.Domain.Statements.StatementDraft(user, "c1.pdf", null, null); child1.SetUploadGroup(groupId); db.StatementDrafts.Add(child1);
+        var child2 = new FinanceManager.Domain.Statements.StatementDraft(user, "c2.pdf", null, null); child2.SetUploadGroup(groupId); db.StatementDrafts.Add(child2);
+        var child3 = new FinanceManager.Domain.Statements.StatementDraft(user, "c3.pdf", null, null); child3.SetUploadGroup(groupId); db.StatementDrafts.Add(child3);
+        await db.SaveChangesAsync();
+
+        // Recipient contacts
+        var cA = new Contact(user, "Alice", ContactType.Person, null, null);
+        var cB = new Contact(user, "Bob", ContactType.Person, null, null);
+        var cC = new Contact(user, "Carol", ContactType.Person, null, null);
+        db.Contacts.AddRange(cA, cB, cC);
+        await db.SaveChangesAsync();
+
+        // Entries in child drafts: 120 + 80 + 100 = 300
+        var e1 = child1.AddEntry(DateTime.Today, 120m, "A", cA.Name, DateTime.Today, "EUR", null, false); e1.MarkAccounted(cA.Id); db.Entry(e1).State = EntityState.Added;
+        var e2 = child2.AddEntry(DateTime.Today, 80m, "B", cB.Name, DateTime.Today, "EUR", null, false); e2.MarkAccounted(cB.Id); db.Entry(e2).State = EntityState.Added;
+        var e3 = child3.AddEntry(DateTime.Today, 100m, "C", cC.Name, DateTime.Today, "EUR", null, false); e3.MarkAccounted(cC.Id); db.Entry(e3).State = EntityState.Added;
+        await db.SaveChangesAsync();
+
+        // Link only ONE child draft (child2) via controller endpoint
+        var linkResult = await controller.SetEntrySplitDraftAsync(parent.Id, parentEntry.Id, new StatementDraftsController.SetSplitDraftRequest(child2.Id), CancellationToken.None);
+        linkResult.Should().BeOfType<OkObjectResult>();
+        var okLink = (OkObjectResult)linkResult;
+        var splitSumProp = okLink.Value!.GetType().GetProperty("SplitSum")!.GetValue(okLink.Value);
+        var diffProp = okLink.Value!.GetType().GetProperty("Difference")!.GetValue(okLink.Value);
+        splitSumProp.Should().Be(300m);
+        diffProp.Should().Be(0m);
+
+        // Now query entry again and verify SplitSum uses full upload group
+        var getResult = await controller.GetEntryAsync(parent.Id, parentEntry.Id, CancellationToken.None);
+        getResult.Should().BeOfType<OkObjectResult>();
+        var okGet = (OkObjectResult)getResult;
+        var splitSumGet = okGet.Value!.GetType().GetProperty("SplitSum")!.GetValue(okGet.Value);
+        var diffGet = okGet.Value!.GetType().GetProperty("Difference")!.GetValue(okGet.Value);
+        splitSumGet.Should().Be(300m);
+        diffGet.Should().Be(0m);
+    }
 }

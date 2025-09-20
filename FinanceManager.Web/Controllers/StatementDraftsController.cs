@@ -55,6 +55,15 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(drafts);
     }
 
+    // NEW: delete all open drafts
+    [HttpDelete("all")]
+    public async Task<IActionResult> DeleteAllAsync(CancellationToken ct)
+    {
+        var removed = await _drafts.DeleteAllAsync(_current.UserId, ct);
+        _logger.LogInformation("Deleted {Count} open statement drafts for user {UserId}", removed, _current.UserId);
+        return Ok(new { deleted = removed });
+    }
+
     [HttpPost("upload")]
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> UploadAsync([FromForm] IFormFile file, CancellationToken ct)
@@ -165,12 +174,33 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("{draftId:guid}")]
-    public async Task<IActionResult> GetAsync(Guid draftId, [FromQuery] bool headerOnly = false, CancellationToken ct = default)
+    public async Task<IActionResult> GetAsync(Guid draftId, [FromQuery] bool headerOnly = false, [FromQuery] string? src = null, [FromQuery] Guid? fromEntryDraftId = null, [FromQuery] Guid? fromEntryId = null, CancellationToken ct = default)
     {
         StatementDraftDto? draft = headerOnly
             ? await _drafts.GetDraftHeaderAsync(draftId, _current.UserId, ct)
             : await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
-        return draft is null ? NotFound() : Ok(draft);
+        if (draft is null) { return NotFound(); }
+        var neighbors = await _drafts.GetUploadGroupNeighborsAsync(draftId, _current.UserId, ct);
+        return Ok(new
+        {
+            draft.DraftId,
+            draft.OriginalFileName,
+            draft.Description,
+            draft.DetectedAccountId,
+            draft.Status,
+            draft.TotalAmount,
+            draft.IsSplitDraft,
+            draft.ParentDraftId,
+            draft.ParentEntryId,
+            draft.ParentEntryAmount,
+            draft.UploadGroupId,
+            Entries = draft.Entries,
+            PrevInUpload = neighbors.prevId,
+            NextInUpload = neighbors.nextId,
+            Src = src,
+            FromEntryDraftId = fromEntryDraftId,
+            FromEntryId = fromEntryId
+        });
     }
 
     [HttpGet("{draftId:guid}/entries/{entryId:guid}")]
@@ -190,11 +220,11 @@ public sealed class StatementDraftsController : ControllerBase
         decimal? diff = null;
         if (entry.SplitDraftId != null)
         {
-            var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-            splitSum = await db.StatementDraftEntries
-                .Where(e => e.DraftId == entry.SplitDraftId)
-                .SumAsync(e => e.Amount, ct);
-            diff = entry.Amount - splitSum;
+            splitSum = await _drafts.GetSplitGroupSumAsync(entry.SplitDraftId.Value, _current.UserId, ct);
+            if (splitSum.HasValue)
+            {
+                diff = entry.Amount - splitSum.Value;
+            }
         }
 
         Guid? bankContactId = null;
@@ -310,12 +340,11 @@ public sealed class StatementDraftsController : ControllerBase
             decimal? diff = null;
             if (entry.SplitDraftId != null)
             {
-                splitSum = await HttpContext.RequestServices
-                    .GetRequiredService<AppDbContext>()
-                    .StatementDraftEntries
-                    .Where(e => e.DraftId == entry.SplitDraftId)
-                    .SumAsync(e => e.Amount, ct);
-                diff = entry.Amount - splitSum;
+                splitSum = await _drafts.GetSplitGroupSumAsync(entry.SplitDraftId.Value, _current.UserId, ct);
+                if (splitSum.HasValue)
+                {
+                    diff = entry.Amount - splitSum.Value;
+                }
             }
             return Ok(new { Entry = entry, SplitSum = splitSum, Difference = diff });
         }

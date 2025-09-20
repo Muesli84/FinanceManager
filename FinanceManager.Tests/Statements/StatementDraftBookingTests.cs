@@ -290,6 +290,7 @@ public sealed class StatementDraftBookingTests
         db.Contacts.Add(intermediary);
         await db.SaveChangesAsync();
         var pEntry = parent.AddEntry(DateTime.Today, 80m, "Split Root", intermediary.Name, DateTime.Today, "EUR", null, false);
+        pEntry.MarkAccounted(intermediary.Id);
         db.Entry(pEntry).State = EntityState.Added;
         await db.SaveChangesAsync();
 
@@ -320,6 +321,7 @@ public sealed class StatementDraftBookingTests
         db.Contacts.Add(intermediary);
         await db.SaveChangesAsync();
         var pEntry = parent.AddEntry(DateTime.Today, 100m, "Split Root", intermediary.Name, DateTime.Today, "EUR", null, false);
+        pEntry.MarkAccounted(intermediary.Id);
         db.Entry(pEntry).State = EntityState.Added;
         await db.SaveChangesAsync();
 

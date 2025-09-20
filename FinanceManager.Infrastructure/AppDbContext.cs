@@ -113,6 +113,8 @@ public class AppDbContext : DbContext
               .HasForeignKey(e => e.DraftId)
               .OnDelete(DeleteBehavior.Cascade);
             b.HasIndex(x => new { x.OwnerUserId, x.CreatedUtc });
+            // NEW: index for upload group
+            b.HasIndex(x => x.UploadGroupId);
         });
 
         modelBuilder.Entity<StatementDraftEntry>(b =>

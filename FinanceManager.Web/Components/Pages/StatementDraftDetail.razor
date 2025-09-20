@@ -7,7 +7,238 @@
 @using FinanceManager.Shared.Dtos
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<Components.Pages.StatementDraftDetail> Localizer
-<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Src { get; set; } // "entry" when opened from entry detail
+    [Parameter, SupplyParameterFromQuery] public Guid? FromEntryDraftId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public Guid? FromEntryId { get; set; }
+    private StatementDraftDto? _draft;
+    private EntryForm _form = new() { BookingDate = DateTime.Today };
+    private List<AccountVm> _accounts = new();
+    private List<ContactDto> _contacts = new();
+    private Dictionary<string, List<AccountVm>> _groupedAccounts = new();
+    private Guid? _selectedAccountId;
+    private List<SavingsPlanDto> _savingsPlans = new();
+    private bool _hasFile; private bool _showViewer; private string? _fileUrl;
+    private DraftValidationResultDto? _validation; private bool _booking; private bool _pendingWarningConfirmation; private DraftValidationResultDto? _lastValidation; private string? _bookingError;
+
+    private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _draft = await Http.GetFromJsonAsync<StatementDraftDto>($"/api/statement-drafts/{Id}");
+        _hasFile = _draft != null;
+        await LoadAccountsAsync();
+        _selectedAccountId = _draft?.DetectedAccountId;
+        await LoadSavingsPlansAsync();
+        if (_showViewer && _hasFile)
+        {
+            _fileUrl = $"/api/statement-drafts/{Id}/file";
+        }
+    }
+
+    private void GoPrevInUpload()
+    {
+        if (_draft?.PrevInUpload != null)
+        {
+            var qp = BuildContextQuery();
+            Nav.NavigateTo($"/statement-drafts/{_draft.PrevInUpload}{qp}");
+        }
+    }
+    private void GoNextInUpload()
+    {
+        if (_draft?.NextInUpload != null)
+        {
+            var qp = BuildContextQuery();
+            Nav.NavigateTo($"/statement-drafts/{_draft.NextInUpload}{qp}");
+        }
+    }
+
+    private string BuildContextQuery()
+    {
+        if (!string.Equals(Src, "entry", StringComparison.OrdinalIgnoreCase) || !FromEntryDraftId.HasValue || !FromEntryId.HasValue)
+        {
+            return string.Empty;
+        }
+        return $"?src=entry&fromEntryDraftId={FromEntryDraftId}&fromEntryId={FromEntryId}";
+    }
+
+    private async Task ValidateDraft() => _validation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{Id}/validate");
+
+    private async Task BookDraft()
+    {
+        _bookingError = null; _pendingWarningConfirmation = false; _lastValidation = null; _booking = true;
+        try
+        {
+            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book", null);
+            if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
+            {
+                var res = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                _lastValidation = res?.Validation; _validation = res?.Validation; _pendingWarningConfirmation = true;
+            }
+            else if (!resp.IsSuccessStatusCode)
+            {
+                BookingResultDto? resObj = null;
+                try { resObj = await resp.Content.ReadFromJsonAsync<BookingResultDto>(); } catch { }
+                if (resObj?.Validation != null) { _validation = resObj.Validation; _bookingError = Localizer["Error_FixIssues"]; }
+                else { _bookingError = await resp.Content.ReadAsStringAsync(); }
+            }
+            else
+            {
+                var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                if (ok != null && ok.Success)
+                {
+                    if (ok.nextDraftId is not null) Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true);
+                    else Nav.NavigateTo("/statement-drafts", true);
+                }
+            }
+        }
+        finally { _booking = false; }
+    }
+
+    private async Task ForceBook()
+    {
+        _booking = true; _bookingError = null;
+        try
+        {
+            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book?forceWarnings=true", null);
+            if (!resp.IsSuccessStatusCode)
+            {
+                BookingResultDto? resObj = null; try { resObj = await resp.Content.ReadFromJsonAsync<BookingResultDto>(); } catch { }
+                if (resObj?.Validation != null) { _validation = resObj.Validation; _bookingError = Localizer["Error_FixIssues"]; }
+                else { _bookingError = await resp.Content.ReadAsStringAsync(); }
+            }
+            else
+            {
+                var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                if (ok != null && ok.Success)
+                {
+                    if (ok.nextDraftId is not null) Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true); else Nav.NavigateTo("/statement-drafts", true);
+                }
+            }
+        }
+        finally { _booking = false; _pendingWarningConfirmation = false; }
+    }
+
+    private async Task LoadAccountsAsync()
+    {
+        var resp = await Http.GetAsync("/api/accounts?skip=0&take=500");
+        if (resp.IsSuccessStatusCode)
+        {
+            var list = await resp.Content.ReadFromJsonAsync<List<AccountDto>>() ?? new();
+            _accounts = list.Select(a => new AccountVm { Id = a.Id, Name = a.Name, BankContactId = a.BankContactId }).ToList();
+            var contactsResp = await Http.GetAsync("/api/contacts?skip=0&take=500");
+            _contacts = contactsResp.IsSuccessStatusCode ? await contactsResp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new() : new();
+            var bankContacts = _contacts.Where(c => c.Type == ContactType.Bank).ToDictionary(c => c.Id, c => c.Name);
+            _groupedAccounts = _accounts.GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)").OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
+        }
+    }
+
+    private async Task LoadSavingsPlansAsync()
+    {
+        var resp = await Http.GetAsync("/api/savings-plans?onlyActive=true");
+        if (resp.IsSuccessStatusCode) { _savingsPlans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new(); }
+    }
+
+    private async Task OnAccountChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var accId))
+        {
+            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/account/{accId}", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                _draft = await resp.Content.ReadFromJsonAsync<StatementDraftDto>();
+                _selectedAccountId = _draft?.DetectedAccountId;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task AddEntryAsync()
+    {
+        var response = await Http.PostAsJsonAsync($"/api/statement-drafts/{Id}/entries", new { BookingDate = _form.BookingDate, Amount = _form.Amount, Subject = _form.Subject });
+        if (response.IsSuccessStatusCode)
+        {
+            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
+            _form = new EntryForm { BookingDate = DateTime.Today };
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClassifyAsync()
+    {
+        var response = await Http.PostAsync($"/api/statement-drafts/{Id}/classify", null);
+        if (response.IsSuccessStatusCode)
+        {
+            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
+            _selectedAccountId = _draft?.DetectedAccountId;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteDraftAsync()
+    {
+        if (_draft == null) { return; }
+        var resp = await Http.DeleteAsync($"/api/statement-drafts/{Id}");
+        if (resp.IsSuccessStatusCode || resp.StatusCode == System.Net.HttpStatusCode.NoContent) { Nav.NavigateTo("/statement-drafts"); }
+        else { _bookingError = await resp.Content.ReadAsStringAsync(); StateHasChanged(); }
+    }
+
+    private bool HasEntryContext => string.Equals(Src, "entry", StringComparison.OrdinalIgnoreCase) && FromEntryDraftId.HasValue && FromEntryId.HasValue;
+
+    private void OpenEntry(Guid entryId)
+    {
+        // If we already have an origin context, keep it. Otherwise create a new one using the clicked entry as origin.
+        string url;
+        if (HasEntryContext)
+        {
+            var existing = BuildContextQuery();
+            url = $"/statement-drafts/{Id}/entries/{entryId}{existing}";
+        }
+        else
+        {
+            url = $"/statement-drafts/{Id}/entries/{entryId}?src=entry&fromEntryDraftId={Id}&fromEntryId={entryId}";
+        }
+        Nav.NavigateTo(url);
+    }
+    private void BackToParent()
+    {
+        if (_draft?.ParentDraftId != null && _draft.ParentEntryId != null)
+        {
+            var qp = BuildContextQuery();
+            Nav.NavigateTo($"/statement-drafts/{_draft.ParentDraftId}/entries/{_draft.ParentEntryId}{qp}");
+        }
+    }
+    private void ToggleViewer() { if (!_hasFile) { return; } _showViewer = !_showViewer; _fileUrl = _showViewer ? $"/api/statement-drafts/{Id}/file" : null; }
+    private void DownloadFile() { if (!_hasFile) { return; } Nav.NavigateTo($"/api/statement-drafts/{Id}/file", forceLoad:true); }
+
+    private void BackGeneric()
+    {
+        // Always go back to overview now
+        Nav.NavigateTo("/statement-drafts");
+    }
+
+    private void BackToSourceEntry()
+    {
+        if (HasEntryContext)
+        {
+            Nav.NavigateTo($"/statement-drafts/{FromEntryDraftId}/entries/{FromEntryId}");
+        }
+    }
+
+    private sealed class EntryForm { public DateTime BookingDate { get; set; } public decimal Amount { get; set; } public string Subject { get; set; } = string.Empty; }
+
+    private sealed record StatementDraftEntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, Guid? SplitDraftId);
+    private sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, FinanceManager.Domain.StatementDraftStatus Status, List<StatementDraftEntryDto> Entries, decimal TotalAmount, bool IsSplitDraft, Guid? ParentDraftId, Guid? ParentEntryId, decimal? ParentEntryAmount, Guid? UploadGroupId, Guid? PrevInUpload, Guid? NextInUpload);
+    private sealed record DraftValidationMessageDto(string Code, string Severity, string Message, Guid DraftId, Guid? EntryId);
+    private sealed record DraftValidationResultDto(Guid DraftId, bool IsValid, IReadOnlyList<DraftValidationMessageDto> Messages);
+    private sealed record AccountDto(Guid Id, string Name, int Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
+    private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
+    private enum ContactType { Self, Bank, Person, Organization, Other }
+    private sealed record SavingsPlanDto(Guid Id, string Name);
+    private sealed class AccountVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid BankContactId { get; set; } }
+}
 
 <h3>@Localizer["Title"]</h3>
 @if (_draft == null)
@@ -17,12 +248,21 @@
 else
 {
     <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
-        @if (_draft.IsSplitDraft && _draft.ParentDraftId != null && _draft.ParentEntryId != null)
+        <button class="icon-btn" @onclick="BackGeneric" title='@Localizer["Btn_Back"]' aria-label='@Localizer["Btn_Back"]'>
+            <svg><use href="/icons/sprite.svg#arrow-left" /></svg>
+        </button>
+        @if (HasEntryContext)
         {
-            <button @onclick="BackToParent" class="icon-btn" title='@Localizer["Btn_BackToParent"]' aria-label='@Localizer["Btn_Back"]'>
-                <svg><use href="/icons/sprite.svg#back" /></svg>
+            <button class="icon-btn" @onclick="BackToSourceEntry" title='@Localizer["Btn_BackToParent"]' aria-label='@Localizer["Btn_BackToParent"]'>
+                <svg><use href="/icons/sprite.svg#level-up" /></svg>
             </button>
         }
+        <button class="icon-btn" disabled="@(_draft.PrevInUpload==null)" @onclick="GoPrevInUpload" title='@Localizer["Btn_PrevUpload"]' aria-label='@Localizer["Btn_PrevUpload"]'>
+            <svg><use href="/icons/sprite.svg#chevron-left" /></svg>
+        </button>
+        <button class="icon-btn" disabled="@(_draft.NextInUpload==null)" @onclick="GoNextInUpload" title='@Localizer["Btn_NextUpload"]' aria-label='@Localizer["Btn_NextUpload"]'>
+            <svg><use href="/icons/sprite.svg#chevron-right" /></svg>
+        </button>
         <button @onclick="ToggleViewer" class="icon-btn" disabled="@(!_hasFile)" title='@Localizer["Btn_ShowOriginal"]' aria-label='@Localizer["Btn_ShowOriginal"]'>
             <svg><use href="/icons/sprite.svg#external" /></svg>
         </button>
@@ -232,169 +472,3 @@ else
         </div>
     }
 </div>
-
-@code {
-    [Parameter] public Guid Id { get; set; }
-    private StatementDraftDto? _draft;
-    private EntryForm _form = new() { BookingDate = DateTime.Today };
-    private List<AccountVm> _accounts = new();
-    private List<ContactDto> _contacts = new();
-    private Dictionary<string, List<AccountVm>> _groupedAccounts = new();
-    private Guid? _selectedAccountId;
-    private List<SavingsPlanDto> _savingsPlans = new();
-    private bool _hasFile; private bool _showViewer; private string? _fileUrl;
-    private DraftValidationResultDto? _validation; private bool _booking; private bool _pendingWarningConfirmation; private DraftValidationResultDto? _lastValidation; private string? _bookingError;
-
-    private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);
-
-    protected override async Task OnParametersSetAsync()
-    {
-        _draft = await Http.GetFromJsonAsync<StatementDraftDto>($"/api/statement-drafts/{Id}");
-        _hasFile = _draft != null;
-        await LoadAccountsAsync();
-        _selectedAccountId = _draft?.DetectedAccountId;
-        await LoadSavingsPlansAsync();
-        if (_showViewer && _hasFile)
-        {
-            _fileUrl = $"/api/statement-drafts/{Id}/file";
-        }
-    }
-
-    private async Task ValidateDraft() => _validation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{Id}/validate");
-
-    private async Task BookDraft()
-    {
-        _bookingError = null; _pendingWarningConfirmation = false; _lastValidation = null; _booking = true;
-        try
-        {
-            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book", null);
-            if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
-            {
-                var res = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
-                _lastValidation = res?.Validation; _validation = res?.Validation; _pendingWarningConfirmation = true;
-            }
-            else if (!resp.IsSuccessStatusCode)
-            {
-                BookingResultDto? resObj = null;
-                try { resObj = await resp.Content.ReadFromJsonAsync<BookingResultDto>(); } catch { }
-                if (resObj?.Validation != null) { _validation = resObj.Validation; _bookingError = Localizer["Error_FixIssues"]; }
-                else { _bookingError = await resp.Content.ReadAsStringAsync(); }
-            }
-            else
-            {
-                var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
-                if (ok != null && ok.Success)
-                {
-                    if (ok.nextDraftId is not null) Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true);
-                    else Nav.NavigateTo("/statement-drafts", true);
-                }
-            }
-        }
-        finally { _booking = false; }
-    }
-
-    private async Task ForceBook()
-    {
-        _booking = true; _bookingError = null;
-        try
-        {
-            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book?forceWarnings=true", null);
-            if (!resp.IsSuccessStatusCode)
-            {
-                BookingResultDto? resObj = null; try { resObj = await resp.Content.ReadFromJsonAsync<BookingResultDto>(); } catch { }
-                if (resObj?.Validation != null) { _validation = resObj.Validation; _bookingError = Localizer["Error_FixIssues"]; }
-                else { _bookingError = await resp.Content.ReadAsStringAsync(); }
-            }
-            else
-            {
-                var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
-                if (ok != null && ok.Success)
-                {
-                    if (ok.nextDraftId is not null) Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true); else Nav.NavigateTo("/statement-drafts", true);
-                }
-            }
-        }
-        finally { _booking = false; _pendingWarningConfirmation = false; }
-    }
-
-    private async Task LoadAccountsAsync()
-    {
-        var resp = await Http.GetAsync("/api/accounts?skip=0&take=500");
-        if (resp.IsSuccessStatusCode)
-        {
-            var list = await resp.Content.ReadFromJsonAsync<List<AccountDto>>() ?? new();
-            _accounts = list.Select(a => new AccountVm { Id = a.Id, Name = a.Name, BankContactId = a.BankContactId }).ToList();
-            var contactsResp = await Http.GetAsync("/api/contacts?skip=0&take=500");
-            _contacts = contactsResp.IsSuccessStatusCode ? await contactsResp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new() : new();
-            var bankContacts = _contacts.Where(c => c.Type == ContactType.Bank).ToDictionary(c => c.Id, c => c.Name);
-            _groupedAccounts = _accounts.GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)").OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
-        }
-    }
-
-    private async Task LoadSavingsPlansAsync()
-    {
-        var resp = await Http.GetAsync("/api/savings-plans?onlyActive=true");
-        if (resp.IsSuccessStatusCode) { _savingsPlans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new(); }
-    }
-
-    private async Task OnAccountChanged(ChangeEventArgs e)
-    {
-        if (Guid.TryParse(e.Value?.ToString(), out var accId))
-        {
-            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/account/{accId}", null);
-            if (resp.IsSuccessStatusCode)
-            {
-                _draft = await resp.Content.ReadFromJsonAsync<StatementDraftDto>();
-                _selectedAccountId = _draft?.DetectedAccountId;
-                StateHasChanged();
-            }
-        }
-    }
-
-    private async Task AddEntryAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"/api/statement-drafts/{Id}/entries", new { BookingDate = _form.BookingDate, Amount = _form.Amount, Subject = _form.Subject });
-        if (response.IsSuccessStatusCode)
-        {
-            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
-            _form = new EntryForm { BookingDate = DateTime.Today };
-            StateHasChanged();
-        }
-    }
-
-    private async Task ClassifyAsync()
-    {
-        var response = await Http.PostAsync($"/api/statement-drafts/{Id}/classify", null);
-        if (response.IsSuccessStatusCode)
-        {
-            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
-            _selectedAccountId = _draft?.DetectedAccountId;
-            StateHasChanged();
-        }
-    }
-
-    private async Task DeleteDraftAsync()
-    {
-        if (_draft == null) { return; }
-        var resp = await Http.DeleteAsync($"/api/statement-drafts/{Id}");
-        if (resp.IsSuccessStatusCode || resp.StatusCode == System.Net.HttpStatusCode.NoContent) { Nav.NavigateTo("/statement-drafts"); }
-        else { _bookingError = await resp.Content.ReadAsStringAsync(); StateHasChanged(); }
-    }
-
-    private void OpenEntry(Guid entryId) => Nav.NavigateTo($"/statement-drafts/{Id}/entries/{entryId}");
-    private void BackToParent() { if (_draft?.ParentDraftId != null && _draft.ParentEntryId != null) { Nav.NavigateTo($"/statement-drafts/{_draft.ParentDraftId}/entries/{_draft.ParentEntryId}"); } }
-    private void ToggleViewer() { if (!_hasFile) { return; } _showViewer = !_showViewer; _fileUrl = _showViewer ? $"/api/statement-drafts/{Id}/file" : null; }
-    private void DownloadFile() { if (!_hasFile) { return; } Nav.NavigateTo($"/api/statement-drafts/{Id}/file", forceLoad:true); }
-
-    private sealed class EntryForm { public DateTime BookingDate { get; set; } public decimal Amount { get; set; } public string Subject { get; set; } = string.Empty; }
-
-    private sealed record StatementDraftEntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, Guid? SplitDraftId);
-    private sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, FinanceManager.Domain.StatementDraftStatus Status, List<StatementDraftEntryDto> Entries, decimal TotalAmount, bool IsSplitDraft, Guid? ParentDraftId, Guid? ParentEntryId, decimal? ParentEntryAmount);
-    private sealed record DraftValidationMessageDto(string Code, string Severity, string Message, Guid DraftId, Guid? EntryId);
-    private sealed record DraftValidationResultDto(Guid DraftId, bool IsValid, IReadOnlyList<DraftValidationMessageDto> Messages);
-    private sealed record AccountDto(Guid Id, string Name, int Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
-    private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
-    private enum ContactType { Self, Bank, Person, Organization, Other }
-    private sealed record SavingsPlanDto(Guid Id, string Name);
-    private sealed class AccountVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid BankContactId { get; set; } }
-}

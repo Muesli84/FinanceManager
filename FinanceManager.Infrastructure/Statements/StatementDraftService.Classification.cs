@@ -60,7 +60,10 @@ public sealed partial class StatementDraftService
         if (parentEntry == null) { return; }
         var parentDraft = await _db.StatementDrafts.Include(d => d.Entries).FirstOrDefaultAsync(d => d.Id == parentEntry.DraftId && d.OwnerUserId == ownerUserId, ct);
         if (parentDraft == null) { return; }
-        var total = await _db.StatementDraftEntries.Where(e => e.DraftId == splitDraftId).SumAsync(e => e.Amount, ct);
+        var assignedDraft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == splitDraftId && d.OwnerUserId == ownerUserId, ct);
+        if (parentDraft == null) { return; }
+        var assignedDrafts = await _db.StatementDrafts.Where(d => d.UploadGroupId == assignedDraft.UploadGroupId).Select(d => d.Id).ToListAsync(ct);
+        var total = await _db.StatementDraftEntries.Where(e => assignedDrafts.Contains(e.DraftId)).SumAsync(e => e.Amount, ct);
         if (total == parentEntry.Amount && parentEntry.ContactId != null && parentEntry.Status != StatementDraftEntryStatus.Accounted)
         {
             parentEntry.MarkAccounted(parentEntry.ContactId.Value);

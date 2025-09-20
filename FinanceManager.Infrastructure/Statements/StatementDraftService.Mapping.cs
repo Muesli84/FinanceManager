@@ -21,6 +21,7 @@ public sealed partial class StatementDraftService
             null,
             null,
             null,
+            draft.UploadGroupId,
             draft.Entries.Select(e => Map(e)).ToList());
     }
 
@@ -69,6 +70,7 @@ public sealed partial class StatementDraftService
             parentDraftId,
             parentEntryId,
             parentEntryAmount,
+            draft.UploadGroupId,
             draft.Entries.Select(e => new StatementDraftEntryDto(
                 e.Id,
                 e.BookingDate,

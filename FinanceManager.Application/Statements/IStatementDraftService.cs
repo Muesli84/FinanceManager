@@ -54,6 +54,9 @@ public interface IStatementDraftService
         CancellationToken ct);
     Task AddStatementDetailsAsync(Guid id, string fileName, byte[] fileData, CancellationToken ct);
     Task<bool> DeleteEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct);
+    Task<int> DeleteAllAsync(Guid ownerUserId, CancellationToken ct);
+    Task<decimal?> GetSplitGroupSumAsync(Guid splitDraftId, Guid ownerUserId, CancellationToken ct);
+    Task<(Guid? prevId, Guid? nextId)> GetUploadGroupNeighborsAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(
@@ -80,11 +83,7 @@ public sealed record StatementDraftEntryDto(
 );
 
 /// <summary>
-/// Repräsentiert einen Statement Draft (Import-Entwurf) inkl. optionaler Split-Informationen.
-/// Neue Felder (ab Split-Feature):
-///  - TotalAmount: Summe aller Eintragsbeträge (immer gefüllt)
-///  - IsSplitDraft: True, wenn dieser Draft selbst als Split-Draft (Aufteilungs-Auszug) verknüpft ist (ParentDraftId != null)
-///  - ParentDraftId / ParentEntryId / ParentEntryAmount: Referenz auf den Ursprungs-Draft und -Eintrag, falls verknüpft
+/// Repräsentiert einen Statement Draft (Import-Entwurf) inkl. optionaler Split- und Upload-Gruppen-Informationen.
 /// </summary>
 public sealed record StatementDraftDto(
     Guid DraftId,
@@ -97,6 +96,7 @@ public sealed record StatementDraftDto(
     Guid? ParentDraftId,
     Guid? ParentEntryId,
     decimal? ParentEntryAmount,
+    Guid? UploadGroupId,
     IReadOnlyList<StatementDraftEntryDto> Entries);
 
 public sealed record CommitResult(Guid StatementImportId, int TotalEntries);

@@ -46,4 +46,6 @@
   <data name="OriginalFileTitle" xml:space="preserve"><value>Original file</value></data>
   <data name="Btn_Close" xml:space="preserve"><value>Close</value></data>
   <data name="Error_FixIssues" xml:space="preserve"><value>There are errors. Please fix them.</value></data>
+  <data name="Btn_PrevUpload" xml:space="preserve"><value>Previous in upload</value></data>
+  <data name="Btn_NextUpload" xml:space="preserve"><value>Next in upload</value></data>
 </root>

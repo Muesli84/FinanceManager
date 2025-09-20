@@ -35,6 +35,22 @@ public sealed class StatementDraft : Entity, IAggregateRoot
     public byte[]? OriginalFileContent { get; private set; }
     public string? OriginalFileContentType { get; private set; }
 
+    /// <summary>
+    /// Gemeinsame Upload-Gruppen-ID aller StatementDrafts, die aus demselben Datei-Upload hervorgegangen sind.
+    /// Bestehende (ältere) Datensätze haben keinen Wert (null).
+    /// </summary>
+    public Guid? UploadGroupId { get; private set; }
+
+    public void SetUploadGroup(Guid uploadGroupId)
+    {
+        // Nur einmal setzen (idempotent für Sicherheit bei Mehrfach-Aufrufen)
+        if (UploadGroupId == null)
+        {
+            UploadGroupId = uploadGroupId;
+            Touch();
+        }
+    }
+
     public void SetOriginalFile(byte[] bytes, string? contentType)
     {
         OriginalFileContent = bytes ?? throw new ArgumentNullException(nameof(bytes));
