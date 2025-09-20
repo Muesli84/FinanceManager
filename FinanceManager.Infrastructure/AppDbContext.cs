@@ -334,6 +334,8 @@ public class AppDbContext : DbContext
         await Contacts
             .Where(c => c.OwnerUserId == userId && c.Type != ContactType.Self)
             .ExecuteDeleteAsync(ct);
+        Contacts.RemoveRange(Contacts.Where(c => c.OwnerUserId == userId && c.Type == ContactType.Self).Skip(1));
+        await SaveChangesAsync(ct);
         progressCallback(++count, total);
 
         // ContactCategories
