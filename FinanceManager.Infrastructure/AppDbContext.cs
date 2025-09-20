@@ -47,6 +47,10 @@ public class AppDbContext : DbContext
             b.HasIndex(x => x.Username).IsUnique();
             b.Property(x => x.Username).HasMaxLength(100).IsRequired();
             b.Property(x => x.PasswordHash).IsRequired();
+            // Import split settings columns
+            b.Property(x => x.ImportSplitMode).HasConversion<short>().IsRequired();
+            b.Property(x => x.ImportMaxEntriesPerDraft).IsRequired();
+            b.Property(x => x.ImportMonthlySplitThreshold);
         });
 
         modelBuilder.Entity<Account>(b =>
@@ -109,6 +113,8 @@ public class AppDbContext : DbContext
               .HasForeignKey(e => e.DraftId)
               .OnDelete(DeleteBehavior.Cascade);
             b.HasIndex(x => new { x.OwnerUserId, x.CreatedUtc });
+            // NEW: index for upload group
+            b.HasIndex(x => x.UploadGroupId);
         });
 
         modelBuilder.Entity<StatementDraftEntry>(b =>

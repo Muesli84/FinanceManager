@@ -6,7 +6,6 @@
 @using FinanceManager.Domain.Statements
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<Components.Pages.StatementDraftEntryDetail> Localizer
-<PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 @code { enum StatementDraftStatus { Draft=0, Committed=1, Expired=2 } }
 
@@ -366,6 +365,19 @@ else
 @code {
     [Parameter] public Guid DraftId { get; set; }
     [Parameter] public Guid EntryId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Src { get; set; }
+    [Parameter, SupplyParameterFromQuery] public Guid? FromEntryDraftId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public Guid? FromEntryId { get; set; }
+    private string ContextQuery => string.Equals(Src, "entry", StringComparison.OrdinalIgnoreCase) && FromEntryDraftId.HasValue && FromEntryId.HasValue
+        ? $"?src=entry&fromEntryDraftId={FromEntryDraftId}&fromEntryId={FromEntryId}"
+        : string.Empty;
+    private string AppendContext(string baseUrl)
+    {
+        if (string.IsNullOrEmpty(ContextQuery)) { return baseUrl; }
+        if (baseUrl.Contains('?')) { return baseUrl + "&" + ContextQuery.TrimStart('?'); }
+        return baseUrl + ContextQuery;
+    }
+    private bool HasOriginEntryContext => !string.IsNullOrEmpty(ContextQuery);
 
     private EntryDetailVm? _vm;
     private List<ContactVm> _allContacts = new();
@@ -535,7 +547,7 @@ else
         var resp = await Http.DeleteAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}");
         if (resp.IsSuccessStatusCode)
         {
-            Nav.NavigateTo($"/statement-drafts/{DraftId}");
+            Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}"));
         }
     }
 
@@ -614,7 +626,8 @@ else
     private async Task BackAsync()
     {
         if (!await ConfirmIfDirtyAsync()) return;
-        Nav.NavigateTo($"/statement-drafts/{DraftId}");
+        // Return to this draft's detail while preserving origin context so Back-To-Entry button remains visible.
+        Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}"));
     }
     private void OpenCreateContact()
     {
@@ -637,7 +650,7 @@ else
         if (!await ConfirmIfDirtyAsync()) return;
         if (_vm?.PrevEntryId != null)
         {
-            Nav.NavigateTo($"/statement-drafts/{DraftId}/entries/{_vm.PrevEntryId}");
+            Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}/entries/{_vm.PrevEntryId}"));
         }
     }
     private async Task GoNextOpenAsync()
@@ -645,7 +658,7 @@ else
         if (!await ConfirmIfDirtyAsync()) return;
         if (_vm?.NextOpenEntryId != null)
         {
-            Nav.NavigateTo($"/statement-drafts/{DraftId}/entries/{_vm.NextOpenEntryId}");
+            Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}/entries/{_vm.NextOpenEntryId}"));
         }
     }
 
@@ -708,7 +721,18 @@ else
     {
         if (_vm?.Entry.SplitDraftId != null)
         {
-            Nav.NavigateTo($"/statement-drafts/{_vm.Entry.SplitDraftId}");
+            var baseUrl = $"/statement-drafts/{_vm.Entry.SplitDraftId}";
+            string url;
+            if (HasOriginEntryContext)
+            {
+                url = AppendContext(baseUrl);
+            }
+            else
+            {
+                // Establish a new origin context using the current entry as the source.
+                url = $"{baseUrl}?src=entry&fromEntryDraftId={DraftId}&fromEntryId={EntryId}";
+            }
+            Nav.NavigateTo(url);
         }
     }
 
@@ -1036,7 +1060,7 @@ else
             }
             else
             {
-                Nav.NavigateTo($"/statement-drafts/{DraftId}", true);
+                Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}"), true);
             }
         }
         catch (Exception ex)
@@ -1056,7 +1080,7 @@ else
         _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
         _showBookWarnings = false;
         await LoadEntryAsync();
-        Nav.NavigateTo($"/statement-drafts/{DraftId}", true);
+        Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}"), true);
     }
 
     private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);

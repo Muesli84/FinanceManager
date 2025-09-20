@@ -198,4 +198,16 @@
   <data name="Nav_StatementDrafts_Import" xml:space="preserve">
     <value>Import</value>
   </data>
+  <data name="Btn_DeleteAll" xml:space="preserve">
+    <value>Delete all</value>
+  </data>
+  <data name="Dialog_DeleteAll_Title" xml:space="preserve">
+    <value>Delete all drafts</value>
+  </data>
+  <data name="Dialog_DeleteAll_Message" xml:space="preserve">
+    <value>This will permanently remove all open statement drafts. Continue?</value>
+  </data>
+  <data name="Dialog_DeleteAll_Confirm" xml:space="preserve">
+    <value>Delete all</value>
+  </data>
 </root>

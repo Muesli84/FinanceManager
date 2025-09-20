@@ -139,4 +139,13 @@
   <data name="KPI_Placeholders" xml:space="preserve">
     <value>KPI placeholders will appear here.</value>
   </data>
+  <data name="Import_SplitInfo_Monthly" xml:space="preserve">
+    <value>{0} movements split into {1} monthly draft(s).</value>
+  </data>
+  <data name="Import_SplitInfo_Fixed" xml:space="preserve">
+    <value>{0} movements split into {1} draft(s) (fixed size).</value>
+  </data>
+  <data name="Import_SplitInfo_Details" xml:space="preserve">
+    <value>Mode: {0}; Max/Draft: {1}; Largest: {2}</value>
+  </data>
 </root>

@@ -92,4 +92,6 @@
   <data name="OriginalFileTitle" xml:space="preserve"><value>Originaldatei</value></data>
   <data name="Btn_Close" xml:space="preserve"><value>Schließen</value></data>
   <data name="Error_FixIssues" xml:space="preserve"><value>Es liegen Fehler vor. Bitte korrigieren.</value></data>
+  <data name="Btn_PrevUpload" xml:space="preserve"><value>Vorheriger im Upload</value></data>
+  <data name="Btn_NextUpload" xml:space="preserve"><value>Nächster im Upload</value></data>
 </root>
