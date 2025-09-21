@@ -14,6 +14,7 @@ public sealed class User : Entity, IAggregateRoot
         ImportSplitMode = ImportSplitMode.MonthlyOrFixed;
         ImportMaxEntriesPerDraft = 250;
         ImportMonthlySplitThreshold = 250; // equals Max by default
+        ImportMinEntriesPerDraft = 8; // new default (FA-AUSZ-016-12)
     }
 
     public string Username { get; private set; } = null!;
@@ -29,13 +30,27 @@ public sealed class User : Entity, IAggregateRoot
     public ImportSplitMode ImportSplitMode { get; private set; } = ImportSplitMode.MonthlyOrFixed;
     public int ImportMaxEntriesPerDraft { get; private set; } = 250;
     public int? ImportMonthlySplitThreshold { get; private set; } = 250; // nullable to allow future unset -> fallback
+    public int ImportMinEntriesPerDraft { get; private set; } = 1; // new minimum entries preference
 
-    public void SetImportSplitSettings(ImportSplitMode mode, int maxEntriesPerDraft, int? monthlySplitThreshold)
+    public void SetImportSplitSettings(ImportSplitMode mode, int maxEntriesPerDraft, int? monthlySplitThreshold, int? minEntriesPerDraft = null)
     {
-        if (maxEntriesPerDraft < 20)
+        if (maxEntriesPerDraft < 1)
         {
-            throw new ArgumentOutOfRangeException(nameof(maxEntriesPerDraft), "Max entries per draft must be >= 20.");
+            throw new ArgumentOutOfRangeException(nameof(maxEntriesPerDraft), "Max entries per draft must be >= 1.");
         }
+        if (minEntriesPerDraft.HasValue)
+        {
+            if (minEntriesPerDraft.Value < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(minEntriesPerDraft), "Min entries per draft must be >= 1.");
+            }
+            if (minEntriesPerDraft.Value > maxEntriesPerDraft)
+            {
+                throw new ArgumentOutOfRangeException(nameof(minEntriesPerDraft), "Min entries must be <= Max entries per draft.");
+            }
+            ImportMinEntriesPerDraft = minEntriesPerDraft.Value;
+        }
+
         if (mode == ImportSplitMode.MonthlyOrFixed)
         {
             var thr = monthlySplitThreshold ?? maxEntriesPerDraft;

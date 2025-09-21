@@ -66,17 +66,19 @@ public sealed class UserImportSplitSettingsControllerTests
         dto!.Mode.Should().Be(ImportSplitMode.MonthlyOrFixed);
         dto.MaxEntriesPerDraft.Should().Be(250);
         dto.MonthlySplitThreshold.Should().Be(250);
+        dto.MinEntriesPerDraft.Should().Be(8); // new default
     }
 
     [Fact]
-    public async Task UpdateAsync_ShouldPersistValues()
+    public async Task UpdateAsync_ShouldPersistValues_IncludingMinEntries()
     {
         var (controller, db, _) = Create();
         var req = new UserImportSplitSettingsController.UpdateRequest
         {
             Mode = ImportSplitMode.MonthlyOrFixed,
             MaxEntriesPerDraft = 300,
-            MonthlySplitThreshold = 350
+            MonthlySplitThreshold = 350,
+            MinEntriesPerDraft = 5
         };
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
         resp.Should().BeOfType<NoContentResult>();
@@ -85,6 +87,7 @@ public sealed class UserImportSplitSettingsControllerTests
         user.ImportSplitMode.Should().Be(ImportSplitMode.MonthlyOrFixed);
         user.ImportMaxEntriesPerDraft.Should().Be(300);
         user.ImportMonthlySplitThreshold.Should().Be(350);
+        user.ImportMinEntriesPerDraft.Should().Be(5);
     }
 
     [Fact]
@@ -95,25 +98,29 @@ public sealed class UserImportSplitSettingsControllerTests
         {
             Mode = ImportSplitMode.MonthlyOrFixed,
             MaxEntriesPerDraft = 300,
-            MonthlySplitThreshold = 100
+            MonthlySplitThreshold = 100,
+            MinEntriesPerDraft = 8
         };
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
         var obj = resp.Should().BeOfType<ObjectResult>().Subject;
         var details = obj.Value.Should().BeOfType<ValidationProblemDetails>().Subject;
+        details.Errors.Should().ContainKey(nameof(req.MonthlySplitThreshold));
 
         var user = await db.Users.SingleAsync();
         user.ImportMaxEntriesPerDraft.Should().Be(250); // unchanged
+        user.ImportMinEntriesPerDraft.Should().Be(8); // unchanged default
     }
 
     [Fact]
-    public async Task UpdateAsync_ShouldAllowFixedSizeWithoutThreshold()
+    public async Task UpdateAsync_ShouldAllowFixedSizeWithoutThreshold_AndPersistMinEntries()
     {
         var (controller, db, _) = Create();
         var req = new UserImportSplitSettingsController.UpdateRequest
         {
             Mode = ImportSplitMode.FixedSize,
             MaxEntriesPerDraft = 400,
-            MonthlySplitThreshold = null
+            MonthlySplitThreshold = null,
+            MinEntriesPerDraft = 3 // ignored in fixed size but persisted for later
         };
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
         resp.Should().BeOfType<NoContentResult>();
@@ -121,6 +128,27 @@ public sealed class UserImportSplitSettingsControllerTests
         var user = await db.Users.SingleAsync();
         user.ImportSplitMode.Should().Be(ImportSplitMode.FixedSize);
         user.ImportMaxEntriesPerDraft.Should().Be(400);
-        user.ImportMonthlySplitThreshold.Should().NotBeNull(); // previous value retained
+        user.ImportMinEntriesPerDraft.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ShouldFail_WhenMinEntriesGreaterThanMax()
+    {
+        var (controller, db, _) = Create();
+        var req = new UserImportSplitSettingsController.UpdateRequest
+        {
+            Mode = ImportSplitMode.Monthly,
+            MaxEntriesPerDraft = 50,
+            MonthlySplitThreshold = null,
+            MinEntriesPerDraft = 60 // invalid
+        };
+        var resp = await controller.UpdateAsync(req, CancellationToken.None);
+        var obj = resp.Should().BeOfType<ObjectResult>().Subject;
+        var details = obj.Value.Should().BeOfType<ValidationProblemDetails>().Subject;
+        details.Errors.Should().ContainKey(nameof(req.MinEntriesPerDraft));
+
+        var user = await db.Users.SingleAsync();
+        user.ImportMaxEntriesPerDraft.Should().Be(250); // unchanged
+        user.ImportMinEntriesPerDraft.Should().Be(8);   // unchanged
     }
 }

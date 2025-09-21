@@ -1,174 +1,233 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FinanceManager.Domain.Users;
-using FinanceManager.Domain.Contacts; // hinzugefügt
 using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Application.Aggregates;
-using FinanceManager.Application.Statements;
 using FinanceManager.Shared.Dtos;
+using FluentAssertions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
-using FluentAssertions;
+using FinanceManager.Domain.Contacts;
+using Bunit; // added for Self contact
 
 namespace FinanceManager.Tests.Statements;
 
+/// <summary>
+/// Tests the import split logic (CreateDraftAsync) for fixed, monthly and hybrid modes.
+/// NOTE: MinEntriesPerDraft (new feature) is NOT yet applied by the implementation – tests document current behaviour (TDD baseline).
+/// </summary>
 public sealed class StatementDraftImportSplitTests
 {
-    private sealed class NoOpAggregateService : IPostingAggregateService
-    {
-        public Task UpsertForPostingAsync(FinanceManager.Domain.Postings.Posting posting, CancellationToken ct) => Task.CompletedTask;
-        public Task RebuildForUserAsync(Guid userId, Action<int, int> progressCallback, CancellationToken ct) => Task.CompletedTask;
-    }
+    private sealed record ImportedDraft(Guid Id, int EntryCount, string? Description);
 
-    private sealed class TestReader : IStatementFileReader
+    private static (StatementDraftService sut, AppDbContext db, SqliteConnection conn, Guid userId) Create()
     {
-        private readonly IReadOnlyList<StatementMovement> _movements;
-        private readonly string _desc;
-        public TestReader(IReadOnlyList<StatementMovement> movements, string desc="Test")
-        {
-            _movements = movements;
-            _desc = desc;
-        }
-        public StatementParseResult? Parse(string fileName, byte[] fileBytes)
-        {
-            return new StatementParseResult(new StatementHeader
-            {
-                AccountNumber = "123",
-                Description = _desc,
-                IBAN = null
-            }, _movements);
-        }
-        public StatementParseResult? ParseDetails(string originalFileName, byte[] fileBytes) => Parse(originalFileName, fileBytes);
-    }
-
-    private static AppDbContext CreateDb()
-    {
-        var opts = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite("DataSource=:memory:")
-            .Options;
-        var db = new AppDbContext(opts);
-        db.Database.OpenConnection();
+        var conn = new SqliteConnection("DataSource=:memory:");
+        conn.Open();
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options;
+        var db = new AppDbContext(options);
         db.Database.EnsureCreated();
-        return db;
-    }
-
-    private static User AddUser(AppDbContext db, ImportSplitMode mode, int max, int? threshold)
-    {
-        var u = new User("tester","hash", false);
-        typeof(FinanceManager.Domain.Entity).GetProperty("Id")!.SetValue(u, Guid.NewGuid());
-        u.SetImportSplitSettings(mode, max, threshold);
-        db.Users.Add(u);
+        var user = new User("importer", "hash", false);
+        db.Users.Add(user);
+        // ensure required Self contact exists for classification
+        db.Contacts.Add(new Contact(user.Id, "Me", ContactType.Self, null));
         db.SaveChanges();
-        return u;
+        var svc = new StatementDraftService(db, new PostingAggregateService(db));
+        return (svc, db, conn, user.Id);
     }
 
-    private static void AddRequiredContacts(AppDbContext db, Guid userId)
+    private static string BuildBackupPayload(IEnumerable<(DateTime date, decimal amount, string subject)> lines, string? iban = "DE00", string? description = "Test")
     {
-        // Mindestkontakt: Self (wird von ClassifyInternalAsync vorausgesetzt)
-        if (!db.Contacts.Any(c => c.OwnerUserId == userId && c.Type == ContactType.Self))
+        var sb = new StringBuilder();
+        sb.AppendLine("{\"Type\":\"Backup\",\"Version\":2}");
+        sb.Append("{ \"BankAccounts\": [ { \"IBAN\": \"").Append(iban).Append("\"} ], \"BankAccountLedgerEntries\": [], \"BankAccountJournalLines\": [");
+        bool first = true; int id = 1;
+        foreach (var l in lines)
         {
-            db.Contacts.Add(new Contact(userId, "Me", ContactType.Self, null));
-            db.SaveChanges();
+            if (!first) sb.Append(',');
+            first = false;
+            sb.Append("{\"Id\": ").Append(id++).Append(",")
+              .Append("\"PostingDate\": \"").Append(l.date.ToString("yyyy-MM-ddTHH:mm:ss")).Append("\",")
+              .Append("\"ValutaDate\": \"").Append(l.date.ToString("yyyy-MM-ddTHH:mm:ss")).Append("\",")
+              .Append("\"PostingDescription\": \"Lastschrift\",")
+              .Append("\"SourceName\": \"SRC\",")
+              .Append("\"Description\": \"").Append(l.subject).Append("\",")
+              .Append("\"CurrencyCode\": \"EUR\",")
+              .Append("\"Amount\": ").Append(l.amount.ToString(System.Globalization.CultureInfo.InvariantCulture)).Append(',')
+              .Append("\"CreatedAt\": \"").Append(l.date.ToString("yyyy-MM-ddTHH:mm:ss")).Append("\"}");
         }
+        sb.Append("], \"Description\": \"").Append(description).Append("\" }");
+        return sb.ToString();
     }
 
-    private static List<StatementMovement> BuildMovements(int count, DateTime startDate)
+    private static async Task<List<ImportedDraft>> ImportAsync(StatementDraftService sut, AppDbContext db, Guid userId, string payload)
     {
-        var list = new List<StatementMovement>();
-        for (int i = 0; i < count; i++)
+        var drafts = new List<ImportedDraft>();
+        var bytes = Encoding.UTF8.GetBytes(payload);
+        await foreach (var d in sut.CreateDraftAsync(userId, "import.csv", bytes, CancellationToken.None))
         {
-            list.Add(new StatementMovement
-            {
-                BookingDate = startDate.AddDays(i),
-                ValutaDate = startDate.AddDays(i),
-                Amount = i + 1,
-                Subject = $"S{i}",
-                Counterparty = "C",
-                CurrencyCode = "EUR",
-                PostingDescription = "P"
-            });
+            drafts.Add(new ImportedDraft(d.DraftId, d.Entries.Count, d.Description));
         }
-        return list;
+        return drafts;
     }
 
-    private async Task<List<StatementDraftDto>> RunAsync(ImportSplitMode mode, int max, int? threshold, int movements, int monthsSpan)
+    [Fact]
+    public async Task FixedSizeMode_ShouldChunk_ByMaxEntries()
     {
-        using var db = CreateDb();
-        var user = AddUser(db, mode, max, threshold);
-        AddRequiredContacts(db, user.Id); // neu
-        var start = new DateTime(2025, 1, 15);
-        var data = BuildMovements(movements, start);
+        var (sut, db, conn, user) = Create();
+        var lines = Enumerable.Range(0, 7).Select(i => (new DateTime(2024, 3, 10).AddDays(i), 10m + i, $"L{i}"));
+        var payload = BuildBackupPayload(lines);
+        var u = await db.Users.SingleAsync();
+        u.SetImportSplitSettings(ImportSplitMode.FixedSize, 3, null, 1);
+        await db.SaveChangesAsync();
+        var drafts = await ImportAsync(sut, db, user, payload);
+        drafts.Should().HaveCount(3);
+        drafts.Select(d => d.EntryCount).Should().ContainInOrder(3,3,1);
+        drafts[0].Description.Should().Contain("(Teil 1)");
+        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeFalse();
+        conn.Dispose();
+    }
 
-        // Neue Logik: Verteilt Bewegungen über (monthsSpan + 1) Monate zyklisch,
-        // statt jeden Eintrag um 32 Tage zu verschieben (was zu zu vielen Monaten führte).
-        if (monthsSpan > 0)
+    [Fact]
+    public async Task MonthlyMode_ShouldProduceOneDraftPerMonth()
+    {
+        var (sut, db, conn, user) = Create();
+        var lines = new List<(DateTime, decimal, string)>
         {
-            int monthsToUse = monthsSpan + 1; // z.B. monthsSpan=2 => 3 Monate
-            var baseMonthStart = new DateTime(start.Year, start.Month, 1);
-            for (int i = 0; i < data.Count; i++)
+            (new DateTime(2024,1,5), 10m, "A"),
+            (new DateTime(2024,1,6), 11m, "B"),
+            (new DateTime(2024,2,1), 12m, "C"),
+            (new DateTime(2024,2,2), 13m, "D")
+        };
+        var payload = BuildBackupPayload(lines);
+        var u = await db.Users.SingleAsync();
+        u.SetImportSplitSettings(ImportSplitMode.Monthly, 100, null, 1);
+        await db.SaveChangesAsync();
+        var drafts = await ImportAsync(sut, db, user, payload);
+        drafts.Should().HaveCount(2);
+        drafts.All(d => d.Description!.EndsWith("2024-01") || d.Description!.EndsWith("2024-02")).Should().BeTrue();
+        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task MonthlyMode_ShouldSplitMonth_WhenExceedsMax()
+    {
+        var (sut, db, conn, user) = Create();
+        var lines = Enumerable.Range(0,5).Select(i => (new DateTime(2024,4,1).AddDays(i), 1m + i, $"X{i}"));
+        var payload = BuildBackupPayload(lines);
+        var u = await db.Users.SingleAsync();
+        u.SetImportSplitSettings(ImportSplitMode.Monthly, 2, null, 1);
+        await db.SaveChangesAsync();
+        var drafts = await ImportAsync(sut, db, user, payload);
+        drafts.Should().HaveCount(3);
+        drafts.Select(d => d.EntryCount).Should().ContainInOrder(2,2,1);
+        drafts[0].Description.Should().Contain("(Teil 1)");
+        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task HybridMode_UsesMonthly_WhenTotalGreaterThanThreshold_CurrentImplementation()
+    {
+        var (sut, db, conn, user) = Create();
+        var lines = Enumerable.Range(0,6).Select(i => (new DateTime(2024,1,1).AddDays(i), 1m, $"J{i}"))
+            .Concat(Enumerable.Range(0,6).Select(i => (new DateTime(2024,2,1).AddDays(i), 1m, $"K{i}")));
+        var payload = BuildBackupPayload(lines);
+        var u = await db.Users.SingleAsync();
+        u.SetImportSplitSettings(ImportSplitMode.MonthlyOrFixed, 8, 8, 1);
+        await db.SaveChangesAsync();
+        var drafts = await ImportAsync(sut, db, user, payload);
+        drafts.Should().HaveCount(2);
+        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeTrue();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task HybridMode_UsesFixed_WhenTotalNotGreaterThanThreshold_CurrentImplementation()
+    {
+        var (sut, db, conn, user) = Create();
+        var lines = Enumerable.Range(0,6).Select(i => (new DateTime(2024,3,1).AddDays(i), 1m, $"H{i}"));
+        var payload = BuildBackupPayload(lines);
+        var u = await db.Users.SingleAsync();
+        u.SetImportSplitSettings(ImportSplitMode.MonthlyOrFixed, 10, 10, 1);
+        await db.SaveChangesAsync();
+        var drafts = await ImportAsync(sut, db, user, payload);
+        drafts.Should().HaveCount(1);
+        drafts[0].EntryCount.Should().Be(6);
+        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeFalse();
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task MonthlyMode_SmallMonth_RemainsStandalone_BeforeMinEntriesLogic()
+    {
+        var (sut, db, conn, user) = Create();
+        var lines = new List<(DateTime, decimal, string)>();
+        lines.Add((new DateTime(2024,5,15), 5m, "Solo"));
+        lines.AddRange(Enumerable.Range(0,9).Select(i => (new DateTime(2024,6,1).AddDays(i), 1m + i, $"M{i}")));
+        var payload = BuildBackupPayload(lines);
+        var u = await db.Users.SingleAsync();
+        u.SetImportSplitSettings(ImportSplitMode.Monthly, 50, null, 1);
+        await db.SaveChangesAsync();
+        var drafts = await ImportAsync(sut, db, user, payload);
+        drafts.Should().HaveCount(2);
+        drafts.Select(d => d.EntryCount).Order().Should().Equal(1,9);
+        conn.Dispose();
+    }
+
+    public static IEnumerable<object[]> MonthlyMinEntriesMergeCases =>
+        new[]
+        {
+            new object[] { new[] { 3, 20 }, 5, new[] { 23 } },          // kleiner Monat zuerst
+            new object[] { new[] { 20, 3 }, 5, new[] { 23 } },          // kleiner Monat zuletzt
+            new object[] { new[] { 3, 20, 20 }, 5, new[] { 23, 20 } },      // kleiner Monat am Anfang (3 von 3)
+            new object[] { new[] { 20, 3, 20 }, 5, new[] { 20, 23 } },      // kleiner Monat in der Mitte
+            new object[] { new[] { 20, 20, 3 }, 5, new[] { 20, 23 } },      // kleiner Monat am Ende,
+            new object[] { new[] { 1, 1, 1, 1, 1, 1, 20 }, 5, new[] { 5, 21 } },
+            new object[] { new[] { 19, 1, 1, 19 }, 5, new[] { 20, 20 } },
+        };
+
+    [Theory]
+    [MemberData(nameof(MonthlyMinEntriesMergeCases))]
+    public async Task MonthlyMode_ShouldMergeSmallMonths_WhenBelowMinEntries(int[] monthEntryCounts, int minEntriesPerDraft, int[] expectedDrafts)
+    {
+        var (sut, db, conn, user) = Create();
+
+        // Arrange: Monate ab 2024-01
+        var all = new List<(DateTime date, decimal amount, string subject)>();
+        var start = new DateTime(2024, 1, 1);
+        for (int m = 0; m < monthEntryCounts.Length; m++)
+        {
+            var monthStart = start.AddMonths(m);
+            for (int i = 0; i < monthEntryCounts[m]; i++)
             {
-                int monthOffset = i % monthsToUse;
-                int dayInMonth = (i / monthsToUse) % 28; // Begrenzen damit alle Monate gültige Tage haben
-                var booking = baseMonthStart.AddMonths(monthOffset).AddDays(dayInMonth);
-                data[i].BookingDate = booking;
-                data[i].ValutaDate = booking;
+                all.Add((monthStart.AddDays(i), 1m, $"M{m:D2}_{i:D2}"));
             }
         }
-        else
-        {
-            for (int i = 0; i < data.Count; i++)
-            {
-                data[i].BookingDate = start.AddDays(i);
-                data[i].ValutaDate = data[i].BookingDate;
-            }
-        }
 
-        var reader = new TestReader(data);
-        var svc = new StatementDraftService(db, new NoOpAggregateService(), new[] { reader });
-        var results = new List<StatementDraftDto>();
-        await foreach (var d in svc.CreateDraftAsync(user.Id, "file.dat", Array.Empty<byte>(), CancellationToken.None))
-        {
-            results.Add(d);
-        }
-        return results;
-    }
+        var payload = BuildBackupPayload(all);
+        var u = await db.Users.SingleAsync();
 
-    [Fact]
-    public async Task FixedSize_Should_Chunk_By_Max()
-    {
-        var drafts = await RunAsync(ImportSplitMode.FixedSize, max: 50, threshold: null, movements: 120, monthsSpan:0);
-        drafts.Count.Should().Be(3);
-        drafts[0].Entries.Count.Should().Be(50);
-        drafts[1].Entries.Count.Should().Be(50);
-        drafts[2].Entries.Count.Should().Be(20);
-        drafts[0].Description.Should().NotBeNull();
-    }
+        // Max groß genug wählen, damit kein Split wegen Max greift
+        u.SetImportSplitSettings(ImportSplitMode.Monthly, maxEntriesPerDraft: 500, monthlySplitThreshold: null, minEntriesPerDraft: minEntriesPerDraft);
+        await db.SaveChangesAsync();
 
-    [Fact]
-    public async Task Monthly_Should_Group_By_Month()
-    {
-        var drafts = await RunAsync(ImportSplitMode.Monthly, max: 200, threshold: null, movements: 3, monthsSpan:2);
-        drafts.Count.Should().Be(3);
-        drafts.Select(d => d.Description).All(d => d!.Contains("2025-")).Should().BeTrue();
-    }
+        // Act
+        var drafts = await ImportAsync(sut, db, user, payload);
 
-    [Fact]
-    public async Task MonthlyOrFixed_Should_Use_Fixed_When_Under_Threshold()
-    {
-        var drafts = await RunAsync(ImportSplitMode.MonthlyOrFixed, max: 100, threshold: 150, movements: 120, monthsSpan:2);
-        drafts.Count.Should().Be(2);
-        drafts.Any(d => d.Description != null && d.Description.Contains("2025-01")).Should().BeFalse();
-    }
+        // Assert
+        drafts.Should().HaveCount(expectedDrafts.Length);
 
-    [Fact]
-    public async Task MonthlyOrFixed_Should_Use_Monthly_When_Above_Threshold()
-    {
-        var drafts = await RunAsync(ImportSplitMode.MonthlyOrFixed, max: 60, threshold: 100, movements: 130, monthsSpan:2);
-        drafts.Count.Should().Be(3);
-        drafts.All(d => d.Description!.Contains("2025-")).Should().BeTrue();
+        drafts.Select(d => d.EntryCount).Should().BeEquivalentTo(expectedDrafts);
+
+        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeTrue();
+        conn.Dispose();
     }
 }
