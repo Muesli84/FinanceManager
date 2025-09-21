@@ -1,0 +1,147 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@typeparam TTabEnum
+
+@if (Tabs?.Any() == true)
+{
+    var singleTab = Tabs!.Count == 1;
+    var activeIndex = Tabs!.FindIndex(t => EqualityComparer<TTabEnum>.Default.Equals(t.Id, ActiveTab));
+    if (activeIndex < 0) { activeIndex = 0; }
+    <div class="fm-ribbon @(singleTab?"single-tab":"")" role="region" aria-label="@AriaLabel">
+        @if(!singleTab)
+        {
+            <ul class="fm-ribbon-tabs" role="tablist" aria-label="@AriaTabsLabel">
+                @for (var i = 0; i < Tabs!.Count; i++)
+                {
+                    var t = Tabs[i];
+                    var isActive = i == activeIndex;
+                    var tabId = $"ribbon-tab-{i}";
+                    var panelId = $"ribbon-panel-{i}";
+                    <li class="@(isActive ? "active" : "")" role="presentation">
+                        <button type="button"
+                                id="@tabId"
+                                role="tab"
+                                aria-selected="@isActive"
+                                aria-controls="@panelId"
+                                tabindex="@(isActive?"0":"-1")"
+                                @onclick="(() => SelectTab(t.Id))"
+                                @onkeydown="(e)=>OnTabKeyDown(e,i)">
+                            @t.Title
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+        <div class="fm-ribbon-content" role="tabpanel" id="ribbon-panel-@activeIndex" aria-labelledby="ribbon-tab-@activeIndex">
+            @if (CurrentGroups != null)
+            {
+                <div class="fm-ribbon-groups" role="toolbar" aria-label="@AriaGroupsLabel">
+                    @foreach (var (g, gIndex) in CurrentGroups.Select((g,i)=>(g,i)))
+                    {
+                        var groupLabelId = $"ribbon-group-label-{activeIndex}-{gIndex}";
+                        <div class="fm-ribbon-group" role="group" aria-labelledby="@groupLabelId">
+                            <div class="fm-ribbon-group-body ribbon-items-grid">
+                                @foreach (var item in g.Items)
+                                {
+                                    <button disabled="@item.Disabled"
+                                            aria-disabled="@(item.Disabled ? "true" : null)"
+                                            aria-label="@item.Label"
+                                            title="@(!string.IsNullOrWhiteSpace(item.Tooltip)?item.Tooltip:item.Label)"
+                                            type="button"
+                                            class="fm-ribbon-btn @(item.Size==RibbonItemSize.Large?"large":"small")"
+                                            @onclick="(()=>OnItemClick(item))">
+                                        <span class="icon" aria-hidden="true">@((MarkupString)item.IconSvg)</span>
+                                        @if(item.Size==RibbonItemSize.Large)
+                                        {
+                                            <span class="text">@item.Label</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-inline">@item.Label</span>
+                                        }
+                                    </button>
+                                }
+                            </div>
+                            <div class="fm-ribbon-group-footer" id="@groupLabelId">@g.Title</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public List<RibbonTab<TTabEnum>>? Tabs { get; set; }
+    [Parameter] public EventCallback<RibbonItem> OnItemSelected { get; set; }
+    [Parameter] public TTabEnum ActiveTab { get; set; } = default!;
+    [Parameter] public EventCallback<TTabEnum> ActiveTabChanged { get; set; }
+    [Parameter] public string AriaLabel { get; set; } = "Application ribbon";
+    [Parameter] public string AriaTabsLabel { get; set; } = "Ribbon tabs";
+    [Parameter] public string AriaGroupsLabel { get; set; } = "Ribbon action groups";
+
+    private IEnumerable<RibbonGroup>? CurrentGroups =>
+        Tabs?.FirstOrDefault(t => EqualityComparer<TTabEnum>.Default.Equals(t.Id, ActiveTab))?.Groups;
+
+    protected override void OnParametersSet()
+    {
+        if (Tabs != null && Tabs.Any() && !Tabs.Any(t => EqualityComparer<TTabEnum>.Default.Equals(t.Id, ActiveTab)))
+        {
+            ActiveTab = Tabs.First().Id;
+        }
+    }
+
+    private async Task SelectTab(TTabEnum id)
+    {
+        ActiveTab = id;
+        if (ActiveTabChanged.HasDelegate)
+        {
+            await ActiveTabChanged.InvokeAsync(id);
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnItemClick(RibbonItem item)
+    {
+        if (item.Disabled) { return; }
+        if (item.Callback != null) { await item.Callback.Invoke(); }
+        if (OnItemSelected.HasDelegate) { await OnItemSelected.InvokeAsync(item); }
+    }
+
+    private void OnTabKeyDown(KeyboardEventArgs e, int index)
+    {
+        if (Tabs == null || Tabs.Count == 0) { return; }
+        if (e.Key == "ArrowRight")
+        {
+            var next = (index + 1) % Tabs.Count;
+            _ = SelectTab(Tabs[next].Id);
+        }
+        else if (e.Key == "ArrowLeft")
+        {
+            var prev = (index - 1 + Tabs.Count) % Tabs.Count;
+            _ = SelectTab(Tabs[prev].Id);
+        }
+    }
+
+    public class RibbonTab<T>
+    {
+        public required T Id { get; set; }
+        public required string Title { get; set; }
+        public List<RibbonGroup> Groups { get; set; } = new();
+    }
+    public class RibbonGroup
+    {
+        public required string Title { get; set; }
+        public List<RibbonItem> Items { get; set; } = new();
+    }
+    public class RibbonItem
+    {
+        public required string Label { get; set; }
+        public required string IconSvg { get; set; }
+        public RibbonItemSize Size { get; set; } = RibbonItemSize.Small;
+        public bool Disabled { get; set; }
+        public string? Tooltip { get; set; }
+        public Func<Task>? Callback { get; set; }
+    }
+    public enum RibbonItemSize { Small, Large }
+}

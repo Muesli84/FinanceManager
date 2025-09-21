@@ -5,8 +5,11 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
+@using FinanceManager.Web.Components.Shared
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.AccountDetail> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<Ribbon TTabEnum="AccountDetail.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 <h1>@(IsNew ? Localizer["TitleNew"] : Localizer["TitleEdit"])</h1>
 
@@ -20,27 +23,17 @@ else if (!CurrentUser.IsAuthenticated)
 }
 else
 {
-    <div class="action-bar">
-        <button type="button" @onclick="Back" aria-label='@Localizer["BtnBack"]' title='@Localizer["BtnBack"]' class="icon-btn"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-        <button type="button" @onclick="SaveAsync" disabled="@_busy" aria-label='@Localizer["BtnSave"]' title='@Localizer["BtnSave"]' class="icon-btn"><svg><use href="/icons/sprite.svg#save" /></svg></button>
-        @if (!IsNew)
-        {
-            <button type="button" @onclick="DeleteAsync" disabled="@_busy" aria-label='@Localizer["BtnDelete"]' title='@Localizer["BtnDelete"]' class="icon-btn danger"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
-            <button type="button" @onclick="OpenBankContact" disabled="@_busy" aria-label='@Localizer["BtnBankContact"]' title='@Localizer["BtnBankContact"]' class="icon-btn"><svg><use href="/icons/sprite.svg#bank" /></svg></button>
-            <button type="button" @onclick="OpenPostings" aria-label='@Localizer["BtnPostings"]' title='@Localizer["BtnPostings"]' class="icon-btn"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
-        }
-    </div>
     <EditForm Model="_model" OnValidSubmit="@SaveAsync">
         <DataAnnotationsValidator />
         <ValidationSummary />
         <div style="display:grid;gap:.6rem;max-width:520px;">
             <div>
                 <label>@Localizer["LabelName"]</label><br />
-                <InputText @bind-Value="_model.Name" />
+                <InputText @bind-Value="_model.Name" @bind-Value:after="(()=>BuildRibbon())" />
             </div>
             <div>
                 <label>@Localizer["LabelType"]</label><br />
-                <select @bind="_model.Type">
+                <select @bind="_model.Type" @bind:after="(()=>BuildRibbon())">
                     <option value="Giro">@Localizer["Type_Giro"]</option>
                     <option value="Savings">@Localizer["Type_Savings"]</option>
                 </select>
@@ -127,6 +120,93 @@ else
     [Parameter] public Guid? Id { get; set; }
     private bool IsNew => !Id.HasValue;
 
+    // Ribbon state
+    private enum TabId { Account }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Account;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        if (!_loaded || !CurrentUser.IsAuthenticated)
+        {
+            _tabs = new(); return;
+        }
+        var nav = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Navigation"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Back"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { Back(); return Task.CompletedTask; }
+                }
+            }
+        };
+        var editItems = new List<Ribbon<TabId>.RibbonItem>
+        {
+            new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Save"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
+                Size = Ribbon<TabId>.RibbonItemSize.Large,
+                Disabled = _busy || string.IsNullOrWhiteSpace(_model.Name) || _model.Name.Trim().Length < 2,
+                Callback = () => { _ = SaveAsync(); return Task.CompletedTask; }
+            }
+        };
+        if (!IsNew)
+        {
+            editItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Delete"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
+                Disabled = _busy,
+                Callback = () => { _ = DeleteAsync(); return Task.CompletedTask; }
+            });
+        }
+        var edit = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Edit"], Items = editItems };
+
+        Ribbon<TabId>.RibbonGroup? related = null;
+        if (!IsNew)
+        {
+            var relatedItems = new List<Ribbon<TabId>.RibbonItem>
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_BankContact"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#bank'/></svg>",
+                    Disabled = _busy || string.IsNullOrWhiteSpace(_model.BankContactId),
+                    Callback = () => { OpenBankContact(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Postings"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
+                    Disabled = _busy,
+                    Callback = () => { OpenPostings(); return Task.CompletedTask; }
+                }
+            };
+            related = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Related"], Items = relatedItems };
+        }
+
+        var groups = new List<Ribbon<TabId>.RibbonGroup>{ nav, edit };
+        if (related != null) groups.Add(related);
+
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Account,
+                Title = Localizer["Ribbon_Tab_Account"],
+                Groups = groups
+            }
+        };
+        StateHasChanged();
+    }
+
     private AccountEditModel _model = new();
     private List<BankContactVm> _bankContacts = new();
     private string? _newBankContactName;
@@ -171,6 +251,7 @@ else
             }
         }
         _loaded = true;
+        BuildRibbon();
     }
 
     private async Task LoadAggregatesAsync()
@@ -185,10 +266,7 @@ else
         }
     }
 
-    private static string FormatLabel(DateTime d)
-    {
-        return d.ToString("yy-M");
-    }
+    private static string FormatLabel(DateTime d) => d.ToString("yy-M");
 
     private async Task LoadBankContactsAsync()
     {
@@ -196,24 +274,19 @@ else
         if (resp.IsSuccessStatusCode)
         {
             var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
-            _bankContacts = list
-                .Select(c => new BankContactVm { Id = c.Id, Name = c.Name })
-                .OrderBy(c => c.Name)
-                .ToList();
+            _bankContacts = list.Select(c => new BankContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name).ToList();
         }
     }
 
     private void OnBankContactAfterChanged()
     {
-        if (!string.IsNullOrWhiteSpace(_model.BankContactId))
-        {
-            _newBankContactName = null;
-        }
+        if (!string.IsNullOrWhiteSpace(_model.BankContactId)) { _newBankContactName = null; }
+        BuildRibbon();
     }
 
     private async Task SaveAsync()
     {
-        _busy = true; _error = null;
+        _busy = true; _error = null; BuildRibbon();
         try
         {
             Guid? bankContactId = Guid.TryParse(_model.BankContactId, out var parsed) ? parsed : null;
@@ -235,48 +308,27 @@ else
                 if (!resp.IsSuccessStatusCode) { _error = await resp.Content.ReadAsStringAsync(); }
             }
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busy = false;
+        catch (Exception ex) { _error = ex.Message; }
+        _busy = false; BuildRibbon();
     }
 
     private async Task DeleteAsync()
     {
         if (Id == null) { return; }
-        _busy = true; _error = null;
+        _busy = true; _error = null; BuildRibbon();
         try
         {
             var resp = await Http.DeleteAsync($"/api/accounts/{Id}");
-            if (resp.IsSuccessStatusCode)
-            {
-                Back();
-            }
+            if (resp.IsSuccessStatusCode) { Back(); }
             else { _error = await resp.Content.ReadAsStringAsync(); }
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busy = false;
+        catch (Exception ex) { _error = ex.Message; }
+        _busy = false; BuildRibbon();
     }
 
     private void Back() => Nav.NavigateTo("/accounts", forceLoad: true);
-    private void OpenBankContact()
-    {
-        if (!string.IsNullOrWhiteSpace(_model.BankContactId))
-        {
-            Nav.NavigateTo($"/contacts/{_model.BankContactId}");
-        }
-    }
-    private void OpenPostings()
-    {
-        if (Id != null)
-        {
-            Nav.NavigateTo($"/postings/account/{Id}");
-        }
-    }
+    private void OpenBankContact(){ if (!string.IsNullOrWhiteSpace(_model.BankContactId)) { Nav.NavigateTo($"/contacts/{_model.BankContactId}"); } }
+    private void OpenPostings(){ if (Id != null) { Nav.NavigateTo($"/postings/account/{Id}"); } }
 
     private sealed class AccountEditModel
     {
@@ -285,7 +337,6 @@ else
         public string? Iban { get; set; }
         public string? BankContactId { get; set; }
     }
-
     private sealed class BankContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 
     private sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId);

@@ -20,4 +20,11 @@
   <data name="From" xml:space="preserve"><value>Von</value></data>
   <data name="To" xml:space="preserve"><value>Bis</value></data>
   <data name="ClearRange" xml:space="preserve"><value>Zeitraum zurücksetzen</value></data>
+  <!-- Ribbon -->
+  <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
+  <data name="Ribbon_Group_Filter" xml:space="preserve"><value>Filter</value></data>
+  <data name="Ribbon_Back" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Ribbon_ClearSearch" xml:space="preserve"><value>Suche leeren</value></data>
+  <data name="Ribbon_ClearRange" xml:space="preserve"><value>Zeitraum löschen</value></data>
+  <data name="Ribbon_Tab_Postings" xml:space="preserve"><value>Buchungen</value></data>
 </root>

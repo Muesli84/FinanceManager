@@ -5,47 +5,27 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.Extensions.Localization
 @using Microsoft.AspNetCore.WebUtilities
+@using FinanceManager.Web.Components.Shared
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Components.Pages.SavingsPlanEdit> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
+<Ribbon TTabEnum="SavingsPlanEdit.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
 <h3>@(IsEdit ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
-<div class="action-bar" style="margin-bottom:1rem;">
-    <button class="icon-btn" @onclick="Back" title="@Localizer["BtnBack"]">
-        <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
-    </button>
-    <button class="icon-btn" @onclick="SaveAsync" type="submit" title="@Localizer["BtnSave"]">
-        <svg class="icon"><use href="icons/sprite.svg#save"></use></svg>
-    </button>
-    @if (IsEdit)
-    {
-        <button class="icon-btn" @onclick="ArchiveAsync" title="@Localizer["BtnArchive"]">
-            <svg class="icon"><use href="icons/sprite.svg#archive"></use></svg>
-        </button>
-        <button class="icon-btn danger" @onclick="DeleteAsync" title="@Localizer["BtnDelete"]">
-            <svg class="icon"><use href="icons/sprite.svg#delete"></use></svg>
-        </button>
-        <button class="icon-btn" @onclick="OpenPostings" title="@Localizer["BtnPostings"]">
-            <svg class="icon"><use href="icons/sprite.svg#postings"></use></svg>
-        </button>
-    }   
-    <button class="icon-btn" @onclick="OpenCategoryList" title="@Localizer["BtnCategories"]">
-        <svg class="icon"><use href="icons/sprite.svg#groups"></use></svg>
-    </button>
-</div>
 
 <EditForm Model="_model" OnValidSubmit="SaveAsync">
     <DataAnnotationsValidator />
     <ValidationSummary />
     <div>
         <label>@Localizer["LabelName"]</label>
-        <InputText @bind-Value="_model.Name" />
+        <InputText @bind-Value="_model.Name" @bind-Value:after="(()=>BuildRibbon())" />
         <ValidationMessage For="() => _model.Name" />
     </div>
     <div>
         <label>@Localizer["LabelType"]</label>
-        <InputSelect @bind-Value="_model.Type">
+        <InputSelect @bind-Value="_model.Type" @bind-Value:after="(()=>BuildRibbon())">
             @foreach (var t in Enum.GetValues<SavingsPlanType>())
             {
                 <option value="@t">@Localizer[$"Type_{t}"]</option>
@@ -121,11 +101,114 @@
     private bool IsEdit => Id.HasValue;
     private string? _error;
     private List<SavingsPlanCategoryDto> _categories = new();
-
     private SavingsPlanAnalysisDto? _analysis;
     private Guid? _returnDraftId;
     private Guid? _returnEntryId;
     private string? _prefillName;
+
+    // Ribbon state
+    private enum TabId { SavingsPlan }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.SavingsPlan;
+    private Task OnActiveTabChanged(TabId id) { _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        var navGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Navigation"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Back"],
+                    IconSvg = "\u003csvg><use href='/icons/sprite.svg#back'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { Back(); return Task.CompletedTask; }
+                }
+            }
+        };
+
+        var editItems = new List<Ribbon<TabId>.RibbonItem>
+        {
+            new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Save"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
+                Size = Ribbon<TabId>.RibbonItemSize.Large,
+                Disabled = string.IsNullOrWhiteSpace(_model.Name) || _model.Name.Trim().Length < 2,
+                Callback = () => { _ = SaveAsync(); return Task.CompletedTask; }
+            }
+        };
+        if (IsEdit)
+        {
+            editItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Archive"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#archive'/></svg>",
+                Callback = () => { _ = ArchiveAsync(); return Task.CompletedTask; }
+            });
+            editItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Delete"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
+                Callback = () => { _ = DeleteAsync(); return Task.CompletedTask; }
+            });
+        }
+        var editGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Edit"], Items = editItems };
+
+        Ribbon<TabId>.RibbonGroup? analysisGroup = null;
+        if (IsEdit)
+        {
+            analysisGroup = new Ribbon<TabId>.RibbonGroup
+            {
+                Title = Localizer["Ribbon_Group_Analysis"],
+                Items = new()
+                {
+                    new Ribbon<TabId>.RibbonItem
+                    {
+                        Label = Localizer["Ribbon_Recalculate"],
+                        IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
+                        Callback = () => { _ = LoadAnalysis(); return Task.CompletedTask; }
+                    }
+                }
+            };
+        }
+
+        var relatedItems = new List<Ribbon<TabId>.RibbonItem>
+        {
+            new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Categories"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#groups'/></svg>",
+                Callback = () => { OpenCategoryList(); return Task.CompletedTask; }
+            }
+        };
+        if (IsEdit)
+        {
+            relatedItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Postings"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
+                Callback = () => { OpenPostings(); return Task.CompletedTask; }
+            });
+        }
+        var relatedGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Related"], Items = relatedItems };
+
+        var groups = new List<Ribbon<TabId>.RibbonGroup> { navGroup, editGroup, relatedGroup };
+        if (analysisGroup != null) groups.Add(analysisGroup);
+
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.SavingsPlan,
+                Title = Localizer["Ribbon_Tab_SavingsPlan"],
+                Groups = groups
+            }
+        };
+        StateHasChanged();
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -176,6 +259,7 @@
             }
         }
         await LoadCategoriesAsync();
+        BuildRibbon();
     }
 
     private async Task LoadAnalysis()
@@ -186,8 +270,9 @@
         if (resp.IsSuccessStatusCode)
         {
             _analysis = await resp.Content.ReadFromJsonAsync<SavingsPlanAnalysisDto>();
-            StateHasChanged();
         }
+        BuildRibbon();
+        StateHasChanged();
     }
 
     private async Task LoadCategoriesAsync()
@@ -222,6 +307,7 @@
             if (!resp.IsSuccessStatusCode)
             {
                 _error = await resp.Content.ReadAsStringAsync();
+                BuildRibbon();
                 return;
             }
 
@@ -238,7 +324,6 @@
                 {
                     var assignPayload = new { SavingsPlanId = (Guid?)dto.Id };
                     var assignResp = await http.PostAsJsonAsync($"/api/statement-drafts/{_returnDraftId}/entries/{_returnEntryId}/savingsplan", assignPayload);
-                    // ignore non-success; still navigate back
                 }
                 catch { }
                 Navigation.NavigateTo($"/statement-drafts/{_returnDraftId}/entries/{_returnEntryId}", true);
@@ -248,6 +333,7 @@
                 Navigation.NavigateTo($"/savings-plans/{dto.Id}", true);
             }
         }
+        BuildRibbon();
     }
 
     private async Task ArchiveAsync()
@@ -263,6 +349,7 @@
         {
             _error = await resp.Content.ReadAsStringAsync();
         }
+        BuildRibbon();
     }
 
     private async Task DeleteAsync()
@@ -278,6 +365,7 @@
         {
             _error = await resp.Content.ReadAsStringAsync();
         }
+        BuildRibbon();
     }
 
     private void Back()

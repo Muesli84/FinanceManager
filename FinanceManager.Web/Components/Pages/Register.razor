@@ -8,8 +8,12 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Register> L
+@using FinanceManager.Web.Components.Shared
 
 <PageTitle>@L["PageTitle"]</PageTitle>
+
+<Ribbon TTabEnum="Register.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
 <h1>@L["Heading"]</h1>
 
 @if (!string.IsNullOrEmpty(_error))
@@ -57,18 +61,39 @@
 </EditForm>
 
 @code {
+    private enum TabId { Register }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Register;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        var nav = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = L["Ribbon_Group_Navigation"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = L["Ribbon_Back"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { Nav.NavigateTo("/"); return Task.CompletedTask; }
+                }
+            }
+        };
+        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Register, Title = L["Ribbon_Tab_Register"], Groups = new(){ nav } } };
+        StateHasChanged();
+    }
+
     private readonly RegisterVm _model = new();
     private bool _busy;
     private string? _error;
     private bool _debugVisible;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        // if (await UserRead.HasAnyUsersAsync(CancellationToken.None))
-        // {
-        //     Nav.NavigateTo("/login");
-        //     return;
-        // }
+        BuildRibbon();
     }
 
     private async Task RegisterAsync()
@@ -106,12 +131,8 @@
         _busy = false;
     }
 
-    private void InvalidSubmit(EditContext ctx)
-    {
-    }
-
+    private void InvalidSubmit(EditContext ctx) { }
     private void ToggleDebug() => _debugVisible = !_debugVisible;
-
     private void OnUsernameChanged()
     {
         var value = _model.Username;
@@ -124,17 +145,12 @@
             }
         }
     }
-
-    private void OnPasswordChanged()
-    {
-        // Placeholder for password strength checks
-    }
+    private void OnPasswordChanged() { }
 
     private sealed class RegisterVm
     {
         [Required, MinLength(3)]
         public string Username { get; set; } = string.Empty;
-
         [Required, MinLength(6)]
         public string Password { get; set; } = string.Empty;
     }

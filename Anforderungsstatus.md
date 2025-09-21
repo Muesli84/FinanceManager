@@ -38,7 +38,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-017      | Persistenter Navigationskontext Entry ↔ verknüpfte Drafts               | Query-Parameter (`src=entry&fromEntryDraftId&fromEntryId`) in `StatementDraftDetail.razor` & `StatementDraftEntryDetail.razor`; Kontextweitergabe bei Draft-/Entry-Navigation | ✔      |
 | FA-UI-001        | Suchfeld in Listen                                                      | Kontakte + Merge umgesetzt, andere Listen teils offen                                                                                                                  | ~      |
 | FA-UI-002        | Live-Filterung                                                          | Debounce Kontakte-Liste (Name)                                                                                                                                         | ~      |
-| FA-UI-003        | Einheitliches Menüband für Aktionsbuttons (Tabs + Gruppen + Layout)     | Geplante Ribbon-Komponente: Tabs "Start", "Aktionen", "Navigieren"; dynamische Befüllung pro Seite; Gruppen mit Titel (unten), gemischte Buttongrößen (groß: Icon + Text unten, klein: Icon + Text rechts) in Spalten (max 3 Zeilen) – noch nicht implementiert | ✖      |
+| FA-UI-003        | Einheitliches Menüband für Aktionsbuttons (Tabs + Gruppen + Layout)     | Ribbon-Komponente (`Ribbon.razor`), Icon-Sprite (`sprite.svg`), sämtliche priorisierte Seiten migriert (Accounts*, AccountDetail, Securities*, SecurityEdit, SecurityCategories*, SecurityCategoryEdit, SecurityPrices, Contacts (Detail), SavingsPlanEdit, SavingsPlanCategories*, SavingsPlanCategoryDetail, SavingsPlanList, Postings* (Account/Contact/Security/SavingsPlan), StatementDrafts*, StatementDraftDetail*, Setup, Users/Admin, Home). Gruppen-Standard (Navigation/Edit/Related/Actions/Filter). Accessibility: `aria-*` Rollen & `aria-disabled`, Tastaturnavigation Links/Rechts, Fokusmodell Basis. Tests vorhanden (Grundfunktionen). Ausstehende Nice-to-Haves (separate Tickets): erweiterte Shortcuts, Responsive Overflow, Command-Abstraktion. | ✔      |
 | NFA-AUSZ-016-01  | Serverseitige User-Konfiguration (UserPreferences erweitern)            | Felder am `User`, Migration `FixUserImportSplitSettings` (Idempotent), EF-Konfiguration                                                                                | ✔      |
 | NFA-AUSZ-016-02  | Erweiterbar für künftige Strategien                                    | Strategy/Resolver Pattern noch nicht extrahiert (Logik monolithisch im Service)                                                                                        | ✖      |
 | NFA-AUSZ-016-03  | Unit Tests für Splitalgorithmus                                        | Tests `StatementDraftImportSplitTests` (Fixed, Monthly, Hybrid, Threshold)                                                                                             | ✔      |
@@ -137,6 +137,15 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✔ = umgesetzt / vorhanden  
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
+
+Änderungen (21.09.2025) – Ergänzung 9:
+- FA-UI-003 auf ✔ gesetzt; alle priorisierten Seiten migriert (inkl. Sparpläne, Kategorien, Kategorie-Detail, Postings*, StatementDrafts*, Users/Admin, Home); Einzelabruf Kategorie hinzugefügt; Ribbon Kategorien-Link in Sparpläne-Übersicht.
+
+Änderungen (21.09.2025) – Ergänzung 8:
+- FA-UI-003 Beschreibung erweitert (explizites `aria-disabled`, ARIA Roles, Pfeiltasten-Navigation, Tests hinzugefügt).
+
+Änderungen (20.09.2025) – Ergänzung 7:
+- FA-UI-003 Status von ✖ auf ~ geändert; Beschreibung aktualisiert (Ribbon-Komponente eingeführt, weitere Seiten & Accessibility offen).
 
 Änderungen (20.09.2025) – Ergänzung 6:
 - Neu: FA-UI-003 (Einheitliches Menüband für Aktionsbuttons) → ✖.

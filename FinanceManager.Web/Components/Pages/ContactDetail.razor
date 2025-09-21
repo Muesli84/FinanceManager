@@ -12,6 +12,11 @@
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ContactDetail> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
+<Ribbon TTabEnum="ContactDetail.TabId"
+        Tabs="_tabs"
+        ActiveTab="_activeTab"
+        ActiveTabChanged="OnActiveTabChanged" />
+
 <h1>@Localizer["Title"]</h1>
 
 @if (!_loaded)
@@ -24,41 +29,17 @@ else if (!CurrentUser.IsAuthenticated)
 }
 else
 {
-    <div class="action-bar">
-        <button type="button" @onclick="Back" aria-label='@Localizer["BtnBack"]' title='@Localizer["BtnBack"]' class="icon-btn"><svg><use href="/icons/sprite.svg#back" /></svg></button>
-        <button type="button" @onclick="SaveAsync" disabled="@_busy" aria-label='@Localizer["BtnSave"]' title='@Localizer["BtnSave"]' class="icon-btn"><svg><use href="/icons/sprite.svg#save" /></svg></button>
-        @if (IsEdit)
-        {
-            <button type="button" @onclick="DeleteAsync" disabled="@_busy" aria-label='@Localizer["BtnDelete"]' title='@Localizer["BtnDelete"]' class="icon-btn danger"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
-            @if (Enum.Parse<ContactType>(_model.Type) == ContactType.Bank)
-            {
-                <button type="button" @onclick="OpenBankAccounts" disabled="@_busy" aria-label='@Localizer["BtnAccounts"]' title='@Localizer["BtnAccounts"]' class="icon-btn"><svg><use href="/icons/sprite.svg#accounts" /></svg></button>
-            }
-            @if (!IsSelfContact)
-            {
-                <button type="button"
-                        @onclick="OpenMergeDialog"
-                        disabled="@_busy"
-                        aria-label='@Localizer["BtnMerge"]'
-                        title='@Localizer["BtnMerge"]'
-                        class="icon-btn">
-                    <svg><use href="/icons/sprite.svg#merge" /></svg>
-                </button>
-            }
-            <button type="button" @onclick="OpenPostings" disabled="@_busy" aria-label='@Localizer["BtnPostings"]' title='@Localizer["BtnPostings"]' class="icon-btn"><svg><use href="/icons/sprite.svg#postings" /></svg></button>
-        }
-    </div>
     <EditForm Model="_model" OnValidSubmit="SaveAsync">
         <DataAnnotationsValidator />
         <ValidationSummary />
         <div>
             <label>@Localizer["LabelName"]</label>
-            <InputText @bind-Value="_model.Name" />
+            <InputText @bind-Value="_model.Name" @bind-Value:after="(()=>BuildRibbon())" />
             <ValidationMessage For="()=>_model.Name" />
         </div>
         <div>
             <label>@Localizer["LabelType"]</label>
-            <InputSelect @bind-Value="_model.Type">
+            <InputSelect @bind-Value="_model.Type" @bind-Value:after="(()=>BuildRibbon())">
                 @foreach (var t in Enum.GetValues<ContactType>())
                 {
                     <option value="@t">@t</option>
@@ -67,7 +48,7 @@ else
         </div>
         <div>
             <label>@Localizer["LabelGroup"]</label>
-            <InputSelect @bind-Value="_model.CategoryId">
+            <InputSelect @bind-Value="_model.CategoryId" @bind-Value:after="(()=>BuildRibbon())">
                 <option value="">-- @Localizer["None"] --</option>
                 @foreach (var g in _categories.OrderBy(c=>c.Name))
                 {
@@ -80,7 +61,7 @@ else
             <textarea @bind="_model.Description" rows="4" style="width:100%;max-width:520px;"></textarea>
         </div>
         <div>
-            <label><input type="checkbox" @bind="_model.IsPaymentIntermediary" /> @Localizer["LabelIntermediary"]</label>
+            <label><input type="checkbox" @bind="_model.IsPaymentIntermediary" @bind:after="(()=>BuildRibbon())" /> @Localizer["LabelIntermediary"]</label>
         </div>
         <div>
             <label>@Localizer["LabelAliases"]</label>
@@ -124,6 +105,106 @@ else
 
 @code {
     [Parameter] public Guid? Id { get; set; }
+
+    // Ribbon state
+    private enum TabId { Contact }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Contact;
+    private Task OnActiveTabChanged(TabId t) { _activeTab = t; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        if (!_loaded || !CurrentUser.IsAuthenticated)
+        {
+            _tabs = new(); return;
+        }
+        var navGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Navigation"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Back"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { Back(); return Task.CompletedTask; }
+                }
+            }
+        };
+        var editItems = new List<Ribbon<TabId>.RibbonItem>
+        {
+            new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Save"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
+                Size = Ribbon<TabId>.RibbonItemSize.Large,
+                Disabled = _busy || string.IsNullOrWhiteSpace(_model.Name) || _model.Name.Trim().Length < 2,
+                Callback = () => { _ = SaveAsync(); return Task.CompletedTask; }
+            }
+        };
+        if (IsEdit)
+        {
+            editItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Delete"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
+                Disabled = _busy || IsSelfContact,
+                Callback = () => { _ = DeleteAsync(); return Task.CompletedTask; }
+            });
+        }
+        var editGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Edit"], Items = editItems };
+
+        var relatedItems = new List<Ribbon<TabId>.RibbonItem>();
+        if (IsEdit && Enum.Parse<ContactType>(_model.Type) == ContactType.Bank)
+        {
+            relatedItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Accounts"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#accounts'/></svg>",
+                Callback = () => { OpenBankAccounts(); return Task.CompletedTask; }
+            });
+        }
+        if (IsEdit && !IsSelfContact)
+        {
+            relatedItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Merge"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#merge'/></svg>",
+                Disabled = _busy,
+                Callback = () => { OpenMergeDialog(); return Task.CompletedTask; }
+            });
+        }
+        if (IsEdit)
+        {
+            relatedItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Postings"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
+                Disabled = _busy,
+                Callback = () => { OpenPostings(); return Task.CompletedTask; }
+            });
+        }
+        Ribbon<TabId>.RibbonGroup? relatedGroup = null;
+        if (relatedItems.Any())
+        {
+            relatedGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Related"], Items = relatedItems };
+        }
+
+        var groups = new List<Ribbon<TabId>.RibbonGroup> { navGroup, editGroup };
+        if (relatedGroup != null) groups.Add(relatedGroup);
+
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Contact,
+                Title = Localizer["Ribbon_Tab_Contact"],
+                Groups = groups
+            }
+        };
+        StateHasChanged();
+    }
 
     private ContactEditModel _model = new();
     private List<CategoryVm> _categories = new();
@@ -174,6 +255,7 @@ else
             }
         }
         _loaded = true;
+        BuildRibbon();
     }
 
     private string? _pendingPrefillName;
@@ -203,7 +285,7 @@ else
 
     private async Task SaveAsync()
     {
-        _busy = true; _error = null;
+        _busy = true; _error = null; BuildRibbon();
         try
         {
             var categoryId = Guid.TryParse(_model.CategoryId, out var parsed) ? parsed : (Guid?)null;
@@ -234,7 +316,7 @@ else
         {
             _error = ex.Message;
         }
-        _busy = false;
+        _busy = false; BuildRibbon();
     }
 
     private async Task AfterSaveAssignToDraftIfNeeded(Guid contactId)
@@ -248,12 +330,10 @@ else
                 await http.PostAsJsonAsync($"/api/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}/contact", payload);
             }
             catch { }
-            // navigate back to draft entry detail
             Navigation.NavigateTo($"/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}", forceLoad: true);
         }
         else
         {
-            // normal flow: go back to list or stay on detail if editing existing
             if (!IsEdit)
             {
                 Navigation.NavigateTo("/contacts", forceLoad: true);
@@ -264,7 +344,7 @@ else
     private async Task DeleteAsync()
     {
         if (!IsEdit) return;
-        _busy = true; _error = null;
+        _busy = true; _error = null; BuildRibbon();
         try
         {
             var http = ClientFactory.CreateClient("Api");
@@ -272,7 +352,7 @@ else
             if (resp.IsSuccessStatusCode) Back(); else _error = Localizer["ErrorDeleteFailed"];
         }
         catch (Exception ex) { _error = ex.Message; }
-        _busy = false;
+        _busy = false; BuildRibbon();
     }
 
     private void Back()
@@ -344,6 +424,7 @@ else
         {
             _aliasError = await resp.Content.ReadAsStringAsync();
         }
+        BuildRibbon();
     }
 
     private async Task DeleteAliasAsync(Guid aliasId)
@@ -359,6 +440,7 @@ else
         {
             _aliasError = await resp.Content.ReadAsStringAsync();
         }
+        BuildRibbon();
     }
 
     private sealed class AliasVm { public Guid Id { get; set; } public string Pattern { get; set; } = string.Empty; }
@@ -373,13 +455,14 @@ else
         {
             return;
         }
-        _showMergeDialog = true;
+        _showMergeDialog = true; BuildRibbon();
     }
 
     private Task CloseMergeDialog()
     {
         _showMergeDialog = false;
         StateHasChanged();
+        BuildRibbon();
         return Task.CompletedTask;
     }
 
@@ -396,7 +479,6 @@ else
             if (resp.IsSuccessStatusCode)
             {
                 _showMergeDialog = false;
-                // Zielkontakt anzeigen
                 Navigation.NavigateTo($"/contacts/{targetId}", forceLoad: true);
             }
             else
@@ -410,5 +492,6 @@ else
             _error = ex.Message;
         }
         StateHasChanged();
+        BuildRibbon();
     }
 }

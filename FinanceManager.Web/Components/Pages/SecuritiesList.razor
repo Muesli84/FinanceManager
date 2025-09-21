@@ -4,17 +4,13 @@
 @inject NavigationManager Nav
 @using FinanceManager.Shared.Dtos
 @using Microsoft.Extensions.Localization
+@using FinanceManager.Web.Components.Shared
 @inject IStringLocalizer<Components.Pages.SecuritiesList> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
+<Ribbon TTabEnum="SecuritiesList.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
 <h3>@Localizer["Title"]</h3>
-<div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;">
-    <button class="icon-btn" @onclick="NewSecurity" title='@Localizer["BtnNew"]' aria-label='@Localizer["BtnNew"]'><svg><use href="/icons/sprite.svg#plus" /></svg></button>
-    <button class="icon-btn" @onclick="OpenCategories" title='@Localizer["BtnCategories"]' aria-label='@Localizer["BtnCategories"]'><svg><use href="/icons/sprite.svg#groups" /></svg></button>
-    <label style="margin-left:1rem;font-size:.8rem;display:flex;gap:.35rem;align-items:center;">
-        <input type="checkbox" @bind="_onlyActive" @bind:after="(()=>LoadAsync())" /> @Localizer["OnlyActive"]
-    </label>
-</div>
 <table class="fm-table wide">
     <thead>
         <tr>
@@ -44,10 +40,67 @@
 </table>
 
 @code {
+    private enum TabId { Securities }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Securities;
+    private Task OnActiveTabChanged(TabId id) { _activeTab = id; return Task.CompletedTask; }
+
     private List<SecurityDto> _items = new();
     private bool _onlyActive = true;
 
-    protected override async Task OnParametersSetAsync() => await LoadAsync();
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+        BuildRibbon();
+    }
+
+    private void BuildRibbon()
+    {
+        var actions = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Actions"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_New"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#plus'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { NewSecurity(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Categories"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#groups'/></svg>",
+                    Callback = () => { OpenCategories(); return Task.CompletedTask; }
+                }
+            }
+        };
+        var filter = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Filter"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_ToggleActive"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#check'/></svg>",
+                    Disabled = false,
+                    Callback = () => { _onlyActive = !_onlyActive; _ = LoadAsync(); return Task.CompletedTask; }
+                }
+            }
+        };
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Securities,
+                Title = Localizer["Ribbon_Tab_Securities"],
+                Groups = new(){ actions, filter }
+            }
+        };
+        StateHasChanged();
+    }
 
     private async Task LoadAsync()
     {
@@ -56,6 +109,7 @@
         {
             _items = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>() ?? new();
         }
+        BuildRibbon();
     }
 
     private void NewSecurity() => Nav.NavigateTo("/securities/new");

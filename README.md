@@ -15,7 +15,8 @@
 8. Installation
 9. Entwicklung & Build
 10. Geplante Erweiterungen / Offene Punkte
-11. Lizenz / Status
+11. Accessibility (Barrierefreiheit)
+12. Lizenz / Status
 
 ## 1. Überblick
 FinanceManager ist eine Blazor Server Anwendung (.NET 9) zur Verwaltung persönlicher Finanzen. Importierte Kontoauszüge (CSV/PDF) werden verarbeitet, Buchungen kategorisiert und in Bank-/Kontakt-/Sparplan- und Wertpapierposten überführt. Ergänzend existieren Auswertungen (Monat, Quartal, Jahr, YTD) und ein KPI-Dashboard. Mehrere Benutzer werden unterstützt; Bankkonten können gezielt geteilt werden. Eine .NET MAUI App (iOS) ist geplant.
@@ -32,6 +33,7 @@ FinanceManager ist eine Blazor Server Anwendung (.NET 9) zur Verwaltung persönli
 - Benutzer & Rollen: Registrierung, erster Benutzer = Admin, Konto-Sharing, Sperren/Entsperren, Löschung (mit Datenbereinigung / -übertrag Workflow geplant).
 - Internationalisierung: Deutsch & Englisch (Fallback-Kette Benutzer ? Browser ? Deutsch).
 - Adminbereich: Benutzerverwaltung (Anlegen, Bearbeiten, Sperren/Entsperren, Löschen) & Audit Logs.
+- Einheitliches Menüband (Ribbon-Komponente) für Aktionsschaltflächen auf Detailseiten: Gruppierung, Tastatur-Navigation (Arrow Keys), ARIA Rollen (tablist, toolbar, group) & Zustände (aria-selected, aria-disabled) für verbesserte Bedienbarkeit und Tests.
 
 ## 3. Architektur & Schichten (geplant)
 ```
@@ -179,8 +181,20 @@ dotnet test
 - OP-011: Audit Log Aufbewahrung & DSGVO.
 - OP-012: Weitere Importformate (MT940, CAMT). 
 - OP-013: Persistenter Sprachwechsel (Client State / Server Profil).
+- OP-014: Erweiterte Accessibility-Audits (Focus Management, High Contrast, Screenreader-Flow) – Teil 1 umgesetzt (Ribbon ARIA Semantik, explicit `aria-disabled` Werte, Tastaturnavigation Tabs).
 
-## 11. Lizenz / Status
+## 11. Accessibility (Barrierefreiheit)
+Aktueller Stand (inkrementell):
+- Ribbon-Komponente: ARIA Roles `tablist`, `tab`, `tabpanel`, `toolbar`, `group` implementiert.
+- Zustände: `aria-selected` für aktiven Tab, `aria-disabled="true"` für deaktivierte Aktionen; gleichzeitig natives `disabled` Attribut zur konsistenten Tastatur- und Screenreader-Erkennung.
+- Tastatur: Horizontaler Tabwechsel (Pfeiltasten) vorbereitet; weitere Shortcuts geplant.
+- Beschriftungen: Gruppen via `aria-labelledby`, Buttons mit `aria-label` wenn Text vorhanden.
+Geplante nächste Schritte:
+- Fokus-Ring & sichtbare Fokusreihenfolge optimieren.
+- Skip-Link / Landmark Regions für Hauptbereiche.
+- Farbkontrastprüfung (WCAG AA) automatisieren.
+
+## 12. Lizenz / Status
 - Aktueller Status: Entwurf / frühe Implementierung.
 - Lizenz: (noch nicht festgelegt) – bitte hinzufügen (z.B. MIT).
 

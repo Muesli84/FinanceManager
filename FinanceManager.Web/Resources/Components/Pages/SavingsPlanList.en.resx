@@ -22,4 +22,7 @@
   <data name="Interval_Yearly" xml:space="preserve"><value>Yearly</value></data>
   <data name="StatusActive" xml:space="preserve"><value>Active</value></data>
   <data name="StatusArchived" xml:space="preserve"><value>Archived</value></data>
+  <data name="Ribbon_Group_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Ribbon_Group_Filter" xml:space="preserve"><value>Filter</value></data>
+  <data name="Ribbon_Categories" xml:space="preserve"><value>Categories</value></data>
 </root>

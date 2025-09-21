@@ -139,7 +139,6 @@
   <data name="Nav_StatementDrafts_Import" xml:space="preserve">
     <value>Importieren</value>
   </data>
-  <!-- NEW delete all resources -->
   <data name="Btn_DeleteAll" xml:space="preserve">
     <value>Alle löschen</value>
   </data>
@@ -151,5 +150,33 @@
   </data>
   <data name="Dialog_DeleteAll_Confirm" xml:space="preserve">
     <value>Alle löschen</value>
+  </data>
+  <!-- Ribbon keys -->
+  <data name="Ribbon_Group_Management" xml:space="preserve">
+    <value>Verwaltung</value>
+  </data>
+  <data name="Ribbon_Group_Classification" xml:space="preserve">
+    <value>Klassifizierung</value>
+  </data>
+  <data name="Ribbon_Group_Booking" xml:space="preserve">
+    <value>Buchung</value>
+  </data>
+  <data name="Ribbon_Group_Import" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="Ribbon_Reclassify" xml:space="preserve">
+    <value>Neu klassifizieren</value>
+  </data>
+  <data name="Ribbon_MassBooking" xml:space="preserve">
+    <value>Massenbuchung</value>
+  </data>
+  <data name="Ribbon_DeleteAll" xml:space="preserve">
+    <value>Alle löschen</value>
+  </data>
+  <data name="Ribbon_Import" xml:space="preserve">
+    <value>Datei importieren</value>
+  </data>
+  <data name="Ribbon_Tab_Statements" xml:space="preserve">
+    <value>Kontoauszüge</value>
   </data>
 </root>

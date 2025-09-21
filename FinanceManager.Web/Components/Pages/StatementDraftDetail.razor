@@ -6,6 +6,7 @@
 @using FinanceManager.Domain.Statements
 @using FinanceManager.Shared.Dtos
 @using Microsoft.Extensions.Localization
+@using FinanceManager.Web.Components.Shared
 @inject IStringLocalizer<Components.Pages.StatementDraftDetail> Localizer
 
 @code {
@@ -23,6 +24,11 @@
     private bool _hasFile; private bool _showViewer; private string? _fileUrl;
     private DraftValidationResultDto? _validation; private bool _booking; private bool _pendingWarningConfirmation; private DraftValidationResultDto? _lastValidation; private string? _bookingError;
 
+    // Ribbon state
+    private enum TabId { Statement }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Statement;
+
     private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);
 
     protected override async Task OnParametersSetAsync()
@@ -36,6 +42,120 @@
         {
             _fileUrl = $"/api/statement-drafts/{Id}/file";
         }
+        BuildRibbon();
+    }
+
+    private void BuildRibbon()
+    {
+        var navItems = new List<Ribbon<TabId>.RibbonItem>();
+        if (HasEntryContext)
+        {
+            navItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_BackToEntry"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#arrow-left'/></svg>",
+                Size = Ribbon<TabId>.RibbonItemSize.Large,
+                Callback = () => { BackToSourceEntry(); return Task.CompletedTask; }
+            });
+        }
+        navItems.Add(new Ribbon<TabId>.RibbonItem
+        {
+            Label = Localizer["Ribbon_BackToOverview"],
+            IconSvg = "<svg><use href='/icons/sprite.svg#arrow-left'/></svg>",
+            Size = Ribbon<TabId>.RibbonItemSize.Large,
+            Callback = () => { BackGeneric(); return Task.CompletedTask; }
+        });
+        navItems.Add(new Ribbon<TabId>.RibbonItem
+        {
+            Label = Localizer["Ribbon_Prev"],
+            IconSvg = "<svg><use href='/icons/sprite.svg#chevron-left'/></svg>",
+            Disabled = _draft?.PrevInUpload == null,
+            Size = Ribbon<TabId>.RibbonItemSize.Large,
+            Callback = () => { GoPrevInUpload(); return Task.CompletedTask; }
+        });
+        navItems.Add(new Ribbon<TabId>.RibbonItem
+        {
+            Label = Localizer["Ribbon_Next"],
+            IconSvg = "<svg><use href='/icons/sprite.svg#chevron-right'/></svg>",
+            Disabled = _draft?.NextInUpload == null,
+            Size = Ribbon<TabId>.RibbonItemSize.Large,
+            Callback = () => { GoNextInUpload(); return Task.CompletedTask; }
+        });
+
+        var navGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Navigation"],
+            Items = navItems
+        };
+
+        var manageGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Manage"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Delete"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Small,
+                    Callback = () => { DeleteDraftAsync(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Reclassify"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Small,
+                    Callback = () => { _ = ClassifyAsync(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Validate"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#check'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Small,
+                    Callback = () => { _ = ValidateDraft(); return Task.CompletedTask; }
+                }
+            }
+        };
+
+        var fileGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Statement"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = _showViewer ? Localizer["Ribbon_HideOriginal"] : Localizer["Ribbon_ShowOriginal"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
+                    Disabled = !_hasFile,
+                    Size = Ribbon<TabId>.RibbonItemSize.Small,
+                    Callback = () => { ToggleViewer(); BuildRibbon(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Download"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
+                    Disabled = !_hasFile,
+                    Size = Ribbon<TabId>.RibbonItemSize.Small,
+                    Callback = () => { DownloadFile(); return Task.CompletedTask; }
+                }
+            }
+        };
+
+        _tabs = new List<Ribbon<TabId>.RibbonTab<TabId>>
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Statement,
+                Title = Localizer["Ribbon_Tab_Statement"],
+                Groups = new List<Ribbon<TabId>.RibbonGroup> { navGroup, manageGroup, fileGroup }
+            }
+        };
+    }
+
+    private Task OnActiveTabChanged(TabId id)
+    {
+        _activeTab = id;
+        return Task.CompletedTask;
     }
 
     private void GoPrevInUpload()
@@ -95,6 +215,7 @@
             }
         }
         finally { _booking = false; }
+        BuildRibbon();
     }
 
     private async Task ForceBook()
@@ -119,6 +240,7 @@
             }
         }
         finally { _booking = false; _pendingWarningConfirmation = false; }
+        BuildRibbon();
     }
 
     private async Task LoadAccountsAsync()
@@ -150,6 +272,7 @@
             {
                 _draft = await resp.Content.ReadFromJsonAsync<StatementDraftDto>();
                 _selectedAccountId = _draft?.DetectedAccountId;
+                BuildRibbon();
                 StateHasChanged();
             }
         }
@@ -162,6 +285,7 @@
         {
             _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
             _form = new EntryForm { BookingDate = DateTime.Today };
+            BuildRibbon();
             StateHasChanged();
         }
     }
@@ -173,6 +297,7 @@
         {
             _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
             _selectedAccountId = _draft?.DetectedAccountId;
+            BuildRibbon();
             StateHasChanged();
         }
     }
@@ -189,7 +314,6 @@
 
     private void OpenEntry(Guid entryId)
     {
-        // If we already have an origin context, keep it. Otherwise create a new one using the clicked entry as origin.
         string url;
         if (HasEntryContext)
         {
@@ -215,7 +339,6 @@
 
     private void BackGeneric()
     {
-        // Always go back to overview now
         Nav.NavigateTo("/statement-drafts");
     }
 
@@ -240,6 +363,8 @@
     private sealed class AccountVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid BankContactId { get; set; } }
 }
 
+<Ribbon TTabEnum="StatementDraftDetail.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
 <h3>@Localizer["Title"]</h3>
 @if (_draft == null)
 {
@@ -247,50 +372,6 @@
 }
 else
 {
-    <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
-        <button class="icon-btn" @onclick="BackGeneric" title='@Localizer["Btn_Back"]' aria-label='@Localizer["Btn_Back"]'>
-            <svg><use href="/icons/sprite.svg#arrow-left" /></svg>
-        </button>
-        @if (HasEntryContext)
-        {
-            <button class="icon-btn" @onclick="BackToSourceEntry" title='@Localizer["Btn_BackToParent"]' aria-label='@Localizer["Btn_BackToParent"]'>
-                <svg><use href="/icons/sprite.svg#level-up" /></svg>
-            </button>
-        }
-        <button class="icon-btn" disabled="@(_draft.PrevInUpload==null)" @onclick="GoPrevInUpload" title='@Localizer["Btn_PrevUpload"]' aria-label='@Localizer["Btn_PrevUpload"]'>
-            <svg><use href="/icons/sprite.svg#chevron-left" /></svg>
-        </button>
-        <button class="icon-btn" disabled="@(_draft.NextInUpload==null)" @onclick="GoNextInUpload" title='@Localizer["Btn_NextUpload"]' aria-label='@Localizer["Btn_NextUpload"]'>
-            <svg><use href="/icons/sprite.svg#chevron-right" /></svg>
-        </button>
-        <button @onclick="ToggleViewer" class="icon-btn" disabled="@(!_hasFile)" title='@Localizer["Btn_ShowOriginal"]' aria-label='@Localizer["Btn_ShowOriginal"]'>
-            <svg><use href="/icons/sprite.svg#external" /></svg>
-        </button>
-        <button @onclick="DownloadFile" class="icon-btn" disabled="@(!_hasFile)" title='@Localizer["Btn_Download"]' aria-label='@Localizer["Btn_Download"]'>
-            <svg><use href="/icons/sprite.svg#save" /></svg>
-        </button>
-        <button @onclick="DeleteDraftAsync" class="icon-btn" title='@Localizer["Btn_Delete"]' aria-label='@Localizer["Btn_Delete"]'>
-            <svg><use href="/icons/sprite.svg#delete" /></svg>
-        </button>
-        <button @onclick="ClassifyAsync" class="icon-btn" title='@Localizer["Btn_Reclassify"]' aria-label='@Localizer["Btn_Reclassify"]'>
-            <svg><use href="/icons/sprite.svg#refresh" /></svg>
-        </button>
-        <button @onclick="ValidateDraft" class="icon-btn" title='@Localizer["Btn_Validate"]' aria-label='@Localizer["Btn_Validate"]'>
-            <svg><use href="/icons/sprite.svg#check" /></svg>
-        </button>
-        <button class="icon-btn" @onclick="BookDraft" disabled="@_booking" title='@Localizer["Btn_Book"]' aria-label='@Localizer["Btn_Book"]'>
-            <svg><use href="/icons/sprite.svg#save" /></svg>
-        </button>
-        @if(_validation != null)
-        {
-            var errorCount = _validation.Messages.Count(m=>m.Severity=="Error");
-            var warnCount = _validation.Messages.Count(m=>m.Severity=="Warning");
-            <span style="margin-left:.75rem;font-size:.75rem;display:flex;gap:.6rem;align-items:center;">
-                <span style="color:#e66;">@Localizer["Errors"]: @errorCount</span>
-                <span style="color:#cc6;">@Localizer["Warnings"]: @warnCount</span>
-            </span>
-        }
-    </div>
     @if(!string.IsNullOrEmpty(_bookingError))
     {
         <div style="margin:.5rem 0;color:#e66;font-size:.75rem;">@_bookingError</div>

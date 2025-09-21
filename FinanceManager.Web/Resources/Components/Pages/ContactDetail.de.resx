@@ -30,4 +30,14 @@
   <data name="ErrorCreateFailed" xml:space="preserve"><value>Erstellen fehlgeschlagen</value></data>
   <data name="ErrorDeleteFailed" xml:space="preserve"><value>Löschen fehlgeschlagen</value></data>
   <data name="ErrorAliasEmpty" xml:space="preserve"><value>Alias darf nicht leer sein.</value></data>
+  <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
+  <data name="Ribbon_Group_Edit" xml:space="preserve"><value>Bearbeiten</value></data>
+  <data name="Ribbon_Group_Related" xml:space="preserve"><value>Verknüpft</value></data>
+  <data name="Ribbon_Tab_Contact" xml:space="preserve"><value>Kontakt</value></data>
+  <data name="Ribbon_Back" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Ribbon_Save" xml:space="preserve"><value>Speichern</value></data>
+  <data name="Ribbon_Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Ribbon_Accounts" xml:space="preserve"><value>Konten</value></data>
+  <data name="Ribbon_Merge" xml:space="preserve"><value>Zusammenführen</value></data>
+  <data name="Ribbon_Postings" xml:space="preserve"><value>Posten</value></data>
 </root>

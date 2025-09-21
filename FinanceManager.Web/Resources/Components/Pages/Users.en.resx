@@ -31,4 +31,12 @@
   <data name="Action_Unlock"><value>Unlock</value></data>
   <data name="Action_Delete"><value>Delete</value></data>
   <data name="Error_DeleteLastUser"><value>Cannot delete the last remaining user.</value></data>
+  <!-- Ribbon -->
+  <data name="Ribbon_Group_Navigation"><value>Navigation</value></data>
+  <data name="Ribbon_Group_Actions"><value>Actions</value></data>
+  <data name="Ribbon_Back"><value>Back</value></data>
+  <data name="Ribbon_Reload"><value>Reload</value></data>
+  <data name="Ribbon_CancelEdit"><value>Cancel edit</value></data>
+  <data name="Ribbon_HidePassword"><value>Hide password</value></data>
+  <data name="Ribbon_Tab_Users"><value>Users</value></data>
 </root>

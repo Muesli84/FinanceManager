@@ -5,4 +5,22 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="PageTitle" xml:space="preserve"><value>Wertpapiere</value></data>
+  <data name="Title" xml:space="preserve"><value>Wertpapiere</value></data>
+  <data name="BtnNew" xml:space="preserve"><value>Neues Wertpapier</value></data>
+  <data name="BtnCategories" xml:space="preserve"><value>Kategorien</value></data>
+  <data name="OnlyActive" xml:space="preserve"><value>Nur aktive</value></data>
+  <data name="Th_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Th_Identifier" xml:space="preserve"><value>Kennung</value></data>
+  <data name="Th_AlphaVantage" xml:space="preserve"><value>AlphaVantage</value></data>
+  <data name="Th_Category" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="Th_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="StatusActive" xml:space="preserve"><value>Aktiv</value></data>
+  <data name="StatusArchived" xml:space="preserve"><value>Archiviert</value></data>
+  <data name="NoEntries" xml:space="preserve"><value>Keine Einträge</value></data>
+  <data name="Ribbon_Group_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Ribbon_Group_Filter" xml:space="preserve"><value>Filter</value></data>
+  <data name="Ribbon_New" xml:space="preserve"><value>Neu</value></data>
+  <data name="Ribbon_Categories" xml:space="preserve"><value>Kategorien</value></data>
+  <data name="Ribbon_Tab_Securities" xml:space="preserve"><value>Wertpapiere</value></data>
+  <data name="Ribbon_ToggleActive" xml:space="preserve"><value>Aktiv-Filter umschalten</value></data>
 </root>

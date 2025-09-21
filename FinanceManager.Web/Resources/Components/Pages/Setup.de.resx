@@ -48,4 +48,8 @@
   <data name="ImportSplit_Help_Mode_Monthly" xml:space="preserve"><value>Ein Draft je Kalendermonat – unabhängig von der Anzahl Einträge.</value></data>
   <data name="ImportSplit_Help_Mode_Hybrid" xml:space="preserve"><value>Versucht Monats-Drafts. Nur wenn ein Monat den Schwellwert überschreitet, wird auf feste Blöcke (Max. Einträge) umgeschaltet.</value></data>
   <data name="ImportSplit_Help_Example" xml:space="preserve"><value>Beispiel: Max=300, Schwellwert=1200. Ein Monat mit 950 Buchungen → Monats-Draft. Ein Monat mit 2.400 Buchungen → Fallback: 8 Drafts à 300.</value></data>
+  <!-- Ribbon additions -->
+  <data name="Ribbon_Tab_Setup" xml:space="preserve"><value>Setup</value></data>
+  <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
+  <data name="Ribbon_Back" xml:space="preserve"><value>Zurück</value></data>
 </root>

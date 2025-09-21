@@ -4,19 +4,18 @@
 @rendermode InteractiveServer
 @using FinanceManager.Shared.Dtos
 @using Microsoft.Extensions.Localization
+@using FinanceManager.Web.Components.Shared
 @inject IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanList> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
+<Ribbon TTabEnum="SavingsPlanList.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
 <h3>@Localizer["TitleList"]</h3>
 
-<div class="action-bar">
-    <button @onclick="NewPlan" aria-label='@Localizer["BtnNew"]' title='@Localizer["BtnNew"]' class="icon-btn">
-        <svg><use href="/icons/sprite.svg#plus" /></svg>
-    </button>
-</div>
-<div style="margin-top:1rem;">
-    <label><input type="checkbox" @bind="ShowActiveOnly" @bind:after="(()=>LoadPlansAsync())" /> @Localizer["OnlyActive"]</label>
-</div>
+@if(Plans.Count==0)
+{
+    <p style="opacity:.65;font-size:.75rem;">@Localizer["StatusArchived"]</p>
+}
 <table class="fm-table wide" style="margin-top:1rem;">
     <thead>
         <tr>
@@ -58,6 +57,56 @@
 </table>
 
 @code {
+    // Ribbon state
+    private enum TabId { SavingsPlans }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.SavingsPlans;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        var actions = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Actions"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnNew"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#plus'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { NewPlan(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Categories"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#groups'/></svg>",
+                    Callback = () => { Navigation.NavigateTo("/savings-plan-categories"); return Task.CompletedTask; }
+                }
+            }
+        };
+        var filterItems = new List<Ribbon<TabId>.RibbonItem>
+        {
+            new Ribbon<TabId>.RibbonItem
+            {
+                Label = ShowActiveOnly ? Localizer["OnlyActive"] : Localizer["StatusArchived"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
+                Callback = () => { ShowActiveOnly = !ShowActiveOnly; _ = LoadPlansAsync(); return Task.CompletedTask; }
+            }
+        };
+        var filter = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Filter"], Items = filterItems };
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.SavingsPlans,
+                Title = Localizer["PageTitle"],
+                Groups = new(){ actions, filter }
+            }
+        };
+        StateHasChanged();
+    }
+
     private List<SavingsPlanDto> Plans = new();
     private bool ShowActiveOnly = true;
 
@@ -67,6 +116,7 @@
     protected override async Task OnParametersSetAsync()
     {
         await LoadPlansAsync();
+        BuildRibbon();
     }
 
     private async Task LoadPlansAsync()
@@ -83,6 +133,7 @@
             Plans.Clear();
             _analysisByPlan.Clear();
         }
+        BuildRibbon();
     }
 
     private async Task LoadAnalysesAsync()
@@ -98,10 +149,7 @@
                 if (r.IsSuccessStatusCode)
                 {
                     var dto = await r.Content.ReadFromJsonAsync<SavingsPlanAnalysisDto>();
-                    if (dto != null)
-                    {
-                        _analysisByPlan[p.Id] = dto;
-                    }
+                    if (dto != null) { _analysisByPlan[p.Id] = dto; }
                 }
             }
             catch { }
