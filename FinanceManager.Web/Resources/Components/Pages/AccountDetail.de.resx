@@ -29,4 +29,13 @@
   <data name="NoData" xml:space="preserve"><value>Keine Daten.</value></data>
   <data name="ErrorNotFound" xml:space="preserve"><value>Nicht gefunden</value></data>
   <data name="ErrorLoadFailed" xml:space="preserve"><value>Laden fehlgeschlagen</value></data>
+  <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
+  <data name="Ribbon_Group_Edit" xml:space="preserve"><value>Bearbeiten</value></data>
+  <data name="Ribbon_Group_Related" xml:space="preserve"><value>Verknüpft</value></data>
+  <data name="Ribbon_Back" xml:space="preserve"><value>Zurück</value></data>
+  <data name="Ribbon_Save" xml:space="preserve"><value>Speichern</value></data>
+  <data name="Ribbon_Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Ribbon_BankContact" xml:space="preserve"><value>Bankkontakt</value></data>
+  <data name="Ribbon_Postings" xml:space="preserve"><value>Posten</value></data>
+  <data name="Ribbon_Tab_Account" xml:space="preserve"><value>Konto</value></data>
 </root>

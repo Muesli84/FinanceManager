@@ -3,27 +3,24 @@
 @using FinanceManager.Shared.Dtos
 @inject NavigationManager Navigation
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Setup> Localizer
+@using FinanceManager.Web.Components.Shared
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<Ribbon TTabEnum="Setup.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 <h3>@Localizer["Heading"]</h3>
 
 <BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="1500" AllowedTypes="new[]{ BackgroundTaskType.BackupRestore }" />
 
-<div class="action-bar" style="margin-bottom:1rem;">
-    <button class="icon-btn" @onclick="Back" title="@Localizer["Btn_Back"]">
-        <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
-    </button>
-</div>
-
 <div class="fm-tabs">
-    <button class="fm-tab @(IsActiveTab(TabBackup)?"active":null)" @onclick="() => Activate(TabBackup)">@Localizer["Tab_Backup"]</button>
-    <button class="fm-tab @(IsActiveTab(TabImportSplit)?"active":null)" @onclick="() => Activate(TabImportSplit)">@Localizer["ImportSplit_TabTitle"]</button>
-    <button class="fm-tab @(IsActiveTab(TabLegacy)?"active":null)" @onclick="() => Activate(TabLegacy)">@Localizer["Tab_LegacyImport"]</button>
+    <button class="fm-tab @(IsActiveSection(TabBackup)?"active":null)" @onclick="() => Activate(TabBackup)">@Localizer["Tab_Backup"]</button>
+    <button class="fm-tab @(IsActiveSection(TabImportSplit)?"active":null)" @onclick="() => Activate(TabImportSplit)">@Localizer["ImportSplit_TabTitle"]</button>
+    <button class="fm-tab @(IsActiveSection(TabLegacy)?"active":null)" @onclick="() => Activate(TabLegacy)">@Localizer["Tab_LegacyImport"]</button>
 </div>
 
 <div class="fm-tab-panel">
-    @switch(_activeTab)
+    @switch(_activeSection)
     {
         case TabBackup:
             <SetupBackupTab />
@@ -45,18 +42,59 @@
 </style>
 
 @code {
+    // Ribbon state (single tab for now)
+    private enum TabId { Setup }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Setup;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    // Internal section tabs (string based)
     private const string TabBackup = "backup";
     private const string TabImportSplit = "import-split";
     private const string TabLegacy = "legacy";
-    private string _activeTab = TabBackup;
+    private string _activeSection = TabBackup;
 
-    private void Activate(string tab)
+    protected override void OnInitialized()
     {
-        if (_activeTab != tab)
+        BuildRibbon();
+    }
+
+    private void BuildRibbon()
+    {
+        _tabs = new()
         {
-            _activeTab = tab;
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Setup,
+                Title = Localizer["Ribbon_Tab_Setup"],
+                Groups = new()
+                {
+                    new Ribbon<TabId>.RibbonGroup
+                    {
+                        Title = Localizer["Ribbon_Group_Navigation"],
+                        Items = new()
+                        {
+                            new Ribbon<TabId>.RibbonItem
+                            {
+                                Label = Localizer["Ribbon_Back"],
+                                IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
+                                Size = Ribbon<TabId>.RibbonItemSize.Large,
+                                Callback = () => { Back(); return Task.CompletedTask; }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    private void Activate(string section)
+    {
+        if (_activeSection != section)
+        {
+            _activeSection = section;
         }
     }
-    private bool IsActiveTab(string tab) => _activeTab == tab;
+    private bool IsActiveSection(string section) => _activeSection == section;
     private void Back() => Navigation.NavigateTo("/");
 }

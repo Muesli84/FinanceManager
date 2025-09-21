@@ -3,19 +3,17 @@
 @using FinanceManager.Shared.Dtos
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
+@using FinanceManager.Web.Components.Shared
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanCategories> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h3>Kategorien verwalten</h3>
-<div class="action-bar" style="margin-bottom:1rem;">
-    <button class="icon-btn" @onclick="NewCategory" title="Neue Kategorie">
-        <svg class="icon"><use href="icons/sprite.svg#plus"></use></svg>
-    </button>
-</div>
+<Ribbon TTabEnum="SavingsPlanCategories.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
+<h3>@Localizer["Title"]</h3>
 <table class="fm-table">
     <thead>
         <tr>
-            <th>Name</th>
+            <th>@Localizer["Col_Name"]</th>
         </tr>
     </thead>
     <tbody>
@@ -25,13 +23,61 @@
                 <td>@cat.Name</td>
             </tr>
         }
+        @if(_categories.Count==0)
+        {
+            <tr><td style="opacity:.6;">@Localizer["Empty"]</td></tr>
+        }
     </tbody>
 </table>
 
 @code {
+    // Ribbon state
+    private enum TabId { SavingsPlanCategories }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.SavingsPlanCategories;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        var actions = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Actions"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_New"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#plus'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { NewCategory(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Back"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
+                    Callback = () => { Back(); return Task.CompletedTask; }
+                }
+            }
+        };
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.SavingsPlanCategories,
+                Title = Localizer["PageTitle"],
+                Groups = new(){ actions }
+            }
+        };
+        StateHasChanged();
+    }
+
     private List<SavingsPlanCategoryDto> _categories = new();
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        BuildRibbon();
+    }
 
     private async Task LoadAsync()
     {
@@ -45,4 +91,5 @@
 
     private void NewCategory() => Navigation.NavigateTo("/savings-plan-categories/new");
     private void EditCategory(Guid id) => Navigation.NavigateTo($"/savings-plan-categories/{id}");
+    private void Back() => Navigation.NavigateTo("/savings-plans");
 }

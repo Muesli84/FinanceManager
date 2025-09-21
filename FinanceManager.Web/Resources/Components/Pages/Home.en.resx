@@ -148,4 +148,14 @@
   <data name="Import_SplitInfo_Details" xml:space="preserve">
     <value>Mode: {0}; Max/Draft: {1}; Largest: {2}</value>
   </data>
+  <!-- Ribbon -->
+  <data name="Ribbon_Group_Import" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="Ribbon_Import" xml:space="preserve">
+    <value>Import file</value>
+  </data>
+  <data name="Ribbon_Tab_Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
 </root>

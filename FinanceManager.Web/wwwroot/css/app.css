@@ -36,12 +36,7 @@ form { max-width:340px; }
 .login-status { font-size:.75rem; opacity:.8; }
 .login-status button { margin-top:.5rem; width:100%; background:#343a40; color: var(--text); }
 .login-status button:hover { background:#495057; }
-.action-bar { display:flex; gap:.5rem; margin:0 0 1rem 0; }
-.action-bar button { display:inline-flex; align-items:center; justify-content:center; padding:.5rem .65rem; font-size:1.05rem; background: var(--bg-alt); border:1px solid var(--border); color: var(--text); }
-.action-bar button:hover:not(:disabled) { background: var(--border); }
-.action-bar .icon { line-height:1; }
-
-button.danger, .action-bar button.danger { background: var(--danger); color:#000; }
+button.danger { background: var(--danger); color:#000; }
 button.danger:hover:not(:disabled) { filter:brightness(1.15); }
 /* Icon buttons */
 .icon-btn { background: var(--bg-alt); border:1px solid var(--border); color: var(--text); padding:.45rem; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--radius); cursor:pointer; }

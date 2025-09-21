@@ -3,10 +3,14 @@
 @using System.Net.Http.Json
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components
+@using FinanceManager.Web.Components.Shared
 @inject HttpClient Http
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Users> Localizer
+@inject NavigationManager Nav
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<Ribbon TTabEnum="Users.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 @if (!CurrentUser.IsAuthenticated)
 {
@@ -128,6 +132,72 @@ else
 </style>
 
 @code {
+    // Ribbon state
+    private enum TabId { Users }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Users;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        if (!CurrentUser.IsAuthenticated || !CurrentUser.IsAdmin) { _tabs = new(); return; }
+        var nav = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Navigation"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Back"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { Back(); return Task.CompletedTask; }
+                }
+            }
+        };
+        var actionsItems = new List<Ribbon<TabId>.RibbonItem>
+        {
+            new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Reload"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
+                Callback = () => { _ = ReloadAsync(); return Task.CompletedTask; }
+            }
+        };
+        if (_edit != null)
+        {
+            actionsItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_CancelEdit"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#clear'/></svg>",
+                Callback = () => { CancelEdit(); BuildRibbon(); return Task.CompletedTask; }
+            });
+        }
+        if (_lastResetUserId != Guid.Empty && !string.IsNullOrEmpty(_lastResetPassword))
+        {
+            actionsItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_HidePassword"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#clear'/></svg>",
+                Callback = () => { ClearLastPassword(); BuildRibbon(); return Task.CompletedTask; }
+            });
+        }
+        var actions = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Actions"], Items = actionsItems };
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Users,
+                Title = Localizer["Ribbon_Tab_Users"],
+                Groups = new(){ nav, actions }
+            }
+        };
+        StateHasChanged();
+    }
+
+    private void Back() => Nav.NavigateTo("/");
+    private async Task ReloadAsync(){ await LoadAsync(); BuildRibbon(); }
+
     private bool _loaded;
     private string? _error;
     private List<UserVm> _users = new();
@@ -151,6 +221,7 @@ else
             await LoadAsync();
         }
         _loaded = true;
+        BuildRibbon();
     }
 
     private async Task LoadAsync()
@@ -165,7 +236,6 @@ else
         {
             _error = ex.Message;
         }
-        StateHasChanged();
     }
 
     private void BeginEdit(UserVm u)
@@ -174,13 +244,14 @@ else
         _editUsername = u.Username;
         _editIsAdmin = u.IsAdmin;
         _editActive = u.Active;
+        BuildRibbon();
     }
 
-    private void CancelEdit() => _edit = null;
+    private void CancelEdit(){ _edit = null; BuildRibbon(); }
 
     private async Task SaveEditAsync(Guid id)
     {
-        if (_edit == null) return;
+        if (_edit == null) { return; }
         _busyRow = true;
         _error = null;
         try
@@ -191,25 +262,18 @@ else
             {
                 var updated = await resp.Content.ReadFromJsonAsync<UserVm>();
                 var idx = _users.FindIndex(x => x.Id == id);
-                if (idx >= 0 && updated != null) _users[idx] = updated;
+                if (idx >= 0 && updated != null) { _users[idx] = updated; }
                 _edit = null;
             }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
+            else { _error = await resp.Content.ReadAsStringAsync(); }
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busyRow = false;
+        catch (Exception ex) { _error = ex.Message; }
+        _busyRow = false; BuildRibbon();
     }
 
     private async Task CreateAsync()
     {
-        _busyCreate = true;
-        _error = null;
+        _busyCreate = true; _error = null;
         try
         {
             var req = new CreateUserRequest { Username = _create.Username.Trim(), Password = _create.Password, IsAdmin = _create.IsAdmin };
@@ -217,46 +281,30 @@ else
             if (resp.IsSuccessStatusCode)
             {
                 var created = await resp.Content.ReadFromJsonAsync<UserVm>();
-                if (created != null) _users.Add(created);
+                if (created != null) { _users.Add(created); }
                 _create = new();
             }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
+            else { _error = await resp.Content.ReadAsStringAsync(); }
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busyCreate = false;
+        catch (Exception ex) { _error = ex.Message; }
+        _busyCreate = false; BuildRibbon();
     }
 
     private async Task DeleteAsync(Guid id)
     {
         if (_users.Count == 1)
         {
-            _error = Localizer["Error_DeleteLastUser"];
-            return;
+            _error = Localizer["Error_DeleteLastUser"]; return;
         }
         _busyRow = true;
         try
         {
             var resp = await Http.DeleteAsync($"/api/admin/users/{id}");
-            if (resp.IsSuccessStatusCode)
-            {
-                _users.RemoveAll(u => u.Id == id);
-            }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
+            if (resp.IsSuccessStatusCode) { _users.RemoveAll(u => u.Id == id); }
+            else { _error = await resp.Content.ReadAsStringAsync(); }
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busyRow = false;
+        catch (Exception ex) { _error = ex.Message; }
+        _busyRow = false; BuildRibbon();
     }
 
     private async Task ResetPasswordAsync(Guid id)
@@ -266,21 +314,11 @@ else
         try
         {
             var resp = await Http.PostAsJsonAsync($"/api/admin/users/{id}/reset-password", new ResetPasswordRequest { NewPassword = newPw });
-            if (resp.IsSuccessStatusCode)
-            {
-                _lastResetUserId = id;
-                _lastResetPassword = newPw;
-            }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
+            if (resp.IsSuccessStatusCode) { _lastResetUserId = id; _lastResetPassword = newPw; }
+            else { _error = await resp.Content.ReadAsStringAsync(); }
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busyRow = false;
+        catch (Exception ex) { _error = ex.Message; }
+        _busyRow = false; BuildRibbon();
     }
 
     private async Task UnlockAsync(Guid id)
@@ -292,28 +330,15 @@ else
             if (resp.IsSuccessStatusCode)
             {
                 var found = _users.FirstOrDefault(x => x.Id == id);
-                if (found != null)
-                {
-                    found.LockedUntilUtc = null;
-                }
+                if (found != null) { found.LockedUntilUtc = null; }
             }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
+            else { _error = await resp.Content.ReadAsStringAsync(); }
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busyRow = false;
+        catch (Exception ex) { _error = ex.Message; }
+        _busyRow = false; BuildRibbon();
     }
 
-    private void ClearLastPassword()
-    {
-        _lastResetUserId = Guid.Empty;
-        _lastResetPassword = null;
-    }
+    private void ClearLastPassword(){ _lastResetUserId = Guid.Empty; _lastResetPassword = null; BuildRibbon(); }
 
     private sealed class CreateVm { [Required, MinLength(3)] public string Username { get; set; } = string.Empty; [Required, MinLength(6)] public string Password { get; set; } = string.Empty; public bool IsAdmin { get; set; } }
     private sealed class CreateUserRequest { public string Username { get; set; } = string.Empty; public string Password { get; set; } = string.Empty; public bool IsAdmin { get; set; } }

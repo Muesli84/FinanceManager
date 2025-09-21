@@ -1,0 +1,40 @@
+.fm-ribbon{border-bottom:1px solid var(--border);background:var(--panel-bg,#181818);font-size:.75rem;}
+
+/* Tabs */
+.fm-ribbon-tabs{list-style:none;margin:0;padding:.25rem .75rem;display:flex;gap:.35rem;border-bottom:1px solid var(--border);} 
+.fm-ribbon-tabs li button{background:transparent;border:0;padding:.35rem .6rem;color:#ccc;cursor:pointer;border-radius:4px;font:inherit;} 
+.fm-ribbon-tabs li.active button{background:#2a2a2a;color:#fff;} 
+.fm-ribbon-tabs li button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;} 
+
+/* Content */
+.fm-ribbon-content{padding:.6rem .75rem;}
+.fm-ribbon-groups{display:flex;gap:.75rem;align-items:stretch;}
+.fm-ribbon-group{display:flex;flex-direction:column;min-width:132px;border:1px solid var(--border);background:#141414;border-radius:6px;padding:.4rem .5rem .5rem;}
+.fm-ribbon-group-body{flex:1;display:flex;flex-direction:column;}
+.fm-ribbon-group-footer{margin-top:.4rem;padding-top:.3rem;font-size:.6rem;text-align:center;opacity:.75;border-top:1px solid #222;letter-spacing:.05em;text-transform:uppercase;}
+
+/* Unified grid for items */
+.ribbon-items-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(3,auto);gap:.35rem .6rem;align-content:start;}
+
+/* Base Button Styling (size via CSS vars) */
+.fm-ribbon-btn{--rb-icon-size:14px;--rb-font-size:.62rem;--rb-gap:.35rem;--rb-pad-y:.28rem;--rb-pad-x:.55rem;--rb-flex-dir:row;--rb-width:auto;--rb-min-h:auto;--rb-text-wrap:nowrap;--rb-align:center;--rb-grid-row:auto;--rb-justify:center;--rb-text-align:left;--rb-focus-outline:2px solid var(--accent);border:1px solid #333;background:#1e1e1e;color:#ddd;border-radius:4px;cursor:pointer;display:inline-flex;flex-direction:var(--rb-flex-dir);align-items:var(--rb-align);justify-content:var(--rb-justify);transition:background .15s,color .15s,border-color .15s,padding .15s;gap:var(--rb-gap);font-size:var(--rb-font-size);padding:var(--rb-pad-y) var(--rb-pad-x);width:var(--rb-width);min-height:var(--rb-min-h);text-align:var(--rb-text-align);line-height:1.05;}
+.fm-ribbon-btn:hover:not(:disabled){background:#2a2a2a;color:#fff;border-color:#444;}
+.fm-ribbon-btn:disabled{opacity:.45;cursor:default;}
+.fm-ribbon-btn:focus-visible{outline:var(--rb-focus-outline);outline-offset:2px;}
+.fm-ribbon-btn .icon{display:inline-flex;}
+.fm-ribbon-btn .icon svg{width:var(--rb-icon-size);height:var(--rb-icon-size);}
+.fm-ribbon-btn .text-inline,.fm-ribbon-btn .text{white-space:var(--rb-text-wrap);}
+
+/* Large Variant */
+.fm-ribbon-btn.large{--rb-icon-size:26px;--rb-pad-y:.45rem;--rb-pad-x:.4rem;--rb-flex-dir:column;--rb-width:76px;--rb-min-h:82px;--rb-text-wrap:normal;--rb-align:center;--rb-justify:flex-start;--rb-text-align:center;--rb-grid-row:span 3;}
+.fm-ribbon-btn.large{grid-row:var(--rb-grid-row);} 
+.fm-ribbon-btn.large .text{line-height:1.1;}
+
+/* Small Variant (defaults mostly) */
+.fm-ribbon-btn.small{--rb-icon-size:14px;}
+
+/* High contrast (prefers-contrast) */
+@media (prefers-contrast: more){
+  .fm-ribbon-btn:focus-visible{outline:2px solid #fff;}
+  .fm-ribbon-tabs li button:focus-visible{outline:2px solid #fff;}
+}

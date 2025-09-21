@@ -32,4 +32,12 @@
   <data name="Action_Unlock"><value>Entsperren</value></data>
   <data name="Action_Delete"><value>Löschen</value></data>
   <data name="Error_DeleteLastUser"><value>Letzter Benutzer kann nicht gelöscht werden.</value></data>
+  <!-- Ribbon -->
+  <data name="Ribbon_Group_Navigation"><value>Navigation</value></data>
+  <data name="Ribbon_Group_Actions"><value>Aktionen</value></data>
+  <data name="Ribbon_Back"><value>Zurück</value></data>
+  <data name="Ribbon_Reload"><value>Neu laden</value></data>
+  <data name="Ribbon_CancelEdit"><value>Bearb. abbrechen</value></data>
+  <data name="Ribbon_HidePassword"><value>Passwort ausblenden</value></data>
+  <data name="Ribbon_Tab_Users"><value>Benutzer</value></data>
 </root>

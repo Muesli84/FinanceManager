@@ -5,64 +5,24 @@
 @inject IJSRuntime JS
 @using FinanceManager.Domain.Statements
 @using Microsoft.Extensions.Localization
+@using FinanceManager.Web.Components.Shared
 @inject IStringLocalizer<Components.Pages.StatementDraftEntryDetail> Localizer
 
 @code { enum StatementDraftStatus { Draft=0, Committed=1, Expired=2 } }
 
 <h3>@Localizer["Title"]</h3>
+
+<Ribbon TTabEnum="TabId"
+        Tabs="_tabs"
+        ActiveTab="_activeTab"
+        ActiveTabChanged="OnActiveTabChanged" />
+
 @if (_vm == null)
 {
     <p>@Localizer["Loading"]</p>
 }
 else
-{
-    <div class="action-bar" style="margin-bottom:1rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
-        <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" @onclick="BackAsync" title='@Localizer["BtnBack"]' aria-label='@Localizer["BtnBack"]'><svg><use href="/icons/sprite.svg#back" /></svg></button>
-        </div>
-        <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" disabled="@(_pendingSave)" @onclick="SaveAll" title='@Localizer["BtnSave"]' aria-label='@Localizer["BtnSave"]'><svg><use href="/icons/sprite.svg#save" /></svg></button>
-            <button class="icon-btn" @onclick="Reclassify" disabled="@_hasUnsavedChanges" title='@Localizer["BtnReclassify"]' aria-label='@Localizer["BtnReclassify"]'><svg><use href="/icons/sprite.svg#refresh" /></svg></button>
-            <button class="icon-btn" @onclick="ValidateEntry" disabled="@_hasUnsavedChanges" title='@Localizer["BtnValidate"]' aria-label='@Localizer["BtnValidate"]'>
-                <svg><use href="/icons/sprite.svg#check" /></svg>
-            </button>
-            <button class="icon-btn" @onclick="OpenSplitDialog" disabled="@_hasUnsavedChanges" title='@Localizer["BtnAssignSplit"]' aria-label='@Localizer["BtnAssignSplit"]'>
-                <svg><use href="/icons/sprite.svg#link" /></svg>
-            </button>
-            <button class="icon-btn" @onclick="BookEntry" disabled="@_hasUnsavedChanges" title='@Localizer["BtnBook"]' aria-label='@Localizer["BtnBook"]'>
-                <svg><use href="/icons/sprite.svg#postings" /></svg>
-            </button>
-            <button class="icon-btn danger" @onclick="DeleteEntry" disabled="@_hasUnsavedChanges" title='@Localizer["BtnDelete"]' aria-label='@Localizer["BtnDelete"]'>
-                <svg><use href="/icons/sprite.svg#clear" /></svg>
-            </button>
-        </div>
-        <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" disabled="@(_selectedContactId==null || _hasUnsavedChanges)" @onclick="OpenContactDetail" title='@Localizer["BtnOpenContact"]' aria-label='@Localizer["BtnOpenContact"]'>
-                <svg><use href="/icons/sprite.svg#groups" /></svg>
-            </button>
-            <button class="icon-btn" disabled="@(_selectedSecurityId == null || _hasUnsavedChanges)" title='@Localizer["BtnOpenSecurity"]' aria-label='@Localizer["BtnOpenSecurity"]' @onclick="OpenSecurityDetail">
-                <svg><use href="/icons/sprite.svg#security" /></svg>
-            </button>
-            <button class="icon-btn" disabled="@(_selectedSavingsPlanId == null || _hasUnsavedChanges)" title='@Localizer["BtnOpenSavingsPlan"]' aria-label='@Localizer["BtnOpenSavingsPlan"]' @onclick="OpenSavingsPlanDetail">
-                <svg><use href="/icons/sprite.svg#external" /></svg>
-            </button>
-            @if(_vm?.Entry.SplitDraftId != null)
-            {
-                <button class="icon-btn" @onclick="OpenAssignedSplitDraft" title='@Localizer["BtnOpenLinkedSplit"]' aria-label='@Localizer["BtnOpenLinkedSplit"]'>
-                    <svg><use href="/icons/sprite.svg#external" /></svg>
-                </button>
-                <button class="icon-btn" @onclick="RemoveSplit" title='@Localizer["BtnRemoveAssignment"]' aria-label='@Localizer["BtnRemoveAssignment"]'>
-                    <svg><use href="/icons/sprite.svg#unlink" /></svg>
-                </button>
-            }
-        </div>
-        <div style="margin-left:1rem;display:flex;gap:.25rem;align-items:center;">
-            <button class="icon-btn" disabled="@(_vm?.PrevEntryId==null)" @onclick="GoPrevAsync" title='@Localizer["BtnPrevEntry"]' aria-label='@Localizer["BtnPrevEntry"]'><svg><use href="/icons/sprite.svg#back" /></svg></button>
-            <button class="icon-btn" disabled="@(_vm?.NextOpenEntryId==null)" @onclick="GoNextOpenAsync" title='@Localizer["BtnNextOpenEntry"]' aria-label='@Localizer["BtnNextOpenEntry"]'>
-                <svg><use href="/icons/sprite.svg#arrow-right" /></svg>
-            </button>
-        </div>
-    </div>
+{    
     <p><strong>@Localizer["DraftFile"]</strong> @_vm.OriginalFileName</p>
     @if(_entryValidation != null)
     {
@@ -96,42 +56,42 @@ else
             </ul>
             <div style="margin-top:.5rem;display:flex;gap:.5rem;">
                 <button class="icon-btn" @onclick="ConfirmBookEntry"><svg><use href="/icons/sprite.svg#check" /></svg>&nbsp;@Localizer["BtnBookAnyway"]</button>
-                <button class="icon-btn" @onclick="(()=>{_showBookWarnings=false;})"><svg><use href="/icons/sprite.svg#clear" /></svg>&nbsp;@Localizer["Cancel"]</button>
+                <button class="icon-btn" @onclick="(()=>{_showBookWarnings=false;BuildRibbon();})"><svg><use href="/icons/sprite.svg#clear" /></svg>&nbsp;@Localizer["Cancel"]</button>
             </div>
         </div>
     }
     <div style="margin-bottom:1rem;">
-        <label><input type="checkbox" @bind="_editMode" /> @Localizer["EditMode"]</label>
+        <label><input type="checkbox" @bind="_editMode" @bind:after="(()=>{BuildRibbon();})" /> @Localizer["EditMode"]</label>
         @if (_editMode && _vm != null)
         {
             <div class="edit-core" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin-top:.5rem;max-width:960px;">
                 <div>
                     <label>@Localizer["Label_BookingDate"]</label>
-                    <InputDate @bind-Value="_editBookingDate" />
+                    <InputDate @bind-Value="_editBookingDate" @bind-Value:after="MarkDirty" />
                 </div>
                 <div>
                     <label>@Localizer["Label_ValutaDate"]</label>
-                    <InputDate @bind-Value="_editValutaDate" />
+                    <InputDate @bind-Value="_editValutaDate" @bind-Value:after="MarkDirty" />
                 </div>
                 <div>
                     <label>@Localizer["Label_Amount"]</label>
-                    <InputNumber @bind-Value="_editAmount" />
+                    <InputNumber @bind-Value="_editAmount" @bind-Value:after="MarkDirty" />
                 </div>
                 <div>
                     <label>@Localizer["Label_Currency"]</label>
-                    <InputText @bind-Value="_editCurrency" />
+                    <InputText @bind-Value="_editCurrency" @bind-Value:after="MarkDirty" />
                 </div>
                 <div style="grid-column:1/-1;">
                     <label>@Localizer["Label_Subject"]</label>
-                    <InputText @bind-Value="_editSubject" style="width:100%;" />
+                    <InputText @bind-Value="_editSubject" @bind-Value:after="MarkDirty" style="width:100%;" />
                 </div>
                 <div style="grid-column:1/-1;">
                     <label>@Localizer["Label_Recipient"]</label>
-                    <InputText @bind-Value="_editRecipient" style="width:100%;" />
+                    <InputText @bind-Value="_editRecipient" @bind-Value:after="MarkDirty" style="width:100%;" />
                 </div>
                 <div style="grid-column:1/-1;">
                     <label>@Localizer["Label_Description"]</label>
-                    <textarea @bind="_editDescription" rows="3" style="width:100%;"></textarea>
+                    <textarea @bind="_editDescription" @bind:after="(()=>MarkDirty())" rows="3" style="width:100%;"></textarea>
                 </div>
                 <div style="grid-column:1/-1;display:flex;gap:.5rem;">
                     <button class="icon-btn" disabled="@_savingCore" @onclick="SaveCoreAsync"><svg><use href="/icons/sprite.svg#save" /></svg>&nbsp;@Localizer["BtnSave"]</button>
@@ -173,7 +133,7 @@ else
                 <td>
                     <div class="contact-combobox" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:420px;margin-bottom:1rem;">
                         <div style="position:relative;min-width:0;">
-                            <input type="text" style="width:95%;" @bind="_contactFilter" @bind:event="oninput" @bind:after="(()=>OnContactFilterAfterChanged())" placeholder='@Localizer["Placeholder_FilterContacts"]' @onfocus="ShowDropdown" />
+                            <input type="text" style="width:95%;" @bind="_contactFilter" @bind:event="oninput" @bind:after="(()=>{OnContactFilterAfterChanged();BuildRibbon();})" placeholder='@Localizer["Placeholder_FilterContacts"]' @onfocus="ShowDropdown" />
                             <input type="hidden" value="@_selectedContactId" />
                             @if (_dropdownVisible)
                             {
@@ -202,14 +162,14 @@ else
             </tr>
             <tr>
                 <th>@Localizer["Th_CostNeutral"]</th>
-                <td><InputCheckbox @bind-Value="IsCostNeutral" @bind-Value:after="(()=> MarkDirty())" /></td>
+                <td><InputCheckbox @bind-Value="IsCostNeutral" @bind-Value:after="(()=> { MarkDirty(); })" /></td>
             </tr>
             <tr>
                 <th>@Localizer["Th_SavingsPlan"]</th>
                 <td>
                     <div class="savingsplan-combobox" style="display:grid;grid-template-columns:1fr auto;align-items:start;gap:.5rem;max-width:420px;margin-bottom:.75rem;">
                         <div style="position:relative;min-width:0;">
-                            <input type="text" style="width:95%;" @bind="_savingsPlanFilter" @bind:event="oninput" @bind:after="(()=>OnSavingsPlanFilterAfterChanged())" placeholder='@Localizer["Placeholder_FilterSavingsPlans"]' @onfocus="ShowSavingsPlanDropdown" />
+                            <input type="text" style="width:95%;" @bind="_savingsPlanFilter" @bind:event="oninput" @bind:after="(()=>{OnSavingsPlanFilterAfterChanged();BuildRibbon();})" placeholder='@Localizer["Placeholder_FilterSavingsPlans"]' @onfocus="ShowSavingsPlanDropdown" />
                             <input type="hidden" value="@_selectedSavingsPlanId" />
                             @if (_savingsPlanDropdownVisible)
                             {
@@ -233,7 +193,7 @@ else
                     @if(_selectedSavingsPlanId != null)
                     {
                         <div style="display:flex;align-items:center;gap:.5rem;margin:.25rem 0 .5rem 0;max-width:420px;">
-                            <InputCheckbox @bind-Value="_archiveSavingsPlanOnBooking" @bind-Value:after="(()=> MarkDirty())" />
+                            <InputCheckbox @bind-Value="_archiveSavingsPlanOnBooking" @bind-Value:after="(()=> { MarkDirty(); })" />
                             <span>@Localizer["ArchiveSavingsPlanOnBooking"]</span>
                         </div>
                     }
@@ -250,7 +210,7 @@ else
                                        style="width:95%;"
                                        @bind="_securityFilter"
                                        @bind:event="oninput"
-                                       @bind:after="(()=>OnSecurityFilterChanged())"
+                                       @bind:after="(()=>{OnSecurityFilterChanged();BuildRibbon();})"
                                        placeholder='@Localizer["Placeholder_FilterSecurities"]'
                                        @onfocus="ShowSecurityDropdown" />
                                 <input type="hidden" value="@_selectedSecurityId" />
@@ -279,7 +239,7 @@ else
                                 }
                             </div>
                             <div>
-                                <button class="icon-btn" title='@Localizer["BtnNewSecurity"]' aria-label='@Localizer["BtnNewSecurity"]' @onclick="OpenCreateSecurity"><svg><use href="/icons/sprite.svg#plus" /></svg></button>                                
+                                <button class="icon-btn" title='@Localizer["BtnNewSecurity"]' aria-label='@Localizer["BtnNewSecurity"]' @onclick="OpenCreateSecurity"><svg><use href="/icons/sprite.svg#plus" /></svg></button>
                             </div>
                         </div>
                         @if (_selectedSecurityId != null)
@@ -287,7 +247,7 @@ else
                             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;max-width:720px;margin-top:.25rem;">
                                 <div>
                                     <label>@Localizer["Label_TxType"]</label>
-                                    <select @bind="_securityTxType" @bind:after="()=> MarkDirty()">
+                                    <select @bind="_securityTxType" @bind:after="(()=>{MarkDirty();BuildRibbon();})">
                                         <option value="">--</option>
                                         <option value="Buy">@Localizer["Tx_Buy"]</option>
                                         <option value="Sell">@Localizer["Tx_Sell"]</option>
@@ -363,6 +323,166 @@ else
 }
 
 @code {
+    // Ribbon State
+    private enum TabId { Entry }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Entry;
+    private Task OnActiveTabChanged(TabId id) { _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        var navGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Navigation"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnBack"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#arrow-left'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { _ = BackAsync(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnPrevEntry"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#chevron-left'/></svg>",
+                    Disabled = _vm?.PrevEntryId == null,
+                    Callback = () => { _ = GoPrevAsync(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnNextOpenEntry"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#chevron-right'/></svg>",
+                    Disabled = _vm?.NextOpenEntryId == null,
+                    Callback = () => { _ = GoNextOpenAsync(); return Task.CompletedTask; }
+                }
+            }
+        };
+
+        var editGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Edit"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnSave"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
+                    Disabled = _pendingSave,
+                    Callback = () => { _ = SaveAll(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnDelete"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#clear'/></svg>",
+                    Disabled = _hasUnsavedChanges,
+                    Callback = () => { _ = DeleteEntry(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnReclassify"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
+                    Disabled = _hasUnsavedChanges,
+                    Callback = () => { _ = Reclassify(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnAssignSplit"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#link'/></svg>",
+                    Disabled = _hasUnsavedChanges,
+                    Callback = () => { OpenSplitDialog(); return Task.CompletedTask; }
+                }
+            }
+        };
+
+        var postingGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Book"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnValidate"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#check'/></svg>",
+                    Disabled = _hasUnsavedChanges,
+                    Callback = () => { _ = ValidateEntry(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["BtnBook"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
+                    Disabled = _hasUnsavedChanges,
+                    Callback = () => { _ = BookEntry(); return Task.CompletedTask; }
+                }
+            }
+        };
+
+        var relatedItems = new List<Ribbon<TabId>.RibbonItem>();
+        relatedItems.Add(new Ribbon<TabId>.RibbonItem
+        {
+            Label = Localizer["BtnOpenContact"],
+            IconSvg = "<svg><use href='/icons/sprite.svg#groups'/></svg>",
+            Disabled = _selectedContactId == null || _hasUnsavedChanges,
+            Callback = () => { OpenContactDetail(); return Task.CompletedTask; }
+        });
+        relatedItems.Add(new Ribbon<TabId>.RibbonItem
+        {
+            Label = Localizer["BtnOpenSavingsPlan"],
+            IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
+            Disabled = _selectedSavingsPlanId == null || _hasUnsavedChanges,
+            Callback = () => { OpenSavingsPlanDetail(); return Task.CompletedTask; }
+        });
+        relatedItems.Add(new Ribbon<TabId>.RibbonItem
+        {
+            Label = Localizer["BtnOpenSecurity"],
+            IconSvg = "<svg><use href='/icons/sprite.svg#security'/></svg>",
+            Disabled = _selectedSecurityId == null || _hasUnsavedChanges,
+            Callback = () => { OpenSecurityDetail(); return Task.CompletedTask; }
+        });
+
+        if (_vm?.Entry.SplitDraftId != null)
+        {
+            relatedItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["BtnOpenLinkedSplit"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
+                Disabled = _hasUnsavedChanges,
+                Callback = () => { OpenAssignedSplitDraft(); return Task.CompletedTask; }
+            });
+            relatedItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["BtnRemoveAssignment"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#unlink'/></svg>",
+                Disabled = _hasUnsavedChanges,
+                Callback = () => { _ = RemoveSplit(); return Task.CompletedTask; }
+            });
+        }
+
+        var relatedGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Related"],
+            Items = relatedItems
+        };
+
+        _tabs = new List<Ribbon<TabId>.RibbonTab<TabId>>
+        {
+            new()
+            {
+                Id = TabId.Entry,
+                Title = Localizer["Ribbon_Tab_Entry"],
+                Groups = new List<Ribbon<TabId>.RibbonGroup>{ navGroup, editGroup, postingGroup, relatedGroup }
+            }
+        };
+        StateHasChanged();
+    }
+
+    private void RebuildAfter(Action action)
+    {
+        action();
+        BuildRibbon();
+    }
+
     [Parameter] public Guid DraftId { get; set; }
     [Parameter] public Guid EntryId { get; set; }
     [Parameter, SupplyParameterFromQuery] public string? Src { get; set; }
@@ -388,11 +508,19 @@ else
     private bool _dropdownVisible;
     private bool _pendingSave;
     private bool _IsCostNeutral;
-    private bool IsCostNeutral { get => _IsCostNeutral; set { _IsCostNeutral = value; } }
+    private bool IsCostNeutral { get => _IsCostNeutral; set { if (_IsCostNeutral != value) { _IsCostNeutral = value; MarkDirty(); } } }
 
     private bool _hasUnsavedChanges;
-    private void MarkDirty() => _hasUnsavedChanges = true;
-    private void ClearDirty() => _hasUnsavedChanges = false;
+    private void MarkDirty()
+    {
+        _hasUnsavedChanges = true;
+        BuildRibbon();
+    }
+    private void ClearDirty()
+    {
+        _hasUnsavedChanges = false;
+        BuildRibbon();
+    }
 
     private IEnumerable<ContactVm> FilteredContacts => string.IsNullOrWhiteSpace(_contactFilter)
         ? _allContacts
@@ -447,9 +575,6 @@ else
         ? _securities
         : _securities.Where(s => s.Name.Contains(_securityFilter, StringComparison.OrdinalIgnoreCase) || s.Identifier.Contains(_securityFilter, StringComparison.OrdinalIgnoreCase));
 
-    // Sichtbar wenn:
-    // - Bankkontakt = Empfänger (ursprüngliche Bedingung) ODER
-    // - bereits ein Wertpapier zugeordnet ist (sonst würde es beim erneuten Öffnen verschwinden)
     private bool ShowSecuritySection =>
         _vm != null &&
         (
@@ -486,7 +611,6 @@ else
             : string.Empty;
         _archiveSavingsPlanOnBooking = _vm?.Entry.ArchiveSavingsPlanOnBooking ?? false;
 
-        // Securities initialisieren
         if (_vm?.Entry != null)
         {
             _selectedSecurityId = _vm.Entry.SecurityId;
@@ -494,7 +618,6 @@ else
             _securityQuantity = _vm.Entry.SecurityQuantity;
             _securityFee = _vm.Entry.SecurityFeeAmount;
             _securityTax = _vm.Entry.SecurityTaxAmount;
-            // init expr fields from values
             _securityQuantityExpr = _securityQuantity?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
             _securityFeeExpr = _securityFee?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
             _securityTaxExpr = _securityTax?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
@@ -509,6 +632,7 @@ else
 
         InitCoreEdit();
         ClearDirty();
+        BuildRibbon();
     }
 
     private async Task<bool> ConfirmIfDirtyAsync()
@@ -540,6 +664,7 @@ else
         {
             _vm = null;
         }
+        BuildRibbon();
     }
 
     private async Task DeleteEntry()
@@ -548,6 +673,10 @@ else
         if (resp.IsSuccessStatusCode)
         {
             Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}"));
+        }
+        else
+        {
+            BuildRibbon();
         }
     }
 
@@ -589,13 +718,14 @@ else
             .ToList();
     }
 
-    private void ShowSavingsPlanDropdown(FocusEventArgs _) => _savingsPlanDropdownVisible = true;
+    private void ShowSavingsPlanDropdown(FocusEventArgs _) { _savingsPlanDropdownVisible = true; BuildRibbon(); }
     private void SelectSavingsPlan(Guid? id)
     {
         if (_selectedSavingsPlanId != id) { _selectedSavingsPlanId = id; MarkDirty(); }
         _savingsPlanFilter = id == null ? string.Empty : _userSavingsPlans.FirstOrDefault(p => p.Id == id)?.Name ?? string.Empty;
         _savingsPlanDropdownVisible = false;
         if (id == null) { _archiveSavingsPlanOnBooking = false; }
+        BuildRibbon();
     }
     private void OnSavingsPlanFilterAfterChanged()
     {
@@ -626,7 +756,6 @@ else
     private async Task BackAsync()
     {
         if (!await ConfirmIfDirtyAsync()) return;
-        // Return to this draft's detail while preserving origin context so Back-To-Entry button remains visible.
         Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}"));
     }
     private void OpenCreateContact()
@@ -662,15 +791,15 @@ else
         }
     }
 
-    // Split
     private void OpenSplitDialog()
     {
         _splitError = null;
         _selectedSplitDraftId = null;
         _showSplitDialog = true;
         _ = LoadSplitCandidates();
+        BuildRibbon();
     }
-    private void CloseSplitDialog() => _showSplitDialog = false;
+    private void CloseSplitDialog() { _showSplitDialog = false; BuildRibbon(); }
     private async Task LoadSplitCandidates()
     {
         _loadingSplits = true;
@@ -692,7 +821,7 @@ else
             StateHasChanged();
         }
     }
-    private void SelectSplit(Guid id) => _selectedSplitDraftId = id;
+    private void SelectSplit(Guid id) { _selectedSplitDraftId = id; }
     private async Task ConfirmSplit()
     {
         if (_selectedSplitDraftId == null) { return; }
@@ -711,11 +840,13 @@ else
         {
             _splitError = ex.Message;
         }
+        BuildRibbon();
     }
     private async Task RemoveSplit()
     {
         var resp = await Http.PostAsJsonAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/split", new { SplitDraftId = (Guid?)null });
         if (resp.IsSuccessStatusCode) { await LoadEntryAsync(); }
+        BuildRibbon();
     }
     private void OpenAssignedSplitDraft()
     {
@@ -729,14 +860,12 @@ else
             }
             else
             {
-                // Establish a new origin context using the current entry as the source.
                 url = $"{baseUrl}?src=entry&fromEntryDraftId={DraftId}&fromEntryId={EntryId}";
             }
             Nav.NavigateTo(url);
         }
     }
 
-    // Core save
     private async Task SaveCoreAsync()
     {
         if (_vm == null) { return; }
@@ -761,53 +890,19 @@ else
         {
             _coreError = ex.Message;
         }
-        _savingCore = false;        
+        _savingCore = false;
+        BuildRibbon();
     }
     private void ResetCoreEdits() { InitCoreEdit(); ClearDirty(); }
 
-    // Records / DTO shapes
-    private sealed record EntryDto(
-        Guid Id,
-        DateTime BookingDate,
-        DateTime? ValutaDate,
-        decimal Amount,
-        string CurrencyCode,
-        string Subject,
-        string? RecipientName,
-        string? BookingDescription,
-        bool IsAnnounced,
-        bool IsCostNeutral,
-        StatementDraftEntryStatus Status,
-        Guid? ContactId,
-        Guid? SavingsPlanId,
-        bool ArchiveSavingsPlanOnBooking,
-        Guid? SplitDraftId,
-        Guid? SecurityId,
-        SecurityTransactionType? SecurityTransactionType,
-        decimal? SecurityQuantity,
-        decimal? SecurityFeeAmount,
-        decimal? SecurityTaxAmount
-    );
-
-    private sealed record EntryDetailVm(
-        Guid DraftId,
-        string OriginalFileName,
-        EntryDto Entry,
-        Guid? PrevEntryId,
-        Guid? NextEntryId,
-        Guid? NextOpenEntryId,
-        decimal? SplitSum,
-        decimal? Difference,
-        Guid? BankContactId
-    );
-
+    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, bool ArchiveSavingsPlanOnBooking, Guid? SplitDraftId, Guid? SecurityId, SecurityTransactionType? SecurityTransactionType, decimal? SecurityQuantity, decimal? SecurityFeeAmount, decimal? SecurityTaxAmount);
+    private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId, Guid? NextOpenEntryId, decimal? SplitSum, decimal? Difference, Guid? BankContactId);
     private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
     private sealed record SavingsPlanDto(Guid Id, string Name);
     private sealed record StatementDraftListDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, StatementDraftStatus Status, decimal TotalAmount, bool IsSplitDraft, IReadOnlyList<EntryDto> Entries);
-
-    private sealed record SecurityDto(Guid Id, string Name, String Identifier);
+    private sealed record SecurityDto(Guid Id, string Name, string Identifier);
     private sealed class SecurityVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Identifier { get; set; } = string.Empty; }
     private enum SecurityTransactionType { Buy=0, Sell=1, DividendOrInterest=2 }
 
@@ -817,6 +912,7 @@ else
     {
         if (_hasUnsavedChanges) { return; }
         _entryValidation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{DraftId}/entries/{EntryId}/validate");
+        BuildRibbon();
         StateHasChanged();
     }
 
@@ -827,6 +923,7 @@ else
     {
         if (_vm == null) { return; }
         _pendingSave = true; _contactError = null;
+        BuildRibbon();
         try
         {
             var payload = new
@@ -858,6 +955,7 @@ else
             _contactError = ex.Message;
         }
         _pendingSave = false;
+        BuildRibbon();
     }
 
     private async Task Reclassify()
@@ -871,6 +969,7 @@ else
             _contactFilter = _selectedContactId == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==_vm.Entry.ContactId)?.Name ?? string.Empty;
             StateHasChanged();
         }
+        BuildRibbon();
     }
 
     private void OpenSecurityDetail()
@@ -882,12 +981,13 @@ else
         }
     }
 
-    private void ShowDropdown(FocusEventArgs _) => _dropdownVisible = true;
+    private void ShowDropdown(FocusEventArgs _) { _dropdownVisible = true; BuildRibbon(); }
     private void SelectContact(Guid? id)
     {
         if (_selectedContactId != id) { _selectedContactId = id; MarkDirty(); }
         _contactFilter = id == null ? string.Empty : _allContacts.FirstOrDefault(c=>c.Id==id)?.Name ?? string.Empty;
         _dropdownVisible = false;
+        BuildRibbon();
     }
     private void OnContactFilterAfterChanged()
     {
@@ -898,7 +998,7 @@ else
         }
     }
 
-    private void ShowSecurityDropdown(FocusEventArgs _) => _securityDropdownVisible = true;
+    private void ShowSecurityDropdown(FocusEventArgs _) { _securityDropdownVisible = true; BuildRibbon(); }
     private void OnSecurityFilterChanged()
     {
         _securityDropdownVisible = true;
@@ -913,6 +1013,7 @@ else
         if (_selectedSecurityId != id) { _selectedSecurityId = id; MarkDirty(); }
         _securityFilter = id == null ? string.Empty : _securities.FirstOrDefault(s => s.Id == id)?.Name ?? string.Empty;
         _securityDropdownVisible = false;
+        BuildRibbon();
     }
 
     private void OpenCreateSecurity()
@@ -927,30 +1028,9 @@ else
         Nav.NavigateTo(url);
     }
 
-    private void ParseSecurityQuantity(FocusEventArgs _)
-    {
-        if (TryEvalDecimal(_securityQuantityExpr, out var v))
-        {
-            _securityQuantity = v; _securityQuantityExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty();
-        }
-        else { _securityExprError = Localizer["Err_InvalidQuantity"]; }
-    }
-    private void ParseSecurityFee(FocusEventArgs _)
-    {
-        if (TryEvalDecimal(_securityFeeExpr, out var v))
-        {
-            _securityFee = v; _securityFeeExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty();
-        }
-        else { _securityExprError = Localizer["Err_InvalidFee"]; }
-    }
-    private void ParseSecurityTax(FocusEventArgs _)
-    {
-        if (TryEvalDecimal(_securityTaxExpr, out var v))
-        {
-            _securityTax = v; _securityTaxExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty();
-        }
-        else { _securityExprError = Localizer["Err_InvalidTax"]; }
-    }
+    private void ParseSecurityQuantity(FocusEventArgs _) { if (TryEvalDecimal(_securityQuantityExpr, out var v)) { _securityQuantity = v; _securityQuantityExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty(); } else { _securityExprError = Localizer["Err_InvalidQuantity"]; } }
+    private void ParseSecurityFee(FocusEventArgs _) { if (TryEvalDecimal(_securityFeeExpr, out var v)) { _securityFee = v; _securityFeeExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty(); } else { _securityExprError = Localizer["Err_InvalidFee"]; } }
+    private void ParseSecurityTax(FocusEventArgs _) { if (TryEvalDecimal(_securityTaxExpr, out var v)) { _securityTax = v; _securityTaxExpr = v?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty; _securityExprError = null; MarkDirty(); } else { _securityExprError = Localizer["Err_InvalidTax"]; } }
 
     private static bool TryEvalDecimal(string? expr, out decimal? value)
     {
@@ -1036,6 +1116,7 @@ else
         if (_hasUnsavedChanges) { return; }
         _contactError = null;
         _showBookWarnings = false;
+        BuildRibbon();
         try
         {
             var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/book", null);
@@ -1043,6 +1124,7 @@ else
             {
                 _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
                 _showBookWarnings = true;
+                BuildRibbon();
                 StateHasChanged();
                 return;
             }
@@ -1067,6 +1149,7 @@ else
         {
             _contactError = ex.Message;
         }
+        BuildRibbon();
     }
 
     private async Task ConfirmBookEntry()
@@ -1081,6 +1164,7 @@ else
         _showBookWarnings = false;
         await LoadEntryAsync();
         Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}"), true);
+        BuildRibbon();
     }
 
     private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);

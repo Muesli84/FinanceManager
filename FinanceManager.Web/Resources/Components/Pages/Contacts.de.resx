@@ -15,4 +15,11 @@
   <data name="Th_Type" xml:space="preserve"><value>Typ</value></data>
   <data name="NoContacts" xml:space="preserve"><value>Keine Kontakte.</value></data>
   <data name="EndOfList" xml:space="preserve"><value>Ende</value></data>
+  <!-- Ribbon -->
+  <data name="Ribbon_Group_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Ribbon_Group_Filter" xml:space="preserve"><value>Filter</value></data>
+  <data name="Ribbon_New" xml:space="preserve"><value>Neu</value></data>
+  <data name="Ribbon_Reload" xml:space="preserve"><value>Neu laden</value></data>
+  <data name="Ribbon_ClearFilter" xml:space="preserve"><value>Filter löschen</value></data>
+  <data name="Ribbon_Tab_Contacts" xml:space="preserve"><value>Kontakte</value></data>
 </root>

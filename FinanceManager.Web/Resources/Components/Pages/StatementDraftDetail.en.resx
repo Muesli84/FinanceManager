@@ -48,4 +48,19 @@
   <data name="Error_FixIssues" xml:space="preserve"><value>There are errors. Please fix them.</value></data>
   <data name="Btn_PrevUpload" xml:space="preserve"><value>Previous in upload</value></data>
   <data name="Btn_NextUpload" xml:space="preserve"><value>Next in upload</value></data>
+  <!-- Added Ribbon specific keys -->
+  <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
+  <data name="Ribbon_Group_Manage" xml:space="preserve"><value>Manage</value></data>
+  <data name="Ribbon_Group_Statement" xml:space="preserve"><value>Statement</value></data>
+  <data name="Ribbon_BackToOverview" xml:space="preserve"><value>Back to overview</value></data>
+  <data name="Ribbon_BackToEntry" xml:space="preserve"><value>Back to entry</value></data>
+  <data name="Ribbon_Prev" xml:space="preserve"><value>Previous</value></data>
+  <data name="Ribbon_Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Ribbon_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Ribbon_Reclassify" xml:space="preserve"><value>Reclassify</value></data>
+  <data name="Ribbon_Validate" xml:space="preserve"><value>Validate</value></data>
+  <data name="Ribbon_HideOriginal" xml:space="preserve"><value>Hide original</value></data>
+  <data name="Ribbon_ShowOriginal" xml:space="preserve"><value>Show original</value></data>
+  <data name="Ribbon_Download" xml:space="preserve"><value>Download</value></data>
+  <data name="Ribbon_Tab_Statement" xml:space="preserve"><value>Statement</value></data>
 </root>
