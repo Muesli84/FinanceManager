@@ -23,4 +23,14 @@
   <data name="StatusActive" xml:space="preserve"><value>Active</value></data>
   <data name="StatusArchived" xml:space="preserve"><value>Archived</value></data>
   <data name="ErrorNotFound" xml:space="preserve"><value>Not found.</value></data>
+  <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
+  <data name="Ribbon_Group_Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Ribbon_Group_Related" xml:space="preserve"><value>Related</value></data>
+  <data name="Ribbon_Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Ribbon_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Ribbon_Archive" xml:space="preserve"><value>Archive</value></data>
+  <data name="Ribbon_Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Ribbon_Postings" xml:space="preserve"><value>Postings</value></data>
+  <data name="Ribbon_Prices" xml:space="preserve"><value>Prices</value></data>
+  <data name="Ribbon_Tab_Security" xml:space="preserve"><value>Security</value></data>
 </root>

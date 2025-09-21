@@ -4,30 +4,19 @@
 @using FinanceManager.Shared.Dtos
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
+@using FinanceManager.Web.Components.Shared
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanCategoryDetail> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h3>@(IsEdit ? "Kategorie bearbeiten" : "Neue Kategorie")</h3>
-<div class="action-bar" style="margin-bottom:1rem;">
-    <button class="icon-btn" type="submit" title="Speichern" @onclick="SaveAsync">
-        <svg class="icon"><use href="icons/sprite.svg#save"></use></svg>
-    </button>
-    @if (IsEdit)
-    {
-        <button class="icon-btn danger" @onclick="DeleteAsync" title="Löschen">
-            <svg class="icon"><use href="icons/sprite.svg#delete"></use></svg>
-        </button>
-    }
-    <button class="icon-btn" @onclick="Back" title="Zurück">
-        <svg class="icon"><use href="icons/sprite.svg#back"></use></svg>
-    </button>
-</div>
+<Ribbon TTabEnum="SavingsPlanCategoryDetail.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
+<h3>@(IsEdit ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
 
 <EditForm Model="_model" OnValidSubmit="SaveAsync">
     <DataAnnotationsValidator />
     <ValidationSummary />
     <div>
-        <label>Name</label>
+        <label>@Localizer["LabelName"]</label>
         <InputText @bind-Value="_model.Name" />
         <ValidationMessage For="()=>_model.Name" />
     </div>
@@ -43,6 +32,61 @@
     private bool IsEdit => Id.HasValue;
     private string? _error;
 
+    // Ribbon state
+    private enum TabId { SavingsPlanCategory }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.SavingsPlanCategory;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        var nav = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Navigation"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Back"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { Back(); return Task.CompletedTask; }
+                }
+            }
+        };
+        var editItems = new List<Ribbon<TabId>.RibbonItem>
+        {
+            new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Save"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
+                Size = Ribbon<TabId>.RibbonItemSize.Large,
+                Disabled = string.IsNullOrWhiteSpace(_model.Name) || _model.Name.Trim().Length < 2,
+                Callback = () => { _ = SaveAsync(); return Task.CompletedTask; }
+            }
+        };
+        if (IsEdit)
+        {
+            editItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Delete"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
+                Callback = () => { _ = DeleteAsync(); return Task.CompletedTask; }
+            });
+        }
+        var edit = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Edit"], Items = editItems };
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.SavingsPlanCategory,
+                Title = Localizer["PageTitle"],
+                Groups = new(){ nav, edit }
+            }
+        };
+        StateHasChanged();
+    }
+
     protected override async Task OnParametersSetAsync()
     {
         if (IsEdit)
@@ -52,16 +96,11 @@
             if (resp.IsSuccessStatusCode)
             {
                 var dto = await resp.Content.ReadFromJsonAsync<SavingsPlanCategoryDto>();
-                if (dto != null)
-                {
-                    _model = dto;
-                }
+                if (dto != null) { _model = dto; }
             }
-            else
-            {
-                _error = "Kategorie nicht gefunden.";
-            }
+            else { _error = Localizer["Error_NotFound"]; }
         }
+        BuildRibbon();
     }
 
     private async Task SaveAsync()
@@ -71,27 +110,16 @@
         if (IsEdit)
         {
             var resp = await http.PutAsJsonAsync($"/api/savings-plan-categories/{Id}", _model);
-            if (resp.IsSuccessStatusCode)
-            {
-                Navigation.NavigateTo("/savings-plan-categories", true);
-            }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
+            if (resp.IsSuccessStatusCode) { Navigation.NavigateTo("/savings-plan-categories", true); }
+            else { _error = await resp.Content.ReadAsStringAsync(); }
         }
         else
         {
             var resp = await http.PostAsJsonAsync("/api/savings-plan-categories", _model);
-            if (resp.IsSuccessStatusCode)
-            {
-                Navigation.NavigateTo("/savings-plan-categories", true);
-            }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
+            if (resp.IsSuccessStatusCode) { Navigation.NavigateTo("/savings-plan-categories", true); }
+            else { _error = await resp.Content.ReadAsStringAsync(); }
         }
+        BuildRibbon();
     }
 
     private async Task DeleteAsync()
@@ -99,14 +127,9 @@
         if (!IsEdit || Id == null) return;
         var http = ClientFactory.CreateClient("Api");
         var resp = await http.DeleteAsync($"/api/savings-plan-categories/{Id}");
-        if (resp.IsSuccessStatusCode)
-        {
-            Navigation.NavigateTo("/savings-plan-categories", true);
-        }
-        else
-        {
-            _error = await resp.Content.ReadAsStringAsync();
-        }
+        if (resp.IsSuccessStatusCode) { Navigation.NavigateTo("/savings-plan-categories", true); }
+        else { _error = await resp.Content.ReadAsStringAsync(); }
+        BuildRibbon();
     }
 
     private void Back() => Navigation.NavigateTo("/savings-plan-categories");

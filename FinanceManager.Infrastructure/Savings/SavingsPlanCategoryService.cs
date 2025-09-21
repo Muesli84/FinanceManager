@@ -14,6 +14,12 @@ public sealed class SavingsPlanCategoryService : ISavingsPlanCategoryService
             .Select(c => new SavingsPlanCategoryDto { Id = c.Id, Name = c.Name })
             .ToListAsync(ct);
 
+    public async Task<SavingsPlanCategoryDto?> GetAsync(Guid id, Guid ownerUserId, CancellationToken ct)
+        => await _db.SavingsPlanCategories
+            .Where(c => c.Id == id && c.OwnerUserId == ownerUserId)
+            .Select(c => new SavingsPlanCategoryDto { Id = c.Id, Name = c.Name })
+            .FirstOrDefaultAsync(ct);
+
     public async Task<SavingsPlanCategoryDto> CreateAsync(Guid ownerUserId, string name, CancellationToken ct)
     {
         var category = new SavingsPlanCategory(ownerUserId, name);

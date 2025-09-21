@@ -16,4 +16,9 @@
   <data name="Col_Iban" xml:space="preserve"><value>IBAN</value></data>
   <data name="Col_Balance" xml:space="preserve"><value>Balance</value></data>
   <data name="NoAccounts" xml:space="preserve"><value>No accounts.</value></data>
+  <data name="Ribbon_Group_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Ribbon_Group_Filter" xml:space="preserve"><value>Filter</value></data>
+  <data name="Ribbon_New" xml:space="preserve"><value>New</value></data>
+  <data name="Ribbon_ClearFilter" xml:space="preserve"><value>Clear filter</value></data>
+  <data name="Ribbon_Tab_Accounts" xml:space="preserve"><value>Accounts</value></data>
 </root>

@@ -48,4 +48,8 @@
   <data name="ImportSplit_Help_Mode_Monthly" xml:space="preserve"><value>One draft per calendar month regardless of entry count.</value></data>
   <data name="ImportSplit_Help_Mode_Hybrid" xml:space="preserve"><value>Prefers monthly drafts. Falls back to fixed-size chunks if a month exceeds the threshold.</value></data>
   <data name="ImportSplit_Help_Example" xml:space="preserve"><value>Example: Max=300, Threshold=1200. Month with 950 entries → monthly draft. Month with 2,400 entries → fallback: 8 drafts of 300.</value></data>
+  <!-- Ribbon additions -->
+  <data name="Ribbon_Tab_Setup" xml:space="preserve"><value>Setup</value></data>
+  <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
+  <data name="Ribbon_Back" xml:space="preserve"><value>Back</value></data>
 </root>

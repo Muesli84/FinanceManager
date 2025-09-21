@@ -345,4 +345,19 @@
   <data name="BtnDelete" xml:space="preserve">
     <value>Eintrag löschen</value>
   </data>
+  <data name="Ribbon_Group_Navigation" xml:space="preserve">
+    <value>Navigation</value>
+  </data>
+  <data name="Ribbon_Group_Edit" xml:space="preserve">
+    <value>Bearbeitung</value>
+  </data>
+  <data name="Ribbon_Group_Related" xml:space="preserve">
+    <value>Verknüpfungen</value>
+  </data>
+  <data name="Ribbon_Tab_Entry" xml:space="preserve">
+    <value>Eintrag</value>
+  </data>
+  <data name="Ribbon_Group_Book" xml:space="preserve">
+    <value>Buchen</value>
+  </data>
 </root>

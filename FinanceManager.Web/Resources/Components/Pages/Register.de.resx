@@ -19,4 +19,8 @@
   <data name="DebugModel_PasswordLength"><value>Passwortlänge</value></data>
   <data name="Debug_On"><value>Debug an</value></data>
   <data name="Debug_Off"><value>Debug aus</value></data>
+  <!-- Ribbon -->
+  <data name="Ribbon_Group_Navigation"><value>Navigation</value></data>
+  <data name="Ribbon_Back"><value>Zurück</value></data>
+  <data name="Ribbon_Tab_Register"><value>Registrierung</value></data>
 </root>

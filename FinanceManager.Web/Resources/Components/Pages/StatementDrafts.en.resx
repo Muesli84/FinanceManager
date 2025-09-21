@@ -210,4 +210,32 @@
   <data name="Dialog_DeleteAll_Confirm" xml:space="preserve">
     <value>Delete all</value>
   </data>
+  <!-- Ribbon keys -->
+  <data name="Ribbon_Group_Management" xml:space="preserve">
+    <value>Management</value>
+  </data>
+  <data name="Ribbon_Group_Classification" xml:space="preserve">
+    <value>Classification</value>
+  </data>
+  <data name="Ribbon_Group_Booking" xml:space="preserve">
+    <value>Booking</value>
+  </data>
+  <data name="Ribbon_Group_Import" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="Ribbon_Reclassify" xml:space="preserve">
+    <value>Reclassify</value>
+  </data>
+  <data name="Ribbon_MassBooking" xml:space="preserve">
+    <value>Mass booking</value>
+  </data>
+  <data name="Ribbon_DeleteAll" xml:space="preserve">
+    <value>Delete all</value>
+  </data>
+  <data name="Ribbon_Import" xml:space="preserve">
+    <value>Import file</value>
+  </data>
+  <data name="Ribbon_Tab_Statements" xml:space="preserve">
+    <value>Statements</value>
+  </data>
 </root>

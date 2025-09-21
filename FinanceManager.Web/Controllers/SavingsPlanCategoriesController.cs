@@ -20,6 +20,10 @@ public sealed class SavingsPlanCategoriesController : ControllerBase
     public async Task<IReadOnlyList<SavingsPlanCategoryDto>> ListAsync(CancellationToken ct)
         => await _service.ListAsync(_current.UserId, ct);
 
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<SavingsPlanCategoryDto>> GetAsync(Guid id, CancellationToken ct)
+        => await _service.GetAsync(id, _current.UserId, ct) is { } dto ? dto : NotFound();
+
     [HttpPost]
     public async Task<ActionResult<SavingsPlanCategoryDto>> CreateAsync([FromBody] SavingsPlanCategoryDto dto, CancellationToken ct)
         => await _service.CreateAsync(_current.UserId, dto.Name, ct);

@@ -6,17 +6,13 @@
 @inject HttpClient Http
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject NavigationManager Nav
+@inject IJSRuntime JS
+@using FinanceManager.Web.Components.Shared
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
-<h1>@Localizer["PageTitle"]</h1>
 
-@if (CurrentUser.IsAuthenticated)
-{
-    <div class="action-bar">
-        <div class="icon-btn" title='@Localizer["Import_Button"]' aria-label='@Localizer["Import_Button"]' style="padding:.3rem .6rem;">
-            <InputFile OnChange="OnFileChanged" />
-        </div>
-    </div>
-}
+<Ribbon TTabEnum="Home.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
+<h1>@Localizer["PageTitle"]</h1>
 
 @if (_importSuccess && _draftId != null)
 {
@@ -42,11 +38,81 @@
 
 <p>@Localizer["KPI_Placeholders"]</p>
 
+@if(_showHiddenInput)
+{
+    <InputFile id="home-import-input" OnChange="OnFileChanged" style="display:none;" />
+}
+
 @code {
+    private enum TabId { Home }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Home;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        if (!CurrentUser.IsAuthenticated)
+        {
+            _tabs = new(); return;
+        }
+        var importGroup = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Import"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Import"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#upload'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { TriggerImport(); return Task.CompletedTask; }
+                }
+            }
+        };
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Home,
+                Title = Localizer["Ribbon_Tab_Home"],
+                Groups = new(){ importGroup }
+            }
+        };
+        StateHasChanged();
+    }
+
     private bool _importSuccess;
     private Guid? _draftId;
+    private bool _showHiddenInput;
 
     private SplitInfoDto? _splitInfo;
+
+    protected override void OnInitialized()
+    {
+        BuildRibbon();
+    }
+
+    private void TriggerImport()
+    {
+        if(!_showHiddenInput)
+        {
+            _showHiddenInput = true; StateHasChanged();
+            _ = Task.Run(async () => { await Task.Delay(50); await JSInvokeClick(); });
+        }
+        else
+        {
+            _ = JSInvokeClick();
+        }
+    }
+
+    private async Task JSInvokeClick()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", "document.getElementById('home-import-input')?.click();");
+        }
+        catch { }
+    }
 
     private async Task OnFileChanged(InputFileChangeEventArgs e)
     {
@@ -66,11 +132,11 @@
             }
             _splitInfo = result?.SplitInfo;
         }
+        StateHasChanged();
     }
 
     private sealed record UploadResultDto(StatementDraftDto? FirstDraft, SplitInfoDto? SplitInfo);
     private sealed record SplitInfoDto(string Mode, bool EffectiveMonthly, int DraftCount, int TotalMovements, int MaxEntriesPerDraft, int LargestDraftSize, int MonthlyThreshold);
-    // Align with backend DTO: property DraftId
     private sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, List<StatementDraftEntryDto> Entries);
     private sealed record StatementDraftEntryDto(Guid TempId, DateTime BookingDate, decimal Amount, string Subject);
 }

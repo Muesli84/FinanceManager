@@ -7,7 +7,10 @@
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject IJSRuntime JS
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Contacts> Localizer
+@using FinanceManager.Web.Components.Shared
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<Ribbon TTabEnum="Contacts.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 <div class="page-contacts-full">
     <h1>@Localizer["Title"]</h1>
@@ -22,14 +25,12 @@
     }
     else
     {
-        <div class="action-bar" style="gap:.5rem;align-items:center;">
-            <button @onclick="CreateNew" aria-label='@Localizer["BtnNew"]' title='@Localizer["BtnNew"]' class="icon-btn">
-                <svg><use href="/icons/sprite.svg#plus" /></svg>
-            </button>
+        <div style="margin-bottom:.65rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
             <input class="filter-input"
                    placeholder='@Localizer["FilterPlaceholder"]'
                    @bind="_filter"
-                   @bind:after="OnFilterAfterChanged" />
+                   @bind:after="OnFilterAfterChanged"
+                   style="min-width:260px;" />
         </div>
 
         <table class="fm-table contacts-table">
@@ -73,6 +74,56 @@
 </div>
 
 @code {
+    // Ribbon state
+    private enum TabId { Contacts }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Contacts;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    private void BuildRibbon()
+    {
+        if (!CurrentUser.IsAuthenticated) { _tabs = new(); return; }
+        var actions = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Actions"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_New"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#plus'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Callback = () => { CreateNew(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Reload"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
+                    Callback = () => { _ = ResetAndReloadAsync(); return Task.CompletedTask; }
+                }
+            }
+        };
+        var filterItems = new List<Ribbon<TabId>.RibbonItem>();
+        filterItems.Add(new Ribbon<TabId>.RibbonItem
+        {
+            Label = Localizer["Ribbon_ClearFilter"],
+            IconSvg = "<svg><use href='/icons/sprite.svg#clear'/></svg>",
+            Disabled = string.IsNullOrWhiteSpace(_filter),
+            Callback = () => { _filter = string.Empty; _ = ResetAndReloadAsync(); BuildRibbon(); return Task.CompletedTask; }
+        });
+        var filter = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Filter"], Items = filterItems };
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Contacts,
+                Title = Localizer["Ribbon_Tab_Contacts"],
+                Groups = new(){ actions, filter }
+            }
+        };
+        StateHasChanged();
+    }
+
     private List<ContactVm> _contacts = new();
     private bool _loaded;
     private bool _loadingMore;
@@ -97,11 +148,11 @@
             await LoadMoreAsync();
         }
         _loaded = true;
+        BuildRibbon();
     }
 
     private async Task LoadCategoriesAsync()
     {
-        // Kategorien einmalig laden
         var resp = await Http.GetAsync("/api/contact-categories");
         if (resp.IsSuccessStatusCode)
         {
@@ -209,6 +260,7 @@
             return;
         }
         await ResetAndReloadAsync();
+        BuildRibbon();
     }
 
     private async Task ResetAndReloadAsync()
