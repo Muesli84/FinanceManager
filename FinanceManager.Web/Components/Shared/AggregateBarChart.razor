@@ -7,15 +7,18 @@
     {
         <h4 style="margin:0 0 .5rem 0;">@Title</h4>
     }
-    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;">
-        <label style="font-size:.75rem;opacity:.85;">@Localizer["LabelInterval"]:</label>
-        <select @bind="_period" @bind:after="LoadAsync" style="font-size:.75rem;">
-            <option value="Month">@Localizer["Interval_Month"]</option>
-            <option value="Quarter">@Localizer["Interval_Quarter"]</option>
-            <option value="HalfYear">@Localizer["Interval_HalfYear"]</option>
-            <option value="Year">@Localizer["Interval_Year"]</option>
-        </select>
-    </div>
+    @if (!HideIntervalSelector)
+    {
+        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;">
+            <label style="font-size:.75rem;opacity:.85;">@Localizer["LabelInterval"]:</label>
+            <select @bind="_period" @bind:after="LoadAsync" style="font-size:.75rem;">
+                <option value="Month">@Localizer["Interval_Month"]</option>
+                <option value="Quarter">@Localizer["Interval_Quarter"]</option>
+                <option value="HalfYear">@Localizer["Interval_HalfYear"]</option>
+                <option value="Year">@Localizer["Interval_Year"]</option>
+            </select>
+        </div>
+    }
     <div class="chart" style="--bar-color:@PositiveColor;--bar-neg:@NegativeColor;--axis:@AxisColor;border:1px solid var(--border);padding:.5rem 1rem;border-radius:.35rem;min-height:190px;">
         @if (_loading && _data.Count == 0)
         {
@@ -63,7 +66,18 @@
     [Parameter] public string PositiveColor { get; set; } = "#2d6cdf";
     [Parameter] public string NegativeColor { get; set; } = "#c94";
     [Parameter] public string AxisColor { get; set; } = "#555";
-    [Parameter] public int Take { get; set; } = 36;
+    /// <summary>
+    /// Optional number of points to request. If null or <= 0, all available data is requested (no take parameter sent).
+    /// </summary>
+    [Parameter] public int? Take { get; set; }
+    /// <summary>
+    /// Hide the interval selector (e.g. in small KPI tiles). When set, you can also force an initial period via <see cref="InitialPeriod"/>.
+    /// </summary>
+    [Parameter] public bool HideIntervalSelector { get; set; }
+    /// <summary>
+    /// Optional initial/fixed period (Month, Quarter, HalfYear, Year). If set while <see cref="HideIntervalSelector"/> is true, the user cannot change it.
+    /// </summary>
+    [Parameter] public string? InitialPeriod { get; set; }
 
     private string _period = "Month";
     private bool _loading;
@@ -73,6 +87,10 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (!string.IsNullOrWhiteSpace(InitialPeriod))
+        {
+            _period = InitialPeriod!;
+        }
         if (!string.IsNullOrWhiteSpace(Endpoint) && _data.Count == 0)
         {
             await LoadAsync();
@@ -85,7 +103,8 @@
         _loading = true;
         try
         {
-            var url = Endpoint.Contains('?') ? $"{Endpoint}&period={_period}&take={Take}" : $"{Endpoint}?period={_period}&take={Take}";
+            var baseUrl = Endpoint.Contains('?') ? $"{Endpoint}&period={_period}" : $"{Endpoint}?period={_period}";
+            var url = (Take.HasValue && Take.Value > 0) ? $"{baseUrl}&take={Take.Value}" : baseUrl;
             var resp = await Http.GetAsync(url);
             if (resp.IsSuccessStatusCode)
             {
@@ -101,13 +120,26 @@
         }
     }
 
-    private static string FormatLabel(DateTime d)
+    private string FormatLabel(DateTime d)
     {
-        // For HalfYear compress further if months 1 or 7
+        if (string.Equals(_period, "Quarter", StringComparison.OrdinalIgnoreCase))
+        {
+            var q = ((d.Month - 1) / 3) + 1;
+            return $"{d:yy}-Q{q}";
+        }
         return d.ToString("yy-M");
     }
 
-    private string BuildTooltip(Point p) => $"{p.PeriodStart:yyyy-MM-dd} ({p.Amount})";
+    private string BuildTooltip(Point p)
+    {
+        if (string.Equals(_period, "Quarter", StringComparison.OrdinalIgnoreCase))
+        {
+            var q = ((p.PeriodStart.Month - 1) / 3) + 1;
+            return $"{p.PeriodStart:yy}-Q{q} ({p.Amount})";
+        }
+        return $"{p.PeriodStart:yyyy-MM-dd} ({p.Amount})";
+    }
+
     private string BuildAria(Point p) => Localizer["AriaBar", p.PeriodStart.ToString("yyyy-MM-dd"), p.Amount];
 
     private sealed class TimeSeriesResponse

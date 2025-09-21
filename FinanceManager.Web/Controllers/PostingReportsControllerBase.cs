@@ -46,4 +46,16 @@ public abstract class PostingReportsControllerBase : ControllerBase
         var result = data.Select(a => new TimeSeriesPointDto(a.PeriodStart, a.Amount)).ToList();
         return Ok(result);
     }
+
+    protected async Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAllInternalAsync(string period, int take, CancellationToken ct)
+    {
+        if (!Enum.TryParse<AggregatePeriod>(period, true, out var p))
+        {
+            p = AggregatePeriod.Month;
+        }
+        take = Math.Clamp(take <= 0 ? (p == AggregatePeriod.Month ? 36 : p == AggregatePeriod.Quarter ? 16 : p == AggregatePeriod.HalfYear ? 12 : 10) : take, 1, 200);
+        var data = await _seriesService.GetAllAsync(_currentUser.UserId, Kind, p, take, ct);
+        var result = data.Select(a => new TimeSeriesPointDto(a.PeriodStart, a.Amount)).ToList();
+        return Ok(result);
+    }
 }

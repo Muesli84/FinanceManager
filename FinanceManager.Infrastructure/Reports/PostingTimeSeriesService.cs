@@ -44,4 +44,38 @@ public sealed class PostingTimeSeriesService : IPostingTimeSeriesService
         var latest = await q.OrderByDescending(a => a.PeriodStart).Take(take).ToListAsync(ct);
         return latest.OrderBy(a => a.PeriodStart).Select(a => new AggregatePointDto(a.PeriodStart, a.Amount)).ToList();
     }
+
+    public async Task<IReadOnlyList<AggregatePointDto>> GetAllAsync(
+        Guid ownerUserId,
+        PostingKind kind,
+        AggregatePeriod period,
+        int take,
+        CancellationToken ct)
+    {
+        take = Math.Clamp(take <= 0 ? (period == AggregatePeriod.Month ? 36 : period == AggregatePeriod.Quarter ? 16 : period == AggregatePeriod.HalfYear ? 12 : 10) : take, 1, 200);
+
+        // Filter aggregates for owned entities of the given kind
+        var aggregates = _db.PostingAggregates.AsNoTracking().Where(a => a.Kind == kind && a.Period == period);
+        aggregates = kind switch
+        {
+            PostingKind.Bank => aggregates.Where(a => _db.Accounts.AsNoTracking().Any(ac => ac.Id == a.AccountId && ac.OwnerUserId == ownerUserId)),
+            PostingKind.Contact => aggregates.Where(a => _db.Contacts.AsNoTracking().Any(c => c.Id == a.ContactId && c.OwnerUserId == ownerUserId)),
+            PostingKind.SavingsPlan => aggregates.Where(a => _db.SavingsPlans.AsNoTracking().Any(s => s.Id == a.SavingsPlanId && s.OwnerUserId == ownerUserId)),
+            PostingKind.Security => aggregates.Where(a => _db.Securities.AsNoTracking().Any(s => s.Id == a.SecurityId && s.OwnerUserId == ownerUserId)),
+            _ => aggregates.Where(_ => false)
+        };
+
+        // Aggregate sums across all entities per period
+        var latestDesc = await aggregates
+            .GroupBy(a => a.PeriodStart)
+            .Select(g => new { PeriodStart = g.Key, Amount = g.Sum(x => x.Amount) })
+            .OrderByDescending(x => x.PeriodStart)
+            .Take(take)
+            .ToListAsync(ct);
+
+        return latestDesc
+            .OrderBy(x => x.PeriodStart)
+            .Select(x => new AggregatePointDto(x.PeriodStart, x.Amount))
+            .ToList();
+    }
 }

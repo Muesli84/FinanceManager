@@ -24,3 +24,20 @@ public sealed class SavingsPlanReportsController : PostingReportsControllerBase
         CancellationToken ct = default)
         => GetInternalAsync(planId, period, take, ct);
 }
+
+[ApiController]
+[Route("api/savings-plans/aggregates")]
+[Authorize]
+public sealed class SavingsPlansAllReportsController : PostingReportsControllerBase
+{
+    protected override PostingKind Kind => PostingKind.SavingsPlan;
+
+    public SavingsPlansAllReportsController(ICurrentUserService current, IPostingTimeSeriesService series) : base(current, series) { }
+
+    [HttpGet]
+    public Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAllAsync(
+        [FromQuery] string period = "Month",
+        [FromQuery] int take = 36,
+        CancellationToken ct = default)
+        => GetAllInternalAsync(period, take, ct);
+}

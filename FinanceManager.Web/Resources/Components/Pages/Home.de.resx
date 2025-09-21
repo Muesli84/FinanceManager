@@ -147,7 +147,6 @@
   <data name="Import_SplitInfo_Details" xml:space="preserve">
     <value>Modus: {0}; Max/Entwurf: {1}; Größter: {2}</value>
   </data>
-  <!-- Ribbon -->
   <data name="Ribbon_Group_Import" xml:space="preserve">
     <value>Import</value>
   </data>
@@ -156,5 +155,14 @@
   </data>
   <data name="Ribbon_Tab_Home" xml:space="preserve">
     <value>Start</value>
+  </data>
+  <data name="Chart_Title_AllAccounts" xml:space="preserve">
+    <value>Monatsumsätze</value>
+  </data>
+  <data name="Chart_Title_MonthlySaving" xml:space="preserve">
+    <value>Monatssparraten</value>
+  </data>
+  <data name="Chart_Title_DividendsQuarterly" xml:space="preserve">
+    <value>Quartalsdividenden</value>
   </data>
 </root>
