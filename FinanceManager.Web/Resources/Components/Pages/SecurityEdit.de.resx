@@ -204,4 +204,7 @@
   <data name="Ribbon_Tab_Security" xml:space="preserve">
     <value>Wertpapier</value>
   </data>
+  <data name="Chart_Title_Security" xml:space="preserve">
+    <value>Ergebnisse</value>
+  </data>
 </root>

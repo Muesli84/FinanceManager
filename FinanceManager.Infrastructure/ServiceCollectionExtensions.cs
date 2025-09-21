@@ -18,6 +18,8 @@ using FinanceManager.Application.Backups;
 using FinanceManager.Infrastructure.Backups;
 using FinanceManager.Application.Aggregates;
 using FinanceManager.Infrastructure.Aggregates;
+using FinanceManager.Application.Reports;
+using FinanceManager.Infrastructure.Reports;
 
 namespace FinanceManager.Infrastructure;
 
@@ -48,6 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped< IAutoInitializationService , AutoInitializationService>();
         services.AddScoped<IBackupService, BackupService>();
         services.AddScoped<IPostingAggregateService, PostingAggregateService>();
+        services.AddScoped<IPostingTimeSeriesService, PostingTimeSeriesService>();
         return services;
     }
 }

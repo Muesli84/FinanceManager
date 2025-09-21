@@ -33,4 +33,5 @@
   <data name="Ribbon_Postings" xml:space="preserve"><value>Postings</value></data>
   <data name="Ribbon_Prices" xml:space="preserve"><value>Prices</value></data>
   <data name="Ribbon_Tab_Security" xml:space="preserve"><value>Security</value></data>
+  <data name="Chart_Title_Security" xml:space="preserve"><value>Results</value></data>
 </root>

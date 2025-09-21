@@ -8,20 +8,19 @@ using Microsoft.AspNetCore.Mvc;
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
-[Route("api/accounts/{accountId:guid}/aggregates")]
+[Route("api/securities/{securityId:guid}/aggregates")]
 [Authorize]
-public sealed class AccountReportsController : PostingReportsControllerBase
+public sealed class SecurityReportsController : PostingReportsControllerBase
 {
-    protected override PostingKind Kind => PostingKind.Bank;
+    protected override PostingKind Kind => PostingKind.Security;
 
-    public AccountReportsController(ICurrentUserService current, IPostingTimeSeriesService series)
-        : base(current, series) { }
+    public SecurityReportsController(ICurrentUserService current, IPostingTimeSeriesService series) : base(current, series) { }
 
     [HttpGet]
     public Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAsync(
-        Guid accountId,
+        Guid securityId,
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
         CancellationToken ct = default)
-        => GetInternalAsync(accountId, period, take, ct);
+        => GetInternalAsync(securityId, period, take, ct);
 }

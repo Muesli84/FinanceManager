@@ -1,0 +1,122 @@
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.AggregateBarChart> Localizer
+
+<div class="aggregate-chart-wrapper">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <h4 style="margin:0 0 .5rem 0;">@Title</h4>
+    }
+    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;">
+        <label style="font-size:.75rem;opacity:.85;">@Localizer["LabelInterval"]:</label>
+        <select @bind="_period" @bind:after="LoadAsync" style="font-size:.75rem;">
+            <option value="Month">@Localizer["Interval_Month"]</option>
+            <option value="Quarter">@Localizer["Interval_Quarter"]</option>
+            <option value="HalfYear">@Localizer["Interval_HalfYear"]</option>
+            <option value="Year">@Localizer["Interval_Year"]</option>
+        </select>
+    </div>
+    <div class="chart" style="--bar-color:@PositiveColor;--bar-neg:@NegativeColor;--axis:@AxisColor;border:1px solid var(--border);padding:.5rem 1rem;border-radius:.35rem;min-height:190px;">
+        @if (_loading && _data.Count == 0)
+        {
+            <div style="opacity:.7;font-size:.8rem;">@Localizer["Loading"]</div>
+        }
+        else if (_data.Count == 0)
+        {
+            <div style="opacity:.7;font-size:.8rem;">@Localizer["NoData"]</div>
+        }
+        else
+        {
+            var maxAbs = _data.Select(p => Math.Abs(p.Amount)).DefaultIfEmpty(0m).Max();
+            var halfHeight = 90m; // px
+            var scale = maxAbs == 0 ? 0 : halfHeight / maxAbs;
+            <div style="display:flex;flex-direction:column;gap:0;height:180px;border-top:1px solid var(--axis);border-bottom:1px solid var(--axis);">
+                <div style="display:flex;align-items:flex-end;gap:.35rem;height:50%;">
+                    @foreach (var p in _data)
+                    {
+                        var posH = p.Amount > 0 ? (int)Math.Round((double)(p.Amount * scale)) : 0;
+                        <div role="img" aria-label="@BuildAria(p)" title="@BuildTooltip(p)" style="width:16px;background:var(--bar-color);height:@(posH)px;"></div>
+                    }
+                </div>
+                <div style="height:1px;background:var(--axis);opacity:.6;"></div>
+                <div style="display:flex;align-items:flex-start;gap:.35rem;height:50%;">
+                    @foreach (var p in _data)
+                    {
+                        var negH = p.Amount < 0 ? (int)Math.Round((double)(-p.Amount * scale)) : 0;
+                        <div role="img" aria-label="@BuildAria(p)" title="@BuildTooltip(p)" style="width:16px;background:var(--bar-neg);height:@(negH)px;"></div>
+                    }
+                </div>
+            </div>
+            <div style="display:flex;gap:.35rem;font-size:.6rem;color:#aaa;margin-top:.25rem;">
+                @foreach (var p in _data)
+                {
+                    <div style="width:16px;text-align:center;">@FormatLabel(p.PeriodStart)</div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Endpoint { get; set; } = string.Empty; // e.g. /api/accounts/{id}/aggregates
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string PositiveColor { get; set; } = "#2d6cdf";
+    [Parameter] public string NegativeColor { get; set; } = "#c94";
+    [Parameter] public string AxisColor { get; set; } = "#555";
+    [Parameter] public int Take { get; set; } = 36;
+
+    private string _period = "Month";
+    private bool _loading;
+    private readonly List<Point> _data = new();
+
+    private sealed record Point(DateTime PeriodStart, decimal Amount);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Endpoint) && _data.Count == 0)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Endpoint)) { return; }
+        _loading = true;
+        try
+        {
+            var url = Endpoint.Contains('?') ? $"{Endpoint}&period={_period}&take={Take}" : $"{Endpoint}?period={_period}&take={Take}";
+            var resp = await Http.GetAsync(url);
+            if (resp.IsSuccessStatusCode)
+            {
+                var list = await resp.Content.ReadFromJsonAsync<List<TimeSeriesResponse>>() ?? new();
+                _data.Clear();
+                _data.AddRange(list.Select(x => new Point(x.PeriodStart, x.Amount)));
+            }
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string FormatLabel(DateTime d)
+    {
+        // For HalfYear compress further if months 1 or 7
+        return d.ToString("yy-M");
+    }
+
+    private string BuildTooltip(Point p) => $"{p.PeriodStart:yyyy-MM-dd} ({p.Amount})";
+    private string BuildAria(Point p) => Localizer["AriaBar", p.PeriodStart.ToString("yyyy-MM-dd"), p.Amount];
+
+    private sealed class TimeSeriesResponse
+    {
+        public DateTime PeriodStart { get; set; }
+        public decimal Amount { get; set; }
+    }
+}
+
+<style>
+.aggregate-chart-wrapper select { min-width:95px; }
+</style>

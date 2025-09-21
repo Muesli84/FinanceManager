@@ -95,6 +95,13 @@ else
 
     @if (IsEdit)
     {
+        <div style="margin-top:1.2rem;">
+            <AggregateBarChart Endpoint="@($"/api/contacts/{Id}/aggregates")" Title="@Localizer["Chart_Title_Contact"]" />
+        </div>
+    }
+
+    @if (IsEdit)
+    {
         <ContactMergeDialog Visible="@_showMergeDialog"
                             CurrentContactId="@Id!.Value"
                             CurrentContactType="@_model.Type"
