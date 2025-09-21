@@ -34,7 +34,8 @@ public sealed class UserImportSplitSettingsController : ControllerBase
             {
                 Mode = u.ImportSplitMode,
                 MaxEntriesPerDraft = u.ImportMaxEntriesPerDraft,
-                MonthlySplitThreshold = u.ImportMonthlySplitThreshold
+                MonthlySplitThreshold = u.ImportMonthlySplitThreshold,
+                MinEntriesPerDraft = u.ImportMinEntriesPerDraft
             })
             .SingleOrDefaultAsync(ct);
 
@@ -49,6 +50,8 @@ public sealed class UserImportSplitSettingsController : ControllerBase
         [Range(20, 10000)]
         public int MaxEntriesPerDraft { get; set; }
         public int? MonthlySplitThreshold { get; set; }
+        [Range(1, 10000)]
+        public int MinEntriesPerDraft { get; set; } = 8;
     }
 
     [HttpPut]
@@ -58,6 +61,12 @@ public sealed class UserImportSplitSettingsController : ControllerBase
     public async Task<IActionResult> UpdateAsync([FromBody] UpdateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
+
+        if (req.MinEntriesPerDraft > req.MaxEntriesPerDraft)
+        {
+            ModelState.AddModelError(nameof(req.MinEntriesPerDraft), "MinEntriesPerDraft must be <= MaxEntriesPerDraft.");
+            return ValidationProblem(ModelState);
+        }
 
         if (req.Mode == ImportSplitMode.MonthlyOrFixed)
         {
@@ -77,7 +86,7 @@ public sealed class UserImportSplitSettingsController : ControllerBase
 
         try
         {
-            user.SetImportSplitSettings(req.Mode, req.MaxEntriesPerDraft, req.MonthlySplitThreshold);
+            user.SetImportSplitSettings(req.Mode, req.MaxEntriesPerDraft, req.MonthlySplitThreshold, req.MinEntriesPerDraft);
             await _db.SaveChangesAsync(ct);
             return NoContent();
         }

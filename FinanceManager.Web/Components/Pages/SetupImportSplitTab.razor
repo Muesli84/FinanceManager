@@ -48,13 +48,14 @@
                     <label>@Localizer["ImportSplit_MaxEntries"]</label>
                     <input type="number" min="1" @bind="_model.MaxEntriesPerDraft" @bind:after="Validate" />
                 </div>
-                @if (_model.Mode == ImportSplitMode.MonthlyOrFixed)
-                {
-                    <div class="form-row">
-                        <label>@Localizer["ImportSplit_MonthlyThreshold"]</label>
-                        <input type="number" min="1" @bind="_model.MonthlySplitThreshold" @bind:after="Validate" />
-                    </div>
-                }
+                <div class="form-row" hidden="@(_model.Mode != ImportSplitMode.MonthlyOrFixed)">
+                    <label>@Localizer["ImportSplit_MonthlyThreshold"]</label>
+                    <input type="number" min="1" @bind="_model.MonthlySplitThreshold" @bind:after="Validate" />
+                </div>
+                <div class="form-row" hidden="@(_model.Mode == ImportSplitMode.FixedSize)">
+                    <label>@Localizer["ImportSplit_MinEntries"]</label>
+                    <input type="number" min="1" @bind="_model.MinEntriesPerDraft" @bind:after="Validate" />
+                </div>
             </div>
 
             <div class="help-box">
@@ -67,6 +68,9 @@
                 <p style="margin:.4rem 0 .3rem;"><strong>@Localizer["ImportSplit_MaxEntries"]:</strong> @Localizer["ImportSplit_Help_MaxEntries"]</p>
                 <p style="margin:.2rem 0;" hidden="@(_model.Mode != ImportSplitMode.MonthlyOrFixed)">
                     <strong>@Localizer["ImportSplit_MonthlyThreshold"]:</strong> @Localizer["ImportSplit_Help_MonthlyThreshold"]
+                </p>
+                <p style="margin:.2rem 0;" hidden="@(_model.Mode == ImportSplitMode.FixedSize)">
+                    <strong>@Localizer["ImportSplit_MinEntries"]:</strong> @Localizer["ImportSplit_Help_MinEntries"]
                 </p>
                 <p style="margin-top:.4rem;opacity:.85;">@Localizer["ImportSplit_Help_Example"]</p>
             </div>
@@ -162,6 +166,7 @@
         _model.Mode = _original.Mode;
         _model.MaxEntriesPerDraft = _original.MaxEntriesPerDraft;
         _model.MonthlySplitThreshold = _original.MonthlySplitThreshold;
+        _model.MinEntriesPerDraft = _original.MinEntriesPerDraft;
         _savedOk = false; _saveError = null;
         Validate();
         RecomputeDirty();
@@ -182,6 +187,17 @@
         {
             _validationMessage = Localizer["ImportSplit_InvalidMaxMin20"]; _hasValidationError = true; return;
         }
+        if (_model.Mode != ImportSplitMode.FixedSize)
+        {
+            if (_model.MinEntriesPerDraft < 1)
+            {
+                _validationMessage = Localizer["ImportSplit_InvalidMinEntries"]; _hasValidationError = true; return;
+            }
+            if (_model.MinEntriesPerDraft > _model.MaxEntriesPerDraft)
+            {
+                _validationMessage = Localizer["ImportSplit_InvalidMinGreaterMax"]; _hasValidationError = true; return;
+            }
+        }
         if (_model.Mode == ImportSplitMode.MonthlyOrFixed)
         {
             var thr = _model.MonthlySplitThreshold ?? 0;
@@ -199,13 +215,15 @@
         _dirty =
             _model.Mode != _original.Mode ||
             _model.MaxEntriesPerDraft != _original.MaxEntriesPerDraft ||
-            (_model.MonthlySplitThreshold ?? 0) != (_original.MonthlySplitThreshold ?? 0);
+            (_model.MonthlySplitThreshold ?? 0) != (_original.MonthlySplitThreshold ?? 0) ||
+            _model.MinEntriesPerDraft != _original.MinEntriesPerDraft;
     }
 
     private static ImportSplitSettingsDto Clone(ImportSplitSettingsDto src) => new()
     {
         Mode = src.Mode,
         MaxEntriesPerDraft = src.MaxEntriesPerDraft,
-        MonthlySplitThreshold = src.MonthlySplitThreshold
+        MonthlySplitThreshold = src.MonthlySplitThreshold,
+        MinEntriesPerDraft = src.MinEntriesPerDraft
     };
 }
