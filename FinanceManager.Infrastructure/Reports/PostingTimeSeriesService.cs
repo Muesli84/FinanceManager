@@ -10,12 +10,24 @@ public sealed class PostingTimeSeriesService : IPostingTimeSeriesService
     private readonly AppDbContext _db;
     public PostingTimeSeriesService(AppDbContext db) { _db = db; }
 
+    private static int ClampTake(AggregatePeriod period, int take)
+        => Math.Clamp(take <= 0 ? (period == AggregatePeriod.Month ? 36 : period == AggregatePeriod.Quarter ? 16 : period == AggregatePeriod.HalfYear ? 12 : 10) : take, 1, 200);
+
+    private static DateTime? ComputeMinDate(int? maxYearsBack)
+    {
+        if (!maxYearsBack.HasValue) { return null; }
+        var v = Math.Clamp(maxYearsBack.Value, 1, 10);
+        var today = DateTime.UtcNow.Date;
+        return new DateTime(today.Year - v, today.Month, 1); // month aligned
+    }
+
     public async Task<IReadOnlyList<AggregatePointDto>?> GetAsync(
         Guid ownerUserId,
         PostingKind kind,
         Guid entityId,
         AggregatePeriod period,
         int take,
+        int? maxYearsBack,
         CancellationToken ct)
     {
         // Validate ownership depending on kind
@@ -29,9 +41,14 @@ public sealed class PostingTimeSeriesService : IPostingTimeSeriesService
         };
         if (!owned) { return null; }
 
-        take = Math.Clamp(take <= 0 ? (period == AggregatePeriod.Month ? 36 : period == AggregatePeriod.Quarter ? 16 : period == AggregatePeriod.HalfYear ? 12 : 10) : take, 1, 200);
+        take = ClampTake(period, take);
+        var minDate = ComputeMinDate(maxYearsBack);
 
         var q = _db.PostingAggregates.AsNoTracking().Where(pa => pa.Kind == kind && pa.Period == period);
+        if (minDate.HasValue)
+        {
+            q = q.Where(a => a.PeriodStart >= minDate.Value);
+        }
         q = kind switch
         {
             PostingKind.Bank => q.Where(a => a.AccountId == entityId),
@@ -50,12 +67,18 @@ public sealed class PostingTimeSeriesService : IPostingTimeSeriesService
         PostingKind kind,
         AggregatePeriod period,
         int take,
+        int? maxYearsBack,
         CancellationToken ct)
     {
-        take = Math.Clamp(take <= 0 ? (period == AggregatePeriod.Month ? 36 : period == AggregatePeriod.Quarter ? 16 : period == AggregatePeriod.HalfYear ? 12 : 10) : take, 1, 200);
+        take = ClampTake(period, take);
+        var minDate = ComputeMinDate(maxYearsBack);
 
         // Filter aggregates for owned entities of the given kind
         var aggregates = _db.PostingAggregates.AsNoTracking().Where(a => a.Kind == kind && a.Period == period);
+        if (minDate.HasValue)
+        {
+            aggregates = aggregates.Where(a => a.PeriodStart >= minDate.Value);
+        }
         aggregates = kind switch
         {
             PostingKind.Bank => aggregates.Where(a => _db.Accounts.AsNoTracking().Any(ac => ac.Id == a.AccountId && ac.OwnerUserId == ownerUserId)),

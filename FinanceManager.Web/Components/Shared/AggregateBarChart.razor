@@ -104,6 +104,10 @@
     /// </summary>
     [Parameter] public int? Take { get; set; }
     /// <summary>
+    /// Optional limit: restrict data to last N years (1..10). If null, server default (unbounded) is used.
+    /// </summary>
+    [Parameter] public int? MaxYearsBack { get; set; }
+    /// <summary>
     /// Hide the interval selector (e.g. in small KPI tiles). When set, you can also force an initial period via <see cref="InitialPeriod"/>.
     /// </summary>
     [Parameter] public bool HideIntervalSelector { get; set; }
@@ -138,8 +142,15 @@
         try
         {
             var baseUrl = Endpoint.Contains('?') ? $"{Endpoint}&period={_period}" : $"{Endpoint}?period={_period}";
-            var url = (Take.HasValue && Take.Value > 0) ? $"{baseUrl}&take={Take.Value}" : baseUrl;
-            var resp = await Http.GetAsync(url);
+            if (Take.HasValue && Take.Value > 0)
+            {
+                baseUrl += $"&take={Take.Value}";
+            }
+            if (MaxYearsBack.HasValue && MaxYearsBack.Value > 0)
+            {
+                baseUrl += $"&maxYearsBack={MaxYearsBack.Value}";
+            }
+            var resp = await Http.GetAsync(baseUrl);
             if (resp.IsSuccessStatusCode)
             {
                 var list = await resp.Content.ReadFromJsonAsync<List<TimeSeriesResponse>>() ?? new();

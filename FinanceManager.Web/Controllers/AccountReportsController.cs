@@ -22,8 +22,9 @@ public sealed class AccountReportsController : PostingReportsControllerBase
         Guid accountId,
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
+        [FromQuery] int? maxYearsBack = null,
         CancellationToken ct = default)
-        => GetInternalAsync(accountId, period, take, ct);
+        => GetInternalAsync(accountId, period, take, maxYearsBack, ct);
 }
 
 [ApiController]
@@ -40,6 +41,7 @@ public sealed class AccountsAllReportsController : PostingReportsControllerBase
     public Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAllAsync(
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
+        [FromQuery] int? maxYearsBack = null,
         CancellationToken ct = default)
-        => GetAllInternalAsync(period, take, ct);
+        => GetAllInternalAsync(period, take, maxYearsBack, ct);
 }

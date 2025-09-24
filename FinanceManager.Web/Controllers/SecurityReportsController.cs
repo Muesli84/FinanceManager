@@ -21,6 +21,7 @@ public sealed class SecurityReportsController : PostingReportsControllerBase
         Guid securityId,
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
+        [FromQuery] int? maxYearsBack = null,
         CancellationToken ct = default)
-        => GetInternalAsync(securityId, period, take, ct);
+        => GetInternalAsync(securityId, period, take, maxYearsBack, ct);
 }

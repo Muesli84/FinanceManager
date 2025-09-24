@@ -21,8 +21,9 @@ public sealed class SavingsPlanReportsController : PostingReportsControllerBase
         Guid planId,
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
+        [FromQuery] int? maxYearsBack = null,
         CancellationToken ct = default)
-        => GetInternalAsync(planId, period, take, ct);
+        => GetInternalAsync(planId, period, take, maxYearsBack, ct);
 }
 
 [ApiController]
@@ -38,6 +39,7 @@ public sealed class SavingsPlansAllReportsController : PostingReportsControllerB
     public Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAllAsync(
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
+        [FromQuery] int? maxYearsBack = null,
         CancellationToken ct = default)
-        => GetAllInternalAsync(period, take, ct);
+        => GetAllInternalAsync(period, take, maxYearsBack, ct);
 }

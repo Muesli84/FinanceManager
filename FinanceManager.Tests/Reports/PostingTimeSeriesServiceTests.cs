@@ -40,7 +40,7 @@ public sealed class PostingTimeSeriesServiceTests
         db.Accounts.Add(acc);
         await db.SaveChangesAsync();
         var svc = new PostingTimeSeriesService(db);
-        var res = await svc.GetAsync(userA.Id, PostingKind.Bank, acc.Id, AggregatePeriod.Month, 12, CancellationToken.None);
+        var res = await svc.GetAsync(userA.Id, PostingKind.Bank, acc.Id, AggregatePeriod.Month, 12, null, CancellationToken.None);
         res.Should().BeNull();
     }
 
@@ -61,7 +61,7 @@ public sealed class PostingTimeSeriesServiceTests
         db.PostingAggregates.AddRange(a2,a1);
         await db.SaveChangesAsync();
         var svc = new PostingTimeSeriesService(db);
-        var res = await svc.GetAsync(user.Id, PostingKind.Bank, acc.Id, AggregatePeriod.Month, 10, CancellationToken.None);
+        var res = await svc.GetAsync(user.Id, PostingKind.Bank, acc.Id, AggregatePeriod.Month, 10, null, CancellationToken.None);
         res!.Select(r=>r.PeriodStart).Should().ContainInOrder(new DateTime(2024,1,1), new DateTime(2024,2,1));
     }
 
@@ -84,7 +84,7 @@ public sealed class PostingTimeSeriesServiceTests
         }
         await db.SaveChangesAsync();
         var svc = new PostingTimeSeriesService(db);
-        var res = await svc.GetAsync(user.Id, PostingKind.Bank, acc.Id, AggregatePeriod.Month, 12, CancellationToken.None);
+        var res = await svc.GetAsync(user.Id, PostingKind.Bank, acc.Id, AggregatePeriod.Month, 12, null, CancellationToken.None);
         res!.Count.Should().Be(12);
     }
 
@@ -134,10 +134,10 @@ public sealed class PostingTimeSeriesServiceTests
         await db.SaveChangesAsync();
 
         var svc = new PostingTimeSeriesService(db);
-        var bankSeries = await svc.GetAsync(user.Id, PostingKind.Bank, acc1.Id, AggregatePeriod.Month, 10, CancellationToken.None);
-        var contactSeries = await svc.GetAsync(user.Id, PostingKind.Contact, personA.Id, AggregatePeriod.Month, 10, CancellationToken.None);
-        var planSeries = await svc.GetAsync(user.Id, PostingKind.SavingsPlan, plan1.Id, AggregatePeriod.Month, 10, CancellationToken.None);
-        var securitySeries = await svc.GetAsync(user.Id, PostingKind.Security, sec1.Id, AggregatePeriod.Month, 10, CancellationToken.None);
+        var bankSeries = await svc.GetAsync(user.Id, PostingKind.Bank, acc1.Id, AggregatePeriod.Month, 10, null, CancellationToken.None);
+        var contactSeries = await svc.GetAsync(user.Id, PostingKind.Contact, personA.Id, AggregatePeriod.Month, 10, null, CancellationToken.None);
+        var planSeries = await svc.GetAsync(user.Id, PostingKind.SavingsPlan, plan1.Id, AggregatePeriod.Month, 10, null, CancellationToken.None);
+        var securitySeries = await svc.GetAsync(user.Id, PostingKind.Security, sec1.Id, AggregatePeriod.Month, 10, null, CancellationToken.None);
 
         bankSeries!.Should().HaveCount(2).And.OnlyContain(p => p.Amount < 999m);
         contactSeries!.Should().HaveCount(2).And.OnlyContain(p => p.Amount < 999m);
