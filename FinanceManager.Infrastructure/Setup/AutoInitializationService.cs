@@ -2,6 +2,7 @@
 using FinanceManager.Application.Contacts;
 using FinanceManager.Application.Statements;
 using FinanceManager.Domain.Contacts;
+using FinanceManager.Domain.Savings;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
@@ -122,6 +123,7 @@ namespace FinanceManager.Infrastructure.Setup
                 var draftPdf = Directory.EnumerateFiles(initDir, "draft-*.pdf", SearchOption.TopDirectoryOnly);
                 var draftFiles = draftJson.Concat(draftCsv).Concat(draftPdf).OrderBy(f => Path.GetFileName(f)).ToList();
                 var drafts = new List<StatementDraftDto>();
+                drafts.AddRange((await _statementDraftService.GetOpenDraftsAsync(admin.Id, ct)).Select(d => _statementDraftService.GetDraftAsync(d.DraftId, admin.Id, ct).Result));
                 foreach (var file in draftFiles)
                 {
                     try
@@ -171,7 +173,7 @@ namespace FinanceManager.Infrastructure.Setup
                 {
                     _logger.LogInformation("AutoInit: Verarbeite Aktions-Datei '{File}'.", Path.GetFileName(file));
                     var actions = await File.ReadAllLinesAsync(file, ct);
-                    foreach (var action in actions.Select(action => action.Split(':')))
+                    foreach (var action in actions.Select(action => action.Split("\":\"").Select(v => v.Trim('"')).ToArray()))
                     {
                         switch (action[0])
                         {
@@ -211,7 +213,60 @@ namespace FinanceManager.Infrastructure.Setup
                                     } while (offset >= 0);
                                     break;
                                 }
+                            case "statement-set-savings":
+                                {
+                                    var savingsPlan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Name == action[2], ct);
+                                    if (savingsPlan is not null)
+                                    {
+                                        var offset = 0;
+                                        foreach (var draft in drafts)
+                                            foreach (var entry in draft.Entries)
+                                                if (entry.Subject == action[1])
+                                                {
+                                                    var dbEntry = await _db.StatementDraftEntries.FirstAsync(e => e.Id == entry.Id, ct);
+                                                    dbEntry.AssignSavingsPlan(savingsPlan.Id);
+                                                    if (dbEntry.ContactId.HasValue)
+                                                        dbEntry.MarkAccounted(dbEntry.ContactId.Value);
+                                                    await _db.SaveChangesAsync(ct);
+                                                }
+                                    }
+                                }
+                                break;
+                            case "savings-set-contract":
+                                {
+                                    var savingsPlan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Name == action[1], ct);
+                                    if (savingsPlan is not null)
+                                    {
+                                        savingsPlan.SetContractNumber(action[2].Trim());
+                                        await _db.SaveChangesAsync(ct);
+                                    }
+                                }
+                                break;
+                            case "security-set-alphavantagecode":
+                                {
+                                    var security = await _db.Securities.FirstOrDefaultAsync(s => s.Name == action[1], ct);
+                                    if (security is not null)
+                                    {
+                                        security.Update(security.Name, security.Identifier, security.Description, action[2].Trim(), security.CurrencyCode, security.CategoryId);
+                                        await _db.SaveChangesAsync(ct);
+                                    }
+                                }
+                                break;
+                            case "statement-reclassify":
+                                {
+                                    foreach (var draft in drafts)
+                                        await _statementDraftService.ClassifyAsync(draft.DraftId, null, admin.Id, ct);
+                                }
+                                break;
+                            case "savings-set-amount":
+                                {
+                                    var savingsPlan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Name == action[1], ct);
+                                    if (savingsPlan is not null && decimal.TryParse(action[2], out var newAmount))
+                                        savingsPlan.SetTarget(newAmount, savingsPlan.TargetDate);
+                                }
+                                break;
                         }
+                        await _db.SaveChangesAsync();
                     }
                 }
                 catch (Exception ex)
