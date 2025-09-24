@@ -2,7 +2,7 @@
 @inject HttpClient Http
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.AggregateBarChart> Localizer
 
-<div class="aggregate-chart-wrapper">
+<div class="aggregate-chart-wrapper" aria-busy="@_loading">
     @if (!string.IsNullOrWhiteSpace(Title))
     {
         <h4 style="margin:0 0 .5rem 0;">@Title</h4>
@@ -11,7 +11,7 @@
     {
         <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;">
             <label style="font-size:.75rem;opacity:.85;">@Localizer["LabelInterval"]:</label>
-            <select @bind="_period" @bind:after="LoadAsync" style="font-size:.75rem;">
+            <select @bind="_period" @bind:after="LoadAsync" style="font-size:.75rem;" aria-label="@Localizer["Aria_SelectInterval"]">
                 <option value="Month">@Localizer["Interval_Month"]</option>
                 <option value="Quarter">@Localizer["Interval_Quarter"]</option>
                 <option value="HalfYear">@Localizer["Interval_HalfYear"]</option>
@@ -19,10 +19,23 @@
             </select>
         </div>
     }
-    <div class="chart" style="--bar-color:@PositiveColor;--bar-neg:@NegativeColor;--axis:@AxisColor;border:1px solid var(--border);padding:.5rem 1rem;border-radius:.35rem;min-height:190px;">
+    <div class="chart" style="--bar-color:@PositiveColor;--bar-neg:@NegativeColor;--axis:@AxisColor;border:1px solid var(--border);padding:.5rem 1rem;border-radius:.35rem;min-height:190px;position:relative;">
         @if (_loading && _data.Count == 0)
         {
-            <div style="opacity:.7;font-size:.8rem;">@Localizer["Loading"]</div>
+            <!-- Initial Ladezustand: Skeleton-Balken -->
+            <div class="chart-skeleton" role="status" aria-live="polite">
+                @for (int i=0;i<10;i++)
+                {
+                    <div class="skeleton-bar" style="animation-delay:@(i*0.06)s"></div>
+                }
+                <div class="skeleton-labels">
+                    @for (int i=0;i<10;i++)
+                    {
+                        <div class="skeleton-label"></div>
+                    }
+                </div>
+                <span class="visually-hidden">@Localizer["Loading"]</span>
+            </div>
         }
         else if (_data.Count == 0)
         {
@@ -33,12 +46,15 @@
             var maxAbs = _data.Select(p => Math.Abs(p.Amount)).DefaultIfEmpty(0m).Max();
             var halfHeight = 90m; // px
             var scale = maxAbs == 0 ? 0 : halfHeight / maxAbs;
-            <div style="display:flex;flex-direction:column;gap:0;height:180px;border-top:1px solid var(--axis);border-bottom:1px solid var(--axis);">
+            <div class="bars-wrapper" style="display:flex;flex-direction:column;gap:0;height:180px;border-top:1px solid var(--axis);border-bottom:1px solid var(--axis);">
                 <div style="display:flex;align-items:flex-end;gap:.35rem;height:50%;">
                     @foreach (var p in _data)
                     {
                         var posH = p.Amount > 0 ? (int)Math.Round((double)(p.Amount * scale)) : 0;
-                        <div role="img" aria-label="@BuildAria(p)" title="@BuildTooltip(p)" style="width:16px;background:var(--bar-color);height:@(posH)px;"></div>
+                        <div role="img"
+                             aria-label="@BuildAria(p)"
+                             title="@BuildTooltip(p)"
+                             style="width:16px;background:var(--bar-color);height:@(posH)px;"></div>
                     }
                 </div>
                 <div style="height:1px;background:var(--axis);opacity:.6;"></div>
@@ -46,7 +62,10 @@
                     @foreach (var p in _data)
                     {
                         var negH = p.Amount < 0 ? (int)Math.Round((double)(-p.Amount * scale)) : 0;
-                        <div role="img" aria-label="@BuildAria(p)" title="@BuildTooltip(p)" style="width:16px;background:var(--bar-neg);height:@(negH)px;"></div>
+                        <div role="img"
+                             aria-label="@BuildAria(p)"
+                             title="@BuildTooltip(p)"
+                             style="width:16px;background:var(--bar-neg);height:@(negH)px;"></div>
                     }
                 </div>
             </div>
@@ -56,12 +75,26 @@
                     <div style="width:16px;text-align:center;">@FormatLabel(p.PeriodStart)</div>
                 }
             </div>
+
+            @if (_loading)
+            {
+                <!-- Overlay beim Intervallwechsel / Nachladen -->
+                <div class="chart-loading-overlay" role="status" aria-live="polite">
+                    <div class="spinner">
+                        <div class="seg a"></div>
+                        <div class="seg b"></div>
+                        <div class="seg c"></div>
+                        <div class="seg d"></div>
+                    </div>
+                    <span class="loading-text">@Localizer["Loading"]</span>
+                </div>
+            }
         }
     </div>
 </div>
 
 @code {
-    [Parameter] public string Endpoint { get; set; } = string.Empty; // e.g. /api/accounts/{id}/aggregates
+    [Parameter] public string Endpoint { get; set; } = string.Empty;
     [Parameter] public string? Title { get; set; }
     [Parameter] public string PositiveColor { get; set; } = "#2d6cdf";
     [Parameter] public string NegativeColor { get; set; } = "#c94";
@@ -101,6 +134,7 @@
     {
         if (string.IsNullOrWhiteSpace(Endpoint)) { return; }
         _loading = true;
+        StateHasChanged(); // sofort visuelles Feedback
         try
         {
             var baseUrl = Endpoint.Contains('?') ? $"{Endpoint}&period={_period}" : $"{Endpoint}?period={_period}";
@@ -151,4 +185,111 @@
 
 <style>
 .aggregate-chart-wrapper select { min-width:95px; }
+
+.chart-loading-overlay {
+    position:absolute;
+    inset:0;
+    background:rgba(18,18,20,.6);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:.6rem;
+    backdrop-filter:blur(2px);
+    border-radius:.35rem;
+    animation:fadeIn .15s ease;
+}
+
+.spinner {
+    width:34px;
+    height:34px;
+    position:relative;
+}
+
+.spinner .seg {
+    position:absolute;
+    inset:0;
+    border:3px solid transparent;
+    border-top-color:var(--bar-color, #2d6cdf);
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+}
+
+.spinner .seg.b { animation-delay:.12s; }
+.spinner .seg.c { animation-delay:.24s; }
+.spinner .seg.d { animation-delay:.36s; }
+
+.loading-text {
+    font-size:.65rem;
+    opacity:.75;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+}
+
+    @@keyframes spin {
+    0% { transform:rotate(0deg); opacity:1; }
+    70% { opacity:.25; }
+    100% { transform:rotate(360deg); opacity:1; }
+}
+
+    @@keyframes fadeIn {
+    from { opacity:0; }
+    to { opacity:1; }
+}
+
+/* Skeleton initial */
+.chart-skeleton {
+    display:flex;
+    flex-direction:column;
+    gap:.4rem;
+    height:180px;
+    justify-content:flex-end;
+    position:relative;
+}
+
+.chart-skeleton .skeleton-bar {
+    width:16px;
+    background:linear-gradient(180deg,#2a3036 0%,#1b1f23 100%);
+    border-radius:3px;
+    height:60px;
+    animation:pulse 1.1s ease-in-out infinite;
+    opacity:.65;
+    display:inline-block;
+    margin-right:.35rem;
+}
+
+.chart-skeleton .skeleton-labels {
+    display:flex;
+    gap:.35rem;
+    margin-top:.4rem;
+}
+
+.chart-skeleton .skeleton-label {
+    width:16px;
+    height:7px;
+    background:#262b30;
+    border-radius:2px;
+    animation:pulse 1.4s ease-in-out infinite;
+    opacity:.4;
+}
+
+.chart-skeleton > .skeleton-bar:last-child { margin-right:0; }
+
+@@keyframes pulse {
+    0% { filter:brightness(0.9); }
+    50% { filter:brightness(1.25); }
+    100% { filter:brightness(0.9); }
+}
+
+.visually-hidden {
+    position:absolute;
+    width:1px;
+    height:1px;
+    padding:0;
+    margin:-1px;
+    overflow:hidden;
+    clip:rect(0 0 0 0);
+    white-space:nowrap;
+    border:0;
+}
 </style>
