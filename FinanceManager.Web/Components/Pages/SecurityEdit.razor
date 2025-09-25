@@ -61,6 +61,13 @@
     </div>
 </EditForm>
 
+@if (IsEdit)
+{
+    <div style="margin-top:1.2rem;">
+        <AggregateBarChart Endpoint="@($"/api/securities/{Id}/aggregates")" Title="@Localizer["Chart_Title_Security"]" />
+    </div>
+}
+
 @code {
     [Parameter] public Guid? Id { get; set; }
     private bool IsEdit => Id.HasValue;

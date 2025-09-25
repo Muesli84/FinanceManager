@@ -36,7 +36,22 @@
     </div>
 }
 
-<p>@Localizer["KPI_Placeholders"]</p>
+<div class="kpi-grid">
+    <div class="kpi-tile">
+        <AggregateBarChart Endpoint="/api/accounts/aggregates" Title="@Localizer["Chart_Title_AllAccounts"]" Take="7" HideIntervalSelector="true" InitialPeriod="Month" />
+    </div>
+    <div class="kpi-tile">
+        <AggregateBarChart Endpoint="/api/savings-plans/aggregates" Title="@Localizer["Chart_Title_MonthlySaving"]" Take="7" HideIntervalSelector="true" InitialPeriod="Month" PositiveColor="#2d9d4f" NegativeColor="#b55" />
+    </div>
+    <div class="kpi-tile">
+        <AggregateBarChart Endpoint="/api/securities/dividends" Title="@Localizer["Chart_Title_DividendsQuarterly"]" HideIntervalSelector="true" InitialPeriod="Quarter" PositiveColor="#d4a72c" NegativeColor="#b55" />
+    </div>
+    <!-- Placeholder tiles for future KPIs to illustrate checkerboard layout -->
+    <div class="kpi-tile placeholder">@Localizer["KPI_Placeholder"]</div>
+    <div class="kpi-tile placeholder">@Localizer["KPI_Placeholder"]</div>
+    <div class="kpi-tile placeholder">@Localizer["KPI_Placeholder"]</div>
+    <div class="kpi-tile placeholder">@Localizer["KPI_Placeholder"]</div>
+</div>
 
 @if(_showHiddenInput)
 {
@@ -140,3 +155,11 @@
     private sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, List<StatementDraftEntryDto> Entries);
     private sealed record StatementDraftEntryDto(Guid TempId, DateTime BookingDate, decimal Amount, string Subject);
 }
+
+<style>
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.75rem; margin-top:1.5rem; }
+.kpi-tile { background:#141a20; border:1px solid #2a323a; border-radius:8px; padding:.5rem; aspect-ratio:1/1; display:flex; flex-direction:column; justify-content:flex-start; }
+.kpi-tile.placeholder { font-size:.65rem; color:#666; align-items:center; justify-content:center; }
+.kpi-tile h4 { font-size:.7rem; margin:.1rem 0 .25rem 0; }
+.kpi-tile .chart { flex:1; }
+</style>

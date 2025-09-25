@@ -8,34 +8,32 @@ using Microsoft.AspNetCore.Mvc;
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
-[Route("api/accounts/{accountId:guid}/aggregates")]
+[Route("api/savings-plans/{planId:guid}/aggregates")]
 [Authorize]
-public sealed class AccountReportsController : PostingReportsControllerBase
+public sealed class SavingsPlanReportsController : PostingReportsControllerBase
 {
-    protected override PostingKind Kind => PostingKind.Bank;
+    protected override PostingKind Kind => PostingKind.SavingsPlan;
 
-    public AccountReportsController(ICurrentUserService current, IPostingTimeSeriesService series)
-        : base(current, series) { }
+    public SavingsPlanReportsController(ICurrentUserService current, IPostingTimeSeriesService series) : base(current, series) { }
 
     [HttpGet]
     public Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAsync(
-        Guid accountId,
+        Guid planId,
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
         [FromQuery] int? maxYearsBack = null,
         CancellationToken ct = default)
-        => GetInternalAsync(accountId, period, take, maxYearsBack, ct);
+        => GetInternalAsync(planId, period, take, maxYearsBack, ct);
 }
 
 [ApiController]
-[Route("api/accounts/aggregates")]
+[Route("api/savings-plans/aggregates")]
 [Authorize]
-public sealed class AccountsAllReportsController : PostingReportsControllerBase
+public sealed class SavingsPlansAllReportsController : PostingReportsControllerBase
 {
-    protected override PostingKind Kind => PostingKind.Bank;
+    protected override PostingKind Kind => PostingKind.SavingsPlan;
 
-    public AccountsAllReportsController(ICurrentUserService current, IPostingTimeSeriesService series)
-        : base(current, series) { }
+    public SavingsPlansAllReportsController(ICurrentUserService current, IPostingTimeSeriesService series) : base(current, series) { }
 
     [HttpGet]
     public Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAllAsync(

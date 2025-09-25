@@ -1628,7 +1628,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
         // Reversed ordering: now ascending by CreatedUtc then Id (previously descending) to match requested inverse order.
         var orderedIds = await _db.StatementDrafts.AsNoTracking()
-            .Where(d => d.OwnerUserId == ownerUserId && d.UploadGroupId == current.UploadGroupId)
+            .Where(d => d.OwnerUserId == ownerUserId && d.UploadGroupId == current.UploadGroupId && d.Status != StatementDraftStatus.Committed)
             .OrderBy(d => d.CreatedUtc)
             .ThenBy(d => d.Id)
             .Select(d => d.Id)

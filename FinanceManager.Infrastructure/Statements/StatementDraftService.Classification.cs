@@ -144,11 +144,14 @@ public sealed partial class StatementDraftService
 
             TryAutoAssignContact(contacts, aliasLookup, bankContactId, selfContact, entry);
             TryAutoAssignSavingsPlan(entry, savingPlans, selfContact);
-            TryAutoAssignSecurity(securities, entry);
+            TryAutoAssignSecurity(securities, contacts, bankContactId, entry);
         }
 
-        static void TryAutoAssignSecurity(IEnumerable<Domain.Securities.Security> securities, StatementDraftEntry entry)
+        static void TryAutoAssignSecurity(IEnumerable<Domain.Securities.Security> securities, List<Contact> contacts, Guid? bankContactId, StatementDraftEntry entry)
         {
+            if (entry.ContactId is not null && entry.ContactId != bankContactId)
+                return;
+
             // Helper zur Normalisierung (nur A-Z/0-9, Großschreibung, Umlaute vereinheitlichen)
             static string NormalizeForSecurityMatch(string? s)
             {
@@ -176,7 +179,6 @@ public sealed partial class StatementDraftService
             var matched = securities
                 .Where(s =>
                     Matches(s.Identifier) ||
-                    Matches(s.AlphaVantageCode) ||
                     Matches(s.Name))
                 .ToList();
 

@@ -162,4 +162,7 @@
   <data name="Ribbon_Tab_SavingsPlan" xml:space="preserve">
     <value>Sparplan</value>
   </data>
+  <data name="Chart_Title_SavingsPlan" xml:space="preserve">
+    <value>Ergebnisse</value>
+  </data>
 </root>

@@ -40,4 +40,5 @@
   <data name="Ribbon_Accounts" xml:space="preserve"><value>Konten</value></data>
   <data name="Ribbon_Merge" xml:space="preserve"><value>Zusammenführen</value></data>
   <data name="Ribbon_Postings" xml:space="preserve"><value>Posten</value></data>
+  <data name="Chart_Title_Contact" xml:space="preserve"><value>Ergebnisse</value></data>
 </root>

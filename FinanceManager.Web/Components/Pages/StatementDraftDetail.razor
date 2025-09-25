@@ -88,33 +88,52 @@
             Items = navItems
         };
 
+        var manageItems = new List<Ribbon<TabId>.RibbonItem>
+        {
+            new()
+            {
+                Label = Localizer["Ribbon_Delete"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
+                Size = Ribbon<TabId>.RibbonItemSize.Small,
+                Callback = () => { DeleteDraftAsync(); return Task.CompletedTask; }
+            },
+            new()
+            {
+                Label = Localizer["Ribbon_Reclassify"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
+                Size = Ribbon<TabId>.RibbonItemSize.Small,
+                Callback = () => { _ = ClassifyAsync(); return Task.CompletedTask; }
+            },
+            new()
+            {
+                Label = Localizer["Ribbon_Validate"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#check'/></svg>",
+                Size = Ribbon<TabId>.RibbonItemSize.Small,
+                // Jetzt awaited, damit UI nach Abschluss sofort aktualisiert
+                Callback = async () => { await ValidateDraft(); }
+            }
+        };
+
+        // Buchen nur anbieten, wenn Entwurf buchbar
+        if (_draft != null && _draft.Status == FinanceManager.Domain.StatementDraftStatus.Draft)
+        {
+            manageItems.Insert(0, new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Book"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
+                Size = Ribbon<TabId>.RibbonItemSize.Large,
+                Disabled = _booking
+                          || _draft.Entries.Count == 0
+                          || _draft.DetectedAccountId == null
+                          || _pendingWarningConfirmation, // während Warnbestätigung Button ausblenden
+                Callback = () => { _ = BookDraft(); return Task.CompletedTask; }
+            });
+        }
+
         var manageGroup = new Ribbon<TabId>.RibbonGroup
         {
             Title = Localizer["Ribbon_Group_Manage"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Delete"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Small,
-                    Callback = () => { DeleteDraftAsync(); return Task.CompletedTask; }
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Reclassify"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Small,
-                    Callback = () => { _ = ClassifyAsync(); return Task.CompletedTask; }
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Validate"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#check'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Small,
-                    Callback = () => { _ = ValidateDraft(); return Task.CompletedTask; }
-                }
-            }
+            Items = manageItems
         };
 
         var fileGroup = new Ribbon<TabId>.RibbonGroup
@@ -141,13 +160,13 @@
             }
         };
 
-        _tabs = new List<Ribbon<TabId>.RibbonTab<TabId>>
+        _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
             {
                 Id = TabId.Statement,
                 Title = Localizer["Ribbon_Tab_Statement"],
-                Groups = new List<Ribbon<TabId>.RibbonGroup> { navGroup, manageGroup, fileGroup }
+                Groups = new() { navGroup, manageGroup, fileGroup }
             }
         };
     }
@@ -184,8 +203,23 @@
         return $"?src=entry&fromEntryDraftId={FromEntryDraftId}&fromEntryId={FromEntryId}";
     }
 
-    private async Task ValidateDraft() => _validation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{Id}/validate");
+    private async Task ValidateDraft()
+    {
+        try
+        {
+            _validation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{Id}/validate");
+        }
+        catch (Exception ex)
+        {
+            _bookingError = ex.Message;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
 
+    // (Optional) Nach Book/ForceBook sofort erneutes Ribbon-Build + Refresh sicherstellen
     private async Task BookDraft()
     {
         _bookingError = null; _pendingWarningConfirmation = false; _lastValidation = null; _booking = true;
@@ -195,27 +229,45 @@
             if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
             {
                 var res = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
-                _lastValidation = res?.Validation; _validation = res?.Validation; _pendingWarningConfirmation = true;
+                _lastValidation = res?.Validation;
+                _validation = res?.Validation;
+                _pendingWarningConfirmation = true;
             }
             else if (!resp.IsSuccessStatusCode)
             {
                 BookingResultDto? resObj = null;
                 try { resObj = await resp.Content.ReadFromJsonAsync<BookingResultDto>(); } catch { }
-                if (resObj?.Validation != null) { _validation = resObj.Validation; _bookingError = Localizer["Error_FixIssues"]; }
-                else { _bookingError = await resp.Content.ReadAsStringAsync(); }
+                if (resObj?.Validation != null)
+                {
+                    _validation = resObj.Validation;
+                    _bookingError = Localizer["Error_FixIssues"];
+                }
+                else
+                {
+                    _bookingError = await resp.Content.ReadAsStringAsync();
+                }
             }
             else
             {
                 var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
                 if (ok != null && ok.Success)
                 {
-                    if (ok.nextDraftId is not null) Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true);
-                    else Nav.NavigateTo("/statement-drafts", true);
+                    if (ok.nextDraftId is not null)
+                    {
+                        Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true);
+                        return;
+                    }
+                    Nav.NavigateTo("/statement-drafts", true);
+                    return;
                 }
             }
         }
-        finally { _booking = false; }
-        BuildRibbon();
+        finally
+        {
+            _booking = false;
+            BuildRibbon();
+            StateHasChanged();
+        }
     }
 
     private async Task ForceBook()
