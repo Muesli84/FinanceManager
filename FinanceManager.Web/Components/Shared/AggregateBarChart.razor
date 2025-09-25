@@ -1,4 +1,5 @@
 @using System.Net.Http.Json
+@using System.Globalization
 @inject HttpClient Http
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.AggregateBarChart> Localizer
 
@@ -9,9 +10,9 @@
     }
     @if (!HideIntervalSelector)
     {
-        <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;">
-            <label style="font-size:.75rem;opacity:.85;">@Localizer["LabelInterval"]:</label>
-            <select @bind="_period" @bind:after="LoadAsync" style="font-size:.75rem;" aria-label="@Localizer["Aria_SelectInterval"]">
+        <div class="interval-selector">
+            <label class="lbl-int">@Localizer["LabelInterval"]:</label>
+            <select @bind="_period" @bind:after="LoadAsync" aria-label="@Localizer["Aria_SelectInterval"]">
                 <option value="Month">@Localizer["Interval_Month"]</option>
                 <option value="Quarter">@Localizer["Interval_Quarter"]</option>
                 <option value="HalfYear">@Localizer["Interval_HalfYear"]</option>
@@ -19,10 +20,10 @@
             </select>
         </div>
     }
-    <div class="chart" style="--bar-color:@PositiveColor;--bar-neg:@NegativeColor;--axis:@AxisColor;border:1px solid var(--border);padding:.5rem 1rem;border-radius:.35rem;min-height:190px;position:relative;">
+
+    <div class="chart">
         @if (_loading && _data.Count == 0)
         {
-            <!-- Initial Ladezustand: Skeleton-Balken -->
             <div class="chart-skeleton" role="status" aria-live="polite">
                 @for (int i=0;i<10;i++)
                 {
@@ -39,46 +40,55 @@
         }
         else if (_data.Count == 0)
         {
-            <div style="opacity:.7;font-size:.8rem;">@Localizer["NoData"]</div>
+            <div class="nodata">@Localizer["NoData"]</div>
         }
         else
         {
             var maxAbs = _data.Select(p => Math.Abs(p.Amount)).DefaultIfEmpty(0m).Max();
-            var halfHeight = 90m; // px
+            var halfHeight = 90m;
             var scale = maxAbs == 0 ? 0 : halfHeight / maxAbs;
-            <div class="bars-wrapper" style="display:flex;flex-direction:column;gap:0;height:180px;border-top:1px solid var(--axis);border-bottom:1px solid var(--axis);">
-                <div style="display:flex;align-items:flex-end;gap:.35rem;height:50%;">
+            var gridColsStyle = $"grid-template-columns:repeat({_data.Count},1fr)";
+
+            <div class="bars-wrapper">
+                <div class="bar-row pos">
                     @foreach (var p in _data)
                     {
-                        var posH = p.Amount > 0 ? (int)Math.Round((double)(p.Amount * scale)) : 0;
-                        <div role="img"
+                        var h = p.Amount > 0 ? (int)Math.Round((double)(p.Amount * scale)) : 0;
+                        <div class="bar bar-pos"
+                             role="img"
                              aria-label="@BuildAria(p)"
                              title="@BuildTooltip(p)"
-                             style="width:16px;background:var(--bar-color);height:@(posH)px;"></div>
+                             style="height:@(h)px;"></div>
                     }
                 </div>
-                <div style="height:1px;background:var(--axis);opacity:.6;"></div>
-                <div style="display:flex;align-items:flex-start;gap:.35rem;height:50%;">
+                <div class="zero-line"></div>
+                <div class="bar-row neg">
                     @foreach (var p in _data)
                     {
-                        var negH = p.Amount < 0 ? (int)Math.Round((double)(-p.Amount * scale)) : 0;
-                        <div role="img"
+                        var h = p.Amount < 0 ? (int)Math.Round((double)(-p.Amount * scale)) : 0;
+                        <div class="bar bar-neg"
+                             role="img"
                              aria-label="@BuildAria(p)"
                              title="@BuildTooltip(p)"
-                             style="width:16px;background:var(--bar-neg);height:@(negH)px;"></div>
+                             style="height:@(h)px;"></div>
                     }
                 </div>
             </div>
-            <div style="display:flex;gap:.35rem;font-size:.6rem;color:#aaa;margin-top:.25rem;">
-                @foreach (var p in _data)
-                {
-                    <div style="width:16px;text-align:center;">@FormatLabel(p.PeriodStart)</div>
+
+            <div class="labels-row">
+                @{
+                    int idx=0;
+                    foreach (var p in _data)
+                    {
+                        bool show = ShouldShowLabel(idx, _data.Count);
+                        <div class="lbl @(show?string.Empty:"skip")" aria-hidden="@(show? "false":"true")">@FormatLabel(p.PeriodStart)</div>;
+                        idx++;
+                    }
                 }
             </div>
 
             @if (_loading)
             {
-                <!-- Overlay beim Intervallwechsel / Nachladen -->
                 <div class="chart-loading-overlay" role="status" aria-live="polite">
                     <div class="spinner">
                         <div class="seg a"></div>
@@ -99,22 +109,15 @@
     [Parameter] public string PositiveColor { get; set; } = "#2d6cdf";
     [Parameter] public string NegativeColor { get; set; } = "#c94";
     [Parameter] public string AxisColor { get; set; } = "#555";
-    /// <summary>
-    /// Optional number of points to request. If null or <= 0, all available data is requested (no take parameter sent).
-    /// </summary>
     [Parameter] public int? Take { get; set; }
-    /// <summary>
-    /// Optional limit: restrict data to last N years (1..10). If null, server default (unbounded) is used.
-    /// </summary>
     [Parameter] public int? MaxYearsBack { get; set; }
-    /// <summary>
-    /// Hide the interval selector (e.g. in small KPI tiles). When set, you can also force an initial period via <see cref="InitialPeriod"/>.
-    /// </summary>
     [Parameter] public bool HideIntervalSelector { get; set; }
-    /// <summary>
-    /// Optional initial/fixed period (Month, Quarter, HalfYear, Year). If set while <see cref="HideIntervalSelector"/> is true, the user cannot change it.
-    /// </summary>
     [Parameter] public string? InitialPeriod { get; set; }
+
+    /// <summary>Wenn true: keine horizontale Scrollbar ñ Balken teilen sich Breite gleichm‰ﬂig.</summary>
+    [Parameter] public bool AutoFit { get; set; } = true;
+    /// <summary>Max. sichtbare Labels (bei mehr werden welche ausgelassen).</summary>
+    [Parameter] public int MaxVisibleLabels { get; set; } = 18;
 
     private string _period = "Month";
     private bool _loading;
@@ -134,11 +137,19 @@
         }
     }
 
+    private bool ShouldShowLabel(int index, int total)
+    {
+        if (!AutoFit) { return true; }
+        if (total <= MaxVisibleLabels) { return true; }
+        int step = (int)Math.Ceiling(total / (double)MaxVisibleLabels);
+        return index % step == 0;
+    }
+
     private async Task LoadAsync()
     {
         if (string.IsNullOrWhiteSpace(Endpoint)) { return; }
         _loading = true;
-        StateHasChanged(); // sofort visuelles Feedback
+        StateHasChanged();
         try
         {
             var baseUrl = Endpoint.Contains('?') ? $"{Endpoint}&period={_period}" : $"{Endpoint}?period={_period}";
@@ -177,12 +188,22 @@
 
     private string BuildTooltip(Point p)
     {
+        var culture = CultureInfo.CurrentUICulture;
         if (string.Equals(_period, "Quarter", StringComparison.OrdinalIgnoreCase))
         {
             var q = ((p.PeriodStart.Month - 1) / 3) + 1;
-            return $"{p.PeriodStart:yy}-Q{q} ({p.Amount})";
+            // Quartal + lokales Jahr + lokalisierter Betrag
+            return string.Format(culture, "{0:yyyy}-Q{1} ({2})",
+                p.PeriodStart,
+                q,
+                p.Amount.ToString("N2", culture));
         }
-        return $"{p.PeriodStart:yyyy-MM-dd} ({p.Amount})";
+
+        // Lokales Kurzdatum + lokalisierter Betrag
+        var dateStr = p.PeriodStart.ToString("d", culture);
+        return string.Format(culture, "{0} ({1})",
+            dateStr,
+            p.Amount.ToString("N2", culture));
     }
 
     private string BuildAria(Point p) => Localizer["AriaBar", p.PeriodStart.ToString("yyyy-MM-dd"), p.Amount];
@@ -195,7 +216,83 @@
 }
 
 <style>
-.aggregate-chart-wrapper select { min-width:95px; }
+.chart {
+    --bar-color:@PositiveColor;
+    --bar-neg:@NegativeColor;
+    --axis:@AxisColor;
+    width:100%;
+    box-sizing:border-box;
+    border:1px solid var(--border);
+    padding:.45rem .6rem;
+    border-radius:.35rem;
+    min-height:190px;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+}
+
+.bars-wrapper {
+    flex:1 1 auto;
+    display:flex;
+    flex-direction:column;
+    height:180px;
+    border-top:1px solid var(--axis);
+    border-bottom:1px solid var(--axis);
+    gap:0;
+    min-width:0;
+}
+
+.bar-row {
+    flex:1 1 0;
+    display:flex;
+    align-items:flex-end;
+    gap:.35rem;
+    min-width:0;
+}
+
+.bar-row.neg { align-items:flex-start; }
+
+.bar {
+    flex:1 1 0;
+    background:var(--bar-color);
+    border-radius:2px;
+    min-width:2px;
+    outline:none;
+    transition:filter .15s;
+}
+
+.bar-pos { background:var(--bar-color); }
+.bar-neg { background:var(--bar-neg); }
+
+.bar:hover { filter:brightness(1.12); }
+.bar:focus-visible {
+    box-shadow:0 0 0 2px #ffffff40, 0 0 0 4px #2d6cdf90;
+}
+
+.zero-line { height:1px; background:var(--axis); opacity:.6; }
+
+.labels-row {
+    display:flex;
+    gap:.35rem;
+    font-size:.6rem;
+    color:#aaa;
+    margin-top:.25rem;
+    min-width:0;
+}
+
+.labels-row .lbl {
+    flex:1 1 0;
+    text-align:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    min-width:0;
+}
+
+.labels-row .lbl.skip { visibility:hidden; }
+
+.nodata { opacity:.7; font-size:.8rem; }
 
 .chart-loading-overlay {
     position:absolute;
@@ -211,21 +308,15 @@
     animation:fadeIn .15s ease;
 }
 
-.spinner {
-    width:34px;
-    height:34px;
-    position:relative;
-}
-
+.spinner { width:34px; height:34px; position:relative; }
 .spinner .seg {
     position:absolute;
     inset:0;
     border:3px solid transparent;
-    border-top-color:var(--bar-color, #2d6cdf);
+    border-top-color:var(--bar-color);
     border-radius:50%;
     animation:spin 1s linear infinite;
 }
-
 .spinner .seg.b { animation-delay:.12s; }
 .spinner .seg.c { animation-delay:.24s; }
 .spinner .seg.d { animation-delay:.36s; }
@@ -237,18 +328,18 @@
     text-transform:uppercase;
 }
 
-    @@keyframes spin {
+@@keyframes spin {
     0% { transform:rotate(0deg); opacity:1; }
     70% { opacity:.25; }
     100% { transform:rotate(360deg); opacity:1; }
 }
 
-    @@keyframes fadeIn {
+@@keyframes fadeIn {
     from { opacity:0; }
     to { opacity:1; }
 }
 
-/* Skeleton initial */
+/* Skeleton */
 .chart-skeleton {
     display:flex;
     flex-direction:column;
