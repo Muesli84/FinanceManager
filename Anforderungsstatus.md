@@ -53,7 +53,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-REP-006-10    | ✔      | Wechsel Intervall -> Reload (Spinner)                                   | Overlay + Skeleton Initial Load                                                                                                                                                  |
 | NFA-REP-006-01   | ✔      | Performance (leichte DOM-Struktur)                                      | Leichte Div-Struktur                                                                                                                                                             |
 | NFA-REP-006-02   | ✔      | Responsives Layout / Overflow                                           | Flex Layout (gleichmäßige Verteilung, keine Scrollbar), adaptive Label-Ausdünnung, keine Überlappung in KPI-Kacheln                                                             |
-| NFA-REP-006-03   | ~      | Lokalisierte Formate                                                    | Tooltips lokalisieren Datum & Betrag (Culture); Achsenlabels noch einfache Muster (`yy-M` / `yy-Q#`)                                                                             |
+| NFA-REP-006-03   | ✔      | Lokalisierte Formate                                                    | Kulturabhängige Tooltip- und Achsen-Labels (Monate abgekürzt, Jahr nur falls nötig, Q/H mit optionalem Jahr), Tooltips lokalisiert                                               |
 | NFA-REP-006-04   | ✔      | Wiederverwendbare Komponente                                            | `AggregateBarChart`                                                                                                                                                              |
 | NFA-REP-006-05   | ✔      | Accessibility (ARIA Label pro Balken)                                   | aria-label je Balken                                                                                                                                                             |
 | NFA-AUSZ-016-01  | ✔      | Serverseitige User-Konfiguration                                        | Erweiterte User-Entität + Migration                                                                                                                                              |
@@ -156,9 +156,12 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 
+Änderungen (25.09.2025) – Ergänzung 17:
+- NFA-REP-006-03 von ~ auf ✔ gesetzt: Kulturabhängige Achsen-Labels (Monate abgekürzt, Jahr nur falls nötig, Q/H mit optionalem Jahr), Tooltips lokalisiert.
+
 Änderungen (25.09.2025) – Ergänzung 16:
 - NFA-REP-006-02 von ~ auf ✔ gesetzt: Flexbasiertes AutoFit Layout ohne horizontales Scrollen, gleichmäßige Balkenbreite, Label-Ausdünnung integriert.
-- NFA-REP-006-03 weiter ~: Tooltips nun lokalisiert (Datum & Betrag gemäß Culture), Achsenlabels weiterhin vereinfachtes Muster (`yy-M` / `yy-Q#`)
+- NFA-REP-006-03 weiter ~: Tooltips nun lokalisiert (Datum & Betrag gemäß Culture), Achsenlabels weiterhin vereinfachtes Muster (`yy-M` / `yy-Q#`).
 
 Änderungen (24.09.2025) – Ergänzung 15:
 - FA-REP-006-08 auf ✔ gesetzt: Zeitraumbegrenzung implementiert (`maxYearsBack` Query, Service-Filter, UI-Parameter `MaxYearsBack` in `AggregateBarChart`).  
