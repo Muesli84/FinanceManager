@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Berichte</value>
+  </data>
+  <data name="Heading" xml:space="preserve">
+    <value>Berichte</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Lade...</value>
+  </data>
+  <data name="NoFavorites" xml:space="preserve">
+    <value>Keine Favoriten vorhanden</value>
+  </data>
+  <data name="OpenFavorite" xml:space="preserve">
+    <value>Favorit öffnen</value>
+  </data>
+  <data name="Action_NewReport" xml:space="preserve">
+    <value>Neuen Bericht erstellen</value>
+  </data>
+  <data name="Ribbon_Group_Actions" xml:space="preserve">
+    <value>Aktionen</value>
+  </data>
+  <data name="Ribbon_Reload" xml:space="preserve">
+    <value>Neu laden</value>
+  </data>
+  <data name="Ribbon_NewReport" xml:space="preserve">
+    <value>Neuer Bericht</value>
+  </data>
+  <data name="Ribbon_Tab" xml:space="preserve">
+    <value>Übersicht</value>
+  </data>
+  <data name="PostingKind_Bank" xml:space="preserve">
+    <value>Konten</value>
+  </data>
+  <data name="PostingKind_Contact" xml:space="preserve">
+    <value>Kontakte</value>
+  </data>
+  <data name="PostingKind_SavingsPlan" xml:space="preserve">
+    <value>Sparpläne</value>
+  </data>
+  <data name="PostingKind_Security" xml:space="preserve">
+    <value>Wertpapiere</value>
+  </data>
+  <data name="Interval_Month" xml:space="preserve">
+    <value>Monat</value>
+  </data>
+  <data name="Interval_Quarter" xml:space="preserve">
+    <value>Quartal</value>
+  </data>
+  <data name="Interval_HalfYear" xml:space="preserve">
+    <value>Halbjahr</value>
+  </data>
+  <data name="Interval_Year" xml:space="preserve">
+    <value>Jahr</value>
+  </data>
+  <data name="Interval_Ytd" xml:space="preserve">
+    <value>YTD</value>
+  </data>
+</root>

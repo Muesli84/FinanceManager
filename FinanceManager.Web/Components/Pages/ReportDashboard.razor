@@ -1,12 +1,14 @@
 ﻿@page "/reports/dashboard"
 @rendermode InteractiveServer
 @using System.Net.Http.Json
+@using System.Web
 @using FinanceManager.Domain
 @using FinanceManager.Domain.Reports
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ReportDashboard> Localizer
 @using FinanceManager.Web.Components.Shared
+@using Microsoft.AspNetCore.Components
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -15,7 +17,7 @@
         ActiveTab="_activeTab"
         ActiveTabChanged="OnActiveTabChanged" />
 
-<h2 style="margin-top:0;">@Localizer["Heading"]</h2>
+<h2 style="margin-top:0;">@(string.IsNullOrWhiteSpace(_favoriteName) ? Localizer["Heading"] : _favoriteName.Trim())</h2>
 
 @if(!_loaded)
 {
@@ -23,197 +25,171 @@
 }
 else
 {
-    <div class="filters-panel">
-        <div class="filter-group wide">
-            <div class="group-title">@Localizer["FilterGroup_Data"]</div>
-            <div class="row">
-                <label>@Localizer["Label_PostingKindMulti"]</label>
-                <div class="multi-kind-list">
-                    @foreach(var kind in _postingKindValues)
-                    {
-                        var v = (int)kind;
-                        var checkedAttr = _selectedKinds.Contains(v);
-                        var label = Localizer[$"PostingKind_{kind}"];
-                        <label class="mk-item"><input type="checkbox" value="@v" checked="@checkedAttr" @onchange="e => OnToggleKind(v, e.Value is bool b && b)" /> @label</label>
-                    }
+    @if(_editMode)
+    {
+        <div class="filters-panel">
+            <div class="filter-group wide">
+                <div class="group-title">@Localizer["FilterGroup_Data"]</div>
+                <div class="row">
+                    <label>@Localizer["Label_PostingKindMulti"]</label>
+                    <div class="multi-kind-list">
+                        @foreach(var kind in _postingKindValues)
+                        {
+                            var v = (int)kind;
+                            var checkedAttr = _selectedKinds.Contains(v);
+                            var label = Localizer[$"PostingKind_{kind}"];
+                            <label class="mk-item"><input type="checkbox" value="@v" checked="@checkedAttr" @onchange="e => OnToggleKind(v, e.Value is bool b && b)" /> @label</label>
+                        }
+                    </div>
+                </div>
+                <div class="row">
+                    <label>@Localizer["Label_Interval"]</label>
+                    <select @bind="_interval" @bind:after="StateHasChanged">
+                        @foreach (var iv in Enum.GetValues<ReportInterval>())
+                        {
+                            var label = Localizer[$"Interval_{iv}"];
+                            <option value="@iv">@label</option>
+                        }
+                    </select>
+                </div>
+                <div class="row inline month-row">
+                    <label>@Localizer["Label_AnalysisMonth"]</label>
+                    <button type="button" class="icon-btn small" title="@Localizer["Button_PrevMonth"]" @onclick="PrevMonth"><svg><use href="/icons/sprite.svg#chevron-left"/></svg></button>
+                    <input type="month" value="@_analysisMonthString" @onchange="OnAnalysisMonthChange" />
+                    <button type="button" class="icon-btn small" title="@Localizer["Button_NextMonth"]" @onclick="NextMonth"><svg><use href="/icons/sprite.svg#chevron-right"/></svg></button>
+                </div>
+                <div class="row inline">
+                    <label class="chk"><input type="checkbox" @bind="_includeCategory" /> @Localizer["Label_IncludeCategory"]</label>
+                    <label class="take-label">@Localizer["Label_Take"] <input type="number" min="1" max="120" @bind="_take" class="take-input" /></label>
                 </div>
             </div>
-            <div class="row">
-                <label>@Localizer["Label_Interval"]</label>
-                <select @bind="_interval" @bind:after="StateHasChanged">
-                    @foreach (var iv in Enum.GetValues<ReportInterval>())
-                    {
-                        var label = Localizer[$"Interval_{iv}"];
-                        <option value="@iv">@label</option>
-                    }
-                </select>
+            <div class="filter-group">
+                <div class="group-title">@Localizer["FilterGroup_Comparisons"]</div>
+                <div class="row chk"><label><input type="checkbox" @bind="_comparePrevious" /> @Localizer["Label_ComparePrev"]</label></div>
+                <div class="row chk"><label><input type="checkbox" @bind="_compareYear" /> @Localizer["Label_CompareYear"]</label></div>
             </div>
-            <div class="row inline month-row">
-                <label>@Localizer["Label_AnalysisMonth"]</label>
-                <button type="button" class="icon-btn small" title="@Localizer["Button_PrevMonth"]" @onclick="PrevMonth"><svg><use href="/icons/sprite.svg#chevron-left"/></svg></button>
-                <input type="month" value="@_analysisMonthString" @onchange="OnAnalysisMonthChange" />
-                <button type="button" class="icon-btn small" title="@Localizer["Button_NextMonth"]" @onclick="NextMonth"><svg><use href="/icons/sprite.svg#chevron-right"/></svg></button>
-            </div>
-            <div class="row inline">
-                <label class="chk"><input type="checkbox" @bind="_includeCategory" /> @Localizer["Label_IncludeCategory"]</label>
-                <label class="take-label">@Localizer["Label_Take"] <input type="number" min="1" max="120" @bind="_take" class="take-input" /></label>
+            <div class="filter-group">
+                <div class="group-title">@Localizer["FilterGroup_Chart"]</div>
+                <div class="row chk"><label><input type="checkbox" @bind="_showChart" /> @Localizer["Label_ShowChart"]</label></div>
             </div>
         </div>
-        <div class="filter-group">
-            <div class="group-title">@Localizer["FilterGroup_Comparisons"]</div>
-            <div class="row chk"><label><input type="checkbox" @bind="_comparePrevious" /> @Localizer["Label_ComparePrev"]</label></div>
-            <div class="row chk"><label><input type="checkbox" @bind="_compareYear" /> @Localizer["Label_CompareYear"]</label></div>
-        </div>
-        <div class="filter-group">
-            <div class="group-title">@Localizer["FilterGroup_Chart"]</div>
-            <div class="row chk"><label><input type="checkbox" @bind="_showChart" /> @Localizer["Label_ShowChart"]</label></div>
-        </div>
-    </div>
+    }
 
-    <div class="content-split">
-        <div class="favorites-box">
-            <h4>@Localizer["Title_Favorites"]</h4>
-            @if(_favoriteLoading)
+    <div class="result-box">
+        @if(_queryBusy)
+        {
+            <div class="query-overlay">@Localizer["Loading"]</div>
+        }
+        @if(!_queryBusy && _points.Count == 0)
+        {
+            <div class="empty-info">@Localizer["NoData"]</div>
+        }
+        else if(_points.Count > 0)
+        {
+            @if(_showChart)
             {
-                <div class="small-loading">@Localizer["Loading"]</div>
-            }
-            else if(_favorites.Count == 0)
-            {
-                <div class="small-empty">@Localizer["NoFavorites"]</div>
-            }
-            else
-            {
-                <ul class="fav-list">
-                    @foreach(var f in _favorites)
-                    {
-                        <li class="@(f.Id == _activeFavoriteId ? "active" : string.Empty)">
-                            <button type="button" @onclick="(()=>ApplyFavorite(f))" class="fav-btn" title="@Localizer["Tooltip_Apply"]">@f.Name</button>
-                            <button type="button" class="icon-btn small" title="@Localizer["Tooltip_Delete"]" @onclick="(()=>DeleteFavoriteAsync(f.Id))"><svg><use href="/icons/sprite.svg#clear"/></svg></button>
-                        </li>
-                    }
-                </ul>
-            }
-            @if(!string.IsNullOrWhiteSpace(_favoriteError))
-            {
-                <div class="error-msg">@_favoriteError</div>
-            }
-        </div>
-        <div class="result-box">
-            @if(_queryBusy)
-            {
-                <div class="query-overlay">@Localizer["Loading"]</div>
-            }
-            @if(!_queryBusy && _points.Count == 0)
-            {
-                <div class="empty-info">@Localizer["NoData"]</div>
-            }
-            else if(_points.Count > 0)
-            {
-                @if(_showChart)
-                {
-                    <div class="mini-chart" aria-label="@Localizer["Aria_Chart"]">
-                        @{ var byPeriod = _points.Where(p=>p.ParentGroupKey==null || p.GroupKey.StartsWith("Type:")).GroupBy(p=>p.PeriodStart).Select(g=> new { g.Key, Sum = g.Where(x=>x.ParentGroupKey==null || x.GroupKey.StartsWith("Type:")).Sum(x=>x.Amount) }).OrderBy(x=>x.Key).ToList();
-                           var max = byPeriod.Select(x=>Math.Abs(x.Sum)).DefaultIfEmpty(0m).Max();
-                           var scale = max==0?0:70m/max; }
-                        <div class="bars">
-                            @foreach(var bp in byPeriod)
-                            {
-                                var h = bp.Sum>0 ? (int)Math.Round((double)(bp.Sum*scale)) : (int)Math.Round((double)(-bp.Sum*scale));
-                                <div class="bar-wrap" title="@bp.Key.ToString("yyyy-MM-dd") @bp.Sum">
-                                    <div class="bar-inner @(bp.Sum>=0?"pos":"neg")" style="height:@(h)px"></div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
-                <table class="fm-table report-table expandable">
-                    <thead>
-                        <tr>
-                            <th style="width:24px;"></th>
-                            <th>@Localizer["Th_Group"]</th>
-                            @if(ShowCategoryColumn){<th>@Localizer["Th_Category"]</th>}
-                            @if(ShowPreviousColumns){<th class="th-prev" style="text-align:right;">@PreviousHeaderLabel</th><th class="th-prev" style="text-align:right;">@Localizer["Th_DeltaPrev"]</th>}
-                            @if(_compareYear){<th class="th-year" style="text-align:right;">@YearHeaderLabel</th><th class="th-year" style="text-align:right;">@Localizer["Th_DeltaYear"]</th>}
-                            <th class="th-current" style="text-align:right;">@Localizer["Th_Amount"]</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var top in TopLevelRows)
+                <div class="mini-chart" aria-label="@Localizer["Aria_Chart"]">
+                    @{ var byPeriod = _points.Where(p=>p.ParentGroupKey==null || p.GroupKey.StartsWith("Type:")).GroupBy(p=>p.PeriodStart).Select(g=> new { g.Key, Sum = g.Where(x=>x.ParentGroupKey==null || x.GroupKey.StartsWith("Type:")).Sum(x=>x.Amount) }).OrderBy(x=>x.Key).ToList();
+                       var max = byPeriod.Select(x=>Math.Abs(x.Sum)).DefaultIfEmpty(0m).Max();
+                       var scale = max==0?0:70m/max; }
+                    <div class="bars">
+                        @foreach(var bp in byPeriod)
                         {
-                            var rowClass = IsNegativeRow(top) ? "neg" : string.Empty;
-                            var hasChildren = HasChildren(top.GroupKey);
-                            var expanded = hasChildren && _expanded.TryGetValue(top.GroupKey, out var exTop) && exTop;
-                            <tr class="@rowClass @(top.GroupKey.StartsWith("Type:")?"type-row": (top.GroupKey.StartsWith("Category:")?"category-row":"entity-row"))">
-                                <td>
-                                    @if(hasChildren)
-                                    {
-                                        <button type="button" class="toggle-btn" @onclick="(()=>Toggle(top.GroupKey))" title="@(expanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@expanded">
-                                            <svg class="ico"><use href="/icons/sprite.svg#@(expanded?"chevron-down":"chevron-right")" /></svg>
-                                        </button>
-                                    }
-                                </td>
-                                <td>@GetDisplayName(top)</td>
-                                @if(ShowCategoryColumn){<td>@(string.IsNullOrWhiteSpace(top.CategoryName)?"-":top.CategoryName)</td>}
-                                @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(top.PreviousAmount.HasValue? top.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(top.Amount, top.PreviousAmount)</td>}
-                                @if(_compareYear){<td class="amt-year" style="text-align:right;">@(top.YearAgoAmount.HasValue? top.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(top.Amount, top.YearAgoAmount)</td>}
-                                <td class="amt-current" style="text-align:right;">@top.Amount.ToString("N2")</td>
-                            </tr>
-                            @if(hasChildren && expanded)
-                            {
-                                foreach(var child in ChildRows(top.GroupKey))
+                            var h = bp.Sum>0 ? (int)Math.Round((double)(bp.Sum*scale)) : (int)Math.Round((double)(-bp.Sum*scale));
+                            <div class="bar-wrap" title="@bp.Key.ToString("yyyy-MM-dd") @bp.Sum">
+                                <div class="bar-inner @(bp.Sum>=0?"pos":"neg")" style="height:@(h)px"></div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            <table class="fm-table report-table expandable">
+                <thead>
+                    <tr>
+                        <th style="width:24px;"></th>
+                        <th>@Localizer["Th_Group"]</th>
+                        @if(ShowCategoryColumn){<th>@Localizer["Th_Category"]</th>}
+                        @if(ShowPreviousColumns){<th class="th-prev" style="text-align:right;">@PreviousHeaderLabel</th><th class="th-prev" style="text-align:right;">@Localizer["Th_DeltaPrev"]</th>}
+                        @if(_compareYear){<th class="th-year" style="text-align:right;">@YearHeaderLabel</th><th class="th-year" style="text-align:right;">@Localizer["Th_DeltaYear"]</th>}
+                        <th class="th-current" style="text-align:right;">@Localizer["Th_Amount"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var top in TopLevelRows)
+                    {
+                        var rowClass = IsNegativeRow(top) ? "neg" : string.Empty;
+                        var hasChildren = HasChildren(top.GroupKey);
+                        var expanded = hasChildren && _expanded.TryGetValue(top.GroupKey, out var exTop) && exTop;
+                        <tr class="@rowClass @(top.GroupKey.StartsWith("Type:")?"type-row": (top.GroupKey.StartsWith("Category:")?"category-row":"entity-row"))">
+                            <td>
+                                @if(hasChildren)
                                 {
-                                    var childCls = IsNegativeRow(child) ? "neg" : string.Empty;
-                                    var childHasChildren = HasChildren(child.GroupKey);
-                                    var childExpanded = childHasChildren && _expanded.TryGetValue(child.GroupKey, out var exCh) && exCh;
-                                    <tr class="child-row @childCls @(child.GroupKey.StartsWith("Category:")?"category-row":"entity-row")">
-                                        <td>
-                                            @if(childHasChildren)
-                                            {
-                                                <button type="button" class="toggle-btn" @onclick="(()=>Toggle(child.GroupKey))" title="@(childExpanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@childExpanded">
-                                                    <svg class="ico"><use href="/icons/sprite.svg#@(childExpanded?"chevron-down":"chevron-right")" /></svg>
-                                                </button>
-                                            }
-                                        </td>
-                                        <td class="child-label">@GetDisplayName(child)</td>
-                                        @if(ShowCategoryColumn){<td>@(string.IsNullOrWhiteSpace(child.CategoryName)?"-":child.CategoryName)</td>}
-                                        @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(child.PreviousAmount.HasValue? child.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(child.Amount, child.PreviousAmount)</td>}
-                                        @if(_compareYear){<td class="amt-year" style="text-align:right;">@(child.YearAgoAmount.HasValue? child.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(child.Amount, child.YearAgoAmount)</td>}
-                                        <td class="amt-current" style="text-align:right;">@child.Amount.ToString("N2")</td>
-                                    </tr>
-                                    @if(childHasChildren && childExpanded)
-                                    {
-                                        foreach(var grand in ChildRows(child.GroupKey))
+                                    <button type="button" class="toggle-btn" @onclick="(()=>Toggle(top.GroupKey))" title="@(expanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@expanded">
+                                        <svg class="ico"><use href="/icons/sprite.svg#@(expanded?"chevron-down":"chevron-right")" /></svg>
+                                    </button>
+                                }
+                            </td>
+                            <td>@GetDisplayName(top)</td>
+                            @if(ShowCategoryColumn){<td>@(string.IsNullOrWhiteSpace(top.CategoryName)?"-":top.CategoryName)</td>}
+                            @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(top.PreviousAmount.HasValue? top.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(top.Amount, top.PreviousAmount)</td>}
+                            @if(_compareYear){<td class="amt-year" style="text-align:right;">@(top.YearAgoAmount.HasValue? top.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(top.Amount, top.YearAgoAmount)</td>}
+                            <td class="amt-current" style="text-align:right;">@top.Amount.ToString("N2")</td>
+                        </tr>
+                        @if(hasChildren && expanded)
+                        {
+                            foreach(var child in ChildRows(top.GroupKey))
+                            {
+                                var childCls = IsNegativeRow(child) ? "neg" : string.Empty;
+                                var childHasChildren = HasChildren(child.GroupKey);
+                                var childExpanded = childHasChildren && _expanded.TryGetValue(child.GroupKey, out var exCh) && exCh;
+                                <tr class="child-row @childCls @(child.GroupKey.StartsWith("Category:")?"category-row":"entity-row")">
+                                    <td>
+                                        @if(childHasChildren)
                                         {
-                                            var gCls = IsNegativeRow(grand) ? "neg" : string.Empty;
-                                            <tr class="child-row entity-row @gCls">
-                                                <td></td>
-                                                <td class="child-label">@GetDisplayName(grand)</td>
-                                                @if(ShowCategoryColumn){<td></td>}
-                                                @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(grand.PreviousAmount.HasValue? grand.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(grand.Amount, grand.PreviousAmount)</td>}
-                                                @if(_compareYear){<td class="amt-year" style="text-align:right;">@(grand.YearAgoAmount.HasValue? grand.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(grand.Amount, grand.YearAgoAmount)</td>}
-                                                <td class="amt-current" style="text-align:right;">@grand.Amount.ToString("N2")</td>
-                                            </tr>
+                                            <button type="button" class="toggle-btn" @onclick="(()=>Toggle(child.GroupKey))" title="@(childExpanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@childExpanded">
+                                                <svg class="ico"><use href="/icons/sprite.svg#@(childExpanded?"chevron-down":"chevron-right")" /></svg>
+                                            </button>
                                         }
+                                    </td>
+                                    <td class="child-label">@GetDisplayName(child)</td>
+                                    @if(ShowCategoryColumn){<td>@(string.IsNullOrWhiteSpace(child.CategoryName)?"-":child.CategoryName)</td>}
+                                    @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(child.PreviousAmount.HasValue? child.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(child.Amount, child.PreviousAmount)</td>}
+                                    @if(_compareYear){<td class="amt-year" style="text-align:right;">@(child.YearAgoAmount.HasValue? child.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(child.Amount, child.YearAgoAmount)</td>}
+                                    <td class="amt-current" style="text-align:right;">@child.Amount.ToString("N2")</td>
+                                </tr>
+                                @if(childHasChildren && childExpanded)
+                                {
+                                    foreach(var grand in ChildRows(child.GroupKey))
+                                    {
+                                        var gCls = IsNegativeRow(grand) ? "neg" : string.Empty;
+                                        <tr class="child-row entity-row @gCls">
+                                            <td></td>
+                                            <td class="child-label">@GetDisplayName(grand)</td>
+                                            @if(ShowCategoryColumn){<td></td>}
+                                            @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(grand.PreviousAmount.HasValue? grand.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(grand.Amount, grand.PreviousAmount)</td>}
+                                            @if(_compareYear){<td class="amt-year" style="text-align:right;">@(grand.YearAgoAmount.HasValue? grand.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(grand.Amount, grand.YearAgoAmount)</td>}
+                                            <td class="amt-current" style="text-align:right;">@grand.Amount.ToString("N2")</td>
+                                        </tr>
                                     }
                                 }
                             }
                         }
-                        @if(ShowTotalRow)
-                        {
-                            var totals = TotalRow;
-                            <tr class="total-row">
-                                <td></td>
-                                <td>@Localizer["Total_Label"]</td>
-                                @if(ShowCategoryColumn){<td></td>}
-                                @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(totals.Prev.HasValue ? totals.Prev.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@(totals.Prev.HasValue ? FormatDelta(totals.Amount, totals.Prev) : "-")</td>}
-                                @if(_compareYear){<td class="amt-year" style="text-align:right;">@(totals.Year.HasValue ? totals.Year.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@(totals.Year.HasValue ? FormatDelta(totals.Amount, totals.Year) : "-")</td>}
-                                <td class="amt-current" style="text-align:right;">@totals.Amount.ToString("N2")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
-        </div>
+                    }
+                    @if(ShowTotalRow)
+                    {
+                        var totals = TotalRow;
+                        <tr class="total-row">
+                            <td></td>
+                            <td>@Localizer["Total_Label"]</td>
+                            @if(ShowCategoryColumn){<td></td>}
+                            @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(totals.Prev.HasValue ? totals.Prev.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@(totals.Prev.HasValue ? FormatDelta(totals.Amount, totals.Prev) : "-")</td>}
+                            @if(_compareYear){<td class="amt-year" style="text-align:right;">@(totals.Year.HasValue ? totals.Year.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@(totals.Year.HasValue ? FormatDelta(totals.Amount, totals.Year) : "-")</td>}
+                            <td class="amt-current" style="text-align:right;">@totals.Amount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
     </div>
 }
 
@@ -225,18 +201,6 @@ else
             <div class="form-row">
                 <label>@Localizer["Dialog_Fav_Name"]</label>
                 <input type="text" @bind="_favoriteName" />
-            </div>
-            <div class="form-row">
-                <label>@Localizer["Dialog_Fav_Kinds"]</label>
-                <div class="multi-kind-list dialog">
-                    @foreach(var kind in _postingKindValues)
-                    {
-                        var v = (int)kind;
-                        var ck = _selectedKinds.Contains(v);
-                        var label = Localizer[$"PostingKind_{kind}"];
-                        <label class="mk-item"><input type="checkbox" value="@v" checked="@ck" @onchange="e => OnToggleKind(v, e.Value is bool b && b)" /> @label</label>
-                    }
-                </div>
             </div>
             @if(!string.IsNullOrWhiteSpace(_favoriteError))
             {
@@ -251,6 +215,9 @@ else
 }
 
 @code {
+    [Parameter, SupplyParameterFromQuery] public Guid? FavoriteId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public bool? Edit { get; set; }
+
     private enum TabId { Dashboard }
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
     private TabId _activeTab = TabId.Dashboard;
@@ -258,30 +225,34 @@ else
 
     private void BuildRibbon()
     {
-        var favGroup = new Ribbon<TabId>.RibbonGroup
+        var navGroup = new Ribbon<TabId>.RibbonGroup
         {
-            Title = Localizer["Ribbon_Favorites"],
+            Title = Localizer["Ribbon_Navigation"],
             Items = new()
             {
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_ReloadFav"], IconSvg="<svg><use href='/icons/sprite.svg#refresh'/></svg>", Callback= ()=> { _=LoadFavoritesAsync(); return Task.CompletedTask;} },
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_SaveFav"], IconSvg="<svg><use href='/icons/sprite.svg#save'/></svg>", Callback= ()=> { OpenFavoriteDialog(false); return Task.CompletedTask;} },
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_UpdateFav"], IconSvg="<svg><use href='/icons/sprite.svg#save'/></svg>", Disabled=!_canUpdateFavorite, Callback= ()=> { OpenFavoriteDialog(true); return Task.CompletedTask;} }
+                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_BackToOverview"], IconSvg="<svg><use href='/icons/sprite.svg#back'/></svg>", Size=Ribbon<TabId>.RibbonItemSize.Large, Callback= ()=> { Nav.NavigateTo("/reports"); return Task.CompletedTask; } }
             }
         };
-        var dataGroup = new Ribbon<TabId>.RibbonGroup
+        var actions = new Ribbon<TabId>.RibbonGroup
         {
-            Title = Localizer["Ribbon_ReportData"],
+            Title = Localizer["Ribbon_ReportActions"],
             Items = new()
             {
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_ReloadData"], IconSvg="<svg><use href='/icons/sprite.svg#play'/></svg>", Size=Ribbon<TabId>.RibbonItemSize.Large, Callback=()=> { _=LoadAsync(); return Task.CompletedTask; } }
+                new Ribbon<TabId>.RibbonItem{ Label=_editMode? Localizer["Ribbon_View"]: Localizer["Ribbon_Edit"], IconSvg=_editMode? "<svg><use href='/icons/sprite.svg#eye'/></svg>":"<svg><use href='/icons/sprite.svg#edit'/></svg>", Size=Ribbon<TabId>.RibbonItemSize.Large, Callback= ()=> { ToggleEditMode(); return Task.CompletedTask; } },
+                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_Save"], IconSvg="<svg><use href='/icons/sprite.svg#save'/></svg>", Disabled=!_editMode, Callback= ()=> { OnSaveRequested(); return Task.CompletedTask; } },
+                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_SaveAs"], IconSvg="<svg><use href='/icons/sprite.svg#save-as'/></svg>", Disabled=!_editMode, Callback= ()=> { OpenFavoriteDialog(false); return Task.CompletedTask; } },
+                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_DeleteFavorite"], IconSvg="<svg><use href='/icons/sprite.svg#clear'/></svg>", Disabled=!_activeFavoriteId.HasValue, Callback= ()=> { if(_activeFavoriteId.HasValue){ _ = DeleteFavoriteAsync(_activeFavoriteId.Value); } return Task.CompletedTask; } },
+                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_ReloadData"], IconSvg="<svg><use href='/icons/sprite.svg#refresh'/></svg>", Callback=()=> { _=LoadAsync(); return Task.CompletedTask; } }
             }
         };
-        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id=TabId.Dashboard, Title=Localizer["Ribbon_Tab"], Groups = new(){ favGroup, dataGroup } } };
+        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id=TabId.Dashboard, Title=Localizer["Ribbon_Tab"], Groups = new(){ navGroup, actions } } };
     }
 
     // State
     private bool _loaded;
     private bool _queryBusy;
+    private bool _editMode;
+
     private List<int> _selectedKinds = new(){ (int)PostingKind.Bank }; // multi selection
     private ReportInterval _interval = ReportInterval.Month;
     private bool _includeCategory;
@@ -291,7 +262,6 @@ else
     private int _take = 24;
     private string _favoriteName = string.Empty;
     private Guid? _activeFavoriteId;
-    private bool _favoriteLoading;
     private string? _favoriteError;
 
     private readonly PostingKind[] _postingKindValues = new[]{ PostingKind.Bank, PostingKind.Contact, PostingKind.SavingsPlan, PostingKind.Security };
@@ -391,11 +361,40 @@ else
 
     private bool HasChildren(string key) => ChildRows(key).Any();
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        _loaded = true;
-        await LoadFavoritesAsync();
+        if (!_loaded)
+        {
+            _loaded = true;
+        }
+
+        _editMode = Edit.GetValueOrDefault(false);
+
+        if (FavoriteId.HasValue)
+        {
+            await LoadAndApplyFavoriteAsync(FavoriteId.Value);
+        }
         BuildRibbon();
+        if (_points.Count == 0)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAndApplyFavoriteAsync(Guid id)
+    {
+        try
+        {
+            var fav = await Http.GetFromJsonAsync<FavoriteDto>($"/api/report-favorites/{id}");
+            if (fav is not null)
+            {
+                ApplyFavorite(fav);
+            }
+        }
+        catch (Exception ex)
+        {
+            _favoriteError = ex.Message;
+        }
     }
 
     private async Task LoadAsync()
@@ -512,31 +511,11 @@ else
         return string.Format("{0} ({1:+0.0;-0.0;0.0}%)", diff.ToString("N2"), pct);
     }
 
-    private readonly List<FavoriteDto> _favorites = new();
-    private bool _canSaveFavorite => !string.IsNullOrWhiteSpace(_favoriteName) && !_favorites.Any(f => f.Name.Equals(_favoriteName, StringComparison.OrdinalIgnoreCase));
-    private bool _canUpdateFavorite => _activeFavoriteId.HasValue;
-
-    private async Task LoadFavoritesAsync()
-    {
-        _favoriteLoading = true; StateHasChanged();
-        try
-        {
-            var list = await Http.GetFromJsonAsync<List<FavoriteDto>>("/api/report-favorites") ?? new();
-            _favorites.Clear();
-            _favorites.AddRange(list.OrderBy(f => f.Name));
-        }
-        finally
-        {
-            _favoriteLoading = false; BuildRibbon(); StateHasChanged();
-        }
-    }
-
     private async Task SaveFavoriteAsync()
     {
-        if (!_canSaveFavorite) { return; }
         var payload = new FavCreate
         {
-            Name = _favoriteName.Trim(),
+            Name = string.IsNullOrWhiteSpace(_favoriteName) ? Localizer["Default_FavoriteName"] : _favoriteName.Trim(),
             PostingKind = PrimaryKind,
             IncludeCategory = _includeCategory,
             Interval = _interval,
@@ -549,7 +528,16 @@ else
         var resp = await Http.PostAsJsonAsync("/api/report-favorites", payload);
         if (resp.IsSuccessStatusCode)
         {
-            await LoadFavoritesAsync();
+            var dto = await resp.Content.ReadFromJsonAsync<FavoriteDto>();
+            if (dto is not null)
+            {
+                _activeFavoriteId = dto.Id;
+                _favoriteName = dto.Name;
+                BuildRibbon();
+                var uri = new Uri(Nav.Uri);
+                var baseUrl = uri.GetLeftPart(UriPartial.Path);
+                Nav.NavigateTo($"{baseUrl}?favoriteId={_activeFavoriteId}&edit=false", forceLoad: false);
+            }
         }
         else
         {
@@ -576,7 +564,11 @@ else
         var resp = await Http.PutAsJsonAsync($"/api/report-favorites/{_activeFavoriteId}", payload);
         if (resp.IsSuccessStatusCode)
         {
-            await LoadFavoritesAsync();
+            var dto = await resp.Content.ReadFromJsonAsync<FavoriteDto>();
+            if (dto is not null)
+            {
+                _favoriteName = dto.Name;
+            }
         }
         else
         {
@@ -590,9 +582,10 @@ else
         var resp = await Http.DeleteAsync($"/api/report-favorites/{id}");
         if (resp.IsSuccessStatusCode)
         {
-            if (_activeFavoriteId == id) { _activeFavoriteId = null; }
-            await LoadFavoritesAsync();
-            StateHasChanged();
+            _activeFavoriteId = null;
+            _favoriteName = string.Empty;
+            BuildRibbon();
+            Nav.NavigateTo("/reports");
         }
     }
 
@@ -623,9 +616,31 @@ else
     private void CloseFavoriteDialog() => _showFavDialog = false;
     private void SubmitFavoriteDialog()
     {
-        if (_favDialogIsUpdate) { _ = UpdateFavoriteAsync(); }
+        if (_favDialogIsUpdate && _activeFavoriteId.HasValue) { _ = UpdateFavoriteAsync(); }
         else { _ = SaveFavoriteAsync(); }
         _showFavDialog = false;
+    }
+
+    private void ToggleEditMode()
+    {
+        _editMode = !_editMode;
+        BuildRibbon();
+        var uri = new Uri(Nav.Uri);
+        var baseUrl = uri.GetLeftPart(UriPartial.Path);
+        var favPart = _activeFavoriteId.HasValue ? $"favoriteId={_activeFavoriteId.Value}&" : string.Empty;
+        Nav.NavigateTo($"{baseUrl}?{favPart}edit={_editMode}", forceLoad: false);
+    }
+
+    private void OnSaveRequested()
+    {
+        if (_activeFavoriteId.HasValue)
+        {
+            _ = UpdateFavoriteAsync();
+        }
+        else
+        {
+            OpenFavoriteDialog(false);
+        }
     }
 
     private sealed record QueryRequest(int PostingKind, ReportInterval Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate);
@@ -682,20 +697,7 @@ else
 .dialog-actions { display:flex; gap:.6rem; justify-content:flex-end; }
 .filters-panel input[type=text], .filters-panel select, .filters-panel input[type=number]{ background:#202428; border:1px solid #333; color:#eee; padding:.25rem .4rem; border-radius:.25rem; font-size:.7rem; }
 .filters-panel input[type=checkbox]{ margin-right:.35rem; }
-.content-split { display:flex; gap:1rem; align-items:stretch; }
-.favorites-box { width:220px; flex:0 0 auto; border:1px solid var(--border); padding:.6rem .6rem .8rem; border-radius:.4rem; background:#141618; display:flex; flex-direction:column; }
-.favorites-box h4 { margin:.1rem 0 .4rem 0; font-size:.85rem; }
-.fav-list { list-style:none; margin:0 0 .5rem 0; padding:0; display:flex; flex-direction:column; gap:.25rem; max-height:300px; overflow:auto; }
-.fav-list li { display:flex; gap:.3rem; align-items:center; }
-.fav-list li.active .fav-btn { background:#2d6cdf; }
-.fav-btn { flex:1 1 auto; text-align:left; background:#22272b; border:1px solid #333; padding:.25rem .4rem; color:#eee; border-radius:.25rem; cursor:pointer; font-size:.65rem; }
-.fav-btn:hover { background:#2a3036; }
-.icon-btn.small { width:22px; height:22px; display:flex; align-items:center; justify-content:center; background:#262b30; border:1px solid #333; border-radius:.25rem; cursor:pointer; padding:0; }
-.icon-btn.small svg { width:14px; height:14px; }
-.btn.small { font-size:.65rem; padding:.35rem .5rem; }
-.btn { background:#2d6cdf; color:#fff; border:0; padding:.45rem .7rem; border-radius:.3rem; cursor:pointer; font-size:.7rem; }
-.btn:disabled { opacity:.5; cursor:not-allowed; }
-.result-box { flex:1 1 auto; position:relative; display:flex; flex-direction:column; gap:.75rem; }
+.result-box { position:relative; display:flex; flex-direction:column; gap:.75rem; }
 .query-overlay { position:absolute; inset:0; background:rgba(10,10,12,.55); display:flex; align-items:center; justify-content:center; font-size:.8rem; backdrop-filter:blur(2px); border-radius:.4rem; z-index:5; }
 .report-table { width:100%; font-size:.7rem; border-collapse:collapse; }
 .report-table thead th.th-prev { background:#1e2430; color:#8fb0ff; }

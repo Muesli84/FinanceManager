@@ -1,0 +1,114 @@
+@page "/reports"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ReportsHome> Localizer
+@using FinanceManager.Web.Components.Shared
+@using FinanceManager.Domain
+@using FinanceManager.Domain.Reports
+
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<Ribbon TTabEnum="ReportsHome.TabId"
+        Tabs="_tabs"
+        ActiveTab="_activeTab"
+        ActiveTabChanged="OnActiveTabChanged" />
+
+<h2 style="margin-top:0;">@Localizer["Heading"]</h2>
+
+@if(_loading)
+{
+    <p>@Localizer["Loading"]</p>
+}
+else if(_favorites.Count == 0)
+{
+    <div class="empty-info">@Localizer["NoFavorites"]</div>
+}
+else
+{
+    <ul class="fav-grid">
+        @foreach(var f in _favorites)
+        {
+            <li>
+                <button class="fav-card" @onclick="(()=>OpenFavorite(f.Id))" title="@Localizer["OpenFavorite"]">
+                    <div class="fav-name">@f.Name</div>
+                    <div class="fav-meta">@Localizer[$"PostingKind_{((PostingKind)f.PostingKind).ToString()}"] • @Localizer[$"Interval_{f.Interval}"]</div>
+                </button>
+            </li>
+        }
+    </ul>
+}
+
+<div class="actions">
+    <button class="btn" @onclick="NewReportEdit">@Localizer["Action_NewReport"]</button>
+</div>
+
+@code {
+    private enum TabId { Reports }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Reports;
+    private Task OnActiveTabChanged(TabId t){ _activeTab = t; return Task.CompletedTask; }
+
+    private readonly List<FavoriteDto> _favorites = new();
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            var list = await Http.GetFromJsonAsync<List<FavoriteDto>>("/api/report-favorites") ?? new();
+            _favorites.Clear();
+            _favorites.AddRange(list.OrderBy(f => f.Name));
+        }
+        finally
+        {
+            _loading = false;
+            BuildRibbon();
+        }
+    }
+
+    private void BuildRibbon()
+    {
+        var actions = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Actions"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_Reload"], IconSvg="<svg><use href='/icons/sprite.svg#refresh'/></svg>", Callback=()=> { _=ReloadAsync(); return Task.CompletedTask; } },
+                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_NewReport"], IconSvg="<svg><use href='/icons/sprite.svg#plus'/></svg>", Size=Ribbon<TabId>.RibbonItemSize.Large, Callback=()=> { NewReportEdit(); return Task.CompletedTask; } }
+            }
+        };
+        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id=TabId.Reports, Title=Localizer["Ribbon_Tab"], Groups = new(){ actions } } };
+    }
+
+    private Task ReloadAsync()
+    {
+        _ = OnInitializedAsync();
+        return Task.CompletedTask;
+    }
+
+    private void OpenFavorite(Guid id)
+    {
+        Nav.NavigateTo($"/reports/dashboard?favoriteId={id}&edit=false");
+    }
+
+    private void NewReportEdit()
+    {
+        Nav.NavigateTo("/reports/dashboard?edit=true");
+    }
+
+    private sealed record FavoriteDto(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds);
+}
+
+<style>
+.fav-grid { list-style:none; padding:0; margin:0 0 1rem 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:.6rem; }
+.fav-grid li { }
+.fav-card { width:100%; text-align:left; background:#1a1f24; border:1px solid #2b3138; color:#eee; padding:.6rem .7rem; border-radius:.35rem; cursor:pointer; display:flex; flex-direction:column; gap:.25rem; }
+.fav-card:hover { background:#20262b; }
+.fav-name { font-weight:600; }
+.fav-meta { opacity:.7; font-size:.7rem; }
+.actions { margin-top:.6rem; }
+.btn { background:#2d6cdf; color:#fff; border:0; padding:.45rem .7rem; border-radius:.3rem; cursor:pointer; font-size:.7rem; }
+.empty-info { opacity:.7; font-size:.8rem; }
+</style>

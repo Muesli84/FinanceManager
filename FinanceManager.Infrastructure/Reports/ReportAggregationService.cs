@@ -28,6 +28,7 @@ public sealed class ReportAggregationService : IReportAggregationService
             ReportInterval.Ytd => AggregatePeriod.Month,
             _ => AggregatePeriod.Month
         };
+        var ytdMode = query.Interval == ReportInterval.Ytd;
 
         // Normalize analysis date to month start if provided, else use UTC now month start
         var analysis = (query.AnalysisDate?.Date) ?? DateTime.UtcNow.Date;
@@ -324,30 +325,32 @@ public sealed class ReportAggregationService : IReportAggregationService
             points = ytd.OrderBy(p => p.PeriodStart).ThenBy(p => p.GroupKey).ToList();
         }
 
+        // Helper to compute the latest anchoring period based on interval --------
+        DateTime ComputeLatestPeriod()
+        {
+            var periodForAnchoring = ytdMode ? AggregatePeriod.Year : sourcePeriod;
+            if (periodForAnchoring == AggregatePeriod.Month)
+            {
+                return analysis;
+            }
+            if (periodForAnchoring == AggregatePeriod.Quarter)
+            {
+                var qIndex = (analysis.Month - 1) / 3; // 0..3
+                return new DateTime(analysis.Year, qIndex * 3 + 1, 1);
+            }
+            if (periodForAnchoring == AggregatePeriod.HalfYear)
+            {
+                var hIndex = (analysis.Month - 1) / 6; // 0..1
+                return new DateTime(analysis.Year, hIndex * 6 + 1, 1);
+            }
+            // Year
+            return new DateTime(analysis.Year, 1, 1);
+        }
+
         // Ensure latest period row based on analysis month ------------------------
         if ((query.ComparePrevious || query.CompareYear) && points.Count > 0)
         {
-            // Latest period is analysis month for Month/YTD, or nearest period start <= analysis for others
-            DateTime latestPeriod;
-            if (sourcePeriod == AggregatePeriod.Month)
-            {
-                latestPeriod = analysis;
-            }
-            else if (sourcePeriod == AggregatePeriod.Quarter)
-            {
-                var qIndex = (analysis.Month - 1) / 3; // 0..3
-                latestPeriod = new DateTime(analysis.Year, qIndex * 3 + 1, 1);
-            }
-            else if (sourcePeriod == AggregatePeriod.HalfYear)
-            {
-                var hIndex = (analysis.Month - 1) / 6; // 0..1
-                latestPeriod = new DateTime(analysis.Year, hIndex * 6 + 1, 1);
-            }
-            else // Year
-            {
-                latestPeriod = new DateTime(analysis.Year, 1, 1);
-            }
-
+            var latestPeriod = ComputeLatestPeriod();
             var groups2 = points.GroupBy(p => p.GroupKey).Select(g => new { Key = g.Key, Latest = g.OrderBy(x => x.PeriodStart).Last() }).ToList();
             foreach (var g in groups2)
             {
@@ -395,26 +398,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         if (query.Take > 0)
         {
             var distinctPeriods = points.Select(p => p.PeriodStart).Distinct().OrderBy(d => d).ToList();
-            // Keep the last N periods that are <= latestPeriod based on analysis
-            DateTime latestPeriod;
-            if (sourcePeriod == AggregatePeriod.Month)
-            {
-                latestPeriod = analysis;
-            }
-            else if (sourcePeriod == AggregatePeriod.Quarter)
-            {
-                var qIndex = (analysis.Month - 1) / 3;
-                latestPeriod = new DateTime(analysis.Year, qIndex * 3 + 1, 1);
-            }
-            else if (sourcePeriod == AggregatePeriod.HalfYear)
-            {
-                var hIndex = (analysis.Month - 1) / 6;
-                latestPeriod = new DateTime(analysis.Year, hIndex * 6 + 1, 1);
-            }
-            else
-            {
-                latestPeriod = new DateTime(analysis.Year, 1, 1);
-            }
+            var latestPeriod = ComputeLatestPeriod();
             distinctPeriods = distinctPeriods.Where(d => d <= latestPeriod).ToList();
             if (distinctPeriods.Count > query.Take)
             {
@@ -426,25 +410,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         // Remove empty latest groups relative to analysis period -----------------
         if ((query.ComparePrevious || query.CompareYear) && points.Count > 0)
         {
-            DateTime latestPeriod;
-            if (sourcePeriod == AggregatePeriod.Month)
-            {
-                latestPeriod = analysis;
-            }
-            else if (sourcePeriod == AggregatePeriod.Quarter)
-            {
-                var qIndex = (analysis.Month - 1) / 3;
-                latestPeriod = new DateTime(analysis.Year, qIndex * 3 + 1, 1);
-            }
-            else if (sourcePeriod == AggregatePeriod.HalfYear)
-            {
-                var hIndex = (analysis.Month - 1) / 6;
-                latestPeriod = new DateTime(analysis.Year, hIndex * 6 + 1, 1);
-            }
-            else
-            {
-                latestPeriod = new DateTime(analysis.Year, 1, 1);
-            }
+            var latestPeriod = ComputeLatestPeriod();
 
             var removable = points.Where(p => p.PeriodStart == latestPeriod)
                 .GroupBy(p => p.GroupKey)

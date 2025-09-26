@@ -126,12 +126,6 @@
   <data name="Loading" xml:space="preserve">
     <value>Lade...</value>
   </data>
-  <data name="Label_PostingKind" xml:space="preserve">
-    <value>Buchungsart</value>
-  </data>
-  <data name="Label_EntityGroup" xml:space="preserve">
-    <value>Entitätsgruppe</value>
-  </data>
   <data name="Label_Interval" xml:space="preserve">
     <value>Intervall</value>
   </data>
@@ -150,56 +144,11 @@
   <data name="Label_Take" xml:space="preserve">
     <value>Anzahl Perioden</value>
   </data>
-  <data name="Label_FavoriteName" xml:space="preserve">
-    <value>Favoritenname</value>
-  </data>
-  <data name="Btn_Load" xml:space="preserve">
-    <value>Laden</value>
-  </data>
   <data name="Title_Favorites" xml:space="preserve">
     <value>Favoriten</value>
   </data>
   <data name="NoFavorites" xml:space="preserve">
     <value>Keine Favoriten</value>
-  </data>
-  <data name="Tooltip_Apply" xml:space="preserve">
-    <value>Favorit anwenden</value>
-  </data>
-  <data name="Tooltip_Delete" xml:space="preserve">
-    <value>Favorit löschen</value>
-  </data>
-  <data name="Btn_SaveFavorite" xml:space="preserve">
-    <value>Speichern</value>
-  </data>
-  <data name="Btn_UpdateFavorite" xml:space="preserve">
-    <value>Aktualisieren</value>
-  </data>
-  <data name="Ribbon_Favorites" xml:space="preserve">
-    <value>Favoriten</value>
-  </data>
-  <data name="Ribbon_ReloadFav" xml:space="preserve">
-    <value>Neu laden</value>
-  </data>
-  <data name="Ribbon_SaveFav" xml:space="preserve">
-    <value>Speichern</value>
-  </data>
-  <data name="Ribbon_UpdateFav" xml:space="preserve">
-    <value>Aktualisieren</value>
-  </data>
-  <data name="Ribbon_Actions" xml:space="preserve">
-    <value>Aktionen</value>
-  </data>
-  <data name="Ribbon_Run" xml:space="preserve">
-    <value>Ausführen</value>
-  </data>
-  <data name="Ribbon_Tab" xml:space="preserve">
-    <value>Dashboard</value>
-  </data>
-  <data name="Ribbon_ReportData" xml:space="preserve">
-    <value>Berichtsdaten</value>
-  </data>
-  <data name="NoData" xml:space="preserve">
-    <value>Keine Daten</value>
   </data>
   <data name="Th_Group" xml:space="preserve">
     <value>Gruppe</value>
@@ -264,8 +213,6 @@
   <data name="Label_PostingKindMulti" xml:space="preserve">
     <value>Buchungsarten auswählen</value>
   </data>
-  
-  <!-- PostingKind labels -->
   <data name="PostingKind_Bank" xml:space="preserve">
     <value>Konten</value>
   </data>
@@ -278,8 +225,6 @@
   <data name="PostingKind_Security" xml:space="preserve">
     <value>Wertpapiere</value>
   </data>
-
-  <!-- Intervals -->
   <data name="Interval_Month" xml:space="preserve">
     <value>Monat</value>
   </data>
@@ -295,8 +240,6 @@
   <data name="Interval_Ytd" xml:space="preserve">
     <value>YTD</value>
   </data>
-
-  <!-- Misc -->
   <data name="Category_Uncategorized" xml:space="preserve">
     <value>Ohne Kategorie</value>
   </data>
@@ -308,5 +251,32 @@
   </data>
   <data name="Button_NextMonth" xml:space="preserve">
     <value>Nächster Monat</value>
+  </data>
+  <data name="Ribbon_Navigation" xml:space="preserve">
+    <value>Navigation</value>
+  </data>
+  <data name="Ribbon_BackToOverview" xml:space="preserve">
+    <value>Zur Übersicht</value>
+  </data>
+  <data name="Ribbon_ReportActions" xml:space="preserve">
+    <value>Bericht</value>
+  </data>
+  <data name="Ribbon_Edit" xml:space="preserve">
+    <value>Bearbeiten</value>
+  </data>
+  <data name="Ribbon_View" xml:space="preserve">
+    <value>Ansicht</value>
+  </data>
+  <data name="Ribbon_Save" xml:space="preserve">
+    <value>Speichern</value>
+  </data>
+  <data name="Ribbon_SaveAs" xml:space="preserve">
+    <value>Speichern unter</value>
+  </data>
+  <data name="Ribbon_DeleteFavorite" xml:space="preserve">
+    <value>Favorit löschen</value>
+  </data>
+  <data name="Default_FavoriteName" xml:space="preserve">
+    <value>Neuer Bericht</value>
   </data>
 </root>
