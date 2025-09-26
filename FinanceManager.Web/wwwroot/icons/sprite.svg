@@ -5,6 +5,7 @@
   <symbol id="arrow-right" viewBox="0 0 24 24"><path d="M19 12H5M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="chevron-left" viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="chevron-right" viewBox="0 0 24 24"><path d="M10 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="chevron-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="level-up" viewBox="0 0 24 24"><path d="M7 17V9a1 1 0 011-1h8m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 
   <!-- Actions -->
@@ -25,21 +26,17 @@
   <symbol id="upload" viewBox="0 0 24 24"><path d="M12 20V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 14l4-4 4 4" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 6h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="restore" viewBox="0 0 24 24"><path d="M12 5a7 7 0 017 7 7 7 0 01-7 7 7 7 0 01-7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 8l-1 5 5-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="undo" viewBox="0 0 24 24"><path d="M7 7l-4 4 4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 15a8 8 0 00-8-8H3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-
-  <!-- New: accounts (stacked ledgers) -->
   <symbol id="accounts" viewBox="0 0 24 24">
     <path d="M4 8h12v10H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
     <path d="M8 6h12v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
     <path d="M7 12h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     <path d="M7 15h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
   </symbol>
-  <!-- New: merge (two paths converging) -->
   <symbol id="merge" viewBox="0 0 24 24">
     <path d="M6 5l6 7 6-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M12 12v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     <path d="M9 19h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
   </symbol>
-  <!-- New: bank (building) -->
   <symbol id="bank" viewBox="0 0 24 24">
     <path d="M4 10h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     <path d="M6 10v8M10 10v8M14 10v8M18 10v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>

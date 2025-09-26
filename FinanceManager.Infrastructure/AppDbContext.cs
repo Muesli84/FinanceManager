@@ -11,6 +11,7 @@ using FinanceManager.Domain.Securities;
 using FinanceManager.Infrastructure.Backups;
 using System.Threading.Tasks;
 using System.Threading;
+using FinanceManager.Domain.Reports; // added
 
 namespace FinanceManager.Infrastructure;
 
@@ -36,6 +37,7 @@ public class AppDbContext : DbContext
     public DbSet<PostingAggregate> PostingAggregates => Set<PostingAggregate>();
     public DbSet<SecurityPrice> SecurityPrices => Set<SecurityPrice>();
     public DbSet<BackupRecord> Backups => Set<BackupRecord>();
+    public DbSet<ReportFavorite> ReportFavorites => Set<ReportFavorite>(); // new
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -232,6 +234,16 @@ public class AppDbContext : DbContext
             b.Property(x => x.FileName).HasMaxLength(255).IsRequired();
             b.Property(x => x.Source).HasMaxLength(40).IsRequired();
             b.Property(x => x.StoragePath).HasMaxLength(400).IsRequired();
+        });
+
+        // ReportFavorite configuration
+        modelBuilder.Entity<ReportFavorite>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
+            b.Property(x => x.PostingKind).IsRequired();
+            b.Property(x => x.Interval).HasConversion<int>().IsRequired();
         });
     }
 
