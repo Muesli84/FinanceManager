@@ -25,7 +25,9 @@ public sealed record ReportFavoriteDto(
     bool ShowChart,
     bool Expandable,
     DateTime CreatedUtc,
-    DateTime? ModifiedUtc);
+    DateTime? ModifiedUtc,
+    IReadOnlyCollection<int> PostingKinds // multi support (at least one, falls back to single PostingKind if none stored)
+);
 
 public sealed record ReportFavoriteCreateRequest(
     string Name,
@@ -35,7 +37,9 @@ public sealed record ReportFavoriteCreateRequest(
     bool ComparePrevious,
     bool CompareYear,
     bool ShowChart,
-    bool Expandable);
+    bool Expandable,
+    IReadOnlyCollection<int>? PostingKinds = null // optional multi list
+);
 
 public sealed record ReportFavoriteUpdateRequest(
     string Name,
@@ -45,4 +49,6 @@ public sealed record ReportFavoriteUpdateRequest(
     bool ComparePrevious,
     bool CompareYear,
     bool ShowChart,
-    bool Expandable);
+    bool Expandable,
+    IReadOnlyCollection<int>? PostingKinds = null // optional multi list
+);

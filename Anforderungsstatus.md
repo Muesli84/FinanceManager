@@ -60,9 +60,9 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-AUSZ-016-02  | ✖      | Erweiterbar für künftige Strategien                                     | Strategy/Resolver offen                                                                                                                                                         |
 | NFA-AUSZ-016-03  | ✔      | Unit Tests Splitalgorithmus                                             | Alle Modi                                                                                                                                                                       |
 | NFA-AUSZ-016-04  | ~      | O(n) Laufzeit bestätigt                                                 | Messung ausstehend                                                                                                                                                              |
-| FA-REP-008       | ~      | Berichtsdashboard konfigurierbare Aggregationen                         | ReportDashboard + Aggregation + Favoriten; Entitätstyp-Multi-Gruppierung offen                                                                                                 |
+| FA-REP-008       | ✔      | Berichtsdashboard konfigurierbare Aggregationen                         | ReportDashboard + Aggregation + Favoriten; Entitätstyp-Multi-Gruppierung, Kategorie‑Totals, Drilldown, Vergleiche, Mini‑Chart, YTD                                             |
 | FA-REP-008-01    | ✔      | Auswahl Postenart                                                       | Dropdown PostingKind (ReportDashboard)                                                                                                                                          |
-| FA-REP-008-02    | ✖      | Gruppierung nach Entitätstyp (Multi)                                    | Nur einzelner PostingKind je Abfrage                                                                                                                                           |
+| FA-REP-008-02    | ✔      | Gruppierung nach Entitätstyp (Multi)                                    | Multi‑Selection UI (PostingKinds), Service aggregiert Type‑Ebene (`Type:` Knoten) inkl. Category/Entity Drilldown                                                               |
 | FA-REP-008-03    | ✔      | Sekundäre Gruppierung Kategorie                                         | IncludeCategory + Category Totals + Child Rows                                                                                                                                  |
 | FA-REP-008-04    | ✔      | Expandierbare Entitätszeilen                                            | Kategorie-Drilldown (Toggle, aria-expanded)                                                                                                                                     |
 | FA-REP-008-05    | ✔      | Periodenwahl inkl. YTD                                                  | Interval Select (Month/Quarter/HalfYear/Year/Ytd)                                                                                                                               |
@@ -73,6 +73,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-REP-008-10    | ✔      | Bericht als Favorit speichern                                           | POST `/api/report-favorites` + Dialog                                                                                                                                           |
 | FA-REP-008-11    | ✔      | Favoriten laden & anwenden                                              | GET Liste + ApplyFavorite                                                                                                                                                       |
 | FA-REP-008-12    | ✔      | Favoriten umbenennen / löschen                                          | PUT / DELETE Favorites                                                                                                                                                          |
+| FA-REP-008-13    | ✔      | Analysedatum monatsweise einstellbar (Referenzmonat)                    | `ReportAggregationQuery.AnalysisDate`, `ReportAggregatesController` (Body/Query), `ReportAggregationService` (Anchor für Latest-Periode, Vorperiode/Vorjahr, YTD‑Cutoff, Take‑Trim), UI `ReportDashboard` mit Month‑Picker und Vor/Zurück‑Buttons |
 | NFA-REP-008-01   | ✖      | Performance (Serveraggregation, Paging/Virtualization)                  | Kein Paging / Virtual Scroll                                                                                                                                                    |
 | NFA-REP-008-02   | ✖      | Caching                                                                 | Kein Cache Layer                                                                                                                                                                |
 | NFA-REP-008-03   | ✔      | Security (User-Scope Favoriten)                                         | OwnerUserId-Filter in Service/Controller                                                                                                                                       |
@@ -177,6 +178,14 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
+
+Änderungen (26.09.2025) – Ergänzung 20:  
+- FA-REP-008-02 auf ✔ gesetzt (Entitätstyp‑Multi‑Gruppierung).  
+- FA-REP-008 Gesamtstatus auf ✔ aktualisiert.  
+
+Änderungen (26.09.2025) – Ergänzung 19:  
+- Analysedatum (monatsweise) eingeführt: API (`ReportAggregationQuery.AnalysisDate`, `ReportAggregatesController`), Service‑Logik (`ReportAggregationService`: Anchoring für Latest‑Periode, Vorperiode/Vorjahr, YTD‑Cutoff, `Take`‑Trimming) und UI (`ReportDashboard`: Month‑Picker mit Vor-/Zurück‑Buttons).  
+- Labels lokalisiert (de/en).  
 
 Änderungen (26.09.2025) – Ergänzung 18:  
 - Berichtsdashboard umgesetzt: Favoriten CRUD (`ReportFavoritesController`, `ReportFavoriteService`), Aggregation (`ReportAggregationService`, `/api/report-aggregates`), UI `ReportDashboard.razor` (Filter, Kategorie-Gruppierung, Drilldown, Vergleiche, Mini-Chart, YTD).  

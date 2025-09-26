@@ -17,7 +17,10 @@ public sealed record ReportAggregationQuery(
     int Take,
     bool IncludeCategory,
     bool ComparePrevious,
-    bool CompareYear);
+    bool CompareYear,
+    IReadOnlyCollection<int>? PostingKinds = null, // neu: Multi
+    DateTime? AnalysisDate = null // neu: optionales Analysedatum (Monatsgenau)
+);
 
 public sealed record ReportAggregatePointDto(
     DateTime PeriodStart,

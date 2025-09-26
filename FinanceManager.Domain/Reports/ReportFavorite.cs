@@ -45,6 +45,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     public bool CompareYear { get; private set; }
     public bool ShowChart { get; private set; }
     public bool Expandable { get; private set; }
+    public string? PostingKindsCsv { get; private set; }
 
     public void Rename(string name)
     {
@@ -61,6 +62,17 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         CompareYear = compareYear;
         ShowChart = showChart;
         Expandable = expandable;
+        Touch();
+    }
+
+    public IReadOnlyCollection<int> GetPostingKinds() =>
+        (PostingKindsCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => int.Parse(s)).ToArray()) ?? new [] { PostingKind };
+
+    public void SetPostingKinds(IEnumerable<int> kinds)
+    {
+        var list = kinds.Distinct().ToArray();
+        PostingKindsCsv = string.Join(",", list);
         Touch();
     }
 }

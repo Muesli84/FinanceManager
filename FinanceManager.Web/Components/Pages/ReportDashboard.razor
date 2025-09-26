@@ -27,22 +27,32 @@ else
         <div class="filter-group wide">
             <div class="group-title">@Localizer["FilterGroup_Data"]</div>
             <div class="row">
-                <label>@Localizer["Label_PostingKind"]</label>
-                <select @bind="_postingKind" @bind:after="StateHasChanged">
-                    @foreach(var kv in _postingKindOptions)
+                <label>@Localizer["Label_PostingKindMulti"]</label>
+                <div class="multi-kind-list">
+                    @foreach(var kind in _postingKindValues)
                     {
-                        <option value="@kv.Value">@kv.Key</option>
+                        var v = (int)kind;
+                        var checkedAttr = _selectedKinds.Contains(v);
+                        var label = Localizer[$"PostingKind_{kind}"];
+                        <label class="mk-item"><input type="checkbox" value="@v" checked="@checkedAttr" @onchange="e => OnToggleKind(v, e.Value is bool b && b)" /> @label</label>
                     }
-                </select>
+                </div>
             </div>
             <div class="row">
                 <label>@Localizer["Label_Interval"]</label>
                 <select @bind="_interval" @bind:after="StateHasChanged">
                     @foreach (var iv in Enum.GetValues<ReportInterval>())
                     {
-                        <option value="@iv">@iv</option>
+                        var label = Localizer[$"Interval_{iv}"];
+                        <option value="@iv">@label</option>
                     }
                 </select>
+            </div>
+            <div class="row inline month-row">
+                <label>@Localizer["Label_AnalysisMonth"]</label>
+                <button type="button" class="icon-btn small" title="@Localizer["Button_PrevMonth"]" @onclick="PrevMonth"><svg><use href="/icons/sprite.svg#chevron-left"/></svg></button>
+                <input type="month" value="@_analysisMonthString" @onchange="OnAnalysisMonthChange" />
+                <button type="button" class="icon-btn small" title="@Localizer["Button_NextMonth"]" @onclick="NextMonth"><svg><use href="/icons/sprite.svg#chevron-right"/></svg></button>
             </div>
             <div class="row inline">
                 <label class="chk"><input type="checkbox" @bind="_includeCategory" /> @Localizer["Label_IncludeCategory"]</label>
@@ -102,7 +112,7 @@ else
                 @if(_showChart)
                 {
                     <div class="mini-chart" aria-label="@Localizer["Aria_Chart"]">
-                        @{ var byPeriod = _points.GroupBy(p=>p.PeriodStart).Select(g=> new { g.Key, Sum = g.Where(x=>x.ParentGroupKey==null).Sum(x=>x.Amount) }).OrderBy(x=>x.Key).ToList();
+                        @{ var byPeriod = _points.Where(p=>p.ParentGroupKey==null || p.GroupKey.StartsWith("Type:")).GroupBy(p=>p.PeriodStart).Select(g=> new { g.Key, Sum = g.Where(x=>x.ParentGroupKey==null || x.GroupKey.StartsWith("Type:")).Sum(x=>x.Amount) }).OrderBy(x=>x.Key).ToList();
                            var max = byPeriod.Select(x=>Math.Abs(x.Sum)).DefaultIfEmpty(0m).Max();
                            var scale = max==0?0:70m/max; }
                         <div class="bars">
@@ -128,39 +138,63 @@ else
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var cat in TopLevelRows)
+                        @foreach (var top in TopLevelRows)
                         {
-                            var isCategory = IsCategoryGrouping && cat.GroupKey.StartsWith("Category:");
-                            var expanded = isCategory && _expanded.TryGetValue(cat.GroupKey, out var ex) && ex;
-                            var rowClass = cat.Amount < 0 ? "neg" : string.Empty;
-                            <tr class="@rowClass @(isCategory?"category-row":"entity-row")">
+                            var rowClass = IsNegativeRow(top) ? "neg" : string.Empty;
+                            var hasChildren = HasChildren(top.GroupKey);
+                            var expanded = hasChildren && _expanded.TryGetValue(top.GroupKey, out var exTop) && exTop;
+                            <tr class="@rowClass @(top.GroupKey.StartsWith("Type:")?"type-row": (top.GroupKey.StartsWith("Category:")?"category-row":"entity-row"))">
                                 <td>
-                                    @if(isCategory)
+                                    @if(hasChildren)
                                     {
-                                        <button type="button" class="toggle-btn" @onclick="(()=>Toggle(cat.GroupKey))" title="@(expanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@expanded">
+                                        <button type="button" class="toggle-btn" @onclick="(()=>Toggle(top.GroupKey))" title="@(expanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@expanded">
                                             <svg class="ico"><use href="/icons/sprite.svg#@(expanded?"chevron-down":"chevron-right")" /></svg>
                                         </button>
                                     }
                                 </td>
-                                <td>@cat.GroupName</td>
-                                @if(ShowCategoryColumn){<td>@(string.IsNullOrWhiteSpace(cat.CategoryName)?"-":cat.CategoryName)</td>}
-                                @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(cat.PreviousAmount.HasValue? cat.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(cat.Amount, cat.PreviousAmount)</td>}
-                                @if(_compareYear){<td class="amt-year" style="text-align:right;">@(cat.YearAgoAmount.HasValue? cat.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(cat.Amount, cat.YearAgoAmount)</td>}
-                                <td class="amt-current" style="text-align:right;">@cat.Amount.ToString("N2")</td>
+                                <td>@GetDisplayName(top)</td>
+                                @if(ShowCategoryColumn){<td>@(string.IsNullOrWhiteSpace(top.CategoryName)?"-":top.CategoryName)</td>}
+                                @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(top.PreviousAmount.HasValue? top.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(top.Amount, top.PreviousAmount)</td>}
+                                @if(_compareYear){<td class="amt-year" style="text-align:right;">@(top.YearAgoAmount.HasValue? top.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(top.Amount, top.YearAgoAmount)</td>}
+                                <td class="amt-current" style="text-align:right;">@top.Amount.ToString("N2")</td>
                             </tr>
-                            @if(isCategory && expanded)
+                            @if(hasChildren && expanded)
                             {
-                                foreach(var child in ChildRows(cat.GroupKey))
+                                foreach(var child in ChildRows(top.GroupKey))
                                 {
-                                    var childCls = child.Amount < 0 ? "neg" : string.Empty;
-                                    <tr class="child-row @childCls">
-                                        <td></td>
-                                        <td class="child-label">@child.GroupName</td>
-                                        @if(ShowCategoryColumn){<td></td>}
+                                    var childCls = IsNegativeRow(child) ? "neg" : string.Empty;
+                                    var childHasChildren = HasChildren(child.GroupKey);
+                                    var childExpanded = childHasChildren && _expanded.TryGetValue(child.GroupKey, out var exCh) && exCh;
+                                    <tr class="child-row @childCls @(child.GroupKey.StartsWith("Category:")?"category-row":"entity-row")">
+                                        <td>
+                                            @if(childHasChildren)
+                                            {
+                                                <button type="button" class="toggle-btn" @onclick="(()=>Toggle(child.GroupKey))" title="@(childExpanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@childExpanded">
+                                                    <svg class="ico"><use href="/icons/sprite.svg#@(childExpanded?"chevron-down":"chevron-right")" /></svg>
+                                                </button>
+                                            }
+                                        </td>
+                                        <td class="child-label">@GetDisplayName(child)</td>
+                                        @if(ShowCategoryColumn){<td>@(string.IsNullOrWhiteSpace(child.CategoryName)?"-":child.CategoryName)</td>}
                                         @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(child.PreviousAmount.HasValue? child.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(child.Amount, child.PreviousAmount)</td>}
                                         @if(_compareYear){<td class="amt-year" style="text-align:right;">@(child.YearAgoAmount.HasValue? child.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(child.Amount, child.YearAgoAmount)</td>}
                                         <td class="amt-current" style="text-align:right;">@child.Amount.ToString("N2")</td>
                                     </tr>
+                                    @if(childHasChildren && childExpanded)
+                                    {
+                                        foreach(var grand in ChildRows(child.GroupKey))
+                                        {
+                                            var gCls = IsNegativeRow(grand) ? "neg" : string.Empty;
+                                            <tr class="child-row entity-row @gCls">
+                                                <td></td>
+                                                <td class="child-label">@GetDisplayName(grand)</td>
+                                                @if(ShowCategoryColumn){<td></td>}
+                                                @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(grand.PreviousAmount.HasValue? grand.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(grand.Amount, grand.PreviousAmount)</td>}
+                                                @if(_compareYear){<td class="amt-year" style="text-align:right;">@(grand.YearAgoAmount.HasValue? grand.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(grand.Amount, grand.YearAgoAmount)</td>}
+                                                <td class="amt-current" style="text-align:right;">@grand.Amount.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -192,6 +226,18 @@ else
                 <label>@Localizer["Dialog_Fav_Name"]</label>
                 <input type="text" @bind="_favoriteName" />
             </div>
+            <div class="form-row">
+                <label>@Localizer["Dialog_Fav_Kinds"]</label>
+                <div class="multi-kind-list dialog">
+                    @foreach(var kind in _postingKindValues)
+                    {
+                        var v = (int)kind;
+                        var ck = _selectedKinds.Contains(v);
+                        var label = Localizer[$"PostingKind_{kind}"];
+                        <label class="mk-item"><input type="checkbox" value="@v" checked="@ck" @onchange="e => OnToggleKind(v, e.Value is bool b && b)" /> @label</label>
+                    }
+                </div>
+            </div>
             @if(!string.IsNullOrWhiteSpace(_favoriteError))
             {
                 <div class="error-msg">@_favoriteError</div>
@@ -205,7 +251,6 @@ else
 }
 
 @code {
-    // Ribbon
     private enum TabId { Dashboard }
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
     private TabId _activeTab = TabId.Dashboard;
@@ -237,7 +282,7 @@ else
     // State
     private bool _loaded;
     private bool _queryBusy;
-    private int _postingKind = (int)PostingKind.Bank;
+    private List<int> _selectedKinds = new(){ (int)PostingKind.Bank }; // multi selection
     private ReportInterval _interval = ReportInterval.Month;
     private bool _includeCategory;
     private bool _comparePrevious;
@@ -249,46 +294,102 @@ else
     private bool _favoriteLoading;
     private string? _favoriteError;
 
-    private readonly Dictionary<string,int> _postingKindOptions = new(){ {"Bank", (int)PostingKind.Bank }, {"Contact", (int)PostingKind.Contact}, {"SavingsPlan", (int)PostingKind.SavingsPlan}, {"Security", (int)PostingKind.Security} };
+    private readonly PostingKind[] _postingKindValues = new[]{ PostingKind.Bank, PostingKind.Contact, PostingKind.SavingsPlan, PostingKind.Security };
 
-    // Expansion state: category GroupKey -> expanded
     private readonly Dictionary<string,bool> _expanded = new();
 
-    // Result model
     private List<PointDto> _points = new();
-    private List<PointDto> _latestPerGroup = new(); // kept for possible quick summary usage
+    private List<PointDto> _latestPerGroup = new();
 
-    private bool IsCategoryGrouping => _includeCategory && (_postingKind == (int)PostingKind.Contact || _postingKind == (int)PostingKind.SavingsPlan || _postingKind == (int)PostingKind.Security);
-    private bool ShowCategoryColumn => _includeCategory && !IsCategoryGrouping; // unchanged logic
-
+    private bool IsMulti => _selectedKinds.Count > 1;
+    private int PrimaryKind => _selectedKinds.First();
+    private bool IsCategorySupported(int kind) => kind == (int)PostingKind.Contact || kind == (int)PostingKind.SavingsPlan || kind == (int)PostingKind.Security;
+    private bool IsCategoryGroupingSingle => !IsMulti && _includeCategory && IsCategorySupported(PrimaryKind);
+    private bool ShowCategoryColumn => _includeCategory && !IsCategoryGroupingSingle;
     private bool ShowPreviousColumns => _comparePrevious && _interval is not ReportInterval.Year and not ReportInterval.Ytd;
-    private string PreviousHeaderLabel => _interval switch
-    {
-        ReportInterval.Month => Localizer["Th_Prev"],
-        ReportInterval.Quarter => Localizer["Th_Prev"],
-        ReportInterval.HalfYear => Localizer["Th_Prev"],
-        ReportInterval.Year => Localizer["Th_Prev"], // hidden anyway
-        ReportInterval.Ytd => Localizer["Th_Prev"], // hidden anyway
-        _ => Localizer["Th_Prev"]
-    };
-    private string YearHeaderLabel => _interval switch
-    {
-        ReportInterval.Ytd => Localizer["Th_YearAgo"],
-        _ => Localizer["Th_YearAgo"]
-    };
+    private string PreviousHeaderLabel => Localizer["Th_Prev"];
+    private string YearHeaderLabel => Localizer["Th_YearAgo"];
 
-    private IEnumerable<PointDto> TopLevelRows => IsCategoryGrouping 
-        ? _points.Where(p => p.ParentGroupKey == null && p.GroupKey.StartsWith("Category:"))
-                 .GroupBy(p => p.GroupKey)
-                 .Select(g => g.OrderBy(x => x.PeriodStart).Last())
-                 .OrderByDescending(p => p.Amount)
-        : _latestPerGroup;
-    private IEnumerable<PointDto> ChildRows(string parentKey) => IsCategoryGrouping
-        ? _points.Where(p => p.ParentGroupKey == parentKey)
-                 .GroupBy(p => p.GroupKey)
-                 .Select(g => g.OrderBy(x => x.PeriodStart).Last())
-                 .OrderByDescending(p => p.Amount)
-        : Enumerable.Empty<PointDto>();
+    // Analysis month handling
+    private DateTime _analysisMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+    private string _analysisMonthString => _analysisMonth.ToString("yyyy-MM");
+    private void OnAnalysisMonthChange(ChangeEventArgs e)
+    {
+        var s = e?.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(s) && DateTime.TryParse(s + "-01", out var d))
+        {
+            _analysisMonth = new DateTime(d.Year, d.Month, 1);
+            _ = LoadAsync();
+        }
+    }
+    private void PrevMonth()
+    {
+        _analysisMonth = _analysisMonth.AddMonths(-1);
+        _ = LoadAsync();
+    }
+    private void NextMonth()
+    {
+        _analysisMonth = _analysisMonth.AddMonths(1);
+        _ = LoadAsync();
+    }
+
+    private IEnumerable<PointDto> TopLevelRows
+    {
+        get
+        {
+            if (IsMulti)
+            {
+                return _points.Where(p => p.GroupKey.StartsWith("Type:"))
+                    .GroupBy(p => p.GroupKey)
+                    .Select(g => g.OrderBy(x => x.PeriodStart).Last())
+                    .OrderBy(p => IsNegativeRow(p))
+                    .ThenByDescending(p => p.Amount)
+                    .ToList();
+            }
+            if (IsCategoryGroupingSingle)
+            {
+                return _points.Where(p => p.ParentGroupKey == null && p.GroupKey.StartsWith("Category:"))
+                    .GroupBy(p => p.GroupKey)
+                    .Select(g => g.OrderBy(x => x.PeriodStart).Last())
+                    .OrderBy(p => IsNegativeRow(p))
+                    .ThenByDescending(p => p.Amount);
+            }
+            return _latestPerGroup
+                .OrderBy(p => IsNegativeRow(p))
+                .ThenByDescending(p => p.Amount);
+        }
+    }
+
+    private IEnumerable<PointDto> ChildRows(string parentKey)
+    {
+        if (parentKey.StartsWith("Type:"))
+        {
+            if (_includeCategory)
+            {
+                return _points.Where(p => p.ParentGroupKey == parentKey && p.GroupKey.StartsWith("Category:"))
+                    .GroupBy(p => p.GroupKey)
+                    .Select(g => g.OrderBy(x => x.PeriodStart).Last())
+                    .OrderBy(p => IsNegativeRow(p))
+                    .ThenByDescending(p => p.Amount);
+            }
+            return _points.Where(p => p.ParentGroupKey == parentKey && !p.GroupKey.StartsWith("Category:"))
+                .GroupBy(p => p.GroupKey)
+                .Select(g => g.OrderBy(x => x.PeriodStart).Last())
+                .OrderBy(p => IsNegativeRow(p))
+                .ThenByDescending(p => p.Amount);
+        }
+        if (parentKey.StartsWith("Category:"))
+        {
+            return _points.Where(p => p.ParentGroupKey == parentKey)
+                .GroupBy(p => p.GroupKey)
+                .Select(g => g.OrderBy(x => x.PeriodStart).Last())
+                .OrderBy(p => IsNegativeRow(p))
+                .ThenByDescending(p => p.Amount);
+        }
+        return Enumerable.Empty<PointDto>();
+    }
+
+    private bool HasChildren(string key) => ChildRows(key).Any();
 
     protected override async Task OnInitializedAsync()
     {
@@ -300,17 +401,23 @@ else
     private async Task LoadAsync()
     {
         if(_queryBusy) { return; }
+        if (_selectedKinds.Count == 0) { return; }
         _queryBusy = true; _favoriteError = null; StateHasChanged();
         try
         {
-            var req = new QueryRequest(_postingKind, _interval, _take, _includeCategory, _comparePrevious, _compareYear);
+            var req = new QueryRequest(PrimaryKind, _interval, _take, _includeCategory, _comparePrevious, _compareYear, IsMulti ? _selectedKinds : null, _analysisMonth);
             var resp = await Http.PostAsJsonAsync("/api/report-aggregates", req);
             if (resp.IsSuccessStatusCode)
             {
                 var result = await resp.Content.ReadFromJsonAsync<AggregationResponse>() ?? new AggregationResponse(_interval, new(), false, false);
                 _points = result.Points.OrderBy(p => p.GroupKey).ThenBy(p => p.PeriodStart).ToList();
-                _latestPerGroup = _points.GroupBy(p => p.GroupKey).Select(g => g.OrderBy(x => x.PeriodStart).Last()).OrderByDescending(p => p.Amount).ToList();
-                if (!IsCategoryGrouping)
+                _latestPerGroup = _points.Where(p => !p.GroupKey.StartsWith("Type:") && !p.GroupKey.StartsWith("Category:") && p.ParentGroupKey == null)
+                    .GroupBy(p => p.GroupKey)
+                    .Select(g => g.OrderBy(x => x.PeriodStart).Last())
+                    .OrderBy(p => IsNegativeRow(p))
+                    .ThenByDescending(p => p.Amount)
+                    .ToList();
+                if (!IsCategoryGroupingSingle && !IsMulti)
                 {
                     _expanded.Clear();
                 }
@@ -340,6 +447,62 @@ else
         }
     }
 
+    private void OnToggleKind(int value, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!_selectedKinds.Contains(value)) { _selectedKinds.Add(value); }
+        }
+        else
+        {
+            _selectedKinds.Remove(value);
+            if (_selectedKinds.Count == 0)
+            {
+                _selectedKinds.Add((int)PostingKind.Bank);
+            }
+        }
+        _selectedKinds = _selectedKinds.Distinct().ToList();
+        _ = LoadAsync();
+    }
+
+    private string GetDisplayName(PointDto p)
+    {
+        if (p.GroupKey.StartsWith("Type:"))
+        {
+            var part = p.GroupKey.Split(':')[1];
+            return Localizer[$"PostingKind_{part}"];
+        }
+        if (p.GroupKey.StartsWith("Category:") && p.GroupKey.EndsWith(":_none"))
+        {
+            return Localizer["Category_Uncategorized"];    
+        }
+        return p.GroupName;
+    }
+
+    private static bool IsNegativeRow(PointDto p)
+    {
+        if (p.Amount < 0m)
+        {
+            return true;
+        }
+        if (p.Amount == 0m)
+        {
+            var hasPrev = p.PreviousAmount.HasValue;
+            var hasYear = p.YearAgoAmount.HasValue;
+            if (hasPrev || hasYear)
+            {
+                var prevNeg = hasPrev && p.PreviousAmount!.Value < 0m;
+                var yearNeg = hasYear && p.YearAgoAmount!.Value < 0m;
+                // mark negative when all available comparison baselines are negative
+                if ((!hasPrev || prevNeg) && (!hasYear || yearNeg))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private string FormatDelta(decimal current, decimal? baseline)
     {
         if (!baseline.HasValue) { return "-"; }
@@ -349,7 +512,6 @@ else
         return string.Format("{0} ({1:+0.0;-0.0;0.0}%)", diff.ToString("N2"), pct);
     }
 
-    // Favorites
     private readonly List<FavoriteDto> _favorites = new();
     private bool _canSaveFavorite => !string.IsNullOrWhiteSpace(_favoriteName) && !_favorites.Any(f => f.Name.Equals(_favoriteName, StringComparison.OrdinalIgnoreCase));
     private bool _canUpdateFavorite => _activeFavoriteId.HasValue;
@@ -375,13 +537,14 @@ else
         var payload = new FavCreate
         {
             Name = _favoriteName.Trim(),
-            PostingKind = _postingKind,
+            PostingKind = PrimaryKind,
             IncludeCategory = _includeCategory,
             Interval = _interval,
             ComparePrevious = _comparePrevious,
             CompareYear = _compareYear,
             ShowChart = _showChart,
-            Expandable = true
+            Expandable = true,
+            PostingKinds = IsMulti ? _selectedKinds.ToArray() : null
         };
         var resp = await Http.PostAsJsonAsync("/api/report-favorites", payload);
         if (resp.IsSuccessStatusCode)
@@ -401,13 +564,14 @@ else
         var payload = new FavCreate
         {
             Name = _favoriteName.Trim(),
-            PostingKind = _postingKind,
+            PostingKind = PrimaryKind,
             IncludeCategory = _includeCategory,
             Interval = _interval,
             ComparePrevious = _comparePrevious,
             CompareYear = _compareYear,
             ShowChart = _showChart,
-            Expandable = true
+            Expandable = true,
+            PostingKinds = IsMulti ? _selectedKinds.ToArray() : null
         };
         var resp = await Http.PutAsJsonAsync($"/api/report-favorites/{_activeFavoriteId}", payload);
         if (resp.IsSuccessStatusCode)
@@ -436,7 +600,7 @@ else
     {
         _activeFavoriteId = fav.Id;
         _favoriteName = fav.Name;
-        _postingKind = fav.PostingKind;
+        _selectedKinds = fav.PostingKinds?.Count > 0 ? fav.PostingKinds.Select(x=>x).ToList() : new List<int>{ fav.PostingKind };
         _includeCategory = fav.IncludeCategory;
         _interval = fav.Interval;
         _comparePrevious = fav.ComparePrevious;
@@ -464,11 +628,10 @@ else
         _showFavDialog = false;
     }
 
-    // DTOs / Records
-    private sealed record QueryRequest(int PostingKind, ReportInterval Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear);
+    private sealed record QueryRequest(int PostingKind, ReportInterval Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate);
     private sealed record AggregationResponse(ReportInterval Interval, List<PointDto> Points, bool ComparedPrevious, bool ComparedYear);
     private sealed record PointDto(DateTime PeriodStart, string GroupKey, string GroupName, string? CategoryName, decimal Amount, string? ParentGroupKey, decimal? PreviousAmount, decimal? YearAgoAmount);
-    private sealed record FavoriteDto(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc);
+    private sealed record FavoriteDto(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds);
     private sealed class FavCreate
     {
         public string Name { get; set; } = string.Empty;
@@ -479,18 +642,18 @@ else
         public bool CompareYear { get; set; }
         public bool ShowChart { get; set; }
         public bool Expandable { get; set; }
+        public IReadOnlyCollection<int>? PostingKinds { get; set; }
     }
 
-    private bool ShowTotalRow => (_latestPerGroup.Count > 0) || (IsCategoryGrouping && TopLevelRows.Any());
+    private bool ShowTotalRow => TopLevelRows.Any();
     private (decimal Amount, decimal? Prev, decimal? Year) TotalRow
     {
         get
         {
-            IEnumerable<PointDto> rows = IsCategoryGrouping ? TopLevelRows : _latestPerGroup;
-            var list = rows.ToList();
-            var amount = list.Sum(r => r.Amount);
-            decimal? prev = ShowPreviousColumns ? list.Where(r => r.PreviousAmount.HasValue).Sum(r => r.PreviousAmount!.Value) : null;
-            decimal? year = _compareYear ? list.Where(r => r.YearAgoAmount.HasValue).Sum(r => r.YearAgoAmount!.Value) : null;
+            var rows = TopLevelRows.ToList();
+            var amount = rows.Sum(r => r.Amount);
+            decimal? prev = ShowPreviousColumns ? rows.Where(r => r.PreviousAmount.HasValue).Sum(r => r.PreviousAmount!.Value) : null;
+            decimal? year = _compareYear ? rows.Where(r => r.YearAgoAmount.HasValue).Sum(r => r.YearAgoAmount!.Value) : null;
             return (amount, prev, year);
         }
     }
@@ -503,13 +666,17 @@ else
 @@media (max-width:900px){ .filter-group.wide { grid-column:span 1; } }
 .filter-group .group-title { font-size:.6rem; text-transform:uppercase; letter-spacing:.05em; opacity:.65; }
 .filter-group .row { display:flex; flex-direction:column; gap:.3rem; }
-.filter-group .row.inline { flex-direction:row; align-items:center; gap:1.2rem; flex-wrap:wrap; }
+.filter-group .row.inline { flex-direction:row; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.filter-group .row.month-row { flex-direction:row; align-items:center; gap:.5rem; flex-wrap:nowrap; }
 .take-label { display:flex; align-items:center; gap:.4rem; font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; opacity:.75; }
 .take-input { width:80px; }
 .chk { font-size:.7rem; }
+.multi-kind-list { display:flex; flex-wrap:wrap; gap:.5rem; }
+.multi-kind-list.dialog { background:#1e2328; padding:.4rem .5rem; border:1px solid #2b3137; border-radius:.3rem; }
+.mk-item { font-size:.65rem; display:flex; align-items:center; gap:.25rem; background:#20262b; padding:.2rem .45rem; border-radius:.3rem; border:1px solid #2c333a; }
 .btn.full { width:100%; }
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:50; }
-.modal { background:#1f2429; border:1px solid #30363d; padding:1rem 1.2rem 1.1rem; border-radius:.5rem; min-width:300px; display:flex; flex-direction:column; gap:.75rem; }
+.modal { background:#1f2429; border:1px solid #30363d; padding:1rem 1.2rem 1.1rem; border-radius:.5rem; min-width:340px; display:flex; flex-direction:column; gap:.75rem; }
 .modal h3 { margin:.1rem 0 .2rem; font-size:.95rem; }
 .modal .form-row { display:flex; flex-direction:column; gap:.25rem; }
 .dialog-actions { display:flex; gap:.6rem; justify-content:flex-end; }
@@ -539,6 +706,7 @@ else
 .report-table tbody td.amt-current { font-weight:600; background:#1d242a; }
 .report-table tbody tr.neg { color:#c94; }
 .report-table tbody td.delta { font-size:.6rem; opacity:.8; }
+.report-table tr.type-row { background:#1d2328; font-weight:600; }
 .report-table tr.category-row { background:#16212a; }
 .report-table tr.child-row { background:#101519; }
 .report-table tr.child-row .child-label { padding-left:1.2rem; position:relative; }

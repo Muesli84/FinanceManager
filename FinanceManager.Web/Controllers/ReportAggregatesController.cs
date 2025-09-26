@@ -26,7 +26,10 @@ public sealed class ReportAggregatesController : ControllerBase
         int Take = 24,
         bool IncludeCategory = false,
         bool ComparePrevious = false,
-        bool CompareYear = false);
+        bool CompareYear = false,
+        IReadOnlyCollection<int>? PostingKinds = null, // neu: Multi aus Body
+        DateTime? AnalysisDate = null // neu: optionales Analysedatum (Monatsgenau)
+    );
 
     [HttpPost]
     [ProducesResponseType(typeof(ReportAggregationResult), StatusCodes.Status200OK)]
@@ -38,7 +41,53 @@ public sealed class ReportAggregatesController : ControllerBase
             {
                 return BadRequest(new { error = "Take must be 1..200" });
             }
-            var query = new ReportAggregationQuery(_current.UserId, req.PostingKind, req.Interval, req.Take, req.IncludeCategory, req.ComparePrevious, req.CompareYear);
+
+            // Fallback: Query-String (?postingKinds=0,1,2) nur nutzen, wenn im Body nichts gesendet wurde
+            IReadOnlyCollection<int>? multi = req.PostingKinds;
+            if ((multi == null || multi.Count == 0))
+            {
+                var kindsParam = Request.Query["postingKinds"].FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(kindsParam))
+                {
+                    multi = kindsParam
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(s => int.TryParse(s, out var v) ? v : (int?)null)
+                        .Where(v => v.HasValue)
+                        .Select(v => v!.Value)
+                        .Distinct()
+                        .ToArray();
+                }
+            }
+
+            // AnalysisDate optional aus Query lesen, falls nicht gesetzt
+            DateTime? analysisDate = req.AnalysisDate;
+            if (!analysisDate.HasValue)
+            {
+                var adStr = Request.Query["analysisDate"].FirstOrDefault();
+                if (DateTime.TryParse(adStr, out var ad))
+                {
+                    analysisDate = ad;
+                }
+            }
+
+            if (analysisDate.HasValue)
+            {
+                var d = analysisDate.Value.Date;
+                // auf Monatsersten normalisieren
+                analysisDate = new DateTime(d.Year, d.Month, 1);
+            }
+
+            var query = new ReportAggregationQuery(
+                _current.UserId,
+                req.PostingKind,
+                req.Interval,
+                req.Take,
+                req.IncludeCategory,
+                req.ComparePrevious,
+                req.CompareYear,
+                multi,
+                analysisDate);
+
             var result = await _agg.QueryAsync(query, ct);
             return Ok(result);
         }

@@ -261,4 +261,52 @@
   <data name="Ribbon_ReloadData" xml:space="preserve">
     <value>Neu laden</value>
   </data>
+  <data name="Label_PostingKindMulti" xml:space="preserve">
+    <value>Buchungsarten auswählen</value>
+  </data>
+  
+  <!-- PostingKind labels -->
+  <data name="PostingKind_Bank" xml:space="preserve">
+    <value>Konten</value>
+  </data>
+  <data name="PostingKind_Contact" xml:space="preserve">
+    <value>Kontakte</value>
+  </data>
+  <data name="PostingKind_SavingsPlan" xml:space="preserve">
+    <value>Sparpläne</value>
+  </data>
+  <data name="PostingKind_Security" xml:space="preserve">
+    <value>Wertpapiere</value>
+  </data>
+
+  <!-- Intervals -->
+  <data name="Interval_Month" xml:space="preserve">
+    <value>Monat</value>
+  </data>
+  <data name="Interval_Quarter" xml:space="preserve">
+    <value>Quartal</value>
+  </data>
+  <data name="Interval_HalfYear" xml:space="preserve">
+    <value>Halbjahr</value>
+  </data>
+  <data name="Interval_Year" xml:space="preserve">
+    <value>Jahr</value>
+  </data>
+  <data name="Interval_Ytd" xml:space="preserve">
+    <value>YTD</value>
+  </data>
+
+  <!-- Misc -->
+  <data name="Category_Uncategorized" xml:space="preserve">
+    <value>Ohne Kategorie</value>
+  </data>
+  <data name="Label_AnalysisMonth" xml:space="preserve">
+    <value>Analysedatum (Monat)</value>
+  </data>
+  <data name="Button_PrevMonth" xml:space="preserve">
+    <value>Vorheriger Monat</value>
+  </data>
+  <data name="Button_NextMonth" xml:space="preserve">
+    <value>Nächster Monat</value>
+  </data>
 </root>

@@ -185,8 +185,8 @@ public sealed class ReportAggregationServiceTests
         string CatKey(ContactCategory cat) => $"Category:{PostingKind.Contact}:{cat.Id}";
 
         // YTD-Definition im Service: Für alle Jahre wird bis zum aktuellen Monat (UtcNow.Month) summiert.
-        var cutoffMonth = DateTime.UtcNow.Month; // dynamisch, testet Semantik statt fix 12
-        int monthsPrevYears = Math.Min(12, cutoffMonth); // für abgeschlossene Vorjahre begrenzt durch cutoff
+        var cutoffMonth = DateTime.UtcNow.Month; // dynamisch
+        int monthsPrevYears = Math.Min(12, cutoffMonth);
         int monthsYear2025 = months.Count(m => m.Year == 2025 && m.Month <= cutoffMonth);
 
         decimal catA_2023 = 20m * monthsPrevYears; decimal catA_2024 = 20m * monthsPrevYears; decimal catA_2025 = 20m * monthsYear2025;
