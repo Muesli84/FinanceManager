@@ -184,10 +184,14 @@ public sealed class ReportAggregationServiceTests
 
         string CatKey(ContactCategory cat) => $"Category:{PostingKind.Contact}:{cat.Id}";
 
-        // Erwartete YTD Summen pro Jahr (latestMonth=12 wegen vorhandener Dezember 2023/2024, 2025 hat nur 9 Monate)
-        decimal catA_2023 = 20m * 12; decimal catA_2024 = 20m * 12; decimal catA_2025 = 20m * 9;
-        decimal catB_2023 = 60m * 12; decimal catB_2024 = 60m * 12; decimal catB_2025 = 60m * 9;
-        decimal catC_2023 = 120m * 12; decimal catC_2024 = 120m * 12; decimal catC_2025 = 120m * 9;
+        // YTD-Definition im Service: Für alle Jahre wird bis zum aktuellen Monat (UtcNow.Month) summiert.
+        var cutoffMonth = DateTime.UtcNow.Month; // dynamisch, testet Semantik statt fix 12
+        int monthsPrevYears = Math.Min(12, cutoffMonth); // für abgeschlossene Vorjahre begrenzt durch cutoff
+        int monthsYear2025 = months.Count(m => m.Year == 2025 && m.Month <= cutoffMonth);
+
+        decimal catA_2023 = 20m * monthsPrevYears; decimal catA_2024 = 20m * monthsPrevYears; decimal catA_2025 = 20m * monthsYear2025;
+        decimal catB_2023 = 60m * monthsPrevYears; decimal catB_2024 = 60m * monthsPrevYears; decimal catB_2025 = 60m * monthsYear2025;
+        decimal catC_2023 = 120m * monthsPrevYears; decimal catC_2024 = 120m * monthsPrevYears; decimal catC_2025 = 120m * monthsYear2025;
 
         DateTime Y(int year) => new DateTime(year,1,1);
 
@@ -217,11 +221,11 @@ public sealed class ReportAggregationServiceTests
         c2024.PreviousAmount.Should().Be(catC_2023); c2024.YearAgoAmount.Should().Be(catC_2023);
         c2025.PreviousAmount.Should().Be(catC_2024); c2025.YearAgoAmount.Should().Be(catC_2024);
 
-        // Child (z.B. C3)
+        // Child (z.B. C3) – YTD Summen: Basis 60 pro Monat => 60 * monthsYear2025
         var c3_2025 = result.Points.Single(p => p.GroupKey == $"Contact:{cC3.Id}" && p.PeriodStart == Y(2025));
-        c3_2025.Amount.Should().Be(60m * 9); // 30 *2 *9
-        c3_2025.PreviousAmount.Should().Be(60m * 12); // 2024
-        c3_2025.YearAgoAmount.Should().Be(60m * 12); // 2024
+        c3_2025.Amount.Should().Be(60m * monthsYear2025);
+        c3_2025.PreviousAmount.Should().Be(60m * monthsPrevYears); // Vorjahr (gleicher cutoff)
+        c3_2025.YearAgoAmount.Should().Be(60m * monthsPrevYears);
         c3_2025.ParentGroupKey.Should().Be(CatKey(catC));
     }
 }
