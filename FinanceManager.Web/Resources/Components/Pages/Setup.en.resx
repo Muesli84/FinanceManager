@@ -1,55 +1,267 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
-  <resheader name="version"><value>2.0</value></resheader>
-  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="PageTitle" xml:space="preserve"><value>Setup</value></data>
-  <data name="Heading" xml:space="preserve"><value>Setup &amp; Maintenance</value></data>
-  <data name="Section_Backup" xml:space="preserve"><value>Backups</value></data>
-  <data name="Btn_Back" xml:space="preserve"><value>Back</value></data>
-  <data name="Btn_CreateBackup" xml:space="preserve"><value>Create backup</value></data>
-  <data name="Btn_UploadBackup" xml:space="preserve"><value>Upload backup</value></data>
-  <data name="Btn_Restore" xml:space="preserve"><value>Restore</value></data>
-  <data name="Btn_CancelRestore" xml:space="preserve"><value>Cancel restore</value></data>
-  <data name="Btn_Delete" xml:space="preserve"><value>Delete</value></data>
-  <data name="Btn_Download" xml:space="preserve"><value>Download</value></data>
-  <data name="Btn_Reset" xml:space="preserve"><value>Reset</value></data>
-  <data name="Btn_Retry" xml:space="preserve"><value>Retry</value></data>
-  <data name="Th_Created" xml:space="preserve"><value>Created</value></data>
-  <data name="Th_File" xml:space="preserve"><value>File</value></data>
-  <data name="Th_Size" xml:space="preserve"><value>Size</value></data>
-  <data name="Th_Source" xml:space="preserve"><value>Source</value></data>
-  <data name="Th_Actions" xml:space="preserve"><value>Actions</value></data>
-  <data name="Msg_Loading" xml:space="preserve"><value>Loading ...</value></data>
-  <data name="Msg_NoBackups" xml:space="preserve"><value>No backups available.</value></data>
-  <data name="Legacy_Import_Hint" xml:space="preserve"><value>Legacy setup import format (deprecated)</value></data>
-  <data name="Legacy_ChooseFile" xml:space="preserve"><value>Select file</value></data>
-  <data name="Legacy_File" xml:space="preserve"><value>File</value></data>
-  <data name="Legacy_ReplaceExisting" xml:space="preserve"><value>Replace existing data</value></data>
-  <data name="Legacy_Import" xml:space="preserve"><value>Import</value></data>
-  <!-- Import Split Tab -->
-  <data name="Tab_Backup" xml:space="preserve"><value>Backups</value></data>
-  <data name="ImportSplit_TabTitle" xml:space="preserve"><value>Import splitting</value></data>
-  <data name="Tab_LegacyImport" xml:space="preserve"><value>Legacy import</value></data>
-  <data name="ImportSplit_Mode_Label" xml:space="preserve"><value>Mode</value></data>
-  <data name="ImportSplit_Mode_FixedSize" xml:space="preserve"><value>Fixed size</value></data>
-  <data name="ImportSplit_Mode_Monthly" xml:space="preserve"><value>Monthly</value></data>
-  <data name="ImportSplit_Mode_MonthlyOrFixed" xml:space="preserve"><value>Monthly (threshold) / Fixed size</value></data>
-  <data name="ImportSplit_MaxEntries" xml:space="preserve"><value>Max entries per draft</value></data>
-  <data name="ImportSplit_MonthlyThreshold" xml:space="preserve"><value>Monthly threshold</value></data>
-  <data name="ImportSplit_MinEntries" xml:space="preserve"><value>Min entries per monthly draft</value></data>
-  <data name="ImportSplit_SaveSuccess" xml:space="preserve"><value>Settings saved.</value></data>
-  <data name="ImportSplit_InvalidMaxMin20" xml:space="preserve"><value>Max entries must be ≥ 20.</value></data>
-  <data name="ImportSplit_InvalidThreshold" xml:space="preserve"><value>Threshold must be ≥ Max entries.</value></data>
-  <data name="ImportSplit_InvalidMinEntries" xml:space="preserve"><value>Min entries must be ≥ 1.</value></data>
-  <data name="ImportSplit_InvalidMinGreaterMax" xml:space="preserve"><value>Min entries must be ≤ Max entries.</value></data>
-  <data name="ImportSplit_Help_Title" xml:space="preserve"><value>Splitting guidance</value></data>
-  <data name="ImportSplit_Help_MaxEntries" xml:space="preserve"><value>Hard upper bound for a generated draft. Always used in fixed size mode or as fallback in hybrid mode.</value></data>
-  <data name="ImportSplit_Help_MonthlyThreshold" xml:space="preserve"><value>Hybrid only: Maximum size tolerated for a monthly draft. If exceeded the importer switches to fixed chunks (Max entries per draft).</value></data>
-  <data name="ImportSplit_Help_MinEntries" xml:space="preserve"><value>Minimum desired entries for a monthly draft. Smaller months may be merged into adjacent months unless limits would be violated.</value></data>
-  <data name="ImportSplit_Help_Mode_FixedSize" xml:space="preserve"><value>Always split into blocks up to the max entries. Ignores month boundaries.</value></data>
-  <data name="ImportSplit_Help_Mode_Monthly" xml:space="preserve"><value>One draft per calendar month regardless of entry count.</value></data>
-  <data name="ImportSplit_Help_Mode_Hybrid" xml:space="preserve"><value>Prefers monthly drafts. Falls back to fixed-size chunks if a month exceeds the threshold.</value></data>
-  <data name="ImportSplit_Help_Example" xml:space="preserve"><value>Example: Max=300, Threshold=1200. Month with 950 entries → monthly draft. Month with 2,400 entries → fallback: 8 drafts of 300.</value></data>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="PageTitle" xml:space="preserve">
+    <value>Setup</value>
+  </data>
+  <data name="Heading" xml:space="preserve">
+    <value>Setup &amp; Maintenance</value>
+  </data>
+  <data name="Section_Backup" xml:space="preserve">
+    <value>Backups</value>
+  </data>
+  <data name="Btn_Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Btn_CreateBackup" xml:space="preserve">
+    <value>Create backup</value>
+  </data>
+  <data name="Btn_UploadBackup" xml:space="preserve">
+    <value>Upload backup</value>
+  </data>
+  <data name="Btn_Restore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="Btn_CancelRestore" xml:space="preserve">
+    <value>Cancel restore</value>
+  </data>
+  <data name="Btn_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Btn_Download" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="Btn_Reset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="Btn_Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Th_Created" xml:space="preserve">
+    <value>Created</value>
+  </data>
+  <data name="Th_File" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="Th_Size" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="Th_Source" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="Th_Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Msg_Loading" xml:space="preserve">
+    <value>Loading ...</value>
+  </data>
+  <data name="Msg_NoBackups" xml:space="preserve">
+    <value>No backups available.</value>
+  </data>
+  <data name="Legacy_Import_Hint" xml:space="preserve">
+    <value>Legacy setup import format (deprecated)</value>
+  </data>
+  <data name="Legacy_ChooseFile" xml:space="preserve">
+    <value>Select file</value>
+  </data>
+  <data name="Legacy_File" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="Legacy_ReplaceExisting" xml:space="preserve">
+    <value>Replace existing data</value>
+  </data>
+  <data name="Legacy_Import" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="Tab_Backup" xml:space="preserve">
+    <value>Backups</value>
+  </data>
+  <data name="ImportSplit_TabTitle" xml:space="preserve">
+    <value>Import splitting</value>
+  </data>
+  <data name="Tab_LegacyImport" xml:space="preserve">
+    <value>Legacy import</value>
+  </data>
+  <data name="ImportSplit_Mode_Label" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="ImportSplit_Mode_FixedSize" xml:space="preserve">
+    <value>Fixed size</value>
+  </data>
+  <data name="ImportSplit_Mode_Monthly" xml:space="preserve">
+    <value>Monthly</value>
+  </data>
+  <data name="ImportSplit_Mode_MonthlyOrFixed" xml:space="preserve">
+    <value>Monthly (threshold) / Fixed size</value>
+  </data>
+  <data name="ImportSplit_MaxEntries" xml:space="preserve">
+    <value>Max entries per draft</value>
+  </data>
+  <data name="ImportSplit_MonthlyThreshold" xml:space="preserve">
+    <value>Monthly threshold</value>
+  </data>
+  <data name="ImportSplit_MinEntries" xml:space="preserve">
+    <value>Min entries per monthly draft</value>
+  </data>
+  <data name="ImportSplit_SaveSuccess" xml:space="preserve">
+    <value>Settings saved.</value>
+  </data>
+  <data name="ImportSplit_InvalidMaxMin20" xml:space="preserve">
+    <value>Max entries must be ≥ 20.</value>
+  </data>
+  <data name="ImportSplit_InvalidThreshold" xml:space="preserve">
+    <value>Threshold must be ≥ Max entries.</value>
+  </data>
+  <data name="ImportSplit_InvalidMinEntries" xml:space="preserve">
+    <value>Min entries must be ≥ 1.</value>
+  </data>
+  <data name="ImportSplit_InvalidMinGreaterMax" xml:space="preserve">
+    <value>Min entries must be ≤ Max entries.</value>
+  </data>
+  <data name="ImportSplit_Help_Title" xml:space="preserve">
+    <value>Splitting guidance</value>
+  </data>
+  <data name="ImportSplit_Help_MaxEntries" xml:space="preserve">
+    <value>Hard upper bound for a generated draft. Always used in fixed size mode or as fallback in hybrid mode.</value>
+  </data>
+  <data name="ImportSplit_Help_MonthlyThreshold" xml:space="preserve">
+    <value>Hybrid only: Maximum size tolerated for a monthly draft. If exceeded the importer switches to fixed chunks (Max entries per draft).</value>
+  </data>
+  <data name="ImportSplit_Help_MinEntries" xml:space="preserve">
+    <value>Minimum desired entries for a monthly draft. Smaller months may be merged into adjacent months unless limits would be violated.</value>
+  </data>
+  <data name="ImportSplit_Help_Mode_FixedSize" xml:space="preserve">
+    <value>Always split into blocks up to the max entries. Ignores month boundaries.</value>
+  </data>
+  <data name="ImportSplit_Help_Mode_Monthly" xml:space="preserve">
+    <value>One draft per calendar month regardless of entry count.</value>
+  </data>
+  <data name="ImportSplit_Help_Mode_Hybrid" xml:space="preserve">
+    <value>Prefers monthly drafts. Falls back to fixed-size chunks if a month exceeds the threshold.</value>
+  </data>
+  <data name="ImportSplit_Help_Example" xml:space="preserve">
+    <value>Example: Max=300, Threshold=1200. Month with 950 entries → monthly draft. Month with 2,400 entries → fallback: 8 drafts of 300.</value>
+  </data>
+  <data name="Ribbon_Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Ribbon_Group_Navigation" xml:space="preserve">
+    <value>Navigation</value>
+  </data>
 </root>
