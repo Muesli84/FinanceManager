@@ -47,6 +47,15 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     public bool Expandable { get; private set; }
     public string? PostingKindsCsv { get; private set; }
 
+    // Persisted filter lists (CSV)
+    public string? AccountIdsCsv { get; private set; }
+    public string? ContactIdsCsv { get; private set; }
+    public string? SavingsPlanIdsCsv { get; private set; }
+    public string? SecurityIdsCsv { get; private set; }
+    public string? ContactCategoryIdsCsv { get; private set; }
+    public string? SavingsPlanCategoryIdsCsv { get; private set; }
+    public string? SecurityCategoryIdsCsv { get; private set; }
+
     public void Rename(string name)
     {
         Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
@@ -75,4 +84,46 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         PostingKindsCsv = string.Join(",", list);
         Touch();
     }
+
+    public void SetFilters(
+        IEnumerable<Guid>? accountIds,
+        IEnumerable<Guid>? contactIds,
+        IEnumerable<Guid>? savingsPlanIds,
+        IEnumerable<Guid>? securityIds,
+        IEnumerable<Guid>? contactCategoryIds,
+        IEnumerable<Guid>? savingsPlanCategoryIds,
+        IEnumerable<Guid>? securityCategoryIds)
+    {
+        AccountIdsCsv = ToCsv(accountIds);
+        ContactIdsCsv = ToCsv(contactIds);
+        SavingsPlanIdsCsv = ToCsv(savingsPlanIds);
+        SecurityIdsCsv = ToCsv(securityIds);
+        ContactCategoryIdsCsv = ToCsv(contactCategoryIds);
+        SavingsPlanCategoryIdsCsv = ToCsv(savingsPlanCategoryIds);
+        SecurityCategoryIdsCsv = ToCsv(securityCategoryIds);
+        Touch();
+    }
+
+    public (IReadOnlyCollection<Guid>? Accounts,
+            IReadOnlyCollection<Guid>? Contacts,
+            IReadOnlyCollection<Guid>? SavingsPlans,
+            IReadOnlyCollection<Guid>? Securities,
+            IReadOnlyCollection<Guid>? ContactCategories,
+            IReadOnlyCollection<Guid>? SavingsPlanCategories,
+            IReadOnlyCollection<Guid>? SecurityCategories) GetFilters()
+    {
+        return (
+            FromCsv(AccountIdsCsv),
+            FromCsv(ContactIdsCsv),
+            FromCsv(SavingsPlanIdsCsv),
+            FromCsv(SecurityIdsCsv),
+            FromCsv(ContactCategoryIdsCsv),
+            FromCsv(SavingsPlanCategoryIdsCsv),
+            FromCsv(SecurityCategoryIdsCsv)
+        );
+    }
+
+    private static string? ToCsv(IEnumerable<Guid>? ids) => ids == null ? null : string.Join(",", ids.Distinct());
+    private static IReadOnlyCollection<Guid>? FromCsv(string? csv)
+        => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Guid.Parse).ToArray();
 }

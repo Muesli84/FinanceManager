@@ -228,4 +228,106 @@ public sealed class ReportAggregationServiceTests
         c3_2025.YearAgoAmount.Should().Be(60m * monthsPrevYears);
         c3_2025.ParentGroupKey.Should().Be(CatKey(catC));
     }
+
+    [Fact]
+    public async Task QueryAsync_ShouldApplyEntityFilters_ForTwoKinds_WithTwoSelectedValuesEach()
+    {
+        using var db = CreateDb();
+        // Arrange user and base data
+        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        // Accounts (Bank kind)
+        var bankContact = new FinanceManager.Domain.Contacts.Contact(user.Id, "Bank", FinanceManager.Shared.Dtos.ContactType.Bank, null, null);
+        db.Contacts.Add(bankContact);
+        var acc1 = new FinanceManager.Domain.Accounts.Account(user.Id, AccountType.Giro, "A1", null, bankContact.Id);
+        var acc2 = new FinanceManager.Domain.Accounts.Account(user.Id, AccountType.Giro, "A2", null, bankContact.Id);
+        var acc3 = new FinanceManager.Domain.Accounts.Account(user.Id, AccountType.Giro, "NoiseAcc", null, bankContact.Id);
+        db.Accounts.AddRange(acc1, acc2, acc3);
+
+        // Contacts (Contact kind)
+        var c1 = new FinanceManager.Domain.Contacts.Contact(user.Id, "C1", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
+        var c2 = new FinanceManager.Domain.Contacts.Contact(user.Id, "C2", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
+        var c3 = new FinanceManager.Domain.Contacts.Contact(user.Id, "NoiseContact", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
+        db.Contacts.AddRange(c1, c2, c3);
+        await db.SaveChangesAsync();
+
+        // Two months of aggregates for each selected entity + one noise entity per kind
+        var m1 = new DateTime(2024, 8, 1);
+        var m2 = new DateTime(2024, 9, 1);
+        void AddAgg(PostingKind kind, Guid? accountId, Guid? contactId, decimal baseAmount)
+        {
+            var a1 = new PostingAggregate(kind, accountId, contactId, null, null, m1, AggregatePeriod.Month); a1.Add(baseAmount);
+            var a2x = new PostingAggregate(kind, accountId, contactId, null, null, m2, AggregatePeriod.Month); a2x.Add(baseAmount + 10);
+            db.PostingAggregates.AddRange(a1, a2x);
+        }
+
+        // Bank
+        AddAgg(PostingKind.Bank, acc1.Id, null, 100m);
+        AddAgg(PostingKind.Bank, acc2.Id, null, 200m);
+        AddAgg(PostingKind.Bank, acc3.Id, null, 999m); // noise (must be filtered out)
+        // Contacts
+        AddAgg(PostingKind.Contact, null, c1.Id, 10m);
+        AddAgg(PostingKind.Contact, null, c2.Id, 20m);
+        AddAgg(PostingKind.Contact, null, c3.Id, 999m); // noise (must be filtered out)
+        await db.SaveChangesAsync();
+
+        var sut = new ReportAggregationService(db);
+
+        // Build filters: two accounts + two contacts
+        var filters = new ReportAggregationFilters(
+            AccountIds: new[] { acc1.Id, acc2.Id },
+            ContactIds: new[] { c1.Id, c2.Id },
+            SavingsPlanIds: null,
+            SecurityIds: null,
+            ContactCategoryIds: null,
+            SavingsPlanCategoryIds: null,
+            SecurityCategoryIds: null);
+
+        // Multi-kinds: Bank + Contact
+        var query = new ReportAggregationQuery(
+            OwnerUserId: user.Id,
+            PostingKind: (int)PostingKind.Bank, // primary kind irrelevant when PostingKinds provided
+            Interval: ReportInterval.Month,
+            Take: 12,
+            IncludeCategory: false,
+            ComparePrevious: false,
+            CompareYear: false,
+            PostingKinds: new[] { (int)PostingKind.Bank, (int)PostingKind.Contact },
+            AnalysisDate: m2,
+            Filters: filters);
+
+        // Act
+        var result = await sut.QueryAsync(query, CancellationToken.None);
+
+        // Assert: entity rows for both kinds (latest month m2)
+        var rowsM2 = result.Points.Where(p => p.PeriodStart == m2).ToList();
+
+        // Bank entity rows only for acc1 & acc2
+        rowsM2.Should().Contain(p => p.GroupKey == $"Account:{acc1.Id}");
+        rowsM2.Should().Contain(p => p.GroupKey == $"Account:{acc2.Id}");
+        rowsM2.Should().NotContain(p => p.GroupKey == $"Account:{acc3.Id}");
+
+        // Contact entity rows only for c1 & c2
+        rowsM2.Should().Contain(p => p.GroupKey == $"Contact:{c1.Id}");
+        rowsM2.Should().Contain(p => p.GroupKey == $"Contact:{c2.Id}");
+        rowsM2.Should().NotContain(p => p.GroupKey == $"Contact:{c3.Id}");
+
+        // ParentGroupKey should be Type:Kind in multi-mode
+        rowsM2.Single(p => p.GroupKey == $"Account:{acc1.Id}").ParentGroupKey.Should().Be("Type:Bank");
+        rowsM2.Single(p => p.GroupKey == $"Contact:{c1.Id}").ParentGroupKey.Should().Be("Type:Contact");
+
+        // Amounts
+        rowsM2.Single(p => p.GroupKey == $"Account:{acc1.Id}").Amount.Should().Be(110m);
+        rowsM2.Single(p => p.GroupKey == $"Account:{acc2.Id}").Amount.Should().Be(210m);
+        rowsM2.Single(p => p.GroupKey == $"Contact:{c1.Id}").Amount.Should().Be(20m);
+        rowsM2.Single(p => p.GroupKey == $"Contact:{c2.Id}").Amount.Should().Be(30m);
+
+        // Type aggregates exist for both kinds and equal the sum of their selected entities
+        var typeBankM2 = rowsM2.Single(p => p.GroupKey == "Type:Bank");
+        var typeContactM2 = rowsM2.Single(p => p.GroupKey == "Type:Contact");
+        typeBankM2.Amount.Should().Be(110m + 210m);
+        typeContactM2.Amount.Should().Be(20m + 30m);
+    }
 }

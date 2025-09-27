@@ -40,6 +40,17 @@ public sealed class ReportFavoritesController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
+    public sealed class FiltersDto
+    {
+        public IReadOnlyCollection<Guid>? AccountIds { get; set; }
+        public IReadOnlyCollection<Guid>? ContactIds { get; set; }
+        public IReadOnlyCollection<Guid>? SavingsPlanIds { get; set; }
+        public IReadOnlyCollection<Guid>? SecurityIds { get; set; }
+        public IReadOnlyCollection<Guid>? ContactCategoryIds { get; set; }
+        public IReadOnlyCollection<Guid>? SavingsPlanCategoryIds { get; set; }
+        public IReadOnlyCollection<Guid>? SecurityCategoryIds { get; set; }
+    }
+
     public sealed class CreateRequest
     {
         [Required, MinLength(2), MaxLength(120)] public string Name { get; set; } = string.Empty;
@@ -50,6 +61,8 @@ public sealed class ReportFavoritesController : ControllerBase
         public bool CompareYear { get; set; }
         public bool ShowChart { get; set; }
         public bool Expandable { get; set; } = true;
+        public IReadOnlyCollection<int>? PostingKinds { get; set; } // multi-kind support
+        public FiltersDto? Filters { get; set; }
     }
 
     [HttpPost]
@@ -60,7 +73,11 @@ public sealed class ReportFavoritesController : ControllerBase
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
         {
-            var dto = await _favorites.CreateAsync(_current.UserId, new ReportFavoriteCreateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable), ct);
+            var filters = req.Filters == null ? null : new ReportFavoriteFiltersDto(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds);
+            var dto = await _favorites.CreateAsync(
+                _current.UserId,
+                new ReportFavoriteCreateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters),
+                ct);
             return CreatedAtRoute("GetReportFavorite", new { id = dto.Id }, dto);
         }
         catch (InvalidOperationException ex)
@@ -88,6 +105,8 @@ public sealed class ReportFavoritesController : ControllerBase
         public bool CompareYear { get; set; }
         public bool ShowChart { get; set; }
         public bool Expandable { get; set; } = true;
+        public IReadOnlyCollection<int>? PostingKinds { get; set; } // multi-kind support
+        public FiltersDto? Filters { get; set; }
     }
 
     [HttpPut("{id:guid}")]
@@ -98,7 +117,12 @@ public sealed class ReportFavoritesController : ControllerBase
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
         {
-            var dto = await _favorites.UpdateAsync(id, _current.UserId, new ReportFavoriteUpdateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable), ct);
+            var filters = req.Filters == null ? null : new ReportFavoriteFiltersDto(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds);
+            var dto = await _favorites.UpdateAsync(
+                id,
+                _current.UserId,
+                new ReportFavoriteUpdateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters),
+                ct);
             return dto == null ? NotFound() : Ok(dto);
         }
         catch (InvalidOperationException ex)

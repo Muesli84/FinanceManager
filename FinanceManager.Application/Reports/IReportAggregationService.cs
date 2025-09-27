@@ -10,6 +10,21 @@ public interface IReportAggregationService
     Task<ReportAggregationResult> QueryAsync(ReportAggregationQuery query, CancellationToken ct);
 }
 
+/// <summary>
+/// Optional top-level filters for report aggregation. Filters are applied on the top level only
+/// (either category or entity depending on IncludeCategory/kind capabilities).
+/// All collections are treated as allow-lists; null or empty = no filtering for that dimension.
+/// </summary>
+public sealed record ReportAggregationFilters(
+    IReadOnlyCollection<Guid>? AccountIds = null,
+    IReadOnlyCollection<Guid>? ContactIds = null,
+    IReadOnlyCollection<Guid>? SavingsPlanIds = null,
+    IReadOnlyCollection<Guid>? SecurityIds = null,
+    IReadOnlyCollection<Guid>? ContactCategoryIds = null,
+    IReadOnlyCollection<Guid>? SavingsPlanCategoryIds = null,
+    IReadOnlyCollection<Guid>? SecurityCategoryIds = null
+);
+
 public sealed record ReportAggregationQuery(
     Guid OwnerUserId,
     int PostingKind,
@@ -18,8 +33,9 @@ public sealed record ReportAggregationQuery(
     bool IncludeCategory,
     bool ComparePrevious,
     bool CompareYear,
-    IReadOnlyCollection<int>? PostingKinds = null, // neu: Multi
-    DateTime? AnalysisDate = null // neu: optionales Analysedatum (Monatsgenau)
+    IReadOnlyCollection<int>? PostingKinds = null, // multi
+    DateTime? AnalysisDate = null, // optional analysis month
+    ReportAggregationFilters? Filters = null // optional entity/category filters
 );
 
 public sealed record ReportAggregatePointDto(

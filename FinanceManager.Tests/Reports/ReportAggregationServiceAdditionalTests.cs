@@ -54,7 +54,7 @@ public sealed class ReportAggregationServiceAdditionalTests
         await db.SaveChangesAsync();
 
         var sut = new ReportAggregationService(db);
-        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: false), CancellationToken.None);
+        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: false, AnalysisDate: new DateTime(2025,2,1)), CancellationToken.None);
 
         result.Points.Should().OnlyContain(p => p.GroupKey.StartsWith("Contact:"));
         result.Points.Should().NotContain(p => p.GroupKey.StartsWith("Category:"));
@@ -81,9 +81,9 @@ public sealed class ReportAggregationServiceAdditionalTests
         await db.SaveChangesAsync();
 
         var sut = new ReportAggregationService(db);
-        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: true, ComparePrevious: true, CompareYear: false), CancellationToken.None);
-
         var latest = new DateTime(2025,2,1);
+        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: true, ComparePrevious: true, CompareYear: false, AnalysisDate: latest), CancellationToken.None);
+
         // c2 should have auto-added zero row in Feb with previous = Jan amount
         var c2Feb = result.Points.SingleOrDefault(p => p.GroupKey == $"Contact:{c2.Id}" && p.PeriodStart == latest);
         c2Feb.Should().NotBeNull();
@@ -107,7 +107,7 @@ public sealed class ReportAggregationServiceAdditionalTests
         await db.SaveChangesAsync();
 
         var sut = new ReportAggregationService(db);
-        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: true), CancellationToken.None);
+        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: true, AnalysisDate: new DateTime(2025,2,1)), CancellationToken.None);
 
         // Group for c1 should be removed (only zero data + zero row + no previous/year non-zero)
         result.Points.Should().NotContain(p => p.GroupKey == $"Contact:{c1.Id}");
@@ -135,7 +135,7 @@ public sealed class ReportAggregationServiceAdditionalTests
 
         var sut = new ReportAggregationService(db);
         var take = 5;
-        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, take, IncludeCategory: false, ComparePrevious: false, CompareYear: false), CancellationToken.None);
+        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, take, IncludeCategory: false, ComparePrevious: false, CompareYear: false, AnalysisDate: new DateTime(2025,3,1)), CancellationToken.None);
 
         var periods = result.Points.Select(p => p.PeriodStart).Distinct().OrderBy(d=>d).ToList();
         periods.Should().HaveCount(take);
@@ -163,17 +163,17 @@ public sealed class ReportAggregationServiceAdditionalTests
 
         var sut = new ReportAggregationService(db);
 
-        var quarters = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Quarter, 10, false, true, true), CancellationToken.None);
+        var quarters = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Quarter, 10, IncludeCategory: false, ComparePrevious: true, CompareYear: true, AnalysisDate: new DateTime(2024,4,1)), CancellationToken.None);
         quarters.Points.Where(p=>p.GroupKey.StartsWith("Contact:")).Should().HaveCount(2);
         var q2Point = quarters.Points.Single(p=>p.PeriodStart == new DateTime(2024,4,1) && p.GroupKey.StartsWith("Contact:"));
         q2Point.PreviousAmount.Should().Be(100);
 
-        var halfYears = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.HalfYear, 10, false, true, false), CancellationToken.None);
+        var halfYears = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.HalfYear, 10, IncludeCategory: false, ComparePrevious: true, CompareYear: false, AnalysisDate: new DateTime(2024,7,1)), CancellationToken.None);
         halfYears.Points.Should().HaveCount(2);
         var h2Point = halfYears.Points.Single(p=>p.PeriodStart == new DateTime(2024,7,1));
         h2Point.PreviousAmount.Should().Be(250);
 
-        var years = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Year, 10, false, true, true), CancellationToken.None);
+        var years = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Year, 10, IncludeCategory: false, ComparePrevious: true, CompareYear: true, AnalysisDate: new DateTime(2025,1,1)), CancellationToken.None);
         years.Points.Should().HaveCount(2);
         var y2025Point = years.Points.Single(p=>p.PeriodStart == new DateTime(2025,1,1));
         y2025Point.PreviousAmount.Should().Be(550);
@@ -192,7 +192,7 @@ public sealed class ReportAggregationServiceAdditionalTests
         db.PostingAggregates.Add(agg);
         await db.SaveChangesAsync();
         var sut = new ReportAggregationService(db);
-        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 5, IncludeCategory: true, ComparePrevious: false, CompareYear: false), CancellationToken.None);
+        var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 5, IncludeCategory: true, ComparePrevious: false, CompareYear: false, AnalysisDate: new DateTime(2025,3,1)), CancellationToken.None);
         result.Points.Should().Contain(p => p.GroupKey == $"Category:{PostingKind.Contact}:_none" && p.Amount == 42m);
         var child = result.Points.Single(p => p.GroupKey == $"Contact:{c1.Id}");
         child.ParentGroupKey.Should().Be($"Category:{PostingKind.Contact}:_none");

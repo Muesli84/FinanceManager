@@ -146,6 +146,65 @@ public sealed class ReportAggregationService : IReportAggregationService
             }
         }
 
+        // Apply optional top-level filters --------------------------------------------------------
+        if (query.Filters is not null)
+        {
+            static HashSet<Guid>? ToSet(IReadOnlyCollection<Guid>? src) => src is { Count: > 0 } ? src.ToHashSet() : null;
+            var f = query.Filters;
+            var allowedAccounts = ToSet(f.AccountIds);
+            var allowedContacts = ToSet(f.ContactIds);
+            var allowedSavings = ToSet(f.SavingsPlanIds);
+            var allowedSecurities = ToSet(f.SecurityIds);
+            var allowedContactCats = ToSet(f.ContactCategoryIds);
+            var allowedSavingsCats = ToSet(f.SavingsPlanCategoryIds);
+            var allowedSecurityCats = ToSet(f.SecurityCategoryIds);
+
+            bool hasAnyEntityFilter = allowedAccounts != null || allowedContacts != null || allowedSavings != null || allowedSecurities != null;
+            bool hasAnyCategoryFilter = allowedContactCats != null || allowedSavingsCats != null || allowedSecurityCats != null;
+
+            if (hasAnyEntityFilter || (query.IncludeCategory && hasAnyCategoryFilter))
+            {
+                raw = raw.Where(r =>
+                {
+                    switch (r.Kind)
+                    {
+                        case PostingKind.Bank:
+                            if (allowedAccounts == null) { return true; }
+                            return r.AccountId.HasValue && allowedAccounts.Contains(r.AccountId.Value);
+                        case PostingKind.Contact:
+                            if (query.IncludeCategory && allowedContactCats != null)
+                            {
+                                if (!r.ContactId.HasValue) { return false; }
+                                if (!contactCategoryMap.TryGetValue(r.ContactId.Value, out var cid)) { return false; }
+                                return cid.HasValue && allowedContactCats.Contains(cid.Value);
+                            }
+                            if (allowedContacts == null) { return true; }
+                            return r.ContactId.HasValue && allowedContacts.Contains(r.ContactId.Value);
+                        case PostingKind.SavingsPlan:
+                            if (query.IncludeCategory && allowedSavingsCats != null)
+                            {
+                                if (!r.SavingsPlanId.HasValue) { return false; }
+                                if (!savingsCategoryMap.TryGetValue(r.SavingsPlanId.Value, out var sid)) { return false; }
+                                return sid.HasValue && allowedSavingsCats.Contains(sid.Value);
+                            }
+                            if (allowedSavings == null) { return true; }
+                            return r.SavingsPlanId.HasValue && allowedSavings.Contains(r.SavingsPlanId.Value);
+                        case PostingKind.Security:
+                            if (query.IncludeCategory && allowedSecurityCats != null)
+                            {
+                                if (!r.SecurityId.HasValue) { return false; }
+                                if (!securityCategoryMap.TryGetValue(r.SecurityId.Value, out var secid)) { return false; }
+                                return secid.HasValue && allowedSecurityCats.Contains(secid.Value);
+                            }
+                            if (allowedSecurities == null) { return true; }
+                            return r.SecurityId.HasValue && allowedSecurities.Contains(r.SecurityId.Value);
+                        default:
+                            return true;
+                    }
+                }).ToList();
+            }
+        }
+
         var points = new List<ReportAggregatePointDto>();
         bool multi = kinds.Length > 1;
 

@@ -14,6 +14,16 @@ public interface IReportFavoriteService
     Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct);
 }
 
+public sealed record ReportFavoriteFiltersDto(
+    IReadOnlyCollection<Guid>? AccountIds,
+    IReadOnlyCollection<Guid>? ContactIds,
+    IReadOnlyCollection<Guid>? SavingsPlanIds,
+    IReadOnlyCollection<Guid>? SecurityIds,
+    IReadOnlyCollection<Guid>? ContactCategoryIds,
+    IReadOnlyCollection<Guid>? SavingsPlanCategoryIds,
+    IReadOnlyCollection<Guid>? SecurityCategoryIds
+);
+
 public sealed record ReportFavoriteDto(
     Guid Id,
     string Name,
@@ -26,7 +36,8 @@ public sealed record ReportFavoriteDto(
     bool Expandable,
     DateTime CreatedUtc,
     DateTime? ModifiedUtc,
-    IReadOnlyCollection<int> PostingKinds // multi support (at least one, falls back to single PostingKind if none stored)
+    IReadOnlyCollection<int> PostingKinds, // multi support (at least one, falls back to single PostingKind if none stored)
+    ReportFavoriteFiltersDto? Filters
 );
 
 public sealed record ReportFavoriteCreateRequest(
@@ -38,7 +49,8 @@ public sealed record ReportFavoriteCreateRequest(
     bool CompareYear,
     bool ShowChart,
     bool Expandable,
-    IReadOnlyCollection<int>? PostingKinds = null // optional multi list
+    IReadOnlyCollection<int>? PostingKinds = null, // optional multi list
+    ReportFavoriteFiltersDto? Filters = null
 );
 
 public sealed record ReportFavoriteUpdateRequest(
@@ -50,5 +62,6 @@ public sealed record ReportFavoriteUpdateRequest(
     bool CompareYear,
     bool ShowChart,
     bool Expandable,
-    IReadOnlyCollection<int>? PostingKinds = null // optional multi list
+    IReadOnlyCollection<int>? PostingKinds = null, // optional multi list
+    ReportFavoriteFiltersDto? Filters = null
 );

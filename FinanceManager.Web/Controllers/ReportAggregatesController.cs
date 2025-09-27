@@ -20,6 +20,27 @@ public sealed class ReportAggregatesController : ControllerBase
         _agg = agg; _current = current; _logger = logger;
     }
 
+    public sealed record FiltersRequest(
+        IReadOnlyCollection<Guid>? AccountIds,
+        IReadOnlyCollection<Guid>? ContactIds,
+        IReadOnlyCollection<Guid>? SavingsPlanIds,
+        IReadOnlyCollection<Guid>? SecurityIds,
+        IReadOnlyCollection<Guid>? ContactCategoryIds,
+        IReadOnlyCollection<Guid>? SavingsPlanCategoryIds,
+        IReadOnlyCollection<Guid>? SecurityCategoryIds
+    )
+    {
+        public ReportAggregationFilters ToModel() => new(
+            AccountIds,
+            ContactIds,
+            SavingsPlanIds,
+            SecurityIds,
+            ContactCategoryIds,
+            SavingsPlanCategoryIds,
+            SecurityCategoryIds
+        );
+    }
+
     public sealed record QueryRequest(
         int PostingKind,
         ReportInterval Interval,
@@ -28,7 +49,8 @@ public sealed class ReportAggregatesController : ControllerBase
         bool ComparePrevious = false,
         bool CompareYear = false,
         IReadOnlyCollection<int>? PostingKinds = null, // neu: Multi aus Body
-        DateTime? AnalysisDate = null // neu: optionales Analysedatum (Monatsgenau)
+        DateTime? AnalysisDate = null, // neu: optionales Analysedatum (Monatsgenau)
+        FiltersRequest? Filters = null // neu: optionale Entitäts-/Kategorie-Filter
     );
 
     [HttpPost]
@@ -77,6 +99,8 @@ public sealed class ReportAggregatesController : ControllerBase
                 analysisDate = new DateTime(d.Year, d.Month, 1);
             }
 
+            var filters = req.Filters?.ToModel();
+
             var query = new ReportAggregationQuery(
                 _current.UserId,
                 req.PostingKind,
@@ -86,7 +110,8 @@ public sealed class ReportAggregatesController : ControllerBase
                 req.ComparePrevious,
                 req.CompareYear,
                 multi,
-                analysisDate);
+                analysisDate,
+                filters);
 
             var result = await _agg.QueryAsync(query, ct);
             return Ok(result);

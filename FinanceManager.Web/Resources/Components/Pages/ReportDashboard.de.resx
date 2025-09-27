@@ -186,6 +186,21 @@
   <data name="FilterGroup_Chart" xml:space="preserve">
     <value>Diagramm</value>
   </data>
+  <data name="FilterGroup_TopLevelFilter" xml:space="preserve">
+    <value>Filter (Top‑Ebene)</value>
+  </data>
+  <data name="Info_FilterOnlySingleKind" xml:space="preserve">
+    <value>Filter stehen nur im Single‑Kind‑Modus zur Verfügung.</value>
+  </data>
+  <data name="Label_SelectCategories" xml:space="preserve">
+    <value>Kategorien auswählen</value>
+  </data>
+  <data name="Label_SelectEntities" xml:space="preserve">
+    <value>Entitäten auswählen</value>
+  </data>
+  <data name="Button_ClearFilters" xml:space="preserve">
+    <value>Filter löschen</value>
+  </data>
   <data name="Dialog_Fav_Title_New" xml:space="preserve">
     <value>Favorit speichern</value>
   </data>
@@ -278,5 +293,26 @@
   </data>
   <data name="Default_FavoriteName" xml:space="preserve">
     <value>Neuer Bericht</value>
+  </data>
+  <data name="Button_OpenFilters" xml:space="preserve">
+    <value>Filter auswählen</value>
+  </data>
+  <data name="FilterDialog_Title" xml:space="preserve">
+    <value>Filter auswählen</value>
+  </data>
+  <data name="FilterDialog_Apply" xml:space="preserve">
+    <value>Übernehmen</value>
+  </data>
+  <data name="FilterDialog_Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="Ribbon_Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="Ribbon_OpenFilters" xml:space="preserve">
+    <value>Bearbeiten</value>
+  </data>
+  <data name="Ribbon_ClearFilters" xml:space="preserve">
+    <value>Entfernen</value>
   </data>
 </root>
