@@ -38,6 +38,7 @@ public class AppDbContext : DbContext
     public DbSet<SecurityPrice> SecurityPrices => Set<SecurityPrice>();
     public DbSet<BackupRecord> Backups => Set<BackupRecord>();
     public DbSet<ReportFavorite> ReportFavorites => Set<ReportFavorite>(); // new
+    public DbSet<HomeKpi> HomeKpis => Set<HomeKpi>(); // new
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -244,7 +245,26 @@ public class AppDbContext : DbContext
             b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
             b.Property(x => x.PostingKind).IsRequired();
             b.Property(x => x.Interval).HasConversion<int>().IsRequired();
+            b.Property(x => x.Take).IsRequired();
         });
+
+        // HomeKpi configuration
+        modelBuilder.Entity<HomeKpi>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.OwnerUserId, x.SortOrder });
+            b.Property(x => x.OwnerUserId).IsRequired();
+            b.Property(x => x.DisplayMode).HasConversion<int>().IsRequired();
+            b.Property(x => x.Kind).HasConversion<int>().IsRequired();
+            b.Property(x => x.SortOrder).IsRequired();
+            b.Property(x => x.Title).HasMaxLength(120);
+            b.Property(x => x.PredefinedType).HasConversion<int?>();
+             // Optional FK to ReportFavorite; on delete favorite -> cascade remove dependent KPIs
+             b.HasOne<ReportFavorite>()
+                 .WithMany()
+                 .HasForeignKey(x => x.ReportFavoriteId)
+                 .OnDelete(DeleteBehavior.Cascade);
+         });
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

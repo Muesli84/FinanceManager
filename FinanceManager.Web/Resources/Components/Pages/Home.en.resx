@@ -166,4 +166,58 @@
   <data name="Chart_Title_DividendsQuarterly" xml:space="preserve">
     <value>Quarterly Dividend</value>
   </data>
+  <data name="Ribbon_Group_Kpi" xml:space="preserve">
+    <value>Page</value>
+  </data>
+  <data name="Ribbon_Kpi_Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Ribbon_Kpi_Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="AddKpi_Title" xml:space="preserve">
+    <value>Add KPI</value>
+  </data>
+  <data name="Kpi_Tab_Predefined" xml:space="preserve">
+    <value>Predefined</value>
+  </data>
+  <data name="Kpi_Tab_Favorites" xml:space="preserve">
+    <value>Favorites</value>
+  </data>
+  <data name="Kpi_Display" xml:space="preserve">
+    <value>Display</value>
+  </data>
+  <data name="Kpi_Display_TotalOnly" xml:space="preserve">
+    <value>Total only</value>
+  </data>
+  <data name="Kpi_Display_TotalWithComparisons" xml:space="preserve">
+    <value>Total + comparisons</value>
+  </data>
+  <data name="Kpi_Display_ReportGraph" xml:space="preserve">
+    <value>Report graph</value>
+  </data>
+  <data name="AddKpi" xml:space="preserve">
+    <value>Add KPI</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Dialog_Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Dialog_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Favorite" xml:space="preserve">
+    <value>Favorite</value>
+  </data>
+  <data name="OpenReport" xml:space="preserve">
+    <value>Open report</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="NoData" xml:space="preserve">
+    <value>No data</value>
+  </data>
 </root>

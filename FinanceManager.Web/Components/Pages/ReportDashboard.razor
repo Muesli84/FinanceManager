@@ -945,6 +945,7 @@ else
             PostingKind = PrimaryKind,
             IncludeCategory = _includeCategory,
             Interval = _interval,
+            Take = _take,
             ComparePrevious = _comparePrevious,
             CompareYear = _compareYear,
             ShowChart = _showChart,
@@ -982,6 +983,7 @@ else
             PostingKind = PrimaryKind,
             IncludeCategory = _includeCategory,
             Interval = _interval,
+            Take = _take,
             ComparePrevious = _comparePrevious,
             CompareYear = _compareYear,
             ShowChart = _showChart,
@@ -1024,6 +1026,7 @@ else
         _selectedKinds = fav.PostingKinds?.Count > 0 ? fav.PostingKinds.Select(x=>x).ToList() : new List<int>{ fav.PostingKind };
         _includeCategory = fav.IncludeCategory;
         _interval = fav.Interval;
+        _take = fav.Take;
         _comparePrevious = fav.ComparePrevious;
         _compareYear = fav.CompareYear;
         _showChart = fav.ShowChart;
@@ -1100,7 +1103,7 @@ else
     private sealed record FiltersRequest(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds);
     private sealed record AggregationResponse(ReportInterval Interval, List<PointDto> Points, bool ComparedPrevious, bool ComparedYear);
     private sealed record PointDto(DateTime PeriodStart, string GroupKey, string GroupName, string? CategoryName, decimal Amount, string? ParentGroupKey, decimal? PreviousAmount, decimal? YearAgoAmount);
-    private sealed record FavoriteDto(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds, FavFiltersDto? Filters);
+    private sealed record FavoriteDto(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, int Take, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds, FavFiltersDto? Filters);
 
     private sealed class FavCreate
     {
@@ -1108,6 +1111,7 @@ else
         public int PostingKind { get; set; }
         public bool IncludeCategory { get; set; }
         public ReportInterval Interval { get; set; }
+        public int Take { get; set; }
         public bool ComparePrevious { get; set; }
         public bool CompareYear { get; set; }
         public bool ShowChart { get; set; }
