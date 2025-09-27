@@ -290,6 +290,7 @@ else
                 new Ribbon<TabId>.RibbonItem{ Label=_editMode? Localizer["Ribbon_View"]: Localizer["Ribbon_Edit"], IconSvg=_editMode? "<svg><use href='/icons/sprite.svg#eye'/></svg>":"<svg><use href='/icons/sprite.svg#edit'/></svg>", Size=Ribbon<TabId>.RibbonItemSize.Large, Callback= ()=> { ToggleEditMode(); return Task.CompletedTask; } },
                 new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_Save"], IconSvg="<svg><use href='/icons/sprite.svg#save'/></svg>", Disabled=!_editMode, Callback= ()=> { OnSaveRequested(); return Task.CompletedTask; } },
                 new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_SaveAs"], IconSvg="<svg><use href='/icons/sprite.svg#save-as'/></svg>", Disabled=!_editMode, Callback= ()=> { OpenFavoriteDialog(false); return Task.CompletedTask; } },
+                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_DeleteFavorite"], IconSvg="<svg><use href='/icons/sprite.svg#trash'/></svg>", Disabled=!_activeFavoriteId.HasValue, Callback= ()=> { if(_activeFavoriteId.HasValue){ _ = DeleteFavoriteAsync(_activeFavoriteId.Value); } return Task.CompletedTask; } },
                 new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_ReloadData"], IconSvg="<svg><use href='/icons/sprite.svg#refresh'/></svg>", Callback = ()=> { _=LoadAsync(); return Task.CompletedTask; } }
             }
         };

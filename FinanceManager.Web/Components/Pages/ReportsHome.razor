@@ -39,10 +39,6 @@ else
     </ul>
 }
 
-<div class="actions">
-    <button class="btn" @onclick="NewReportEdit">@Localizer["Action_NewReport"]</button>
-</div>
-
 @code {
     private enum TabId { Reports }
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
