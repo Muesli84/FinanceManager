@@ -19,7 +19,8 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         bool comparePrevious,
         bool compareYear,
         bool showChart,
-        bool expandable)
+        bool expandable,
+        int take = 24)
     {
         OwnerUserId = Guards.NotEmpty(ownerUserId, nameof(ownerUserId));
         Rename(name);
@@ -30,6 +31,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         CompareYear = compareYear;
         ShowChart = showChart;
         Expandable = expandable;
+        SetTake(take);
     }
 
     public Guid OwnerUserId { get; private set; }
@@ -46,6 +48,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     public bool ShowChart { get; private set; }
     public bool Expandable { get; private set; }
     public string? PostingKindsCsv { get; private set; }
+    public int Take { get; private set; } = 24;
 
     // Persisted filter lists (CSV)
     public string? AccountIdsCsv { get; private set; }
@@ -62,7 +65,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         Touch();
     }
 
-    public void Update(int postingKind, bool includeCategory, ReportInterval interval, bool comparePrevious, bool compareYear, bool showChart, bool expandable)
+    public void Update(int postingKind, bool includeCategory, ReportInterval interval, bool comparePrevious, bool compareYear, bool showChart, bool expandable, int take)
     {
         PostingKind = postingKind;
         IncludeCategory = includeCategory;
@@ -71,7 +74,14 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         CompareYear = compareYear;
         ShowChart = showChart;
         Expandable = expandable;
+        SetTake(take);
         Touch();
+    }
+
+    private void SetTake(int take)
+    {
+        // constrain reasonable bounds 1..120 months
+        Take = Math.Clamp(take, 1, 120);
     }
 
     public IReadOnlyCollection<int> GetPostingKinds() =>

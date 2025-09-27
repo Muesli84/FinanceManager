@@ -30,6 +30,7 @@ public sealed record ReportFavoriteDto(
     int PostingKind,
     bool IncludeCategory,
     ReportInterval Interval,
+    int Take,
     bool ComparePrevious,
     bool CompareYear,
     bool ShowChart,
@@ -45,23 +46,37 @@ public sealed record ReportFavoriteCreateRequest(
     int PostingKind,
     bool IncludeCategory,
     ReportInterval Interval,
+    int Take,
     bool ComparePrevious,
     bool CompareYear,
     bool ShowChart,
     bool Expandable,
     IReadOnlyCollection<int>? PostingKinds = null, // optional multi list
     ReportFavoriteFiltersDto? Filters = null
-);
+)
+{
+    public ReportFavoriteCreateRequest(string name, int postingKind, bool includeCategory, ReportInterval interval,
+        bool comparePrevious, bool compareYear, bool showChart, bool expandable,
+        IReadOnlyCollection<int>? postingKinds = null, ReportFavoriteFiltersDto? filters = null)
+        : this(name, postingKind, includeCategory, interval, 24, comparePrevious, compareYear, showChart, expandable, postingKinds, filters) { }
+}
 
 public sealed record ReportFavoriteUpdateRequest(
     string Name,
     int PostingKind,
     bool IncludeCategory,
     ReportInterval Interval,
+    int Take,
     bool ComparePrevious,
     bool CompareYear,
     bool ShowChart,
     bool Expandable,
     IReadOnlyCollection<int>? PostingKinds = null, // optional multi list
     ReportFavoriteFiltersDto? Filters = null
-);
+)
+{
+    public ReportFavoriteUpdateRequest(string name, int postingKind, bool includeCategory, ReportInterval interval,
+        bool comparePrevious, bool compareYear, bool showChart, bool expandable,
+        IReadOnlyCollection<int>? postingKinds = null, ReportFavoriteFiltersDto? filters = null)
+        : this(name, postingKind, includeCategory, interval, 24, comparePrevious, compareYear, showChart, expandable, postingKinds, filters) { }
+}

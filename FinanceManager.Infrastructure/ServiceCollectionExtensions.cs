@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPostingTimeSeriesService, PostingTimeSeriesService>();
         services.AddScoped<IReportFavoriteService, ReportFavoriteService>();
         services.AddScoped<IReportAggregationService, ReportAggregationService>();
+        services.AddScoped<IHomeKpiService, HomeKpiService>();
         return services;
     }
 }

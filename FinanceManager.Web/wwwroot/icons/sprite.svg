@@ -16,7 +16,13 @@
   <symbol id="external" viewBox="0 0 24 24"><path d="M14 3h7v7M10 14L21 3M5 5h6M5 5v14h14v-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="link" viewBox="0 0 24 24"><path d="M10 14l4-4M7 17a4 4 0 010-6l2-2m6-2l2-2a4 4 0 010 6l-2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="unlink" viewBox="0 0 24 24"><path d="M10 14l4-4M8 12l-1.5 1.5a4 4 0 005.657 5.657L14 17M16 12l1.5-1.5a4 4 0 00-5.657-5.657L10 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="edit" viewBox="0 0 24 24">
+    <path d="M12 20h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M17 3l4 4L8 20H4v-4L17 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M15.5 5.5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
   <symbol id="clear" viewBox="0 0 24 24"><path d="M6 6l12 12M6 18L18 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M6 18L18 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="archive" viewBox="0 0 24 24"><path d="M4 7h16l-2 13H6L4 7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M3 4h18v3H3zM10 12h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
   <symbol id="postings" viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>

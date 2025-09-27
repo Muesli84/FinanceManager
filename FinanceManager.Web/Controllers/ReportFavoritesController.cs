@@ -57,6 +57,7 @@ public sealed class ReportFavoritesController : ControllerBase
         [Range(0, 10)] public int PostingKind { get; set; }
         public bool IncludeCategory { get; set; }
         [Required] public ReportInterval Interval { get; set; }
+        [Range(1,120)] public int Take { get; set; } = 24;
         public bool ComparePrevious { get; set; }
         public bool CompareYear { get; set; }
         public bool ShowChart { get; set; }
@@ -76,7 +77,7 @@ public sealed class ReportFavoritesController : ControllerBase
             var filters = req.Filters == null ? null : new ReportFavoriteFiltersDto(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds);
             var dto = await _favorites.CreateAsync(
                 _current.UserId,
-                new ReportFavoriteCreateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters),
+                new ReportFavoriteCreateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters),
                 ct);
             return CreatedAtRoute("GetReportFavorite", new { id = dto.Id }, dto);
         }
@@ -101,6 +102,7 @@ public sealed class ReportFavoritesController : ControllerBase
         [Range(0, 10)] public int PostingKind { get; set; }
         public bool IncludeCategory { get; set; }
         [Required] public ReportInterval Interval { get; set; }
+        [Range(1,120)] public int Take { get; set; } = 24;
         public bool ComparePrevious { get; set; }
         public bool CompareYear { get; set; }
         public bool ShowChart { get; set; }
@@ -121,7 +123,7 @@ public sealed class ReportFavoritesController : ControllerBase
             var dto = await _favorites.UpdateAsync(
                 id,
                 _current.UserId,
-                new ReportFavoriteUpdateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters),
+                new ReportFavoriteUpdateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters),
                 ct);
             return dto == null ? NotFound() : Ok(dto);
         }
