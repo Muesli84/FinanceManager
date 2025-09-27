@@ -18,6 +18,7 @@ using System.Text;
 using System.Text.Json;
 using FinanceManager.Domain.Postings; // AggregatePeriod, PostingAggregate
 using FinanceManager.Application.Aggregates;
+using FinanceManager.Domain.Reports;
 
 public sealed class SetupImportService : ISetupImportService
 {
@@ -102,7 +103,7 @@ public sealed class SetupImportService : ISetupImportService
         {
             StepDescription = "",
             Step = 0,
-            Total = replaceExisting ? 14 : 13,
+            Total = replaceExisting ? 16 : 15,
             SubStep = 0,
             SubTotal = 0
         };
@@ -130,6 +131,7 @@ public sealed class SetupImportService : ISetupImportService
         var savingsMap = new Dictionary<Guid, Guid>();
         var accountMap = new Dictionary<Guid, Guid>();
         var draftMap = new Dictionary<Guid, Guid>();
+        var favoriteMap = new Dictionary<Guid, Guid>();
 
         // ContactCategories
         ProgressChanged?.Invoke(this, progress.SetDescription("Contact Categories"));
@@ -465,7 +467,7 @@ public sealed class SetupImportService : ISetupImportService
                 var isCostNeutral = e.TryGetProperty("IsCostNeutral", out var ic) && ic.ValueKind == JsonValueKind.True;
                 var status = e.TryGetProperty("Status", out var st) && st.ValueKind == JsonValueKind.Number ? (StatementDraftEntryStatus)st.GetInt32(): isAnnounced ? StatementDraftEntryStatus.Announced : StatementDraftEntryStatus.Open;
 
-                
+
                 // Load draft entity
                 var draft = await _db.StatementDrafts.FirstAsync(x => x.Id == draftId, ct);
 
@@ -514,6 +516,112 @@ public sealed class SetupImportService : ISetupImportService
                     await _db.SaveChangesAsync(ct);
                 ProgressChanged?.Invoke(this, progress.IncSub());
             }
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        ProgressChanged?.Invoke(this, progress.SetDescription("Report Favorites"));
+        if (root.TryGetProperty("ReportFavorites", out var favsEl) && favsEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var f in favsEl.EnumerateArray())
+            {
+                var name = f.GetProperty("Name").GetString() ?? string.Empty;
+                var postingKind = f.GetProperty("PostingKind").GetInt32();
+                var includeCategory = f.GetProperty("IncludeCategory").GetBoolean();
+                var interval = (ReportInterval)f.GetProperty("Interval").GetInt32();
+                var take = f.TryGetProperty("Take", out var takeEl) ? takeEl.GetInt32() : 24;
+                var comparePrev = f.GetProperty("ComparePrevious").GetBoolean();
+                var compareYear = f.GetProperty("CompareYear").GetBoolean();
+                var showChart = f.GetProperty("ShowChart").GetBoolean();
+                var expandable = f.GetProperty("Expandable").GetBoolean();
+
+                var entity = new ReportFavorite(userId, name, postingKind, includeCategory, interval, comparePrev, compareYear, showChart, expandable, take);
+
+                // Optional multi kinds
+                if (f.TryGetProperty("PostingKindsCsv", out var kindsEl))
+                {
+                    var kindsCsv = kindsEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(kindsCsv))
+                    {
+                        var kinds = kindsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .Select(s => int.TryParse(s, out var v) ? v : (int?)null)
+                            .Where(v => v.HasValue).Select(v => v!.Value).ToArray();
+                        if (kinds.Length > 0) { entity.SetPostingKinds(kinds); }
+                    }
+                }
+
+                // Optional filters (CSV -> GUID lists)
+                string? accCsv = f.TryGetProperty("AccountIdsCsv", out var accEl) ? accEl.GetString() : null;
+                string? conCsv = f.TryGetProperty("ContactIdsCsv", out var conEl) ? conEl.GetString() : null;
+                string? savCsv = f.TryGetProperty("SavingsPlanIdsCsv", out var savEl) ? savEl.GetString() : null;
+                string? secCsv = f.TryGetProperty("SecurityIdsCsv", out var secEl) ? secEl.GetString() : null;
+                string? ccatCsv = f.TryGetProperty("ContactCategoryIdsCsv", out var ccatEl) ? ccatEl.GetString() : null;
+                string? scatCsv = f.TryGetProperty("SavingsPlanCategoryIdsCsv", out var scatEl) ? scatEl.GetString() : null;
+                string? secatCsv = f.TryGetProperty("SecurityCategoryIdsCsv", out var secatEl) ? secatEl.GetString() : null;
+
+                static IReadOnlyCollection<Guid>? ToGuids(string? csv)
+                    => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Guid.Parse).ToArray();
+
+                entity.SetFilters(ToGuids(accCsv), ToGuids(conCsv), ToGuids(savCsv), ToGuids(secCsv), ToGuids(ccatCsv), ToGuids(scatCsv), ToGuids(secatCsv));
+
+                // Preserve Id when present to allow HomeKpi reference resolution
+                if (f.TryGetProperty("Id", out var idEl) && idEl.ValueKind == JsonValueKind.String && Guid.TryParse(idEl.GetString(), out var id))
+                {
+                    _db.Entry(entity).Property("Id").CurrentValue = id;
+                }
+                // Preserve Created/Modified if available
+                if (f.TryGetProperty("CreatedUtc", out var cuEl) && cuEl.ValueKind == JsonValueKind.String && DateTime.TryParse(cuEl.GetString(), out var cu))
+                {
+                    _db.Entry(entity).Property("CreatedUtc").CurrentValue = DateTime.SpecifyKind(cu, DateTimeKind.Utc);
+                }
+                if (f.TryGetProperty("ModifiedUtc", out var muEl) && muEl.ValueKind == JsonValueKind.String && DateTime.TryParse(muEl.GetString(), out var mu))
+                {
+                    _db.Entry(entity).Property("ModifiedUtc").CurrentValue = DateTime.SpecifyKind(mu, DateTimeKind.Utc);
+                }
+
+                _db.ReportFavorites.Add(entity);
+            }
+            await _db.SaveChangesAsync(ct);
+        }
+        ProgressChanged?.Invoke(this, progress.Inc());
+
+        ProgressChanged?.Invoke(this, progress.SetDescription("Home KPI"));
+        if (root.TryGetProperty("HomeKpis", out var kpisEl) && kpisEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var k in kpisEl.EnumerateArray())
+            {
+                var kind = (HomeKpiKind)k.GetProperty("Kind").GetInt32();
+                var display = (HomeKpiDisplayMode)k.GetProperty("DisplayMode").GetInt32();
+                var sortOrder = k.GetProperty("SortOrder").GetInt32();
+                Guid? favId = null;
+                if (k.TryGetProperty("ReportFavoriteId", out var rfEl) && rfEl.ValueKind == JsonValueKind.String && Guid.TryParse(rfEl.GetString(), out var rf))
+                {
+                    favId = rf;
+                }
+                var entity = new HomeKpi(userId, kind, display, sortOrder, favId);
+                if (k.TryGetProperty("Title", out var tEl))
+                {
+                    entity.SetTitle(tEl.GetString());
+                }
+                if (k.TryGetProperty("PredefinedType", out var pEl) && pEl.ValueKind != JsonValueKind.Null)
+                {
+                    var pt = (HomeKpiPredefined)pEl.GetInt32();
+                    entity.SetPredefined(pt);
+                }
+                if (k.TryGetProperty("Id", out var idEl) && idEl.ValueKind == JsonValueKind.String && Guid.TryParse(idEl.GetString(), out var id))
+                {
+                    _db.Entry(entity).Property("Id").CurrentValue = id;
+                }
+                if (k.TryGetProperty("CreatedUtc", out var cuEl) && cuEl.ValueKind == JsonValueKind.String && DateTime.TryParse(cuEl.GetString(), out var cu))
+                {
+                    _db.Entry(entity).Property("CreatedUtc").CurrentValue = DateTime.SpecifyKind(cu, DateTimeKind.Utc);
+                }
+                if (k.TryGetProperty("ModifiedUtc", out var muEl) && muEl.ValueKind == JsonValueKind.String && DateTime.TryParse(muEl.GetString(), out var mu))
+                {
+                    _db.Entry(entity).Property("ModifiedUtc").CurrentValue = DateTime.SpecifyKind(mu, DateTimeKind.Utc);
+                }
+                _db.HomeKpis.Add(entity);
+            }
+            await _db.SaveChangesAsync(ct);
         }
         ProgressChanged?.Invoke(this, progress.Inc());
 

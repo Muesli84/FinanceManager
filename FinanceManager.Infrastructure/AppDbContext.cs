@@ -274,10 +274,19 @@ public class AppDbContext : DbContext
 
     internal async Task ClearUserDataAsync(Guid userId, Action<int, int> progressCallback, CancellationToken ct)
     {
-        var total = 21;
+        var total = 23;
         var count = 0;
 
-        // PostingAggregates (pro Dimension)
+        await HomeKpis
+            .Where(h => h.OwnerUserId == userId)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total); 
+        
+        await ReportFavorites
+            .Where(r => r.OwnerUserId == userId)
+            .ExecuteDeleteAsync(ct);
+        progressCallback(++count, total);
+
         await PostingAggregates
             .Where(p => p.AccountId != null && Accounts.Any(a => a.OwnerUserId == userId && a.Id == p.AccountId))
             .ExecuteDeleteAsync(ct);

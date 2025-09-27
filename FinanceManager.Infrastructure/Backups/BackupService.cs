@@ -9,6 +9,7 @@ using static iText.StyledXmlParser.Jsoup.Select.Evaluator;
 using Microsoft.Extensions.DependencyInjection;
 using FinanceManager.Application.Aggregates;
 using FinanceManager.Application.Statements;
+using FinanceManager.Domain.Reports;
 
 namespace FinanceManager.Infrastructure.Backups;
 
@@ -284,6 +285,52 @@ public sealed class BackupService : IBackupService
             .Select(e => new { e.Id, e.DraftId, e.BookingDate, e.ValutaDate, e.Amount, e.CurrencyCode, e.Subject, e.RecipientName, e.BookingDescription, e.IsAnnounced, e.IsCostNeutral, e.Status, e.ContactId, e.SavingsPlanId, e.ArchiveSavingsPlanOnBooking, e.SplitDraftId, e.SecurityId, e.SecurityTransactionType, e.SecurityQuantity, e.SecurityFeeAmount, e.SecurityTaxAmount, e.CreatedUtc, e.ModifiedUtc })
             .ToListAsync(ct);
 
+        // Favorites & Home KPIs (new in v3)
+        var reportFavorites = await _db.ReportFavorites.AsNoTracking()
+            .Where(r => r.OwnerUserId == userId)
+            .Select(r => new
+            {
+                r.Id,
+                r.OwnerUserId,
+                r.Name,
+                r.PostingKind,
+                r.IncludeCategory,
+                r.Interval,
+                r.Take,
+                r.ComparePrevious,
+                r.CompareYear,
+                r.ShowChart,
+                r.Expandable,
+                r.CreatedUtc,
+                r.ModifiedUtc,
+                r.PostingKindsCsv,
+                r.AccountIdsCsv,
+                r.ContactIdsCsv,
+                r.SavingsPlanIdsCsv,
+                r.SecurityIdsCsv,
+                r.ContactCategoryIdsCsv,
+                r.SavingsPlanCategoryIdsCsv,
+                r.SecurityCategoryIdsCsv
+            })
+            .ToListAsync(ct);
+
+        var homeKpis = await _db.HomeKpis.AsNoTracking()
+            .Where(h => h.OwnerUserId == userId)
+            .Select(h => new
+            {
+                h.Id,
+                h.OwnerUserId,
+                h.Kind,
+                h.ReportFavoriteId,
+                h.DisplayMode,
+                h.SortOrder,
+                h.Title,
+                h.PredefinedType,
+                h.CreatedUtc,
+                h.ModifiedUtc
+            })
+            .ToListAsync(ct);
+
         return new
         {
             Accounts = accounts,
@@ -299,7 +346,9 @@ public sealed class BackupService : IBackupService
             StatementEntries = statementEntries,
             Postings = postings,
             StatementDrafts = drafts,
-            StatementDraftEntries = draftEntries
+            StatementDraftEntries = draftEntries,
+            ReportFavorites = reportFavorites,
+            HomeKpis = homeKpis
         };
     }
 
