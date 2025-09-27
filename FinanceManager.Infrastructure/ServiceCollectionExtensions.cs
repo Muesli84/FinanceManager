@@ -51,6 +51,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBackupService, BackupService>();
         services.AddScoped<IPostingAggregateService, PostingAggregateService>();
         services.AddScoped<IPostingTimeSeriesService, PostingTimeSeriesService>();
+        services.AddScoped<IReportFavoriteService, ReportFavoriteService>();
+        services.AddScoped<IReportAggregationService, ReportAggregationService>();
         return services;
     }
 }

@@ -3,6 +3,7 @@ using System;
 using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FinanceManager.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250926051841_AddMultiEntityReporting")]
+    partial class AddMultiEntityReporting
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0-rc.1.24451.1");
@@ -315,20 +318,11 @@ namespace FinanceManager.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("AccountIdsCsv")
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("ComparePrevious")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("CompareYear")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("ContactCategoryIdsCsv")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ContactIdsCsv")
-                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT");
@@ -357,18 +351,6 @@ namespace FinanceManager.Infrastructure.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("PostingKindsCsv")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SavingsPlanCategoryIdsCsv")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SavingsPlanIdsCsv")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SecurityCategoryIdsCsv")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SecurityIdsCsv")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("ShowChart")
