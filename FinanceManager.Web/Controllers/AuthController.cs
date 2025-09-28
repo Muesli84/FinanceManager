@@ -30,7 +30,7 @@ public sealed class AuthController : ControllerBase
         Response.Cookies.Append("fm_auth", result.Value!.Token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = Request.IsHttps, // wichtig für HTTP-only
             SameSite = SameSiteMode.Lax,
             Path = "/",
             IsEssential = true
@@ -53,7 +53,7 @@ public sealed class AuthController : ControllerBase
         Response.Cookies.Append("fm_auth", result.Value!.Token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Path = "/",
             IsEssential = true
@@ -69,7 +69,7 @@ public sealed class AuthController : ControllerBase
             Response.Cookies.Delete("fm_auth", new CookieOptions
             {
                 Path = "/",
-                Secure = true,
+                Secure = Request.IsHttps,
                 HttpOnly = true,
                 SameSite = SameSiteMode.Lax
             });

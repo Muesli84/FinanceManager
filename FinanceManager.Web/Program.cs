@@ -5,18 +5,25 @@ using FinanceManager.Web.Components;
 using FinanceManager.Web.Infrastructure;
 using FinanceManager.Web.Services;
 using FinanceManager.Web.Infrastructure.Auth;
+using FinanceManager.Web.Infrastructure.Logging; // NEU
 using Microsoft.AspNetCore.Authentication.JwtBearer; // NEU
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Serilog;
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// .NET Logging: Console + File (aus appsettings)
+builder.Logging.ClearProviders();
+builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+builder.Logging.AddConsole();
+builder.Services.Configure<FileLoggerOptions>(builder.Configuration.GetSection("FileLogging"));
+builder.Logging.AddFile();
 
 builder.Services.AddLocalization(o => o.ResourcesPath = "Resources");
 var supportedCultures = new[] { "de", "en" }.Select(c => new CultureInfo(c)).ToList();
@@ -26,24 +33,11 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]))
     throw new InvalidOperationException("Configuration 'Jwt:Key' missing. Set via user secrets: dotnet user-secrets set \"Jwt:Key\" \"<random>\"");
 }
 
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .Enrich.WithEnvironmentName()
-    .Enrich.WithProcessId()
-    .Enrich.WithThreadId()
-    .WriteTo.Console()
-    .CreateLogger();
-
-builder.Host.UseSerilog();
-
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddControllers();
-
 builder.Services.AddInfrastructure(builder.Configuration.GetConnectionString("Default"));
-
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.Configure<FormOptions>(options =>
@@ -51,7 +45,7 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit = 1024L * 1024L * 1024L; // 1 GB
 });
 
-// Background task queue (new unified system)
+// Background task queue
 builder.Services.AddSingleton<IBackgroundTaskManager, BackgroundTaskManager>();
 builder.Services.AddSingleton<IBackgroundTaskExecutor, ClassificationTaskExecutor>();
 builder.Services.AddSingleton<IBackgroundTaskExecutor, BookingTaskExecutor>();
@@ -62,7 +56,7 @@ builder.Services.AddHostedService<BackgroundTaskRunner>();
 builder.Services.AddSingleton<IPriceProvider, AlphaVantagePriceProvider>();
 builder.Services.AddHostedService<SecurityPriceWorker>();
 
-// Named HttpClient (bleibt)
+// HttpClient
 builder.Services.AddTransient<AuthenticatedHttpClientHandler>();
 builder.Services.AddSingleton<IAuthTokenProvider, JwtCookieAuthTokenProvider>();
 builder.Services.AddHttpClient("Api", (sp, client) =>
@@ -81,13 +75,13 @@ builder.Services.AddScoped(sp =>
     return client;
 });
 
-// JWT Authentication (Header Bearer + Cookie fm_auth)
+// JWT
 var keyBytes = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = true;
+        options.RequireHttpsMetadata = false; // HTTP-only Umgebung
         options.SaveToken = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -126,6 +120,8 @@ app.UseRequestLocalization(new RequestLocalizationOptions
     SupportedUICultures = supportedCultures
 });
 
+app.UseMiddleware<RequestLoggingMiddleware>();
+
 // EF Core Migration
 using (var scope = app.Services.CreateScope())
 {
@@ -133,18 +129,17 @@ using (var scope = app.Services.CreateScope())
     try
     {
         db.Database.Migrate();
-        // Safety patch (ensures columns exist if DB was created before migration was added)
-        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SchemaPatcher");
-        SchemaPatcher.EnsureUserImportSplitSettingsColumns(db, logger);
+        var schemaLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SchemaPatcher");
+        SchemaPatcher.EnsureUserImportSplitSettingsColumns(db, schemaLogger);
     }
     catch (SqliteException ex) when (ex.SqliteErrorCode == 1)
     {
-        Log.Error(ex, "EF Core migrations failed – likely existing database created via EnsureCreated()");
+        app.Logger.LogError(ex, "EF Core migrations failed – likely existing database created via EnsureCreated()");
         throw;
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "Database migration failed");
+        app.Logger.LogError(ex, "Database migration failed");
         throw;
     }
 }
@@ -158,10 +153,12 @@ using (var scope = app.Services.CreateScope())
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
+}
+else
+{
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
