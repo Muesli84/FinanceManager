@@ -135,6 +135,9 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-KPI-005       | ✖      | KPI-Fallback Jahresanfang                                               | Offen                                                                                                                                                                            |
 | FA-KPI-006      | ~       | Quartalsdividenden Übersicht                                            | Endpoint `/api/securities/dividends`, KPI-Kachel                                                                                                                                 |
 | FA-KPI-007       | ✔      | Favoritenberichte als Home‑KPIs (Editiermodus + Dialog + Darstellung)   | Startseite: Editiermodus mit dynamischem KPI‑Hinzufügen über Plus‑Platzhalter; Dialog bietet vordefinierte KPIs oder Berichtsfavoriten; Anzeigeoptionen: (a) nur aktueller Gesamtbetrag, (b) Gesamtbetrag + Vergleichswerte als Balken, (c) Berichtsgrafik. Klick auf KPI öffnet Bericht (Ansichtmodus). Löschen eines Favoriten löscht zugehörige KPIs. Tests stellen Lösch‑Kaskade sicher. |
+| FA-NOT-001      | ✖       | Zeitgesteuerte Monatsabschluss‑Benachrichtigung (letzter Werktag)      | Geplant: `BusinessDayCalculator` (Wochenenden + konfigurierbare Feiertage); Scheduling der Anzeige am letzten Werktag des Monats.                                               |
+| FA-NOT-002      | ✖       | Konfiguration Monatsabschluss‑Hinweis                                   | Geplant: Einstellung in Setup/Profil (aktivieren/deaktivieren) + optional anpassbarer Nachrichtentext (User‑Settings).                                                          |
+| FA-NOT-003      | ✖       | Darstellung Hinweis auf Startseite                                      | Geplant: Prominente Anzeige (Banner/Info‑Box/Toast) auf `Home.razor` inkl. Link zu Abschlussaktionen.                                                                            |
 | FA-API-001       | ✔      | Web API für alle Entitäten                                              | Controller (Accounts, Contacts, Statements, Securities, etc.)                                                                                                                    |
 | FA-API-002       | ~      | Suchkriterien für API                                                   | Kontakte: type + q; weitere Entitäten partiell                                                                                                                                   |
 | FA-API-003       | ✔      | Authentifizierung & Autorisierung                                       | JWT + `[Authorize]`                                                                                                                                                              |
@@ -185,12 +188,18 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-I18N-001     | ✔      | Zwei Sprachen, Fallback                                                 | de/en + Fallback                                                                                                                                                                 |
 | NFA-DATA-001     | ✖      | Zeitreihen effizient gespeichert                                        | Optimierte Speicherung/Aggregationen offen                                                                                                                                       |
 | NFA-PRIV-001     | ✔      | Lokale Speicherung, keine Weitergabe                                    | Keine externe Weitergabe                                                                                                                                                         |
+| NFA-NOT-001     | ✖       | Eventgetriebene Benachrichtigungen                                      | Optional (später): Hinweise bei Events (Fristen, System, Benutzeraktionen); Schnittstelle/Bus vorbereiten.                                                                      |
+| NFA-NOT-002     | ✖       | Modulare Benachrichtigungsarchitektur                                   | Optional (später): Erweiterbare Architektur/Registry für neue Benachrichtigungstypen und Targets.                                                                               |
 
 **Legende:**  
 ✔ = umgesetzt / vorhanden  
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
+
+Änderungen (29.09.2025) – Ergänzung 25:
+- Neue Anforderungen für Monatsabschluss‑Benachrichtigung ergänzt: FA-NOT-001 (Zeitsteuerung), FA-NOT-002 (Konfiguration), FA-NOT-003 (Darstellung). Status: ✖ (geplant).
+- Optional/NFA ergänzt: NFA-NOT-001 (eventgetriebene Benachrichtigungen), NFA-NOT-002 (modulare Architektur). Status: ✖ (geplant).
 
 Änderungen (29.09.2025) – Ergänzung 24:
 - FA-AUTH-014 auf ✔: Benutzer‑Fehlversuchszähler mit 5‑Minuten‑Reset im `UserAuthService` verdrahtet.
