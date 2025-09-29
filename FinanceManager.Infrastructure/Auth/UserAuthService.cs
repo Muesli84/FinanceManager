@@ -6,6 +6,7 @@ using FinanceManager.Domain.Users;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using FinanceManager.Domain.Security; // new
 
 namespace FinanceManager.Infrastructure.Auth;
 
@@ -16,8 +17,8 @@ public sealed class UserAuthService : IUserAuthService
     private readonly IJwtTokenService _jwt;
     private readonly IDateTimeProvider _clock;
     private readonly ILogger<UserAuthService> _logger;
-    private const int MaxFailedAttempts = 3;
-    private static readonly TimeSpan BaseLockDuration = TimeSpan.FromMinutes(5); // first lock
+    private const int ThresholdAttempts = 3; // Sperre ab 3
+    private static readonly TimeSpan ResetWindow = TimeSpan.FromMinutes(5);
 
     public UserAuthService(AppDbContext db, IPasswordHasher passwordHasher, IJwtTokenService jwt, IDateTimeProvider clock, ILogger<UserAuthService> logger)
     {
@@ -75,11 +76,13 @@ public sealed class UserAuthService : IUserAuthService
 
     public async Task<Result<AuthResult>> LoginAsync(LoginCommand command, CancellationToken ct)
     {
-        _logger.LogInformation("Login attempt for {Username}", command.Username);
+        _logger.LogInformation("Login attempt for {Username} from {Ip}", command.Username, command.IpAddress ?? "?");
+
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == command.Username, ct);
         if (user is null)
         {
-            _logger.LogWarning("Login failed: user {Username} not found", command.Username);
+            await RegisterUnknownUserFailureAsync(command.IpAddress, ct);
+            _logger.LogWarning("Login failed: user {Username} not found (Ip={Ip})", command.Username, command.IpAddress);
             return Result<AuthResult>.Fail("Invalid credentials");
         }
 
@@ -91,11 +94,17 @@ public sealed class UserAuthService : IUserAuthService
 
         if (!_passwordHasher.Verify(command.Password, user.PasswordHash))
         {
-            await RegisterFailedAttemptAsync(user, ct);
-            _logger.LogWarning("Login failed (invalid credentials) for {Username}", user.Username);
+            var failed = user.RegisterFailedLogin(_clock.UtcNow, ResetWindow);
+            if (failed >= ThresholdAttempts)
+            {
+                await BlockIpIfNeededAsync(command.IpAddress, "User failed login threshold reached", ct);
+            }
+            await _db.SaveChangesAsync(ct);
+            _logger.LogWarning("Login failed (invalid credentials) for {Username} (Failed={Failed}, Ip={Ip})", user.Username, failed, command.IpAddress);
             return Result<AuthResult>.Fail("Invalid credentials");
         }
 
+        // success ? reset counters
         user.MarkLogin(_clock.UtcNow);
         user.SetLockedUntil(null);
         await _db.SaveChangesAsync(ct);
@@ -103,31 +112,39 @@ public sealed class UserAuthService : IUserAuthService
         var expires = _clock.UtcNow.AddMinutes(30);
         var token = _jwt.CreateToken(user.Id, user.Username, user.IsAdmin, expires);
 
-        _logger.LogInformation("Login success for {UserId} ({Username})", user.Id, user.Username);
+        _logger.LogInformation("Login success for {UserId} ({Username}) from {Ip}", user.Id, user.Username, command.IpAddress);
         return Result<AuthResult>.Ok(new AuthResult(user.Id, user.Username, user.IsAdmin, token, expires));
     }
 
-    private async Task RegisterFailedAttemptAsync(User user, CancellationToken ct)
+    private async Task RegisterUnknownUserFailureAsync(string? ip, CancellationToken ct)
     {
-        var failed = user.IncrementFailedLoginAttempts();
-        if (failed >= MaxFailedAttempts)
+        if (string.IsNullOrWhiteSpace(ip)) { return; }
+        var now = _clock.UtcNow;
+        var block = await _db.IpBlocks.FirstOrDefaultAsync(b => b.IpAddress == ip, ct);
+        if (block == null)
         {
-            int escalation = failed - MaxFailedAttempts; // 0 first lock window
-            var duration = TimeSpan.FromTicks(BaseLockDuration.Ticks * (long)Math.Pow(2, escalation));
-            if (duration > TimeSpan.FromHours(8))
-            {
-                duration = TimeSpan.FromHours(8);
-            }
-            var until = _clock.UtcNow.Add(duration);
-            user.SetLockedUntil(until);
-            _logger.LogWarning("User {UserId} ({Username}) locked after {Failed} failed attempts until {LockedUntil} (DurationMinutes={Duration})",
-                user.Id, user.Username, failed, until, duration.TotalMinutes);
+            block = new IpBlock(ip);
+            _db.IpBlocks.Add(block);
         }
-        else
+        var count = block.RegisterUnknownUserFailure(now, ResetWindow);
+        if (count >= ThresholdAttempts)
         {
-            _logger.LogInformation("Failed login attempt {Failed} for {Username}", failed, user.Username);
+            block.Block(now, "Unknown user failures threshold reached");
         }
+        await _db.SaveChangesAsync(ct);
+    }
 
+    private async Task BlockIpIfNeededAsync(string? ip, string reason, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(ip)) { return; }
+        var block = await _db.IpBlocks.FirstOrDefaultAsync(b => b.IpAddress == ip, ct);
+        if (block == null)
+        {
+            block = new IpBlock(ip);
+            _db.IpBlocks.Add(block);
+        }
+        // escalate to block (user-side failures already thresholded in caller)
+        block.Block(_clock.UtcNow, reason);
         await _db.SaveChangesAsync(ct);
     }
 }

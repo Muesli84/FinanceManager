@@ -69,7 +69,7 @@ public sealed class SecurityService : ISecurityService
         bool exists = await _db.Securities.AnyAsync(s => s.OwnerUserId == ownerUserId && s.Name == name, ct);
         if (exists) { throw new ArgumentException("Security name must be unique per user", nameof(name)); }
 
-        var entity = new Security(ownerUserId, name, identifier, description, alphaVantageCode, currencyCode, categoryId);
+        var entity = new FinanceManager.Domain.Securities.Security(ownerUserId, name, identifier, description, alphaVantageCode, currencyCode, categoryId);
         _db.Securities.Add(entity);
         await _db.SaveChangesAsync(ct);
         var catName = categoryId == null

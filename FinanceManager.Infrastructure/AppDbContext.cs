@@ -12,6 +12,7 @@ using FinanceManager.Infrastructure.Backups;
 using System.Threading.Tasks;
 using System.Threading;
 using FinanceManager.Domain.Reports; // added
+using FinanceManager.Domain.Security; // new
 
 namespace FinanceManager.Infrastructure;
 
@@ -32,13 +33,14 @@ public class AppDbContext : DbContext
     public DbSet<StatementDraftEntry> StatementDraftEntries => Set<StatementDraftEntry>();
     public DbSet<SavingsPlan> SavingsPlans => Set<SavingsPlan>();
     public DbSet<SavingsPlanCategory> SavingsPlanCategories { get; set; } = null!;
-    public DbSet<Security> Securities => Set<Security>();
+    public DbSet<FinanceManager.Domain.Securities.Security> Securities => Set<FinanceManager.Domain.Securities.Security>();
     public DbSet<SecurityCategory> SecurityCategories => Set<SecurityCategory>();
     public DbSet<PostingAggregate> PostingAggregates => Set<PostingAggregate>();
     public DbSet<SecurityPrice> SecurityPrices => Set<SecurityPrice>();
     public DbSet<BackupRecord> Backups => Set<BackupRecord>();
     public DbSet<ReportFavorite> ReportFavorites => Set<ReportFavorite>(); // new
     public DbSet<HomeKpi> HomeKpis => Set<HomeKpi>(); // new
+    public DbSet<IpBlock> IpBlocks => Set<IpBlock>(); // new
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -166,7 +168,7 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<Security>(b =>
+        modelBuilder.Entity<FinanceManager.Domain.Securities.Security>(b =>
         {
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
@@ -265,6 +267,14 @@ public class AppDbContext : DbContext
                  .HasForeignKey(x => x.ReportFavoriteId)
                  .OnDelete(DeleteBehavior.Cascade);
          });
+
+        // IpBlock configuration
+        modelBuilder.Entity<IpBlock>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.IpAddress).IsUnique();
+            b.Property(x => x.IpAddress).HasMaxLength(64).IsRequired();
+        });
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

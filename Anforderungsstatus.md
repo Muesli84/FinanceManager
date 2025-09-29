@@ -76,7 +76,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-REP-008-13    | ✔      | Analysedatum monatsweise einstellbar (Referenzmonat)                    | `ReportAggregationQuery.AnalysisDate`, Controller/Service angepasst, UI Month‑Picker                                                                                            |
 | FA-REP-008-14    | ✔      | Entitätswertfilter: UI (Single‑Kind Basis)                              | ReportDashboard: Multi‑Select für Top‑Level Filter (entweder Kategorie‑IDs oder Entitäts‑IDs je nach Modus); Dialog + Anwendung im Report                                      |
 | FA-REP-008-15    | ✔      | Entitätswertfilter: Aggregation + API                                   | Implementiert: `ReportAggregatesController` akzeptiert Filter, `ReportAggregationQuery`/DTOs erweitert, `ReportAggregationService` filtert Top‑Level (Kategorie/Entität) vor Aggregation. Tests vorhanden. |
-| FA-REP-008-16    | ✔      | Entitätswertfilter: Multi‑Kind Support                                  | Implementiert: Separate Allow‑Lists pro `PostingKind`, Kombination mit `IncludeCategory` berücksichtigt (Bank ohne Kategorien), Kantenfälle behandelt. UI Tabs/Scroll, Service aggregiert `Type:` + Kinder. Tests vorhanden. |
+| FA-REP-008-16    | ✔      | Entitätswertfilter: Multi‑Kind Support                                  | Implementiert: Separate Allow‑Listen pro `PostingKind`, Kombination mit `IncludeCategory` berücksichtigt (Bank ohne Kategorien), Kantenfälle behandelt. UI Tabs/Scroll, Service aggregiert `Type:` + Kinder. Tests vorhanden. |
 | FA-REP-008-17    | ✔      | Entitätswertfilter in Favoriten speichern                               | `ReportFavorite` + Service/Controller um Filter‑Felder erweitert; UI sendet `Filters` bei Save/Update; Persistenz in DB (CSV‑Felder)                                            |
 | FA-REP-008-18    | ✔      | Entitätswertfilter aus Favoriten anwenden                               | `ApplyFavorite` setzt `_selectedFilterIds` anhand gespeicherter Filter; UI/Query aktualisiert                                                                                   |
 | FA-REP-008-19    | ✖      | UX: Aktive‑Filter‑Badges + Schnell‑Löschen                              | Anzeige aktive Filter (Chips) oberhalb Ergebnis; Clear‑All / Einzeln entfernen; i18n + A11y                                                                                    |
@@ -152,6 +152,12 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUTH-011      | ✔      | Admin kann Benutzer bearbeiten/löschen                                  | Update/Delete Endpoints + UI                                                                                                                                                     |
 | FA-AUTH-012      | ✖      | Löschen entfernt private Daten                                          | Offen                                                                                                                                                                            |
 | FA-AUTH-013      | ✔      | Admin kann Sperren aufheben                                             | Unlock Endpoint + UI                                                                                                                                                            |
+| FA-AUTH-014      | ✔      | Fehlversuche zählen am Benutzer (Reset nach 5 Min)                      | Verdrahtet: `UserAuthService` nutzt `User.RegisterFailedLogin(_clock.UtcNow, ResetWindow)` (5 Minuten). Zähler werden persistiert und bei erfolgreichem Login zurückgesetzt.    |
+| FA-AUTH-015      | ✔      | Globaler Fehlversuchszähler (unbekannter Benutzer, Reset nach 5 Min)    | `UserAuthService.RegisterUnknownUserFailureAsync` erhöht Zähler in `IpBlock` mit 5‑Minuten‑Reset‑Fenster. Persistenz via `AppDbContext.IpBlocks`.                               |
+| FA-AUTH-016      | ✔      | IP‑Sperrliste ab 3 Fehlversuchen                                        | Ab 3 Fehlversuchen (bekannter oder unbekannter Benutzer) wird die IP per `IpBlock.Block(...)` gesperrt. Schwellenwert/Reset im Service.                                         |
+| FA-AUTH-017      | ✔      | Middleware blockiert gesperrte IP‑Adressen                              | `IpBlockMiddleware` liefert 403 + JSON. Registrierung in `Program.cs` direkt nach `RequestLoggingMiddleware`.                                                                   |
+| FA-AUTH-018      | ✔      | Admin kann Sperrliste verwalten                                         | `AdminIpBlocksController` (CRUD/Block/Unblock/Reset), Blazor‑Komponente `SetupIpBlockTab` im Setup‑Bereich (Tab „IP‑Sperrliste“), Ressourcen de/en vorhanden.                    |
+| FA-AUTH-019      | ✖      | Benachrichtigung an Admins bei neuer Sperre                             | Offen                                                                                                                                                                            |
 | FA-I18N-001      | ✔      | UI-Texte in Deutsch/Englisch                                            | Ressourcen + Localizer                                                                                                                                                           |
 | FA-I18N-002      | ✖      | Sprache im Profil einstellen                                            | Offen                                                                                                                                                                            |
 | FA-I18N-003      | ✔      | Fallback auf Browser/Systemsprache                                      | RequestLocalizationOptions                                                                                                                                                       |
@@ -186,10 +192,21 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
 
+Änderungen (29.09.2025) – Ergänzung 24:
+- FA-AUTH-014 auf ✔: Benutzer‑Fehlversuchszähler mit 5‑Minuten‑Reset im `UserAuthService` verdrahtet.
+- FA-AUTH-015 auf ✔: Globaler Zähler für unbekannte Benutzer mit 5‑Minuten‑Reset über `IpBlock`.
+- FA-AUTH-016 auf ✔: Automatische IP‑Sperre ab 3 Fehlversuchen; Entsperrung über Admin möglich.
+- FA-AUTH-017 auf ✔: `IpBlockMiddleware` blockiert gesperrte IPs (403) – in Pipeline registriert.
+- FA-AUTH-018 auf ✔: Admin‑Verwaltung Sperrliste implementiert (`AdminIpBlocksController`, `SetupIpBlockTab` im Setup‑Bereich, Ressourcen de/en).
+
+Änderungen (29.09.2025) – Ergänzung 23:
+- Neue Anforderungen FA-AUTH-014..019 hinzugefügt (Fehlversuchszähler Benutzer/Global, IP‑Sperrliste, Middleware, Admin‑Verwaltung, Admin‑Benachrichtigung).
+- Datenmodell begonnen: `User` um `LastFailedLoginUtc` erweitert; neue Entität `IpBlock` (Zähler für unbekannte Benutzer + Blockstatus). DbSet/ModelConfig vorbereitet. Status: 014..016 ~, 017..019 ✖.
+
 +Änderungen (27.09.2025) – Ergänzung 22:
  - Neue Anforderung FA-KPI-007 hinzugefügt: Favoritenberichte als Home‑KPIs inkl. Editiermodus, Plus‑Platzhalter, Auswahl‑Dialog (vordefinierte KPIs oder Berichtsfavoriten), Anzeigeoptionen (Total/Total+Vergleiche/Berichtsgrafik), Navigation zum Bericht in Ansichtmodus, Lösch‑Kaskade bei Favoriten, Tests.
-+- FA-REP-008-15 auf ✔ gesetzt: Filterung in Aggregation + API umgesetzt. Service filtert Kategorie-/Entitäts‑Top‑Level vor Aggregation; Controller nimmt Filter entgegen. Test hinzugefügt: `ReportAggregationServiceTests.QueryAsync_ShouldApplyEntityFilters_ForTwoKinds_WithTwoSelectedValuesEach` (zwei Buchungsarten, je zwei Filterwerte).  
-+- FA-REP-008-16 auf ✔ gesetzt: Multi‑Kind Filter voll unterstützt (separate Listen pro PostingKind). UI: Filter‑Dialog Tabs + Scroll; Child‑Rows Fix für Konten im Multi‑Mode (Fallback, falls `ParentGroupKey` fehlt).  
+- FA-REP-008-15 auf ✔ gesetzt: Filterung in Aggregation + API umgesetzt. Service filtert Kategorie-/Entitäts‑Top‑Level vor Aggregation; Controller nimmt Filter entgegen. Test hinzugefügt: `ReportAggregationServiceTests.QueryAsync_ShouldApplyEntityFilters_ForTwoKinds_WithTwoSelectedValuesEach` (zwei Buchungsarten, je zwei Filterwerte).  
+- FA-REP-008-16 auf ✔ gesetzt: Multi‑Kind Filter voll unterstützt (separate Listen pro PostingKind). UI: Filter‑Dialog Tabs + Scroll; Child‑Rows Fix für Konten im Multi‑Mode (Fallback, falls `ParentGroupKey` fehlt).  
  - FA-REP-008-14 auf ✔: UI für Entitätswertfilter (Single‑Kind) vollständig, inkl. Dialog und Anwendung im Report.  
  - FA-REP-008-17 auf ✔: Filter werden im Favoriten gespeichert (Domain `ReportFavorite` erweitert um Filter‑CSV, Service/Controller/DTO angepasst).  
  - FA-REP-008-18 auf ✔: Gespeicherte Filter werden beim Laden eines Favoriten angewendet (`ApplyFavorite`).  

@@ -23,7 +23,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
     private readonly IPostingAggregateService _aggregateService;
     private readonly ILogger<StatementDraftService> _logger; // added
     private List<StatementDraftDto>? allDrafts = null;
-    private List<Security>? allSecurities = null;
+    private List<FinanceManager.Domain.Securities.Security>? allSecurities = null;
     private List<Domain.Accounts.Account>? allAccounts = null;
 
     public ImportSplitInfo? LastImportSplitInfo { get; private set; } // exposes metadata of last CreateDraftAsync call (scoped service)
