@@ -121,6 +121,7 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 });
 
 app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<IpBlockMiddleware>(); // NEW: deny blocked IPs early
 
 // EF Core Migration
 using (var scope = app.Services.CreateScope())

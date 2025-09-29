@@ -22,7 +22,8 @@ public sealed class AuthController : ControllerBase
         {
             return ValidationProblem(ModelState);
         }
-        var result = await _auth.LoginAsync(new LoginCommand(request.Username, request.Password), ct);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var result = await _auth.LoginAsync(new LoginCommand(request.Username, request.Password, ip), ct);
         if (!result.Success)
         {
             return Unauthorized(new { error = result.Error });

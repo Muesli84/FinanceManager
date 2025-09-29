@@ -20,6 +20,8 @@ using FinanceManager.Application.Aggregates;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Application.Reports;
 using FinanceManager.Infrastructure.Reports;
+using FinanceManager.Application.Security; // new
+using FinanceManager.Infrastructure.Security; // new
 
 namespace FinanceManager.Infrastructure;
 
@@ -54,6 +56,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IReportFavoriteService, ReportFavoriteService>();
         services.AddScoped<IReportAggregationService, ReportAggregationService>();
         services.AddScoped<IHomeKpiService, HomeKpiService>();
+        services.AddScoped<IIpBlockService, IpBlockService>(); // new
         return services;
     }
 }

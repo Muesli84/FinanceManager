@@ -25,6 +25,7 @@ public sealed class User : Entity, IAggregateRoot
     public DateTime LastLoginUtc { get; private set; }
     public bool Active { get; private set; } = true;
     public int FailedLoginAttempts { get; private set; }
+    public DateTime? LastFailedLoginUtc { get; private set; }
 
     // --- Import Split Settings (User Preferences) ---
     public ImportSplitMode ImportSplitMode { get; private set; } = ImportSplitMode.MonthlyOrFixed;
@@ -98,5 +99,25 @@ public sealed class User : Entity, IAggregateRoot
     public void SetAdmin(bool isAdmin) => IsAdmin = isAdmin;
     public void SetPasswordHash(string passwordHash) => PasswordHash = Guards.NotNullOrWhiteSpace(passwordHash, nameof(passwordHash));
     public int IncrementFailedLoginAttempts() => ++FailedLoginAttempts;
-    public void ResetFailedLoginAttempts() => FailedLoginAttempts = 0;
+    public void ResetFailedLoginAttempts()
+    {
+        FailedLoginAttempts = 0;
+        LastFailedLoginUtc = null;
+    }
+
+    /// <summary>
+    /// Increments failed login attempts with time-based reset if last failure is older than resetAfter.
+    /// Returns the effective counter after increment.
+    /// </summary>
+    public int RegisterFailedLogin(DateTime utcNow, TimeSpan resetAfter)
+    {
+        if (LastFailedLoginUtc.HasValue && utcNow - LastFailedLoginUtc.Value >= resetAfter)
+        {
+            FailedLoginAttempts = 0;
+        }
+        FailedLoginAttempts++;
+        LastFailedLoginUtc = utcNow;
+        Touch();
+        return FailedLoginAttempts;
+    }
 }

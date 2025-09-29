@@ -264,4 +264,7 @@
   <data name="Ribbon_Group_Navigation" xml:space="preserve">
     <value>Navigation</value>
   </data>
+  <data name="Tab_IpBlocks" xml:space="preserve">
+    <value>IP block list</value>
+  </data>
 </root>
