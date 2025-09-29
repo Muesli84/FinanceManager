@@ -29,7 +29,7 @@ public sealed class UserAuthServiceTests
         hasher.Setup(h => h.Hash(It.IsAny<string>())).Returns<string>(p => $"HASH::{p}");
         hasher.Setup(h => h.Verify(It.IsAny<string>(), It.IsAny<string>()))
             .Returns<string, string>((pw, hash) => hash == $"HASH::{pw}");
-        jwt.Setup(j => j.CreateToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<DateTime>()))
+        jwt.Setup(j => j.CreateToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<string?>()))
             .Returns("token");
         var logger = new Mock<ILogger<UserAuthService>>();
         var sut = new UserAuthService(db, hasher.Object, jwt.Object, clock, logger.Object);
@@ -40,7 +40,7 @@ public sealed class UserAuthServiceTests
     public async Task RegisterAsync_ShouldCreateFirstUserAsAdmin_WhenNoUsersExist()
     {
         var (sut, db, _, _, clock) = Create();
-        var cmd = new RegisterUserCommand("alice", "Password123", null);
+        var cmd = new RegisterUserCommand("alice", "Password123", null, null);
         var result = await sut.RegisterAsync(cmd, CancellationToken.None);
 
         result.Success.Should().BeTrue();
@@ -55,7 +55,7 @@ public sealed class UserAuthServiceTests
         var (sut, db, _, _, _) = Create();
         db.Users.Add(new User("bob", "HASH::x", false));
         db.SaveChanges();
-        var cmd = new RegisterUserCommand("bob", "pw", null);
+        var cmd = new RegisterUserCommand("bob", "pw", null, null);
         var result = await sut.RegisterAsync(cmd, CancellationToken.None);
         result.Success.Should().BeFalse();
         result.Error.Should().Contain("exists");
@@ -65,7 +65,7 @@ public sealed class UserAuthServiceTests
     public async Task RegisterAsync_ShouldSetPreferredLanguage_WhenProvided()
     {
         var (sut, db, _, _, _) = Create();
-        var cmd = new RegisterUserCommand("carol", "Password123", "en");
+        var cmd = new RegisterUserCommand("carol", "Password123", "en", null);
         var res = await sut.RegisterAsync(cmd, CancellationToken.None);
 
         res.Success.Should().BeTrue();
@@ -78,8 +78,8 @@ public sealed class UserAuthServiceTests
     {
         var (sut, _, _, _, _) = Create();
 
-        var res1 = await sut.RegisterAsync(new RegisterUserCommand("", "pw", null), CancellationToken.None);
-        var res2 = await sut.RegisterAsync(new RegisterUserCommand("user", "", null), CancellationToken.None);
+        var res1 = await sut.RegisterAsync(new RegisterUserCommand("", "pw", null, null), CancellationToken.None);
+        var res2 = await sut.RegisterAsync(new RegisterUserCommand("user", "", null, null), CancellationToken.None);
 
         res1.Success.Should().BeFalse();
         res2.Success.Should().BeFalse();

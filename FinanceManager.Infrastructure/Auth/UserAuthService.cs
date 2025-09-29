@@ -53,6 +53,10 @@ public sealed class UserAuthService : IUserAuthService
         {
             user.SetPreferredLanguage(command.PreferredLanguage);
         }
+        if (!string.IsNullOrWhiteSpace(command.TimeZoneId))
+        {
+            user.SetTimeZoneId(command.TimeZoneId);
+        }
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
@@ -66,7 +70,7 @@ public sealed class UserAuthService : IUserAuthService
         }
 
         var expires = _clock.UtcNow.AddMinutes(30);
-        var token = _jwt.CreateToken(user.Id, user.Username, user.IsAdmin, expires);
+        var token = _jwt.CreateToken(user.Id, user.Username, user.IsAdmin, expires, user.PreferredLanguage, user.TimeZoneId);
 
         await new DemoDataService(_db).CreateDemoDataForUserAsync(user.Id, ct);
 
@@ -107,10 +111,21 @@ public sealed class UserAuthService : IUserAuthService
         // success ? reset counters
         user.MarkLogin(_clock.UtcNow);
         user.SetLockedUntil(null);
+
+        // one-time capture of missing preferences from client
+        if (string.IsNullOrWhiteSpace(user.PreferredLanguage) && !string.IsNullOrWhiteSpace(command.PreferredLanguage))
+        {
+            user.SetPreferredLanguage(command.PreferredLanguage);
+        }
+        if (string.IsNullOrWhiteSpace(user.TimeZoneId) && !string.IsNullOrWhiteSpace(command.TimeZoneId))
+        {
+            user.SetTimeZoneId(command.TimeZoneId);
+        }
+
         await _db.SaveChangesAsync(ct);
 
         var expires = _clock.UtcNow.AddMinutes(30);
-        var token = _jwt.CreateToken(user.Id, user.Username, user.IsAdmin, expires);
+        var token = _jwt.CreateToken(user.Id, user.Username, user.IsAdmin, expires, user.PreferredLanguage, user.TimeZoneId);
 
         _logger.LogInformation("Login success for {UserId} ({Username}) from {Ip}", user.Id, user.Username, command.IpAddress);
         return Result<AuthResult>.Ok(new AuthResult(user.Id, user.Username, user.IsAdmin, token, expires));

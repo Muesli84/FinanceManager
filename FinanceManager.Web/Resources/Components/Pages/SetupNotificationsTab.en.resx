@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Notifications_TabTitle" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notifications_MonthlyReminder" xml:space="preserve"><value>Enable month-end reminder</value></data>
+  <data name="Notifications_MonthlyReminder_Help" xml:space="preserve"><value>Show a reminder on the last business day of the month on the home page.</value></data>
+  <data name="Notifications_MonthlyReminder_Time" xml:space="preserve"><value>Time (local)</value></data>
+  <data name="Notifications_MonthlyReminder_Time_Help" xml:space="preserve"><value>Preferred time to receive the reminder (HH:mm). Default 09:00.</value></data>
+  <data name="Notifications_Holidays_Provider" xml:space="preserve"><value>Holiday source</value></data>
+  <data name="Notifications_Holidays_Provider_Help" xml:space="preserve"><value>Source for public holidays: Memory (simple, country only) or Nager.Date (country + region/counties).</value></data>
+  <data name="Notifications_Holidays_Region" xml:space="preserve"><value>Holiday region</value></data>
+  <data name="Notifications_Holidays_Region_Help" xml:space="preserve"><value>Country (e.g., DE) and optional subdivision (e.g., DE-BY) to consider public holidays.</value></data>
+  <data name="Notifications_SaveSuccess" xml:space="preserve"><value>Settings saved.</value></data>
+  <data name="Msg_Loading" xml:space="preserve"><value>Loading ...</value></data>
+  <data name="Btn_Retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="Btn_Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Btn_Reset" xml:space="preserve"><value>Reset</value></data>
+</root>

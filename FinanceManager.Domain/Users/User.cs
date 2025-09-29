@@ -1,8 +1,8 @@
+using FinanceManager.Shared.Dtos;
+
 namespace FinanceManager.Domain.Users;
 
-using FinanceManager.Shared.Dtos; // ImportSplitMode
-
-public sealed class User : Entity, IAggregateRoot
+public sealed partial class User : Entity, IAggregateRoot
 {
     private User() { }
     public User(string username, string passwordHash, bool isAdmin)

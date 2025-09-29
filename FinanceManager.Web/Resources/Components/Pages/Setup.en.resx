@@ -267,4 +267,25 @@
   <data name="Tab_IpBlocks" xml:space="preserve">
     <value>IP block list</value>
   </data>
+  <data name="Notifications_TabTitle" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="Notifications_MonthlyReminder" xml:space="preserve">
+    <value>Enable month-end reminder</value>
+  </data>
+  <data name="Notifications_MonthlyReminder_Help" xml:space="preserve">
+    <value>Shows a reminder on the home page on the last business day of the month.</value>
+  </data>
+  <data name="Notifications_SaveSuccess" xml:space="preserve">
+    <value>Settings saved.</value>
+  </data>
+  <data name="Msg_Loading" xml:space="preserve">
+    <value>Loading ...</value>
+  </data>
+  <data name="Btn_Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Tab_Profile" xml:space="preserve">
+    <value>Profile</value>
+  </data>
 </root>

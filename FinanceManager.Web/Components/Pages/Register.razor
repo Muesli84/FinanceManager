@@ -9,6 +9,8 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Register> L
 @using FinanceManager.Web.Components.Shared
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
 
 <PageTitle>@L["PageTitle"]</PageTitle>
 
@@ -90,10 +92,19 @@
     private bool _busy;
     private string? _error;
     private bool _debugVisible;
+    private IJSObjectReference? _profileModule;
 
     protected override void OnInitialized()
     {
         BuildRibbon();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _profileModule = await JS.InvokeAsync<IJSObjectReference>("import", "/js/profile.js");
+        }
     }
 
     private async Task RegisterAsync()
@@ -110,7 +121,20 @@
 
         try
         {
-            var payload = new { Username = _model.Username.Trim(), Password = _model.Password };
+            string? preferredLanguage = null; string? timeZoneId = null;
+            try
+            {
+                if (_profileModule != null)
+                {
+                    preferredLanguage = await _profileModule.InvokeAsync<string>("getLocale");
+                    timeZoneId = await _profileModule.InvokeAsync<string>("getTimeZone");
+                    if (!string.IsNullOrWhiteSpace(preferredLanguage)) preferredLanguage = preferredLanguage[..Math.Min(preferredLanguage.Length, 10)];
+                    if (!string.IsNullOrWhiteSpace(timeZoneId)) timeZoneId = timeZoneId[..Math.Min(timeZoneId.Length, 100)];
+                }
+            }
+            catch { }
+
+            var payload = new { Username = _model.Username.Trim(), Password = _model.Password, PreferredLanguage = preferredLanguage, TimeZoneId = timeZoneId };
             var resp = await Http.PostAsJsonAsync("/api/auth/register", payload);
             if (!resp.IsSuccessStatusCode)
             {

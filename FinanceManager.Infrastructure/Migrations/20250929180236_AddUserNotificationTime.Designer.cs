@@ -3,6 +3,7 @@ using System;
 using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FinanceManager.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250929180236_AddUserNotificationTime")]
+    partial class AddUserNotificationTime
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0-rc.1.24451.1");
@@ -958,15 +961,6 @@ namespace FinanceManager.Infrastructure.Migrations
 
                     b.Property<int>("FailedLoginAttempts")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("HolidayCountryCode")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("HolidayProviderKind")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("HolidaySubdivisionCode")
-                        .HasColumnType("TEXT");
 
                     b.Property<int>("ImportMaxEntriesPerDraft")
                         .HasColumnType("INTEGER");

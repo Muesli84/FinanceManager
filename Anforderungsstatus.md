@@ -30,7 +30,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUSZ-016-04   | ✔      | Berücksichtigung Benutzereinstellungen                                  | Split-Algorithmus (Monthly / Fixed / Hybrid)                                                                                                                                    |
 | FA-AUSZ-016-05   | ✔      | Validierung                                                             | UI + API + Domain (`User.SetImportSplitSettings`)                                                                                                                               |
 | FA-AUSZ-016-06   | ✔      | Logging                                                                 | Info-Log `CreateDraftAsync`                                                                                                                                                     |
-| FA-AUSZ-016-07   | ✖      | UI-Hinweis nach Import                                                  | Offener Notification/Result DTO                                                                                                                                                |
+| FA-AUSZ-016-07   | ✖      | UI-Hinweis nach Import                                                  | Offener Notification/Result DTO                                                                                                                                                 |
 | FA-AUSZ-016-08   | ✔      | Fallback Defaults                                                       | Bei fehlender UserSettings                                                                                                                                                      |
 | FA-AUSZ-016-09   | ✔      | Performance                                                             | Ein Pass + Sort (O(n log n))                                                                                                                                                    |
 | FA-AUSZ-016-10   | ✔      | Reihenfolge Drafts / Entries                                            | Sortierung BookingDate / Subject                                                                                                                                                |
@@ -85,7 +85,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-REP-008-03   | ✔      | Security (User-Scope Favoriten)                                         | OwnerUserId-Filter in Service/Controller                                                                                                                                        |
 | NFA-REP-008-04   | ✔      | Accessibility (ARIA für Expand/Chart)                                   | aria-expanded, aria-label Chart                                                                                                                                                 |
 | NFA-REP-008-05   | ~      | Internationalisierung                                                   | Beträge/Strings lokalisiert; Interval Enum-Werte roh                                                                                                                            |
-| NFA-REP-008-06   | ✖      | Persistente UI-Einstellungen (letzte Auswahl)                           | Nur Favoriten, kein Autosave Filter                                                                                                                                            |
+| NFA-REP-008-06   | ✖      | Persistente UI-Einstellungen (letzte Auswahl)                           | Nur Favoriten, kein Autosave Filter                                                                                                                                             |
 | NFA-REP-008-07   | ✖      | Export-Vorbereitung DTO                                                 | Offen                                                                                                                                                                           |
 | NFA-REP-008-08   | ✖      | Performance: Filterung auf DB‑Ebene                                     | Vorfilterung in Aggregates‑Abfrage; Indizes prüfen/ergänzen; Messungen + ggf. Paging                                                                                           |
 | FA-BACK-001      | ✔      | Backup erstellen                                                        | BackupService + Controller + UI                                                                                                                                                  |
@@ -135,9 +135,9 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-KPI-005       | ✖      | KPI-Fallback Jahresanfang                                               | Offen                                                                                                                                                                            |
 | FA-KPI-006      | ~       | Quartalsdividenden Übersicht                                            | Endpoint `/api/securities/dividends`, KPI-Kachel                                                                                                                                 |
 | FA-KPI-007       | ✔      | Favoritenberichte als Home‑KPIs (Editiermodus + Dialog + Darstellung)   | Startseite: Editiermodus mit dynamischem KPI‑Hinzufügen über Plus‑Platzhalter; Dialog bietet vordefinierte KPIs oder Berichtsfavoriten; Anzeigeoptionen: (a) nur aktueller Gesamtbetrag, (b) Gesamtbetrag + Vergleichswerte als Balken, (c) Berichtsgrafik. Klick auf KPI öffnet Bericht (Ansichtmodus). Löschen eines Favoriten löscht zugehörige KPIs. Tests stellen Lösch‑Kaskade sicher. |
-| FA-NOT-001      | ✖       | Zeitgesteuerte Monatsabschluss‑Benachrichtigung (letzter Werktag)      | Geplant: `BusinessDayCalculator` (Wochenenden + konfigurierbare Feiertage); Scheduling der Anzeige am letzten Werktag des Monats.                                               |
-| FA-NOT-002      | ✖       | Konfiguration Monatsabschluss‑Hinweis                                   | Geplant: Einstellung in Setup/Profil (aktivieren/deaktivieren) + optional anpassbarer Nachrichtentext (User‑Settings).                                                          |
-| FA-NOT-003      | ✖       | Darstellung Hinweis auf Startseite                                      | Geplant: Prominente Anzeige (Banner/Info‑Box/Toast) auf `Home.razor` inkl. Link zu Abschlussaktionen.                                                                            |
+| FA-NOT-001      | ✔       | Zeitgesteuerte Monatsabschluss‑Benachrichtigung (letzter Werktag)      | `BusinessDayCalculator` (Wochenende), `MonthlyReminderScheduler` + `MonthlyReminderJob` (HostedService). Nager.Date‑Feiertagskalender (Land + Counties/Subdivision) und Nutzer‑Zeitzone/Uhrzeit werden berücksichtigt; Provider wählbar (Memory/NagerDate). Texte lokalisiert. |
+| FA-NOT-002      | ✔       | Konfiguration Monatsabschluss‑Hinweis                                   | User-Setting `MonthlyReminderEnabled`, Uhrzeit (Hour/Minute), Feiertags‑Provider (Memory/NagerDate), `HolidayCountryCode` + `HolidaySubdivisionCode`; API `UserNotificationSettingsController`, UI `SetupNotificationsTab`. Individueller Nachrichtentext offen. |
+| FA-NOT-003      | ✔       | Darstellung Hinweis auf Startseite                                      | `HomeNotifications` Komponente, `NotificationsController` + `NotificationService` (List/Dismiss).                                                                                |
 | FA-API-001       | ✔      | Web API für alle Entitäten                                              | Controller (Accounts, Contacts, Statements, Securities, etc.)                                                                                                                    |
 | FA-API-002       | ~      | Suchkriterien für API                                                   | Kontakte: type + q; weitere Entitäten partiell                                                                                                                                   |
 | FA-API-003       | ✔      | Authentifizierung & Autorisierung                                       | JWT + `[Authorize]`                                                                                                                                                              |
@@ -162,7 +162,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUTH-018      | ✔      | Admin kann Sperrliste verwalten                                         | `AdminIpBlocksController` (CRUD/Block/Unblock/Reset), Blazor‑Komponente `SetupIpBlockTab` im Setup‑Bereich (Tab „IP‑Sperrliste“), Ressourcen de/en vorhanden.                    |
 | FA-AUTH-019      | ✖      | Benachrichtigung an Admins bei neuer Sperre                             | Offen                                                                                                                                                                            |
 | FA-I18N-001      | ✔      | UI-Texte in Deutsch/Englisch                                            | Ressourcen + Localizer                                                                                                                                                           |
-| FA-I18N-002      | ✖      | Sprache im Profil einstellen                                            | Offen                                                                                                                                                                            |
+| FA-I18N-002      | ✔      | Sprache im Profil einstellen                                            | User-Setting `PreferredLanguage` inkl. UI (`SetupProfileTab`) und API (`UserProfileSettingsController`); Anwendung zur Laufzeit via `UserPreferenceRequestCultureProvider` (Claim `pref_lang` zuerst, DB als Fallback); Register/Login senden Browserwerte; JWT enthält `pref_lang` und `tz`. |
 | FA-I18N-003      | ✔      | Fallback auf Browser/Systemsprache                                      | RequestLocalizationOptions                                                                                                                                                       |
 | FA-I18N-004      | ✔      | Texte über Resource-Dateien verwaltet                                   | Resx-Konzept                                                                                                                                                                     |
 | FA-I18N-005      | ✖      | Sprachwechsel ohne Neuanmeldung                                         | Offen                                                                                                                                                                            |
@@ -196,6 +196,25 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
+
+Änderungen (29.09.2025) – Ergänzung 30:
+- FA-NOT-001 auf ✔: Feiertagskalender integriert (Nager.Date) inkl. Land und Counties/Subdivision; Provider-Auswahl (Memory/NagerDate); Scheduler berücksichtigt Nutzer‑Zeitzone/Uhrzeit und gewählten Provider.
+- FA-NOT-002 erweitert: Einstellungen umfassen nun Provider sowie Land/Subdivision; UI lädt Subdivisions dynamisch (Meta‑API).
+- Meta‑APIs ergänzt: `/api/meta/holiday-providers`, `/api/meta/holiday-countries`, `/api/meta/holiday-subdivisions`.
+
+Änderungen (29.09.2025) – Ergänzung 29:
+- FA-NOT-001 erweitert: Reminder berücksichtigt jetzt Nutzer‑Zeitzone und konfigurierbare Uhrzeit (Default 09:00); Texte lokalisiert. Feiertage weiterhin offen.
+- FA-NOT-002 auf ✔: Konfiguration (aktiviert/deaktiviert + Uhrzeit) in UI/API/Domain umgesetzt.
+
+Änderungen (29.09.2025) – Ergänzung 28:
+- FA-I18N-002 auf ✔: Benutzerkultur wird zur Laufzeit angewendet (Claim `pref_lang` im JWT; DB nur als Fallback). UI `SetupProfileTab` + API vorhanden; Register/Login senden Browserwerte (`preferredLanguage`, `timeZoneId`).
+- JWT erweitert um Claims `pref_lang` und `tz`; Auth-Service setzt diese bei Register/Login.
+- RequestCulture-Provider bevorzugt Claim und greift nur bei Bedarf auf DB zu.
+
+Änderungen (29.09.2025) – Ergänzung 26–27:
+- Profil‑Einstellungen eingeführt (UI/API), Browser‑Erkennung Sprache/Zeitzone, `User.TimeZoneId` gespeichert. Scheduler ursprünglich ohne TZ, jetzt mit TZ + Uhrzeit.
+- Setup erweitert: Tab „Profil“ + JS‑Interop (`/js/profile.js`).
+- Scheduler/Job initial implementiert und später erweitert; Tests für 2024 vorhanden.
 
 Änderungen (29.09.2025) – Ergänzung 25:
 - Neue Anforderungen für Monatsabschluss‑Benachrichtigung ergänzt: FA-NOT-001 (Zeitsteuerung), FA-NOT-002 (Konfiguration), FA-NOT-003 (Darstellung). Status: ✖ (geplant).

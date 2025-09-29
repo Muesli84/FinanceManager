@@ -23,7 +23,7 @@ public sealed class AuthController : ControllerBase
             return ValidationProblem(ModelState);
         }
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var result = await _auth.LoginAsync(new LoginCommand(request.Username, request.Password, ip), ct);
+        var result = await _auth.LoginAsync(new LoginCommand(request.Username, request.Password, ip, request.PreferredLanguage, request.TimeZoneId), ct);
         if (!result.Success)
         {
             return Unauthorized(new { error = result.Error });
@@ -31,7 +31,7 @@ public sealed class AuthController : ControllerBase
         Response.Cookies.Append("fm_auth", result.Value!.Token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = Request.IsHttps, // wichtig für HTTP-only
+            Secure = Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Path = "/",
             IsEssential = true
@@ -46,7 +46,7 @@ public sealed class AuthController : ControllerBase
         {
             return ValidationProblem(ModelState);
         }
-        var result = await _auth.RegisterAsync(new RegisterUserCommand(request.Username, request.Password, null), ct);
+        var result = await _auth.RegisterAsync(new RegisterUserCommand(request.Username, request.Password, request.PreferredLanguage, request.TimeZoneId), ct);
         if (!result.Success)
         {
             return Conflict(new { error = result.Error });
@@ -88,6 +88,8 @@ public sealed class AuthController : ControllerBase
         public string Username { get; set; } = string.Empty;
         [Required, MinLength(6)]
         public string Password { get; set; } = string.Empty;
+        public string? PreferredLanguage { get; set; }
+        public string? TimeZoneId { get; set; }
     }
 
     public sealed class RegisterRequest
@@ -96,5 +98,7 @@ public sealed class AuthController : ControllerBase
         public string Username { get; set; } = string.Empty;
         [Required, MinLength(6)]
         public string Password { get; set; } = string.Empty;
+        public string? PreferredLanguage { get; set; }
+        public string? TimeZoneId { get; set; }
     }
 }
