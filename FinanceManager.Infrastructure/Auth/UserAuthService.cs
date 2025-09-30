@@ -7,6 +7,7 @@ using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using FinanceManager.Domain.Security; // new
+using FinanceManager.Application.Security; // added
 
 namespace FinanceManager.Infrastructure.Auth;
 
@@ -17,16 +18,23 @@ public sealed class UserAuthService : IUserAuthService
     private readonly IJwtTokenService _jwt;
     private readonly IDateTimeProvider _clock;
     private readonly ILogger<UserAuthService> _logger;
+    private readonly IIpBlockService _ipBlocks;
     private const int ThresholdAttempts = 3; // Sperre ab 3
     private static readonly TimeSpan ResetWindow = TimeSpan.FromMinutes(5);
 
+    // Backwards-compatible ctor for existing tests/usages
     public UserAuthService(AppDbContext db, IPasswordHasher passwordHasher, IJwtTokenService jwt, IDateTimeProvider clock, ILogger<UserAuthService> logger)
+        : this(db, passwordHasher, jwt, clock, logger, new NoopIpBlockService())
+    { }
+
+    public UserAuthService(AppDbContext db, IPasswordHasher passwordHasher, IJwtTokenService jwt, IDateTimeProvider clock, ILogger<UserAuthService> logger, IIpBlockService ipBlocks)
     {
         _db = db;
         _passwordHasher = passwordHasher;
         _jwt = jwt;
         _clock = clock;
         _logger = logger;
+        _ipBlocks = ipBlocks;
     }
 
     public async Task<Result<AuthResult>> RegisterAsync(RegisterUserCommand command, CancellationToken ct)
@@ -85,7 +93,10 @@ public sealed class UserAuthService : IUserAuthService
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Username == command.Username, ct);
         if (user is null)
         {
-            await RegisterUnknownUserFailureAsync(command.IpAddress, ct);
+            if (!string.IsNullOrWhiteSpace(command.IpAddress))
+            {
+                await _ipBlocks.RegisterUnknownUserFailureAsync(command.IpAddress!, ct);
+            }
             _logger.LogWarning("Login failed: user {Username} not found (Ip={Ip})", command.Username, command.IpAddress);
             return Result<AuthResult>.Fail("Invalid credentials");
         }
@@ -101,7 +112,10 @@ public sealed class UserAuthService : IUserAuthService
             var failed = user.RegisterFailedLogin(_clock.UtcNow, ResetWindow);
             if (failed >= ThresholdAttempts)
             {
-                await BlockIpIfNeededAsync(command.IpAddress, "User failed login threshold reached", ct);
+                if (!string.IsNullOrWhiteSpace(command.IpAddress))
+                {
+                    await _ipBlocks.BlockByAddressAsync(command.IpAddress!, "User failed login threshold reached", ct);
+                }
             }
             await _db.SaveChangesAsync(ct);
             _logger.LogWarning("Login failed (invalid credentials) for {Username} (Failed={Failed}, Ip={Ip})", user.Username, failed, command.IpAddress);
@@ -131,35 +145,20 @@ public sealed class UserAuthService : IUserAuthService
         return Result<AuthResult>.Ok(new AuthResult(user.Id, user.Username, user.IsAdmin, token, expires));
     }
 
-    private async Task RegisterUnknownUserFailureAsync(string? ip, CancellationToken ct)
+    // Minimal no-op implementation to keep legacy constructors/tests working
+    private sealed class NoopIpBlockService : IIpBlockService
     {
-        if (string.IsNullOrWhiteSpace(ip)) { return; }
-        var now = _clock.UtcNow;
-        var block = await _db.IpBlocks.FirstOrDefaultAsync(b => b.IpAddress == ip, ct);
-        if (block == null)
-        {
-            block = new IpBlock(ip);
-            _db.IpBlocks.Add(block);
-        }
-        var count = block.RegisterUnknownUserFailure(now, ResetWindow);
-        if (count >= ThresholdAttempts)
-        {
-            block.Block(now, "Unknown user failures threshold reached");
-        }
-        await _db.SaveChangesAsync(ct);
-    }
-
-    private async Task BlockIpIfNeededAsync(string? ip, string reason, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(ip)) { return; }
-        var block = await _db.IpBlocks.FirstOrDefaultAsync(b => b.IpAddress == ip, ct);
-        if (block == null)
-        {
-            block = new IpBlock(ip);
-            _db.IpBlocks.Add(block);
-        }
-        // escalate to block (user-side failures already thresholded in caller)
-        block.Block(_clock.UtcNow, reason);
-        await _db.SaveChangesAsync(ct);
+        public Task<bool> BlockAsync(Guid id, string? reason, CancellationToken ct) => Task.FromResult(true);
+        public Task BlockByAddressAsync(string ipAddress, string? reason, CancellationToken ct) => Task.CompletedTask;
+        public Task<IpBlockDto> CreateAsync(string ipAddress, string? reason, bool isBlocked, CancellationToken ct)
+            => Task.FromResult(new IpBlockDto(Guid.Empty, ipAddress, isBlocked, DateTime.UtcNow, reason, 0, null, DateTime.UtcNow, null));
+        public Task<bool> DeleteAsync(Guid id, CancellationToken ct) => Task.FromResult(true);
+        public Task<IReadOnlyList<IpBlockDto>> ListAsync(bool? onlyBlocked, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<IpBlockDto>>(Array.Empty<IpBlockDto>());
+        public Task RegisterUnknownUserFailureAsync(string ipAddress, CancellationToken ct) => Task.CompletedTask;
+        public Task<bool> ResetCountersAsync(Guid id, CancellationToken ct) => Task.FromResult(true);
+        public Task<bool> UnblockAsync(Guid id, CancellationToken ct) => Task.FromResult(true);
+        public Task<IpBlockDto?> UpdateAsync(Guid id, string? reason, bool? isBlocked, CancellationToken ct)
+            => Task.FromResult<IpBlockDto?>(null);
     }
 }

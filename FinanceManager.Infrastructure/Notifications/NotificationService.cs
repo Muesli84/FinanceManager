@@ -24,7 +24,7 @@ public sealed class NotificationService : INotificationService
                         && n.ScheduledDateUtc <= nowDateUtc)
             .OrderByDescending(n => n.ScheduledDateUtc)
             .ThenByDescending(n => n.CreatedUtc)
-            .Select(n => new NotificationDto(n.Id, n.Title, n.Message, (int)n.Type, (int)n.Target, n.ScheduledDateUtc, n.IsDismissed, n.CreatedUtc))
+            .Select(n => new NotificationDto(n.Id, n.Title, n.Message, (int)n.Type, (int)n.Target, n.ScheduledDateUtc, n.IsDismissed, n.CreatedUtc, n.TriggerEventKey))
             .ToListAsync(ct);
         return items;
     }

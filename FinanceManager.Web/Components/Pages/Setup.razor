@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Setup> Localizer
 @using FinanceManager.Web.Components.Shared
+@using Microsoft.AspNetCore.WebUtilities
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -71,8 +72,50 @@
 
     protected override void OnInitialized()
     {
+        ApplyQueryParameters();
         BuildRibbon();
     }
+
+    protected override void OnParametersSet()
+    {
+        // React to navigation with different query parameters
+        ApplyQueryParameters();
+    }
+
+    private void ApplyQueryParameters()
+    {
+        try
+        {
+            var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+            var query = QueryHelpers.ParseQuery(uri.Query);
+            if (query.TryGetValue("section", out var sectionVals))
+            {
+                var section = sectionVals.ToString();
+                if (IsValidSection(section))
+                {
+                    _activeSection = section;
+                    return;
+                }
+            }
+            // If a focus query exists (e.g., focus=<ip>) but no explicit section, open IP blocks
+            if (query.ContainsKey("focus"))
+            {
+                _activeSection = TabIpBlocks;
+            }
+        }
+        catch
+        {
+            // ignore malformed query
+        }
+    }
+
+    private static bool IsValidSection(string section)
+        => section == TabBackup
+        || section == TabImportSplit
+        || section == TabNotifications
+        || section == TabProfile
+        || section == TabIpBlocks
+        || section == TabLegacy;
 
     private void BuildRibbon()
     {

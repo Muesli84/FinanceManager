@@ -9,6 +9,8 @@ public interface IIpBlockService
     Task<bool> UnblockAsync(Guid id, CancellationToken ct);
     Task<bool> ResetCountersAsync(Guid id, CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, CancellationToken ct);
+    Task RegisterUnknownUserFailureAsync(string ipAddress, CancellationToken ct);
+    Task BlockByAddressAsync(string ipAddress, string? reason, CancellationToken ct);
 }
 
 public sealed record IpBlockDto(
