@@ -1,0 +1,72 @@
+using System.ComponentModel.DataAnnotations;
+using FinanceManager.Application;
+using FinanceManager.Infrastructure;
+using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace FinanceManager.Web.Controllers;
+
+[ApiController]
+[Route("api/user/profile-settings")]
+[Authorize]
+public sealed class UserProfileSettingsController : ControllerBase
+{
+    private readonly AppDbContext _db;
+    private readonly ICurrentUserService _current;
+    private readonly ILogger<UserProfileSettingsController> _logger;
+
+    public UserProfileSettingsController(AppDbContext db, ICurrentUserService current, ILogger<UserProfileSettingsController> logger)
+    { _db = db; _current = current; _logger = logger; }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(UserProfileSettingsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAsync(CancellationToken ct)
+    {
+        var uid = _current.UserId;
+        var dto = await _db.Users.AsNoTracking()
+            .Where(u => u.Id == uid)
+            .Select(u => new UserProfileSettingsDto
+            {
+                PreferredLanguage = u.PreferredLanguage,
+                TimeZoneId = u.TimeZoneId
+            })
+            .SingleOrDefaultAsync(ct);
+        dto ??= new();
+        return Ok(dto);
+    }
+
+    public sealed class UpdateRequest
+    {
+        [MaxLength(10)] public string? PreferredLanguage { get; set; }
+        [MaxLength(100)] public string? TimeZoneId { get; set; }
+    }
+
+    [HttpPut]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateAsync([FromBody] UpdateRequest req, CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == _current.UserId, ct);
+        if (user == null) return NotFound();
+        try
+        {
+            user.SetPreferredLanguage(req.PreferredLanguage);
+            user.SetTimeZoneId(req.TimeZoneId);
+            await _db.SaveChangesAsync(ct);
+            return NoContent();
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            ModelState.AddModelError(ex.ParamName ?? "value", ex.Message);
+            return ValidationProblem(ModelState);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Update profile settings failed for {UserId}", _current.UserId);
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+}

@@ -13,6 +13,8 @@ using System.Threading.Tasks;
 using System.Threading;
 using FinanceManager.Domain.Reports; // added
 using FinanceManager.Domain.Security; // new
+using FinanceManager.Domain.Notifications; // new
+using FinanceManager.Infrastructure.Notifications; // new
 
 namespace FinanceManager.Infrastructure;
 
@@ -41,6 +43,7 @@ public class AppDbContext : DbContext
     public DbSet<ReportFavorite> ReportFavorites => Set<ReportFavorite>(); // new
     public DbSet<HomeKpi> HomeKpis => Set<HomeKpi>(); // new
     public DbSet<IpBlock> IpBlocks => Set<IpBlock>(); // new
+    public DbSet<Notification> Notifications => Set<Notification>(); // new
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -275,6 +278,9 @@ public class AppDbContext : DbContext
             b.HasIndex(x => x.IpAddress).IsUnique();
             b.Property(x => x.IpAddress).HasMaxLength(64).IsRequired();
         });
+
+        // Notifications
+        NotificationModelConfig.Configure(modelBuilder);
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

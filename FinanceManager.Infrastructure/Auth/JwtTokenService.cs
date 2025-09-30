@@ -8,7 +8,7 @@ namespace FinanceManager.Infrastructure.Auth;
 
 public interface IJwtTokenService
 {
-    string CreateToken(Guid userId, string username, bool isAdmin, DateTime expiresUtc);
+    string CreateToken(Guid userId, string username, bool isAdmin, DateTime expiresUtc, string? preferredLanguage = null, string? timeZoneId = null);
 }
 
 public sealed class JwtTokenService : IJwtTokenService
@@ -16,7 +16,7 @@ public sealed class JwtTokenService : IJwtTokenService
     private readonly IConfiguration _config;
     public JwtTokenService(IConfiguration config) => _config = config;
 
-    public string CreateToken(Guid userId, string username, bool isAdmin, DateTime expiresUtc)
+    public string CreateToken(Guid userId, string username, bool isAdmin, DateTime expiresUtc, string? preferredLanguage = null, string? timeZoneId = null)
     {
         var key = _config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
         var issuer = _config["Jwt:Issuer"] ?? "financemanager";
@@ -29,6 +29,14 @@ public sealed class JwtTokenService : IJwtTokenService
             new(JwtRegisteredClaimNames.UniqueName, username),
             new("is_admin", isAdmin ? "true" : "false")
         };
+        if (!string.IsNullOrWhiteSpace(preferredLanguage))
+        {
+            claims.Add(new Claim("pref_lang", preferredLanguage));
+        }
+        if (!string.IsNullOrWhiteSpace(timeZoneId))
+        {
+            claims.Add(new Claim("tz", timeZoneId));
+        }
         var credentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(issuer, audience, claims, notBefore: DateTime.UtcNow, expires: expiresUtc, signingCredentials: credentials);
         return new JwtSecurityTokenHandler().WriteToken(token);

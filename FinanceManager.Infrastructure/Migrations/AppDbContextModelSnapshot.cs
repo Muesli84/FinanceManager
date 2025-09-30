@@ -187,6 +187,57 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.ToTable("ContactCategories");
                 });
 
+            modelBuilder.Entity("FinanceManager.Domain.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDismissed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ModifiedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ScheduledDateUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Target")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(140)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TriggerEventKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "Type", "ScheduledDateUtc");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("FinanceManager.Domain.Postings.Posting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -908,6 +959,15 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<int>("FailedLoginAttempts")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("HolidayCountryCode")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("HolidayProviderKind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("HolidaySubdivisionCode")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("ImportMaxEntriesPerDraft")
                         .HasColumnType("INTEGER");
 
@@ -935,11 +995,23 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<DateTime?>("ModifiedUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("MonthlyReminderEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MonthlyReminderHour")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MonthlyReminderMinute")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PreferredLanguage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TimeZoneId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Username")

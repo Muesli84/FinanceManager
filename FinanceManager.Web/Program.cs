@@ -11,10 +11,13 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using FinanceManager.Application.Notifications;
+using FinanceManager.Infrastructure.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,6 +59,17 @@ builder.Services.AddHostedService<BackgroundTaskRunner>();
 builder.Services.AddSingleton<IPriceProvider, AlphaVantagePriceProvider>();
 builder.Services.AddHostedService<SecurityPriceWorker>();
 
+// Holidays
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<InMemoryHolidayProvider>();
+builder.Services.AddSingleton<NagerDateHolidayProvider>();
+builder.Services.AddSingleton<IHolidaySubdivisionService, NagerDateSubdivisionService>();
+builder.Services.AddSingleton<IHolidayProviderResolver, HolidayProviderResolver>();
+
+// NEW: Monthly reminder scheduler
+builder.Services.AddScoped<MonthlyReminderJob>();
+builder.Services.AddHostedService<MonthlyReminderScheduler>();
+
 // HttpClient
 builder.Services.AddTransient<AuthenticatedHttpClientHandler>();
 builder.Services.AddSingleton<IAuthTokenProvider, JwtCookieAuthTokenProvider>();
@@ -78,21 +92,21 @@ builder.Services.AddScoped(sp =>
 // JWT
 var keyBytes = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.RequireHttpsMetadata = false; // HTTP-only Umgebung
         options.SaveToken = false;
-        options.TokenValidationParameters = new TokenValidationParameters
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
             ValidateIssuer = false,
             ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(keyBytes),
             ClockSkew = TimeSpan.FromSeconds(10)
         };
-        options.Events = new JwtBearerEvents
+        options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
         {
             OnMessageReceived = ctx =>
             {
@@ -113,12 +127,15 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-app.UseRequestLocalization(new RequestLocalizationOptions
+// Localization: include user preference provider (DB lookup) before others
+var locOptions = new RequestLocalizationOptions
 {
     DefaultRequestCulture = new RequestCulture("de"),
     SupportedCultures = supportedCultures,
     SupportedUICultures = supportedCultures
-});
+};
+locOptions.RequestCultureProviders.Insert(0, new UserPreferenceRequestCultureProvider());
+app.UseRequestLocalization(locOptions);
 
 app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseMiddleware<IpBlockMiddleware>(); // NEW: deny blocked IPs early
@@ -133,9 +150,9 @@ using (var scope = app.Services.CreateScope())
         var schemaLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SchemaPatcher");
         SchemaPatcher.EnsureUserImportSplitSettingsColumns(db, schemaLogger);
     }
-    catch (SqliteException ex) when (ex.SqliteErrorCode == 1)
+    catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
     {
-        app.Logger.LogError(ex, "EF Core migrations failed – likely existing database created via EnsureCreated()");
+        app.Logger.LogError(ex, "EF Core migrations failed ? likely existing database created via EnsureCreated()");
         throw;
     }
     catch (Exception ex)

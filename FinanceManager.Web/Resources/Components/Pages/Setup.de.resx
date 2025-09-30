@@ -267,4 +267,19 @@
   <data name="Tab_IpBlocks" xml:space="preserve">
     <value>IP-Sperrliste</value>
   </data>
+  <data name="Notifications_TabTitle" xml:space="preserve">
+    <value>Benachrichtigungen</value>
+  </data>
+  <data name="Notifications_MonthlyReminder" xml:space="preserve">
+    <value>Monatsabschluss-Hinweis aktivieren</value>
+  </data>
+  <data name="Notifications_MonthlyReminder_Help" xml:space="preserve">
+    <value>Zeigt am letzten Werktag des Monats eine Erinnerung auf der Startseite.</value>
+  </data>
+  <data name="Notifications_SaveSuccess" xml:space="preserve">
+    <value>Einstellungen gespeichert.</value>
+  </data>
+  <data name="Tab_Profile" xml:space="preserve">
+    <value>Profil</value>
+  </data>
 </root>

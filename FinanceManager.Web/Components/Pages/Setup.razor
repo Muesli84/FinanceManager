@@ -16,6 +16,8 @@
 <div class="fm-tabs">
     <button class="fm-tab @(IsActiveSection(TabBackup)?"active":null)" @onclick="() => Activate(TabBackup)">@Localizer["Tab_Backup"]</button>
     <button class="fm-tab @(IsActiveSection(TabImportSplit)?"active":null)" @onclick="() => Activate(TabImportSplit)">@Localizer["ImportSplit_TabTitle"]</button>
+    <button class="fm-tab @(IsActiveSection(TabNotifications)?"active":null)" @onclick="() => Activate(TabNotifications)">@Localizer["Notifications_TabTitle"]</button>
+    <button class="fm-tab @(IsActiveSection(TabProfile)?"active":null)" @onclick="() => Activate(TabProfile)">@Localizer["Tab_Profile"]</button>
     <button class="fm-tab @(IsActiveSection(TabIpBlocks)?"active":null)" @onclick="() => Activate(TabIpBlocks)">@Localizer["Tab_IpBlocks"]</button>
     <button class="fm-tab @(IsActiveSection(TabLegacy)?"active":null)" @onclick="() => Activate(TabLegacy)">@Localizer["Tab_LegacyImport"]</button>
 </div>
@@ -28,6 +30,12 @@
             break;
         case TabImportSplit:
             <SetupImportSplitTab />
+            break;
+        case TabNotifications:
+            <SetupNotificationsTab />
+            break;
+        case TabProfile:
+            <SetupProfileTab />
             break;
         case TabIpBlocks:
             <SetupIpBlockTab />
@@ -55,6 +63,8 @@
     // Internal section tabs (string based)
     private const string TabBackup = "backup";
     private const string TabImportSplit = "import-split";
+    private const string TabNotifications = "notifications";
+    private const string TabProfile = "profile";
     private const string TabIpBlocks = "ip-blocks";
     private const string TabLegacy = "legacy";
     private string _activeSection = TabBackup;
