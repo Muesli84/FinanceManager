@@ -1,4 +1,6 @@
+using FinanceManager.Application.Notifications;
 using FinanceManager.Application.Security;
+using FinanceManager.Domain.Notifications;
 using FinanceManager.Domain.Security;
 using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +12,13 @@ public sealed class IpBlockService : IIpBlockService
 {
     private readonly AppDbContext _db;
     private readonly ILogger<IpBlockService> _logger;
+    private readonly INotificationWriter _notifications;
+    private const int ThresholdAttempts = 3;
+    private static readonly TimeSpan ResetWindow = TimeSpan.FromMinutes(5);
 
-    public IpBlockService(AppDbContext db, ILogger<IpBlockService> logger)
+    public IpBlockService(AppDbContext db, ILogger<IpBlockService> logger, INotificationWriter notifications)
     {
-        _db = db; _logger = logger;
+        _db = db; _logger = logger; _notifications = notifications;
     }
 
     public async Task<IReadOnlyList<IpBlockDto>> ListAsync(bool? onlyBlocked, CancellationToken ct)
@@ -44,6 +49,12 @@ public sealed class IpBlockService : IIpBlockService
         }
         _db.IpBlocks.Add(entity);
         await _db.SaveChangesAsync(ct);
+
+        if (isBlocked)
+        {
+            await NotifyAdminsAsync(entity.IpAddress, entity.BlockReason, ct);
+        }
+
         return new IpBlockDto(entity.Id, entity.IpAddress, entity.IsBlocked, entity.BlockedAtUtc, entity.BlockReason, entity.UnknownUserFailedAttempts, entity.UnknownUserLastFailedUtc, entity.CreatedUtc, entity.ModifiedUtc);
     }
 
@@ -51,6 +62,7 @@ public sealed class IpBlockService : IIpBlockService
     {
         var entity = await _db.IpBlocks.FirstOrDefaultAsync(b => b.Id == id, ct);
         if (entity == null) return null;
+        var wasBlocked = entity.IsBlocked;
         if (isBlocked.HasValue)
         {
             if (isBlocked.Value && !entity.IsBlocked)
@@ -68,6 +80,12 @@ public sealed class IpBlockService : IIpBlockService
             entity.Block(DateTime.UtcNow, reason);
         }
         await _db.SaveChangesAsync(ct);
+
+        if (!wasBlocked && entity.IsBlocked)
+        {
+            await NotifyAdminsAsync(entity.IpAddress, entity.BlockReason, ct);
+        }
+
         return new IpBlockDto(entity.Id, entity.IpAddress, entity.IsBlocked, entity.BlockedAtUtc, entity.BlockReason, entity.UnknownUserFailedAttempts, entity.UnknownUserLastFailedUtc, entity.CreatedUtc, entity.ModifiedUtc);
     }
 
@@ -75,8 +93,12 @@ public sealed class IpBlockService : IIpBlockService
     {
         var entity = await _db.IpBlocks.FirstOrDefaultAsync(b => b.Id == id, ct);
         if (entity == null) return false;
-        entity.Block(DateTime.UtcNow, reason);
-        await _db.SaveChangesAsync(ct);
+        if (!entity.IsBlocked)
+        {
+            entity.Block(DateTime.UtcNow, reason);
+            await _db.SaveChangesAsync(ct);
+            await NotifyAdminsAsync(entity.IpAddress, entity.BlockReason, ct);
+        }
         return true;
     }
 
@@ -84,8 +106,11 @@ public sealed class IpBlockService : IIpBlockService
     {
         var entity = await _db.IpBlocks.FirstOrDefaultAsync(b => b.Id == id, ct);
         if (entity == null) return false;
-        entity.Unblock();
-        await _db.SaveChangesAsync(ct);
+        if (entity.IsBlocked)
+        {
+            entity.Unblock();
+            await _db.SaveChangesAsync(ct);
+        }
         return true;
     }
 
@@ -105,5 +130,52 @@ public sealed class IpBlockService : IIpBlockService
         _db.IpBlocks.Remove(entity);
         await _db.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task RegisterUnknownUserFailureAsync(string ipAddress, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(ipAddress)) { return; }
+        var now = DateTime.UtcNow;
+        var block = await _db.IpBlocks.FirstOrDefaultAsync(b => b.IpAddress == ipAddress, ct);
+        if (block == null)
+        {
+            block = new IpBlock(ipAddress);
+            _db.IpBlocks.Add(block);
+        }
+        var count = block.RegisterUnknownUserFailure(now, ResetWindow);
+        if (count >= ThresholdAttempts)
+        {
+            block.Block(now, "Unknown user failures threshold reached");
+            await _db.SaveChangesAsync(ct);
+            await NotifyAdminsAsync(ipAddress, block.BlockReason, ct);
+            return;
+        }
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task BlockByAddressAsync(string ipAddress, string? reason, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(ipAddress)) { return; }
+        var now = DateTime.UtcNow;
+        var block = await _db.IpBlocks.FirstOrDefaultAsync(b => b.IpAddress == ipAddress, ct);
+        if (block == null)
+        {
+            block = new IpBlock(ipAddress);
+            _db.IpBlocks.Add(block);
+        }
+        block.Block(now, reason);
+        await _db.SaveChangesAsync(ct);
+        await NotifyAdminsAsync(ipAddress, reason, ct);
+    }
+
+    private async Task NotifyAdminsAsync(string ipAddress, string? reason, CancellationToken ct)
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+        var title = "Security alert: IP blocked";
+        var msg = string.IsNullOrWhiteSpace(reason)
+            ? $"The IP address {ipAddress} has been blocked."
+            : $"The IP address {ipAddress} has been blocked. Reason: {reason}";
+        var key = $"setup:ip-blocks?focus={Uri.EscapeDataString(ipAddress)}"; // hint link for UI
+        await _notifications.CreateForAdminsAsync(title, msg, NotificationType.SystemAlert, NotificationTarget.HomePage, todayUtc, key, ct);
     }
 }

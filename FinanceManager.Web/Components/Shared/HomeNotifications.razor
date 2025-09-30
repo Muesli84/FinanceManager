@@ -2,6 +2,7 @@
 @inject HttpClient Http
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.HomeNotifications> L
+@inject NavigationManager Nav
 
 @if (CurrentUser.IsAuthenticated && _items.Count > 0)
 {
@@ -20,6 +21,14 @@
                         }
                         <div class="notif-text">@n.Message</div>
                         <div class="notif-meta">@L["ScheduledOn"]: @n.ScheduledDateUtc.ToLocalTime().ToString("d")</div>
+                        @if (!string.IsNullOrWhiteSpace(n.TriggerEventKey))
+                        {
+                            <div class="notif-actions" style="margin-top:.35rem;">
+                                <button class="icon-btn" @onclick="(() => NavigateToEventAsync(n.TriggerEventKey!))" title="@L["Open"]">
+                                    <svg class="icon"><use href="/icons/sprite.svg#external" /></svg>
+                                </button>
+                            </div>
+                        }
                     </div>
                 </div>
                 <button class="notif-dismiss" title="@L["Dismiss"]" @onclick="(() => DismissAsync(n.Id))">
@@ -71,6 +80,21 @@
             2 => "warn", // SystemAlert
             _ => "info"   // MonthlyReminder/EventDriven
         };
+
+    private Task NavigateToEventAsync(string key)
+    {
+        // convention: setup:ip-blocks?focus=1.2.3.4 -> /setup and select tab ip-blocks; optional query used by tab to preselect
+        if (key.StartsWith("setup:", StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = key["setup:".Length..];
+            var sep = rest.IndexOf('?');
+            var section = sep > 0 ? rest[..sep] : rest;
+            var query = sep > 0 ? rest[sep..] : string.Empty;
+            Nav.NavigateTo($"/setup{query}");
+            // Optionally store target section in localStorage and let Setup.razor read and activate it
+        }
+        return Task.CompletedTask;
+    }
 }
 
 <style>

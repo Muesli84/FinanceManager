@@ -8,5 +8,6 @@ public sealed record NotificationDto(
     int Target,
     DateTime ScheduledDateUtc,
     bool IsDismissed,
-    DateTime CreatedUtc
+    DateTime CreatedUtc,
+    string? TriggerEventKey // optional event key to drive UI actions/links
 );
