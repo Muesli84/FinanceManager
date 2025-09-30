@@ -81,73 +81,7 @@ Querschnittsthemen: Logging, Auth (JWT), Internationalisierung, Caching, Validat
 
 ## 8. Installation
 
-- Voraussetzungen allgemein:
-  - .NET 9 Runtime (Hosting Bundle für Windows, ASP.NET Core Runtime für Linux)
-  - Datenbankzugriff konfigurieren (ConnectionStrings in `appsettings.Production.json`)
-  - Optional: AlphaVantage API?Key (`AlphaVantage:ApiKey` bzw. ENV `ALPHAVANTAGE__APIKEY`). Ohne Key werden keine Kurse abgerufen (Worker inaktiv).
-
-- Windows
-  - Veröffentlichung: `dotnet publish FinanceManager.Web -c Release -o .\publish`
-  - Start (interaktiv):
-    ```bash
-    cd .\publish
-    dotnet FinanceManager.Web.dll
-    ```
-  - Port-Konfiguration (optional): per Umgebungsvariable `ASPNETCORE_URLS` (z.B. `http://localhost:5000`) oder via `appsettings.Production.json` (Kestrel ? Endpoints).
-
-- Linux (systemd)
-  - Veröffentlichung auf dem Build-Rechner und Kopie nach `/opt/financemanager`:
-    ```bash
-    dotnet publish FinanceManager.Web -c Release -o ./publish
-    sudo mkdir -p /opt/financemanager
-    sudo cp -r ./publish/* /opt/financemanager/
-    sudo chown -R www-data:www-data /opt/financemanager # Benutzer/Gruppe bei Bedarf anpassen
-    ```
-  - Port in der Konfiguration setzen (eine der beiden Varianten):
-    - Umgebungsvariable (empfohlen): `ASPNETCORE_URLS=http://0.0.0.0:5005`
-    - Oder `appsettings.Production.json` in `/opt/financemanager`:
-      ```json
-      {
-        "Kestrel": {
-          "Endpoints": {
-            "Http": { "Url": "http://0.0.0.0:5005" }
-          }
-        }
-      }
-      ```
-  - Optional: AlphaVantage Key als Environment setzen (optional, für Kursabruf):
-    ```ini
-    Environment=ALPHAVANTAGE__APIKEY=your-key-here
-    ```
-  - systemd-Unit `/etc/systemd/system/financemanager.service`:
-    ```ini
-    [Unit]
-    Description=FinanceManager (Blazor Server)
-    After=network.target
-
-    [Service]
-    WorkingDirectory=/opt/financemanager
-    ExecStart=/usr/bin/dotnet /opt/financemanager/FinanceManager.Web.dll
-    Restart=always
-    RestartSec=10
-    SyslogIdentifier=financemanager
-    User=www-data
-    Environment=ASPNETCORE_ENVIRONMENT=Production
-    Environment=ASPNETCORE_URLS=http://0.0.0.0:5005
-    # Optional: AlphaVantage Key
-    # Environment=ALPHAVANTAGE__APIKEY=your-key-here
-
-    [Install]
-    WantedBy=multi-user.target
-    ```
-  - Dienst aktivieren/starten:
-    ```bash
-    sudo systemctl daemon-reload
-    sudo systemctl enable financemanager
-    sudo systemctl start financemanager
-    sudo systemctl status financemanager -n 100
-    ```
-  - Optional: Reverse Proxy (nginx/Apache) für TLS/Domain vor den Dienst schalten.
+Siehe Installationsanleitung in `docs/install.md`.
 
 ## 9. Entwicklung & Build
 ### Voraussetzungen
