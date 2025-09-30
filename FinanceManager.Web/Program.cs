@@ -21,6 +21,12 @@ using FinanceManager.Infrastructure.Notifications;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Kestrel aus Konfiguration (appsettings) lesen, inkl. Endpoints
+builder.WebHost.ConfigureKestrel((context, options) =>
+{
+    options.Configure(context.Configuration.GetSection("Kestrel"));
+});
+
 // .NET Logging: Console + File (aus appsettings)
 builder.Logging.ClearProviders();
 builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
