@@ -186,6 +186,15 @@
   <data name="EditMode" xml:space="preserve">
     <value>Bearbeitungsmodus</value>
   </data>
+  <data name="Msg_ReadOnlyAlreadyBooked" xml:space="preserve">
+    <value>Dieser Eintrag wurde bereits gebucht und kann nicht bearbeitet werden. Zum Bearbeiten bitte zuerst als Duplikat zurücksetzen.</value>
+  </data>
+  <data name="Btn_ResetDuplicate" xml:space="preserve">
+    <value>Duplikat zurücksetzen</value>
+  </data>
+  <data name="Confirm_ResetDuplicate" xml:space="preserve">
+    <value>Soll dieser Eintrag wirklich als Duplikat zurückgesetzt werden? Danach kann er wieder bearbeitet und gebucht werden.</value>
+  </data>
   <data name="Label_BookingDate" xml:space="preserve">
     <value>Buchungsdatum</value>
   </data>
@@ -209,6 +218,9 @@
   </data>
   <data name="BtnReset" xml:space="preserve">
     <value>Zurücksetzen</value>
+  </data>
+  <data name="Err_ResetDuplicate" xml:space="preserve">
+    <value>Zurücksetzen fehlgeschlagen.</value>
   </data>
   <data name="Th_BookingDate" xml:space="preserve">
     <value>Buchungsdatum</value>

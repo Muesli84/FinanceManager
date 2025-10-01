@@ -503,12 +503,17 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var e in _draft.Entries.OrderBy(e => e.BookingDate))
+                @foreach (var e in _draft.Entries
+                    .OrderBy(e => e.Status == StatementDraftEntryStatus.AlreadyBooked) // AlreadyBooked to end
+                    .ThenBy(e => e.BookingDate))
                 {
                     var entryMessages = _validation?.Messages.Where(m => m.EntryId == e.Id).ToList() ?? new();
                     var entryErrors = entryMessages.Count(m=>m.Severity=="Error");
                     var entryWarnings = entryMessages.Count(m=>m.Severity=="Warning");
-                    <tr style="cursor:pointer;" @onclick="(() => OpenEntry(e.Id))">
+                    var rowStyle = e.Status == StatementDraftEntryStatus.AlreadyBooked
+                        ? "opacity:.55;background:#141414;"
+                        : string.Empty;
+                    <tr style="cursor:pointer;@rowStyle" @onclick="(() => OpenEntry(e.Id))">
                         <td>
                             @if (e.SplitDraftId != null)
                             {
@@ -554,7 +559,7 @@ else
                     </tr>
                     @if(entryMessages.Any())
                     {
-                        <tr class="validation-row" style="background:#181818;">
+                        <tr class="validation-row" style="background:#181818;@rowStyle">
                             <td colspan="11" style="padding:.4rem .75rem;">
                                 <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
                                     <div style="display:flex;gap:.6rem;font-size:.65rem;">
@@ -605,3 +610,10 @@ else
         </div>
     }
 </div>
+
+<style>
+/* Subtle visual separation for already booked items when table has its own background */
+.fm-table tr[style*="opacity:.55"] td {
+    color: #aaa;
+}
+</style>

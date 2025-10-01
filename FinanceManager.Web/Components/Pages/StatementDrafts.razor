@@ -443,7 +443,7 @@ else
     }
 
     // Booking
-    private void OpenBookAllDialog() { _bookIgnoreWarnings = false; _bookAbortOnFirst = false; _bookEntriesIndividually = false; _showBookDialog = true; }
+    private void OpenBookAllDialog() { _bookIgnoreWarnings = false; _bookAbortOnFirst = false; _bookEntriesIndividually = false; _showBookDialog = true; StateHasChanged(); }
     private void CancelBookAllDialog() { _showBookDialog = false; }
 
     private async Task ConfirmBookAllAsync()

@@ -10,9 +10,9 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-KTO-004       | ✖      | Konto teilen mit anderen Benutzern                                      | (Teilen-Logik noch offen)                                                                                                                                                       |
 | FA-AUSZ-001      | ✔      | Kontoauszugdateien einlesen (CSV, PDF)                                  | StatementDraftService, FileReader                                                                                                                                                |
 | FA-AUSZ-002      | ✔      | Für jeden Import wird ein Buch.-Blatt erzeugt                           | StatementDraftService, Domain.StatementDraft                                                                                                                                    |
-| FA-AUSZ-003      | ✔      | Buch.-Blatt Einträge bearbeiten, ergänzen, löschen                      | StatementDraftService, UI (Detail + Editiermodus); Archivierungs-Flag für Sparpläne                                                                                             |
+| FA-AUSZ-003      | ✔      | Buch.-Blatt Einträge bearbeiten, ergänzen, löschen                      | StatementDraftService, UI (Detail + Editiermodus); Archivierungs-Flag für Sparpläne; manuelle Kontierung inkl. Reset bereits gebuchter Einträge (Duplikat-Reset)                                                   |
 | FA-AUSZ-004      | ✔      | Beim Buchen entstehen Bankposten                                        | StatementDraftService.BookAsync → `PostingKind.Bank`                                                                                                                            |
-| FA-AUSZ-005      | ✔      | Duplikatserkennung beim Import                                          | StatementDraftService: Duplikatprüfung                                                                                                                                          |
+| FA-AUSZ-005      | ✔      | Duplikatserkennung beim Import                                          | StatementDraftService: Duplikatprüfung; Duplikat-Reset/Manuelle Kontierung möglich (Reset-Endpoint + UI)                                                                                                           |
 | FA-AUSZ-006      | ✔      | Kostenneutral bei eigenen Kontakten                                     | StatementDraftService: Status-/CostNeutral-Logik                                                                                                                                |
 | FA-AUSZ-007      | ✔      | Kontaktposten beim Buchen entstehen                                     | StatementDraftService.BookAsync → `PostingKind.Contact`                                                                                                                         |
 | FA-AUSZ-008      | ✔      | Empfänger muss Kontakt zugeordnet werden                                | StatementDraftService, UI                                                                                                                                                       |
@@ -196,6 +196,9 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
+
+Änderungen (01.10.2025) – Ergänzung 32:
+- Manuelle Kontierung wieder ermöglicht: Duplikat‑Reset für bereits als „bereits gebucht“ markierte Einträge. UI-Hinweis/Buttons lokalisiert (de/en). Nach Reset ist der Eintrag wieder editierbar (Read‑Only wird aufgehoben).
 
 Änderungen (30.09.2025) – Ergänzung 31:
 - FA-AUTH-019 auf ✔: Admin‑Benachrichtigung bei IP‑Sperre implementiert. Zentralisierung über `IIpBlockService.RegisterUnknownUserFailureAsync`/`BlockByAddressAsync`; Benachrichtigungserstellung via `INotificationWriter` als `SystemAlert`. UI zeigt Aktionslink an und navigiert zu `/setup?section=ip-blocks&focus=<ip>`. `Setup.razor` wertet `section`/`focus` Query‑Parameter aus.

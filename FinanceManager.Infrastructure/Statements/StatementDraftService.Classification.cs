@@ -1,6 +1,7 @@
 ﻿using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Statements;
+using FinanceManager.Domain; // add: for PostingKind enum
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 using System.Numerics;
@@ -102,17 +103,27 @@ public sealed partial class StatementDraftService
             .OrderBy(s => s.Name)
             .ToListAsync(ct);
 
+        // Duplicate detection: look into Bank postings for the detected account from the oldest entry date of this draft
         List<(DateTime BookingDate, decimal Amount, string Subject)> existing = new();
         if (draft.DetectedAccountId != null)
         {
-            var since = DateTime.UtcNow.AddDays(-180);
-            var tempExisting = await _db.StatementEntries.AsNoTracking()
-                .Where(se => se.BookingDate >= since)
-                .Select(se => new { se.BookingDate, se.Amount, se.Subject })
-                .ToListAsync(ct);
-            existing = tempExisting
-                .Select(x => (x.BookingDate.Date, x.Amount, x.Subject))
-                .ToList();
+            // Oldest booking date across ALL entries of this statement draft
+            var oldest = await _db.StatementDraftEntries.AsNoTracking()
+                .Where(e => e.DraftId == draft.Id)
+                .MinAsync(e => (DateTime?)e.BookingDate, ct);
+            if (oldest.HasValue)
+            {
+                var since = oldest.Value.Date;
+                var bankPosts = await _db.Postings.AsNoTracking()
+                    .Where(p => p.Kind == PostingKind.Bank)
+                    .Where(p => p.AccountId == draft.DetectedAccountId)
+                    .Where(p => p.BookingDate >= since)
+                    .Select(p => new { p.BookingDate, p.Amount, p.Subject })
+                    .ToListAsync(ct);
+                existing = bankPosts
+                    .Select(x => (x.BookingDate.Date, x.Amount, x.Subject))
+                    .ToList();
+            }
         }
 
         Guid? bankContactId = null;
@@ -150,7 +161,9 @@ public sealed partial class StatementDraftService
         static void TryAutoAssignSecurity(IEnumerable<Domain.Securities.Security> securities, List<Contact> contacts, Guid? bankContactId, StatementDraftEntry entry)
         {
             if (entry.ContactId is not null && entry.ContactId != bankContactId)
+            {
                 return;
+            }
 
             // Helper zur Normalisierung (nur A-Z/0-9, Großschreibung, Umlaute vereinheitlichen)
             static string NormalizeForSecurityMatch(string? s)
@@ -162,7 +175,7 @@ public sealed partial class StatementDraftService
             // Automatisierte Wertpapierzuordnung:
             // - Nur wenn bisher kein Wertpapier gesetzt ist
             // - Match anhand Identifier, AlphaVantageCode oder Name, die im Betreff / Beschreibung / Empfänger vorkommen
-            if (securities.Count() <= 0)
+            if (!securities.Any())
             {
                 return;
             }
@@ -193,7 +206,9 @@ public sealed partial class StatementDraftService
                 entry.ResetOpen();
             }
             else
+            {
                 entry.SetSecurity(null, null, null, null, null);
+            }
         }
     }
 
@@ -264,7 +279,8 @@ public sealed partial class StatementDraftService
                 .Select(c => c.Id)
                 .FirstOrDefault();
 
-        for (int idxMode = 0; idxMode < 2; idxMode++)         {
+        for (int idxMode = 0; idxMode < 2; idxMode++)
+        {
             if (matchedContactId != Guid.Empty) { break; }
 
             if (idxMode == 1)
@@ -272,7 +288,7 @@ public sealed partial class StatementDraftService
                 searchText = Regex.Replace(searchText, "\\s+", string.Empty);
             }
 
-            foreach (var kvp in aliasLookup) 
+            foreach (var kvp in aliasLookup)
             {
                 foreach (var pattern in kvp.Value.Select(val => val.ToLowerInvariant()))
                 {
@@ -289,7 +305,7 @@ public sealed partial class StatementDraftService
                 if (matchedContactId != Guid.Empty) { break; }
             }
         }
-        if (matchedContactId == null || matchedContactId == Guid.Empty) matchedContactId = secondaryContactId;
+        if (matchedContactId == null || matchedContactId == Guid.Empty) { matchedContactId = secondaryContactId; }
 
         var matchedContact = contacts.FirstOrDefault(c => c.Id == matchedContactId);
         if (string.IsNullOrWhiteSpace(entry.RecipientName) && bankContactId != null && bankContactId != Guid.Empty)
@@ -299,9 +315,13 @@ public sealed partial class StatementDraftService
         else if (matchedContactId != null && matchedContactId != Guid.Empty)
         {
             if (matchedContact != null && matchedContact.IsPaymentIntermediary)
+            {
                 entry.AssignContactWithoutAccounting(matchedContact.Id);
+            }
             else
+            {
                 entry.MarkAccounted(matchedContactId.Value);
+            }
         }
 
         return matchedContactId;
