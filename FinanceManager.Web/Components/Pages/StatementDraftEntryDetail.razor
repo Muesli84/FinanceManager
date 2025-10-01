@@ -61,8 +61,15 @@ else
         </div>
     }
     <div style="margin-bottom:1rem;">
-        <label><input type="checkbox" @bind="_editMode" @bind:after="(()=>{BuildRibbon();})" /> @Localizer["EditMode"]</label>
-        @if (_editMode && _vm != null)
+        <label><input type="checkbox" @bind="_editMode" @bind:after="(()=>{BuildRibbon();})" disabled="@IsReadOnly" /> @Localizer["EditMode"]</label>
+        @if (IsReadOnly)
+        {
+            <div style="margin-top:.3rem;color:#cc6;font-size:.75rem;">@Localizer["Msg_ReadOnlyAlreadyBooked"]</div>
+            <div style="margin-top:.5rem;display:flex;gap:.5rem;">
+                <button class="icon-btn" @onclick="ResetDuplicateWithConfirm"><svg><use href="/icons/sprite.svg#refresh" /></svg>&nbsp;@Localizer["Btn_ResetDuplicate"]</button>
+            </div>
+        }
+        @if (_editMode && _vm != null && !IsReadOnly)
         {
             <div class="edit-core" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin-top:.5rem;max-width:960px;">
                 <div>
@@ -128,6 +135,8 @@ else
             <tr><th>@Localizer["Th_Description"]</th><td class="wrap">@(_vm.Entry.BookingDescription ?? "-")</td></tr>
             <tr><th>@Localizer["Th_Announced"]</th><td>@(_vm.Entry.IsAnnounced ? Localizer["Yes"] : Localizer["No"])</td></tr>
             <tr><th>@Localizer["Th_Status"]</th><td>@_vm.Entry.Status</td></tr>
+            @if (!IsReadOnly)
+            {
             <tr>
                 <th>@Localizer["Th_Contact"]</th>
                 <td>
@@ -274,6 +283,7 @@ else
                         }
                     </td>
                 </tr>
+                }
             }
         </tbody>
     </table>
@@ -1168,4 +1178,40 @@ else
     }
 
     private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);
+
+    private bool IsReadOnly => _vm?.Entry.Status == StatementDraftEntryStatus.AlreadyBooked;
+
+    private async Task ResetDuplicateWithConfirm()
+    {
+        try
+        {
+            var ok = await JS.InvokeAsync<bool>("confirm", Localizer["Confirm_ResetDuplicate"].Value);
+            if (!ok) { return; }
+        }
+        catch { }
+
+        var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/reset-duplicate", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            // Use returned entry to update UI immediately
+            var updated = await resp.Content.ReadFromJsonAsync<EntryDto>();
+            if (updated != null && _vm != null)
+            {
+                _vm = _vm with { Entry = updated };
+            }
+            else
+            {
+                await LoadEntryAsync();
+            }
+            _editMode = false;
+            _hasUnsavedChanges = false;
+            BuildRibbon();
+            StateHasChanged();
+        }
+        else
+        {
+            var msg = await resp.Content.ReadAsStringAsync();
+            _contactError = string.IsNullOrWhiteSpace(msg) ? Localizer["Err_ResetDuplicate"] : msg;
+        }
+    }
 }

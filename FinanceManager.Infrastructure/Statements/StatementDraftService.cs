@@ -1081,7 +1081,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
         {
             return new DraftValidationResultDto(draftId, false, messages);
         }
-        var scopedEntryQuery = _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || entryId == e.Id));
+        // Ignore entries that are already booked in validation scope
+        var scopedEntryQuery = _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || entryId == e.Id))
+            .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked);
+
         var entries = await scopedEntryQuery.ToArrayAsync(ct);
 
         void Add(string code, string sev, string msg, Guid? eId) => messages.Add(new DraftValidationMessageDto(code, sev, msg, draft.Id, eId));
@@ -1143,7 +1146,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 .FirstOrDefaultAsync(d => d.Id == parentEntry.SplitDraftId && d.OwnerUserId == ownerUserId, token);
             if (firstChild == null) { return; }
             var groupDrafts = await LoadSplitGroupAsync(firstChild, draft, ownerUserId, token);
-            var groupEntries = groupDrafts.SelectMany(d => d.Entries).ToList();
+            // Exclude already-booked child entries from validation
+            var groupEntries = groupDrafts.SelectMany(d => d.Entries)
+                .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked)
+                .ToList();
             if (groupDrafts.Any(d => d.DetectedAccountId != null))
             {
                 messages.Add(new("SPLIT_DRAFT_HAS_ACCOUNT", "Error", prefix + "Split-Draft darf kein Konto zugeordnet haben.", draft.Id, parentEntry.Id));
@@ -1321,7 +1327,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
         if (entries.Length > 0 && entryId is null)
         {
-            DateTime latestBookingDate = draft.Entries.Max(e => e.BookingDate).Date;
+            DateTime latestBookingDate = entries.Max(e => e.BookingDate).Date;
             var monthStart = new DateTime(latestBookingDate.Year, latestBookingDate.Month, 1);
             var nextMonth = monthStart.AddMonths(1);
             static DateTime AdjustDueDate(DateTime d)
@@ -1387,6 +1393,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
         var self = await _db.Contacts.FirstAsync(c => c.OwnerUserId == ownerUserId && c.Type == ContactType.Self, ct);
         var allEntriesScope = await _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || e.Id == entryId)).ToListAsync(ct);
 
+        // NEW: ignore entries that were detected as already booked
+        var toBook = (entryId == null ? allEntriesScope : allEntriesScope.Where(e => e.Id == entryId.Value))
+            .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked)
+            .ToList();
+
         var updatedPlanIds = new HashSet<Guid>();
         async Task UpdateRecurringPlanIfDueAsync(Guid planId, DateTime bookingDate, CancellationToken token)
         {
@@ -1433,8 +1444,6 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
         }
 
-        var toBook = entryId == null ? allEntriesScope : allEntriesScope.Where(e => e.Id == entryId.Value).ToList();
-
         foreach (var e in toBook)
         {
             if (e.ContactId == null) { continue; }
@@ -1461,6 +1470,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
 
         if (entryId == null)
         {
+            // Entire draft booking: if nothing to book (all duplicates), still mark draft committed
             draft.MarkCommitted();
         }
         else
@@ -1667,5 +1677,73 @@ public sealed partial class StatementDraftService : IStatementDraftService
         return await _db.StatementDraftEntries
             .Where(e => groupIds.Contains(e.DraftId))
             .SumAsync(e => (decimal?)e.Amount, ct) ?? 0m;
+    }
+
+    public async Task<StatementDraftEntryDto?> ResetDuplicateEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null || draft.Status != StatementDraftStatus.Draft)
+        {
+            return null;
+        }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null)
+        {
+            return null;
+        }
+        if (entry.Status != StatementDraftEntryStatus.AlreadyBooked)
+        {
+            // nothing to reset
+            return new StatementDraftEntryDto(
+                entry.Id,
+                entry.BookingDate,
+                entry.ValutaDate,
+                entry.Amount,
+                entry.CurrencyCode,
+                entry.Subject,
+                entry.RecipientName,
+                entry.BookingDescription,
+                entry.IsAnnounced,
+                entry.IsCostNeutral,
+                entry.Status,
+                entry.ContactId,
+                entry.SavingsPlanId,
+                entry.ArchiveSavingsPlanOnBooking,
+                entry.SplitDraftId,
+                entry.SecurityId,
+                entry.SecurityTransactionType,
+                entry.SecurityQuantity,
+                entry.SecurityFeeAmount,
+                entry.SecurityTaxAmount);
+        }
+
+        // Reset status to Open and clear contact/security to ensure fresh classification/editing
+        entry.ResetOpen();
+        entry.ClearContact();
+        entry.SetSecurity(null, null, null, null, null);
+        await _db.SaveChangesAsync(ct);
+
+        return new StatementDraftEntryDto(
+            entry.Id,
+            entry.BookingDate,
+            entry.ValutaDate,
+            entry.Amount,
+            entry.CurrencyCode,
+            entry.Subject,
+            entry.RecipientName,
+            entry.BookingDescription,
+            entry.IsAnnounced,
+            entry.IsCostNeutral,
+            entry.Status,
+            entry.ContactId,
+            entry.SavingsPlanId,
+            entry.ArchiveSavingsPlanOnBooking,
+            entry.SplitDraftId,
+            entry.SecurityId,
+            entry.SecurityTransactionType,
+            entry.SecurityQuantity,
+            entry.SecurityFeeAmount,
+            entry.SecurityTaxAmount);
     }
 }

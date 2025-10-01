@@ -177,7 +177,6 @@ public sealed class StatementDraftEntry : Entity
     }
     public void ResetOpen()
     {
-        if (Status == StatementDraftEntryStatus.AlreadyBooked) return; // don't downgrade duplicates
         Status = IsAnnounced ? StatementDraftEntryStatus.Announced : StatementDraftEntryStatus.Open;
         MarkCostNeutral(false);
         Touch();

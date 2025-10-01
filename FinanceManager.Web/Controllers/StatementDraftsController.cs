@@ -456,4 +456,11 @@ public sealed class StatementDraftsController : ControllerBase
         var ok = await _drafts.DeleteEntryAsync(draftId, entryId, _current.UserId, ct);
         return ok ? NoContent() : NotFound();
     }
+
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/reset-duplicate")]
+    public async Task<IActionResult> ResetDuplicateAsync(Guid draftId, Guid entryId, CancellationToken ct)
+    {
+        var dto = await _drafts.ResetDuplicateEntryAsync(draftId, entryId, _current.UserId, ct);
+        return dto == null ? NotFound() : Ok(dto);
+    }
 }

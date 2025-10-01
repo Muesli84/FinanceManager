@@ -186,6 +186,15 @@
   <data name="EditMode" xml:space="preserve">
     <value>Edit mode</value>
   </data>
+  <data name="Msg_ReadOnlyAlreadyBooked" xml:space="preserve">
+    <value>This entry was already booked and is read-only. To edit it, reset duplicate status first.</value>
+  </data>
+  <data name="Btn_ResetDuplicate" xml:space="preserve">
+    <value>Reset duplicate</value>
+  </data>
+  <data name="Confirm_ResetDuplicate" xml:space="preserve">
+    <value>Do you really want to reset this entry as duplicate? It becomes editable again afterwards.</value>
+  </data>
   <data name="Label_BookingDate" xml:space="preserve">
     <value>Booking date</value>
   </data>
@@ -209,6 +218,9 @@
   </data>
   <data name="BtnReset" xml:space="preserve">
     <value>Reset</value>
+  </data>
+  <data name="Err_ResetDuplicate" xml:space="preserve">
+    <value>Reset failed.</value>
   </data>
   <data name="Th_BookingDate" xml:space="preserve">
     <value>Booking date</value>

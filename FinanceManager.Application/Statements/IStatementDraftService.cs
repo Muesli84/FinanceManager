@@ -57,6 +57,7 @@ public interface IStatementDraftService
     Task<int> DeleteAllAsync(Guid ownerUserId, CancellationToken ct);
     Task<decimal?> GetSplitGroupSumAsync(Guid splitDraftId, Guid ownerUserId, CancellationToken ct);
     Task<(Guid? prevId, Guid? nextId)> GetUploadGroupNeighborsAsync(Guid draftId, Guid ownerUserId, CancellationToken ct);
+    Task<StatementDraftEntryDto?> ResetDuplicateEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct);
 }
 
 public sealed record StatementDraftEntryDto(
