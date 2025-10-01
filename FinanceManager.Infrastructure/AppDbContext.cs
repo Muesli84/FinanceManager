@@ -203,7 +203,6 @@ public class AppDbContext : DbContext
             b.Property(x => x.Amount).HasPrecision(18,2);
             // broad unique index (may be NULL-sensitive depending on provider)
             b.HasIndex(x => new { x.Kind, x.AccountId, x.ContactId, x.SavingsPlanId, x.SecurityId, x.Period, x.PeriodStart }).IsUnique();
-            // refined unique indexes per dimension combination (filters to non-null key parts)
             b.HasIndex(x => new { x.Kind, x.AccountId, x.Period, x.PeriodStart })
                 .IsUnique()
                 .HasFilter("[AccountId] IS NOT NULL AND [ContactId] IS NULL AND [SavingsPlanId] IS NULL AND [SecurityId] IS NULL");
@@ -374,38 +373,32 @@ public class AppDbContext : DbContext
             .ExecuteDeleteAsync(ct);
         progressCallback(++count, total);
 
-        // StatementEntries (korrekter Join auf StatementImports)
         await StatementEntries
             .Where(e => StatementImports
                 .Any(i => Accounts.Any(a => a.OwnerUserId == userId && a.Id == i.AccountId) && e.StatementImportId == i.Id))
             .ExecuteDeleteAsync(ct);
         progressCallback(++count, total);
 
-        // StatementImports
         await StatementImports
             .Where(i => Accounts.Any(a => a.OwnerUserId == userId && a.Id == i.AccountId))
             .ExecuteDeleteAsync(ct);
         progressCallback(++count, total);
 
-        // StatementDraftEntries
         await StatementDraftEntries
             .Where(e => StatementDrafts.Any(d => d.Id == e.DraftId && d.OwnerUserId == userId))
             .ExecuteDeleteAsync(ct);
         progressCallback(++count, total);
 
-        // StatementDrafts
         await StatementDrafts
             .Where(d => d.OwnerUserId == userId)
             .ExecuteDeleteAsync(ct);
         progressCallback(++count, total);
 
-        // SavingsPlans
         await SavingsPlans
             .Where(s => s.OwnerUserId == userId)
             .ExecuteDeleteAsync(ct);
         progressCallback(++count, total);
 
-        // SavingsPlanCategories
         await SavingsPlanCategories
             .Where(c => c.OwnerUserId == userId)
             .ExecuteDeleteAsync(ct);

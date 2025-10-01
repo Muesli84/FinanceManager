@@ -3,12 +3,14 @@ using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
+using FinanceManager.Infrastructure.Attachments;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Text;
 using System.Threading;
@@ -48,6 +50,28 @@ public sealed class StatementDraftServiceTests
         };
 
         var sut = new StatementDraftService(db, new PostingAggregateService(db));
+        return (sut, db, owner.Id);
+    }
+
+    private static (StatementDraftService sut, AppDbContext db, Guid ownerId) CreateWithAttachments()
+    {
+        var conn = new SqliteConnection("DataSource=:memory:");
+        conn.Open();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(conn)
+            .Options;
+        var db = new AppDbContext(options);
+        db.Database.EnsureCreated();
+        var owner = new FinanceManager.Domain.Users.User("owner", "hash", true);
+        db.Users.Add(owner);
+        db.SaveChanges();
+        var ownerContact = new Contact(owner.Id, "Ich", ContactType.Self, null, null);
+        db.Contacts.Add(ownerContact);
+        db.SaveChanges();
+
+        var agg = new PostingAggregateService(db);
+        var attachments = new AttachmentService(db, NullLogger<AttachmentService>.Instance);
+        var sut = new StatementDraftService(db, agg, logger: NullLogger<StatementDraftService>.Instance, attachments: attachments);
         return (sut, db, owner.Id);
     }
 
@@ -107,5 +131,30 @@ public sealed class StatementDraftServiceTests
         // Assert
         result.Should().NotBeNull();
         result!.TotalEntries.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CreateDraftAsync_ShouldCreateAttachment_ForOriginalFile()
+    {
+        var (sut, db, owner) = CreateWithAttachments();
+        // Single account so detected account gets set
+        db.Accounts.Add(new Account(owner, FinanceManager.Domain.AccountType.Giro, "Test", null, Guid.NewGuid()));
+        db.SaveChanges();
+
+        var bytes = Encoding.UTF8.GetBytes($"{{\"Type\":\"Backup\",\"Version\":2}}\n{{ \"BankAccounts\": [{{ \"IBAN\": \"\"}}], \"BankAccountLedgerEntries\": [], \"BankAccountJournalLines\": [{{\"Id\": 1,\"PostingDate\": \"2017-07-15T00:00:00\",\"ValutaDate\": \"2017-07-15T00:00:00\",\"PostingDescription\": \"Lastschrift\",\"SourceName\": \"GEZ\",\"Description\": \"GEZ Gebuehr\",\"CurrencyCode\": \"EUR\",\"Amount\": -97.95,\"CreatedAt\": \"2017-07-16T12:33:42.000041\"}}] }}");
+        Guid createdDraftId = Guid.Empty;
+        await foreach (var draft in sut.CreateDraftAsync(owner, "original.ndjson", bytes, CancellationToken.None))
+        {
+            createdDraftId = draft.DraftId;
+        }
+        createdDraftId.Should().NotBe(Guid.Empty);
+
+        // Verify attachment stored
+        var att = await db.Attachments.FirstOrDefaultAsync(a => a.OwnerUserId == owner && a.EntityKind == FinanceManager.Domain.Attachments.AttachmentEntityKind.StatementDraft && a.EntityId == createdDraftId);
+        att.Should().NotBeNull();
+        att!.FileName.Should().Be("original.ndjson");
+        att.ContentType.Should().Be("application/octet-stream");
+        att.Content.Should().NotBeNull();
+        att.Content!.Length.Should().BeGreaterThan(0);
     }
 }

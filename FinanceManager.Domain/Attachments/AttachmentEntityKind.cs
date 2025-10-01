@@ -11,5 +11,6 @@ public enum AttachmentEntityKind : short
     Security = 4,
     Account = 5,
     StatementImport = 6,
-    Posting = 7
+    Posting = 7,
+    StatementDraft = 8 // newly added for original uploaded statement files per draft
 }

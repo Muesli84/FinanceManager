@@ -19,18 +19,49 @@ using System.Text.Json;
 using FinanceManager.Domain.Postings; // AggregatePeriod, PostingAggregate
 using FinanceManager.Application.Aggregates;
 using FinanceManager.Domain.Reports;
+using FinanceManager.Application.Attachments; // new
+using FinanceManager.Domain.Attachments; // new
 
 public sealed class SetupImportService : ISetupImportService
 {
     private readonly AppDbContext _db;
     private readonly IStatementDraftService _statementDraftService;
     private readonly IPostingAggregateService _aggregateService;
+    private readonly IAttachmentService _attachments; // new
 
-    public SetupImportService(AppDbContext db, IStatementDraftService statementDraftService, IPostingAggregateService aggregateService)
+    public SetupImportService(AppDbContext db, IStatementDraftService statementDraftService, IPostingAggregateService aggregateService, IAttachmentService? attachments = null)
     {
         _db = db;
         _statementDraftService = statementDraftService;
         _aggregateService = aggregateService;
+        _attachments = attachments ?? new NoopAttachmentService();
+    }
+
+    private sealed class NoopAttachmentService : IAttachmentService
+    {
+        public Task<IReadOnlyList<AttachmentDto>> ListAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, int skip, int take, CancellationToken ct)
+            => Task.FromResult<IReadOnlyList<AttachmentDto>>(Array.Empty<AttachmentDto>());
+
+        public Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, CancellationToken ct)
+            => Task.FromResult(new AttachmentDto(Guid.Empty, (short)kind, entityId, fileName, contentType ?? "application/octet-stream", 0L, categoryId, DateTime.UtcNow, false));
+
+        public Task<AttachmentDto> CreateUrlAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, string url, string? fileName, Guid? categoryId, CancellationToken ct)
+        {
+            var name = string.IsNullOrWhiteSpace(fileName) ? url : fileName!;
+            return Task.FromResult(new AttachmentDto(Guid.Empty, (short)kind, entityId, name, "text/uri-list", 0L, categoryId, DateTime.UtcNow, true));
+        }
+
+        public Task<(Stream Content, string FileName, string ContentType)?> DownloadAsync(Guid ownerUserId, Guid attachmentId, CancellationToken ct)
+            => Task.FromResult<(Stream, string, string)?>(null);
+
+        public Task<bool> DeleteAsync(Guid ownerUserId, Guid id, CancellationToken ct)
+            => Task.FromResult(false);
+
+        public Task<bool> UpdateCategoryAsync(Guid ownerUserId, Guid attachmentId, Guid? categoryId, CancellationToken ct)
+            => Task.FromResult(false);
+
+        public Task ReassignAsync(AttachmentEntityKind fromKind, Guid fromId, AttachmentEntityKind toKind, Guid toId, Guid ownerUserId, CancellationToken ct)
+            => Task.CompletedTask;
     }
 
     public struct ImportProgress
@@ -430,17 +461,27 @@ public sealed class SetupImportService : ISetupImportService
                 {
                     var old = da.GetGuid(); if (accountMap.TryGetValue(old, out var mapped)) entity.SetDetectedAccount(mapped);
                 }
+                // Legacy backup may contain embedded file bytes; upload them as attachment now
                 if (d.TryGetProperty("OriginalFileContent", out var ofc) && ofc.ValueKind == JsonValueKind.Array)
                 {
                     try
                     {
                         var bytes = ofc.EnumerateArray().Select(x => (byte)x.GetInt32()).ToArray();
                         var ctype = d.TryGetProperty("OriginalFileContentType", out var ctpe) && ctpe.ValueKind == JsonValueKind.String ? ctpe.GetString() : null;
-                        if (bytes.Length > 0) entity.SetOriginalFile(bytes, ctype);
+                        if (bytes.Length > 0)
+                        {
+                            using var ms = new MemoryStream(bytes, writable: false);
+                            await _db.StatementDrafts.AddAsync(entity, ct);
+                            await _db.SaveChangesAsync(ct); // ensure entity.Id
+                            await _attachments.UploadAsync(userId, AttachmentEntityKind.StatementDraft, entity.Id, ms, originalFileName!, ctype ?? "application/octet-stream", null, ct);
+                        }
                     }
                     catch { }
                 }
-                _db.StatementDrafts.Add(entity);
+                if (_db.Entry(entity).State == EntityState.Detached)
+                {
+                    _db.StatementDrafts.Add(entity);
+                }
                 await _db.SaveChangesAsync(ct);
                 draftMap[id] = entity.Id;
                 ProgressChanged?.Invoke(this, progress.IncSub());

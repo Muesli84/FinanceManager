@@ -1,0 +1,119 @@
+@using FinanceManager.Domain.Attachments
+@using FinanceManager.Shared.Dtos
+@inject HttpClient Http
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.AttachmentsPanel> Localizer
+
+@if (!_loaded)
+{
+    <div style="opacity:.7;font-size:.8rem;">@Localizer["Loading"]</div>
+}
+else
+{
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem;">
+        <label style="margin:0;">@Localizer["Filter_Category"]</label>
+        <select @bind="_selectedCategoryId" @bind:after="OnCategoryChanged" style="min-width:220px;">
+            <option value="">-- @Localizer["AllCategories"] --</option>
+            @foreach (var c in _categories)
+            {
+                <option value="@c.Id">@c.Name</option>
+            }
+        </select>
+        <span style="font-size:.75rem;opacity:.7;">@string.Format(Localizer["Count"], Filtered.Count)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="fm-table wide">
+            <thead>
+                <tr>
+                    <th style="width:10rem;">@Localizer["Th_Uploaded"]</th>
+                    <th>@Localizer["Th_Name"]</th>
+                    <th style="width:8rem;text-align:right;">@Localizer["Th_Size"]</th>
+                    <th style="width:12rem;">@Localizer["Th_Category"]</th>
+                    <th style="width:6rem;">@Localizer["Th_Actions"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Filtered.Count == 0)
+                {
+                    <tr><td colspan="6" style="opacity:.6;">@Localizer["NoEntries"]</td></tr>
+                }
+                else
+                {
+                    @foreach (var a in Filtered.OrderByDescending(x => x.UploadedUtc))
+                    {
+                        <tr>
+                            <td>@a.UploadedUtc.ToLocalTime().ToString("g")</td>
+                            <td class="wrap">@a.FileName</td>
+                            <td style="text-align:right;">@FormatSize(a.SizeBytes)</td>
+                            <td>@(a.CategoryId.HasValue && _categoryNames.TryGetValue(a.CategoryId.Value, out var name) ? name : "-")</td>
+                            <td>
+                                @if (!a.IsUrl)
+                                {
+                                    <a href="@($"/api/attachments/{a.Id}/download")" class="icon-btn" title="@Localizer["Download"]"><svg><use href="/icons/sprite.svg#download" /></svg></a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public AttachmentEntityKind ParentKind { get; set; }
+    [Parameter, EditorRequired] public Guid ParentId { get; set; }
+
+    private readonly List<AttachmentDto> _items = new();
+    private readonly List<CategoryDto> _categories = new();
+    private readonly Dictionary<Guid, string> _categoryNames = new();
+    private string _selectedCategoryId = string.Empty;
+    private bool _loaded;
+
+    private List<AttachmentDto> Filtered => string.IsNullOrWhiteSpace(_selectedCategoryId)
+        ? _items
+        : _items.Where(a => a.CategoryId?.ToString() == _selectedCategoryId).ToList();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loaded = false;
+        try
+        {
+            // Load categories first
+            var cats = await Http.GetFromJsonAsync<List<AttachmentCategoryDto>>("/api/attachments/categories");
+            _categories.Clear(); _categoryNames.Clear();
+            foreach (var c in cats ?? new())
+            {
+                _categories.Add(new CategoryDto { Id = c.Id, Name = c.Name });
+                _categoryNames[c.Id] = c.Name;
+            }
+
+            // Load attachments for the given parent
+            var url = $"/api/attachments/{(short)ParentKind}/{ParentId}?skip=0&take=500";
+            var list = await Http.GetFromJsonAsync<List<AttachmentDto>>(url);
+            _items.Clear();
+            _items.AddRange(list ?? new());
+        }
+        catch { }
+        finally { _loaded = true; StateHasChanged(); }
+    }
+
+    private void OnCategoryChanged()
+    {
+        StateHasChanged();
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes; int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1) { order++; len /= 1024; }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private sealed class CategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+}

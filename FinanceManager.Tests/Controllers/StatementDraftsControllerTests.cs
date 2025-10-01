@@ -22,6 +22,8 @@ using System.Threading.Tasks;
 using Xunit;
 using FinanceManager.Application;
 using System.Collections.Generic;
+using FinanceManager.Application.Attachments;
+using FinanceManager.Infrastructure.Attachments;
 
 namespace FinanceManager.Tests.Controllers;
 
@@ -45,6 +47,7 @@ public sealed class StatementDraftsControllerTests
 
         var current = new TestCurrentUserService { UserId = owner.Id };
         var services = new ServiceCollection();
+        services.AddScoped<IAttachmentService, AttachmentService>();
         services.AddSingleton(db);
         services.AddLogging();
         var sp = services.BuildServiceProvider();
@@ -52,7 +55,8 @@ public sealed class StatementDraftsControllerTests
         var draftService = new StatementDraftService(db, new PostingAggregateService(db));
         var logger = sp.GetRequiredService<ILogger<StatementDraftsController>>();
         var taskManager = new DummyBackgroundTaskManager();
-        var controller = new StatementDraftsController(draftService, current, logger, taskManager);
+        var attachment = sp.GetRequiredService<IAttachmentService>();
+        var controller = new StatementDraftsController(draftService, current, logger, taskManager, attachment);
         return (controller, db, current.UserId);
     }
 
