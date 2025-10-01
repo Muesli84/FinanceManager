@@ -61,7 +61,10 @@ public sealed class StatementDraftsController : ControllerBase
             => Task.FromResult<(Stream, string, string)?>(null);
         public Task<bool> DeleteAsync(Guid ownerUserId, Guid attachmentId, CancellationToken ct) => Task.FromResult(false);
         public Task<bool> UpdateCategoryAsync(Guid ownerUserId, Guid attachmentId, Guid? categoryId, CancellationToken ct) => Task.FromResult(false);
+        public Task<bool> UpdateCoreAsync(Guid ownerUserId, Guid attachmentId, string? fileName, Guid? categoryId, CancellationToken ct) => Task.FromResult(false);
         public Task ReassignAsync(AttachmentEntityKind fromKind, Guid fromId, AttachmentEntityKind toKind, Guid toId, Guid ownerUserId, CancellationToken ct) => Task.CompletedTask;
+        public Task<AttachmentDto> CreateReferenceAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Guid masterAttachmentId, CancellationToken ct)
+            => Task.FromResult(new AttachmentDto(Guid.Empty, (short)kind, entityId, "ref", "application/octet-stream", 0L, null, DateTime.UtcNow, false));
     }
 
     public sealed record UploadRequest([Required] string FileName);

@@ -372,4 +372,10 @@
   <data name="Ribbon_Group_Book" xml:space="preserve">
     <value>Book</value>
   </data>
+  <data name="Attachments_Title" xml:space="preserve">
+    <value>Attachments</value>
+  </data>
+  <data name="Ribbon_Attachments" xml:space="preserve">
+    <value>Attachments</value>
+  </data>
 </root>

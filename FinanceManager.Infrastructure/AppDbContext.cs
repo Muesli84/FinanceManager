@@ -300,6 +300,13 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.CategoryId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // NEW: reference to a master attachment (for dedup on postings)
+            b.HasIndex(x => x.ReferenceAttachmentId);
+            b.HasOne<Attachment>()
+                .WithMany()
+                .HasForeignKey(x => x.ReferenceAttachmentId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AttachmentCategory>(b =>

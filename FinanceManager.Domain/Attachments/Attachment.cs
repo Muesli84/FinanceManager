@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 namespace FinanceManager.Domain.Attachments;
 
@@ -16,15 +17,28 @@ public sealed class Attachment
     public Guid? CategoryId { get; private set; }
     public DateTime UploadedUtc { get; private set; } = DateTime.UtcNow;
 
-    // Store either BLOB or external URL (one of both required)
+    // Store either BLOB or external URL (one of both required),
+    // or reference another attachment (for deduplication across postings)
     public byte[]? Content { get; private set; }
     public string? Url { get; private set; }
+    public Guid? ReferenceAttachmentId { get; private set; }
 
     public string? Note { get; private set; }
 
     private Attachment() { }
 
-    public Attachment(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, string fileName, string contentType, long sizeBytes, string? sha256, Guid? categoryId, byte[]? content, string? url)
+    public Attachment(
+        Guid ownerUserId,
+        AttachmentEntityKind kind,
+        Guid entityId,
+        string fileName,
+        string contentType,
+        long sizeBytes,
+        string? sha256,
+        Guid? categoryId,
+        byte[]? content,
+        string? url,
+        Guid? referenceAttachmentId = null)
     {
         OwnerUserId = ownerUserId;
         EntityKind = kind;
@@ -36,14 +50,37 @@ public sealed class Attachment
         CategoryId = categoryId;
         Content = content;
         Url = url;
-        if (Content is null && string.IsNullOrWhiteSpace(Url))
+        ReferenceAttachmentId = referenceAttachmentId;
+        if (Content is null && string.IsNullOrWhiteSpace(Url) && ReferenceAttachmentId == null)
         {
-            throw new ArgumentException("Either content or URL must be provided for an attachment.");
+            throw new ArgumentException("Either content, URL, or reference must be provided for an attachment.");
         }
     }
 
     public void SetCategory(Guid? categoryId) => CategoryId = categoryId;
     public void SetNote(string? note) => Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+
+    public void SetReference(Guid? referenceId)
+    {
+        ReferenceAttachmentId = referenceId;
+    }
+
+    public void Rename(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            throw new ArgumentException("File name required", nameof(fileName));
+        }
+        var trimmed = fileName.Trim();
+        var oldExt = Path.GetExtension(FileName) ?? string.Empty; // includes dot
+        var newExt = Path.GetExtension(trimmed) ?? string.Empty;
+        if (!string.IsNullOrEmpty(oldExt) && !string.Equals(oldExt, newExt, StringComparison.OrdinalIgnoreCase))
+        {
+            // Extension changed ? append old extension to keep it
+            trimmed += oldExt;
+        }
+        FileName = trimmed;
+    }
 
     public void Reassign(AttachmentEntityKind toKind, Guid toEntityId)
     {

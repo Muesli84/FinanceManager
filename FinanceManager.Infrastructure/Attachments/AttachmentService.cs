@@ -20,7 +20,6 @@ public sealed class AttachmentService : IAttachmentService
 
     public async Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, CancellationToken ct)
     {
-        // TODO: validate contentType + max size from config
         using var ms = new MemoryStream();
         await content.CopyToAsync(ms, ct);
         var bytes = ms.ToArray();
@@ -59,7 +58,15 @@ public sealed class AttachmentService : IAttachmentService
     public async Task<(Stream Content, string FileName, string ContentType)?> DownloadAsync(Guid ownerUserId, Guid attachmentId, CancellationToken ct)
     {
         var a = await _db.Attachments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == attachmentId && a.OwnerUserId == ownerUserId, ct);
-        if (a == null || a.Content == null) { return null; }
+        if (a == null) { return null; }
+        // If this is a reference-only attachment, resolve master
+        if (a.Content == null && string.IsNullOrWhiteSpace(a.Url) && a.ReferenceAttachmentId.HasValue)
+        {
+            var master = await _db.Attachments.AsNoTracking().FirstOrDefaultAsync(x => x.Id == a.ReferenceAttachmentId.Value && x.OwnerUserId == ownerUserId, ct);
+            if (master == null || master.Content == null) { return null; }
+            return (new MemoryStream(master.Content, writable: false), master.FileName, master.ContentType);
+        }
+        if (a.Content == null) { return null; }
         return (new MemoryStream(a.Content, writable: false), a.FileName, a.ContentType);
     }
 
@@ -67,7 +74,28 @@ public sealed class AttachmentService : IAttachmentService
     {
         var a = await _db.Attachments.FirstOrDefaultAsync(a => a.Id == attachmentId && a.OwnerUserId == ownerUserId, ct);
         if (a == null) { return false; }
-        _db.Attachments.Remove(a);
+
+        // If the selected attachment is only a reference, delete the master instead (and thereby all references)
+        var targetId = a.ReferenceAttachmentId ?? a.Id;
+        Attachment? target;
+        if (a.ReferenceAttachmentId.HasValue)
+        {
+            target = await _db.Attachments.FirstOrDefaultAsync(x => x.Id == targetId && x.OwnerUserId == ownerUserId, ct);
+            if (target == null)
+            {
+                // Master is missing; fall back to deleting the reference itself
+                _db.Attachments.Remove(a);
+                await _db.SaveChangesAsync(ct);
+                return true;
+            }
+        }
+        else
+        {
+            target = a;
+        }
+
+        // Delete only the master; DB FK (OnDelete Cascade) removes references automatically
+        _db.Attachments.Remove(target);
         await _db.SaveChangesAsync(ct);
         return true;
     }
@@ -81,11 +109,41 @@ public sealed class AttachmentService : IAttachmentService
         return true;
     }
 
+    public async Task<bool> UpdateCoreAsync(Guid ownerUserId, Guid attachmentId, string? fileName, Guid? categoryId, CancellationToken ct)
+    {
+        var a = await _db.Attachments.FirstOrDefaultAsync(x => x.Id == attachmentId && x.OwnerUserId == ownerUserId, ct);
+        if (a == null) { return false; }
+        if (!string.IsNullOrWhiteSpace(fileName) && !string.Equals(fileName, a.FileName, StringComparison.Ordinal))
+        {
+            a.Rename(fileName);
+            // Propagate name change to referencing attachments to keep consistent display names
+            var refs = await _db.Attachments.Where(x => x.ReferenceAttachmentId == a.Id && x.OwnerUserId == ownerUserId).ToListAsync(ct);
+            foreach (var r in refs)
+            {
+                r.Rename(a.FileName);
+            }
+        }
+        a.SetCategory(categoryId);
+        await _db.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task ReassignAsync(AttachmentEntityKind fromKind, Guid fromId, AttachmentEntityKind toKind, Guid toId, Guid ownerUserId, CancellationToken ct)
     {
         await _db.Attachments
             .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == fromKind && a.EntityId == fromId)
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.EntityKind, toKind).SetProperty(a => a.EntityId, toId), ct);
+    }
+
+    // NEW: create reference attachment pointing to a master attachment (bank posting main)
+    public async Task<AttachmentDto> CreateReferenceAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Guid masterAttachmentId, CancellationToken ct)
+    {
+        var master = await _db.Attachments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == masterAttachmentId && a.OwnerUserId == ownerUserId, ct);
+        if (master == null) { throw new ArgumentException("Master attachment not found"); }
+        var copy = new Attachment(ownerUserId, kind, entityId, master.FileName, master.ContentType, 0L, master.Sha256, master.CategoryId, null, null, master.Id);
+        var entry = _db.Attachments.Add(copy);
+        await _db.SaveChangesAsync(ct);
+        return Map(copy);
     }
 
     private static string ComputeSha256(byte[] bytes)

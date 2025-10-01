@@ -5,6 +5,7 @@
 @using System.ComponentModel.DataAnnotations
 @using FinanceManager.Shared.Dtos
 @using FinanceManager.Web.Components.Shared
+@using FinanceManager.Domain.Attachments
 @rendermode InteractiveServer
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
@@ -110,6 +111,19 @@ else
     }
 }
 
+@if (_showAttachments && Id != null)
+{
+    <div class="split-center" @onclick="(()=> _showAttachments = false)">
+        <div class="split-dialog" style="max-width:90vH;" @onclick:stopPropagation="true">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+                <h3 style="margin:0;font-size:1rem;">@Localizer["Attachments_Title"]</h3>
+                <button class="icon-btn" title='@Localizer["Btn_Close"]' @onclick="(()=> _showAttachments=false)"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+            </div>
+            <AttachmentsPanel ParentKind="@AttachmentEntityKind.Contact" ParentId="@Id!.Value" />
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public Guid? Id { get; set; }
 
@@ -190,6 +204,13 @@ else
                 IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
                 Disabled = _busy,
                 Callback = () => { OpenPostings(); return Task.CompletedTask; }
+            });
+            relatedItems.Add(new Ribbon<TabId>.RibbonItem
+            {
+                Label = Localizer["Ribbon_Attachments"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#attachment'/></svg>",
+                Disabled = _busy,
+                Callback = () => { OpenAttachments(); return Task.CompletedTask; }
             });
         }
         Ribbon<TabId>.RibbonGroup? relatedGroup = null;
@@ -387,6 +408,7 @@ else
             Navigation.NavigateTo($"/postings/contact/{Id}");
         }
     }
+    private void OpenAttachments(){ if (Id.HasValue){ _showAttachments = true; StateHasChanged(); } }
 
     private sealed class ContactEditModel
     {
@@ -454,6 +476,7 @@ else
     private sealed class AliasDto { public Guid Id { get; set; } public string Pattern { get; set; } = string.Empty; }
 
     private bool _showMergeDialog;
+    private bool _showAttachments;
     private bool IsSelfContact => Enum.Parse<ContactType>(_model.Type) == ContactType.Self;
 
     private void OpenMergeDialog()

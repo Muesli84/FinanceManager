@@ -86,8 +86,19 @@ public sealed class AttachmentsController : ControllerBase
     }
 
     public sealed record UpdateCategoryRequest(Guid? CategoryId);
+    public sealed record UpdateCoreRequest(string? FileName, Guid? CategoryId);
 
     [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] UpdateCoreRequest req, CancellationToken ct)
+    {
+        var ok = await _service.UpdateCoreAsync(_current.UserId, id, req.FileName, req.CategoryId, ct);
+        return ok ? NoContent() : NotFound();
+    }
+
+    // Backward-compatible route for category only (if used elsewhere)
+    [HttpPut("{id:guid}/category")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateCategoryAsync(Guid id, [FromBody] UpdateCategoryRequest req, CancellationToken ct)
@@ -113,7 +124,8 @@ public sealed class AttachmentsController : ControllerBase
         try
         {
             var dto = await _cats.CreateAsync(_current.UserId, req.Name.Trim(), ct);
-            return CreatedAtAction(nameof(ListCategoriesAsync), new { }, dto);
+            // Avoid CreatedAtAction routing issues; return Created with list endpoint as location
+            return Created($"/api/attachments/categories", dto);
         }
         catch (ArgumentException ex)
         {

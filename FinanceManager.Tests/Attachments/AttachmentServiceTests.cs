@@ -134,4 +134,47 @@ public sealed class AttachmentServiceTests
 
         conn.Dispose();
     }
+
+    [Fact]
+    public async Task DownloadAsync_ShouldReturnMasterContent_WhenAttachmentIsReference()
+    {
+        var (svc, db, conn, owner) = Create();
+        var entityId = Guid.NewGuid();
+        var bytes = Encoding.UTF8.GetBytes("master-content");
+        await using var s = new MemoryStream(bytes);
+        var master = await svc.UploadAsync(owner, AttachmentEntityKind.StatementDraft, entityId, s, "m.txt", "text/plain", null, CancellationToken.None);
+
+        var reference = await svc.CreateReferenceAsync(owner, AttachmentEntityKind.StatementEntry, Guid.NewGuid(), master.Id, CancellationToken.None);
+
+        var dl = await svc.DownloadAsync(owner, reference.Id, CancellationToken.None);
+        dl.Should().NotBeNull();
+        dl!.Value.FileName.Should().Be("m.txt");
+        using var reader = new StreamReader(dl.Value.Content, Encoding.UTF8);
+        var txt = await reader.ReadToEndAsync();
+        txt.Should().Be("master-content");
+
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ShouldDeleteMasterAndAllReferences_WhenDeletingReference()
+    {
+        var (svc, db, conn, owner) = Create();
+        var entityId = Guid.NewGuid();
+        var bytes = Encoding.UTF8.GetBytes("data");
+        await using var s = new MemoryStream(bytes);
+        var master = await svc.UploadAsync(owner, AttachmentEntityKind.StatementDraft, entityId, s, "d.txt", "text/plain", null, CancellationToken.None);
+
+        var ref1 = await svc.CreateReferenceAsync(owner, AttachmentEntityKind.StatementEntry, Guid.NewGuid(), master.Id, CancellationToken.None);
+        var ref2 = await svc.CreateReferenceAsync(owner, AttachmentEntityKind.Contact, Guid.NewGuid(), master.Id, CancellationToken.None);
+
+        var ok = await svc.DeleteAsync(owner, ref1.Id, CancellationToken.None);
+        ok.Should().BeTrue();
+
+        (await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == master.Id)).Should().BeFalse();
+        (await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == ref1.Id)).Should().BeFalse();
+        (await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == ref2.Id)).Should().BeFalse();
+
+        conn.Dispose();
+    }
 }

@@ -7,6 +7,7 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
+@using FinanceManager.Domain.Attachments
 @inject IStringLocalizer<Components.Pages.SecurityEdit> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -65,6 +66,19 @@
 {
     <div style="margin-top:1.2rem;">
         <AggregateBarChart Endpoint="@($"/api/securities/{Id}/aggregates")" Title="@Localizer["Chart_Title_Security"]" />
+    </div>
+}
+
+@if (_showAttachments && Id != null)
+{
+    <div class="split-center" @onclick="(()=> _showAttachments = false)">
+        <div class="split-dialog" style="max-width:90vH;" @onclick:stopPropagation="true">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+                <h3 style="margin:0;font-size:1rem;">@Localizer["Attachments_Title"]</h3>
+                <button class="icon-btn" title='@Localizer["Btn_Close"]' @onclick="(()=> _showAttachments=false)"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+            </div>
+            <AttachmentsPanel ParentKind="@AttachmentEntityKind.Security" ParentId="@Id!.Value" />
+        </div>
     </div>
 }
 
@@ -150,6 +164,13 @@
                         IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
                         Disabled = !_loaded,
                         Callback = () => { OpenPrices(); return Task.CompletedTask; }
+                    },
+                    new Ribbon<TabId>.RibbonItem
+                    {
+                        Label = Localizer["Ribbon_Attachments"],
+                        IconSvg = "<svg><use href='/icons/sprite.svg#attachment'/></svg>",
+                        Disabled = !_loaded,
+                        Callback = () => { OpenAttachments(); return Task.CompletedTask; }
                     }
                 }
             };
@@ -319,6 +340,7 @@
 
     private void OpenPostings(){ if (Id.HasValue){ Nav.NavigateTo($"/postings/security/{Id}"); } }
     private void OpenPrices(){ if (Id.HasValue){ Nav.NavigateTo($"/securities/{Id}/prices"); } }
+    private void OpenAttachments(){ if (Id.HasValue){ _showAttachments = true; StateHasChanged(); } }
 
     private sealed class SecurityEditModel
     {
@@ -348,4 +370,6 @@
         public Guid? CategoryId { get; set; }
         public string? CategoryName { get; set; }
     }
+
+    private bool _showAttachments;
 }

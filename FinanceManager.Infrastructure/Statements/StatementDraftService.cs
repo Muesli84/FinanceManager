@@ -13,8 +13,9 @@ using Microsoft.EntityFrameworkCore;
 using FinanceManager.Application.Aggregates;
 using Microsoft.Extensions.Logging; // added
 using Microsoft.Extensions.Logging.Abstractions; // added
-using FinanceManager.Application.Attachments; // new
-using FinanceManager.Domain.Attachments; // new
+using FinanceManager.Application.Attachments; // added
+using FinanceManager.Domain.Attachments; // added
+using System.Globalization; // added
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -28,6 +29,22 @@ public sealed partial class StatementDraftService : IStatementDraftService
     private List<StatementDraftDto>? allDrafts = null;
     private List<FinanceManager.Domain.Securities.Security>? allSecurities = null;
     private List<Domain.Accounts.Account>? allAccounts = null;
+
+    // helper: move entry attachments to bank posting and create references for other postings
+    private async Task PropagateEntryAttachmentsAsync(Guid ownerUserId, StatementDraftEntry entry, Guid bankPostingId, IEnumerable<Guid> otherPostingIds, CancellationToken ct)
+    {
+        if (_attachments == null) { return; }
+        var list = await _attachments.ListAsync(ownerUserId, AttachmentEntityKind.StatementDraftEntry, entry.Id, 0, 200, ct);
+        if (list == null || list.Count == 0) { return; }
+        await _attachments.ReassignAsync(AttachmentEntityKind.StatementDraftEntry, entry.Id, AttachmentEntityKind.Posting, bankPostingId, ownerUserId, ct);
+        foreach (var att in list)
+        {
+            foreach (var pid in otherPostingIds)
+            {
+                await _attachments.CreateReferenceAsync(ownerUserId, AttachmentEntityKind.Posting, pid, att.Id, ct);
+            }
+        }
+    }
 
     public ImportSplitInfo? LastImportSplitInfo { get; private set; } // exposes metadata of last CreateDraftAsync call (scoped service)
 
@@ -681,14 +698,73 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
     }
 
+    private async Task<Guid> EnsureStatementsSystemCategoryAsync(Guid ownerUserId, CancellationToken ct)
+    {
+        // Sprache des Users ermitteln (PreferredLanguage, z.B. "de" / "en")
+        var lang = await _db.Users.AsNoTracking()
+            .Where(u => u.Id == ownerUserId)
+            .Select(u => u.PreferredLanguage)
+            .FirstOrDefaultAsync(ct);
+
+        var name = GetStatementsCategoryName(lang);
+        // Suchen: system category mit exakt diesem Namen
+        var existing = await _db.AttachmentCategories.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.OwnerUserId == ownerUserId && c.IsSystem && c.Name == name, ct);
+        if (existing != null)
+        {
+            return existing.Id;
+        }
+
+        // Anlegen (IsSystem = true)
+        var cat = new AttachmentCategory(ownerUserId, name, isSystem: true);
+        _db.AttachmentCategories.Add(cat);
+        await _db.SaveChangesAsync(ct);
+        return cat.Id;
+    }
+
+    private static string GetStatementsCategoryName(string? preferredLanguage)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(preferredLanguage))
+            {
+                var culture = new CultureInfo(preferredLanguage);
+                var two = culture.TwoLetterISOLanguageName.ToLowerInvariant();
+                return two switch
+                {
+                    "en" => "Bank statements",
+                    // weitere Sprachen später ergänzbar
+                    _ => "Kontoauszüge"
+                };
+            }
+        }
+        catch (CultureNotFoundException)
+        {
+            // Fallback unten
+        }
+        return "Kontoauszüge";
+    }
+
     private async Task<StatementDraft> CreateDraftHeader(Guid ownerUserId, string originalFileName, byte[] fileBytes, StatementParseResult parsedDraft, CancellationToken ct)
     {
         var draft = new StatementDraft(ownerUserId, originalFileName, parsedDraft.Header.AccountNumber, parsedDraft.Header.Description);
+
         // store original via attachment service when available
         if (_attachments != null)
         {
+            // NEW: Kategorie "Kontoauszüge" (lokalisiert) ermitteln/erzeugen
+            var catId = await EnsureStatementsSystemCategoryAsync(ownerUserId, ct);
+
             using var ms = new MemoryStream(fileBytes, writable: false);
-            await _attachments.UploadAsync(ownerUserId, AttachmentEntityKind.StatementDraft, draft.Id, ms, originalFileName, "application/octet-stream", null, ct);
+            await _attachments.UploadAsync(
+                ownerUserId,
+                AttachmentEntityKind.StatementDraft,
+                draft.Id,
+                ms,
+                originalFileName,
+                "application/octet-stream",
+                catId,
+                ct);
         }
 
         if (!string.IsNullOrWhiteSpace(parsedDraft.Header.IBAN))
@@ -1431,6 +1507,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             _db.Postings.Add(bankPosting); await UpsertAggregatesAsync(bankPosting, token);
             var contactPosting = new Domain.Postings.Posting(e.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, amount, e.Subject, e.RecipientName, e.BookingDescription, null).SetGroup(gid);
             _db.Postings.Add(contactPosting); await UpsertAggregatesAsync(contactPosting, token);
+            // Attachments handling happens by caller after all postings are created (needs posting ids)
             return gid;
         }
         async Task CreateSecurityPostingsAsync(StatementDraftEntry e, Guid gid, CancellationToken token)
@@ -1463,48 +1540,58 @@ public sealed partial class StatementDraftService : IStatementDraftService
             if (c == null) { continue; }
             if (c.IsPaymentIntermediary && e.SplitDraftId != null)
             {
+                // create postings with amount 0 for parent
                 var gidZero = await CreateBankAndContactPostingAsync(e, 0m, e.ContactId, ct);
                 await CreateSecurityPostingsAsync(e, gidZero, ct);
+
+                // resolve created postings for this entry to propagate attachments
+                if (_attachments != null)
+                {
+                    var allForGroup = _db.Postings.Local.Where(p => p.SourceId == e.Id && p.GroupId == gidZero).ToList();
+                    var bank = allForGroup.FirstOrDefault(p => p.Kind == PostingKind.Bank);
+                    var others = allForGroup.Where(p => p.Id != bank!.Id).Select(p => p.Id).ToList();
+                    if (bank != null)
+                    {
+                        await PropagateEntryAttachmentsAsync(ownerUserId, e, bank.Id, others, ct);
+                    }
+                }
+
                 await BookSplitDraftGroupAsync(e.SplitDraftId.Value, ownerUserId, draft.Id, self, account, ct, new HashSet<Guid>());
             }
             else
             {
+                // normal booking
                 var gid = await CreateBankAndContactPostingAsync(e, e.Amount, e.ContactId, ct);
+                // optional savings plan posting
+                Guid? spPostingId = null;
                 if (e.SavingsPlanId != null && e.ContactId == self.Id)
                 {
                     var spPosting = new Domain.Postings.Posting(e.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, -e.Amount, e.Subject, e.RecipientName, e.BookingDescription, null).SetGroup(gid);
                     _db.Postings.Add(spPosting); await UpsertAggregatesAsync(spPosting, ct);
-                    await UpdateRecurringPlanIfDueAsync(e.SavingsPlanId.Value, e.BookingDate, ct);
+                    spPostingId = spPosting.Id;
                 }
                 await CreateSecurityPostingsAsync(e, gid, ct);
+
+                // resolve created postings for this entry to propagate attachments
+                if (_attachments != null)
+                {
+                    var allForGroup = _db.Postings.Local.Where(p => p.SourceId == e.Id && p.GroupId == gid).ToList();
+                    var bank = allForGroup.FirstOrDefault(p => p.Kind == PostingKind.Bank);
+                    var others = allForGroup.Where(p => p.Id != bank!.Id).Select(p => p.Id).ToList();
+                    if (spPostingId.HasValue && !others.Contains(spPostingId.Value)) { others.Add(spPostingId.Value); }
+                    if (bank != null)
+                    {
+                        await PropagateEntryAttachmentsAsync(ownerUserId, e, bank.Id, others, ct);
+                    }
+                }
             }
         }
 
-        if (entryId == null)
+        draft.MarkCommitted();
+        await _db.SaveChangesAsync(ct);
+        if (_attachments != null)
         {
-            draft.MarkCommitted();
-            await _db.SaveChangesAsync(ct);
-            if (_attachments != null)
-            {
-                await _attachments.ReassignAsync(AttachmentEntityKind.StatementDraft, draft.Id, AttachmentEntityKind.Account, account.Id, ownerUserId, ct);
-            }
-        }
-        else
-        {
-            foreach (var e in toBook)
-            {
-                _db.StatementDraftEntries.Remove(e);
-            }
-            await _db.SaveChangesAsync(ct);
-            if (!await _db.StatementDraftEntries.AnyAsync(e => e.DraftId == draft.Id, ct))
-            {
-                draft.MarkCommitted();
-                await _db.SaveChangesAsync(ct);
-                if (_attachments != null)
-                {
-                    await _attachments.ReassignAsync(AttachmentEntityKind.StatementDraft, draft.Id, AttachmentEntityKind.Account, account.Id, ownerUserId, ct);
-                }
-            }
+            await _attachments.ReassignAsync(AttachmentEntityKind.StatementDraft, draft.Id, AttachmentEntityKind.Account, account.Id, ownerUserId, ct);
         }
 
         // Archive savings plans if flagged and fully funded
@@ -1618,17 +1705,44 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 {
                     var gidZero = await CreateBankAndContactAsync(ce, 0m);
                     await CreateSecurityAsync(ce, gidZero);
+
+                    // propagate attachments from entry to postings
+                    if (_attachments != null)
+                    {
+                        var allForGroup = _db.Postings.Local.Where(p => p.SourceId == ce.Id && p.GroupId == gidZero).ToList();
+                        var bank = allForGroup.FirstOrDefault(p => p.Kind == PostingKind.Bank);
+                        var others = allForGroup.Where(p => p.Id != bank!.Id).Select(p => p.Id).ToList();
+                        if (bank != null)
+                        {
+                            await PropagateEntryAttachmentsAsync(ownerUserId, ce, bank.Id, others, ct);
+                        }
+                    }
+
                     await BookSplitDraftGroupAsync(ce.SplitDraftId.Value, ownerUserId, childDraft.Id, self, account, ct, visited);
                 }
                 else
                 {
                     var gid = await CreateBankAndContactAsync(ce, ce.Amount);
+                    Guid? spId = null;
                     if (ce.SavingsPlanId != null && ce.ContactId == self.Id)
                     {
                         var sp = new Domain.Postings.Posting(ce.Id, PostingKind.SavingsPlan, null, null, ce.SavingsPlanId, null, ce.BookingDate, -ce.Amount, ce.Subject, ce.RecipientName, ce.BookingDescription, null).SetGroup(gid);
                         _db.Postings.Add(sp); await UpsertAggregatesAsync(sp, ct);
+                        spId = sp.Id;
                     }
                     await CreateSecurityAsync(ce, gid);
+
+                    if (_attachments != null)
+                    {
+                        var allForGroup = _db.Postings.Local.Where(p => p.SourceId == ce.Id && p.GroupId == gid).ToList();
+                        var bank = allForGroup.FirstOrDefault(p => p.Kind == PostingKind.Bank);
+                        var others = allForGroup.Where(p => p.Id != bank!.Id).Select(p => p.Id).ToList();
+                        if (spId.HasValue && !others.Contains(spId.Value)) { others.Add(spId.Value); }
+                        if (bank != null)
+                        {
+                            await PropagateEntryAttachmentsAsync(ownerUserId, ce, bank.Id, others, ct);
+                        }
+                    }
                 }
             }
             childDraft.MarkCommitted();
