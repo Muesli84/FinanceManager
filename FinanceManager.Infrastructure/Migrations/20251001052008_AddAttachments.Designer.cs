@@ -3,6 +3,7 @@ using System;
 using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FinanceManager.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251001052008_AddAttachments")]
+    partial class AddAttachments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0-rc.1.24451.1");
@@ -140,8 +143,6 @@ namespace FinanceManager.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
 
                     b.HasIndex("Sha256", "OwnerUserId");
 
@@ -1147,14 +1148,6 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.HasIndex("OwnerUserId", "CreatedUtc");
 
                     b.ToTable("Backups");
-                });
-
-            modelBuilder.Entity("FinanceManager.Domain.Attachments.Attachment", b =>
-                {
-                    b.HasOne("FinanceManager.Domain.Attachments.AttachmentCategory", null)
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("FinanceManager.Domain.Contacts.Contact", b =>

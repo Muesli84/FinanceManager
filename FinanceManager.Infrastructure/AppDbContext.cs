@@ -15,6 +15,7 @@ using FinanceManager.Domain.Reports; // added
 using FinanceManager.Domain.Security; // new
 using FinanceManager.Domain.Notifications; // new
 using FinanceManager.Infrastructure.Notifications; // new
+using FinanceManager.Domain.Attachments; // new
 
 namespace FinanceManager.Infrastructure;
 
@@ -44,6 +45,8 @@ public class AppDbContext : DbContext
     public DbSet<HomeKpi> HomeKpis => Set<HomeKpi>(); // new
     public DbSet<IpBlock> IpBlocks => Set<IpBlock>(); // new
     public DbSet<Notification> Notifications => Set<Notification>(); // new
+    public DbSet<Attachment> Attachments => Set<Attachment>(); // new
+    public DbSet<AttachmentCategory> AttachmentCategories => Set<AttachmentCategory>(); // new
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -281,6 +284,33 @@ public class AppDbContext : DbContext
 
         // Notifications
         NotificationModelConfig.Configure(modelBuilder);
+
+        // Attachments
+        modelBuilder.Entity<Attachment>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.FileName).HasMaxLength(255).IsRequired();
+            b.Property(x => x.ContentType).HasMaxLength(120).IsRequired();
+            b.Property(x => x.Sha256).HasMaxLength(64);
+            b.Property(x => x.Url).HasMaxLength(1000);
+            b.Property(x => x.Note).HasMaxLength(500);
+            b.Property(x => x.EntityKind).HasConversion<short>().IsRequired();
+            b.HasIndex(x => new { x.OwnerUserId, x.EntityKind, x.EntityId });
+            b.HasIndex(x => new { x.Sha256, x.OwnerUserId });
+            b.HasOne<AttachmentCategory>()
+                .WithMany()
+                .HasForeignKey(x => x.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AttachmentCategory>(b =>
+        {
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Name).HasMaxLength(150).IsRequired();
+            b.Property(x => x.OwnerUserId).IsRequired();
+            b.Property(x => x.IsSystem).IsRequired();
+            b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
+        });
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
