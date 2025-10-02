@@ -43,16 +43,48 @@ public sealed class AttachmentService : IAttachmentService
         return Map(entity);
     }
 
-    public async Task<IReadOnlyList<AttachmentDto>> ListAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, int skip, int take, CancellationToken ct)
+    public Task<IReadOnlyList<AttachmentDto>> ListAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, int skip, int take, CancellationToken ct)
+        => ListAsync(ownerUserId, kind, entityId, skip, take, categoryId: null, isUrl: null, q: null, ct);
+
+    private IQueryable<Attachment> BuildQuery(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Guid? categoryId, bool? isUrl, string? q)
+    {
+        var qry = _db.Attachments.AsNoTracking()
+            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == kind && a.EntityId == entityId);
+        if (categoryId.HasValue)
+        {
+            qry = qry.Where(a => a.CategoryId == categoryId.Value);
+        }
+        if (isUrl.HasValue)
+        {
+            qry = isUrl.Value ? qry.Where(a => a.Url != null) : qry.Where(a => a.Url == null);
+        }
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim();
+            qry = qry.Where(a => a.FileName.Contains(term));
+        }
+        return qry;
+    }
+
+    public async Task<IReadOnlyList<AttachmentDto>> ListAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, int skip, int take, Guid? categoryId, bool? isUrl, string? q, CancellationToken ct)
     {
         take = Math.Clamp(take, 1, MaxTake);
-        return await _db.Attachments.AsNoTracking()
-            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == kind && a.EntityId == entityId)
+        skip = Math.Max(0, skip);
+        var qry = BuildQuery(ownerUserId, kind, entityId, categoryId, isUrl, q);
+        return await qry
+            // Stable ordering to make paging deterministic when many rows share the same timestamp
             .OrderByDescending(a => a.UploadedUtc)
+            .ThenByDescending(a => a.Id)
             .Skip(skip)
             .Take(take)
             .Select(a => new AttachmentDto(a.Id, (short)a.EntityKind, a.EntityId, a.FileName, a.ContentType, a.SizeBytes, a.CategoryId, a.UploadedUtc, a.Url != null))
             .ToListAsync(ct);
+    }
+
+    public async Task<int> CountAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Guid? categoryId, bool? isUrl, string? q, CancellationToken ct)
+    {
+        var qry = BuildQuery(ownerUserId, kind, entityId, categoryId, isUrl, q);
+        return await qry.CountAsync(ct);
     }
 
     public async Task<(Stream Content, string FileName, string ContentType)?> DownloadAsync(Guid ownerUserId, Guid attachmentId, CancellationToken ct)
@@ -167,7 +199,8 @@ public sealed class AttachmentCategoryService : IAttachmentCategoryService
         => await _db.AttachmentCategories.AsNoTracking()
             .Where(c => c.OwnerUserId == ownerUserId)
             .OrderBy(c => c.Name)
-            .Select(c => new AttachmentCategoryDto(c.Id, c.Name, c.IsSystem))
+            .Select(c => new AttachmentCategoryDto(c.Id, c.Name, c.IsSystem,
+                _db.Attachments.AsNoTracking().Any(a => a.OwnerUserId == ownerUserId && a.CategoryId == c.Id)))
             .ToListAsync(ct);
 
     public async Task<AttachmentCategoryDto> CreateAsync(Guid ownerUserId, string name, CancellationToken ct)
@@ -177,7 +210,7 @@ public sealed class AttachmentCategoryService : IAttachmentCategoryService
         var cat = new AttachmentCategory(ownerUserId, name);
         _db.AttachmentCategories.Add(cat);
         await _db.SaveChangesAsync(ct);
-        return new AttachmentCategoryDto(cat.Id, cat.Name, cat.IsSystem);
+        return new AttachmentCategoryDto(cat.Id, cat.Name, cat.IsSystem, false);
     }
 
     public async Task<bool> DeleteAsync(Guid ownerUserId, Guid id, CancellationToken ct)
@@ -189,5 +222,25 @@ public sealed class AttachmentCategoryService : IAttachmentCategoryService
         _db.AttachmentCategories.Remove(cat);
         await _db.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task<AttachmentCategoryDto?> UpdateAsync(Guid ownerUserId, Guid id, string name, CancellationToken ct)
+    {
+        name = name?.Trim() ?? string.Empty;
+        if (name.Length < 2) { throw new ArgumentException("Name too short"); }
+        var cat = await _db.AttachmentCategories.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
+        if (cat == null) { return null; }
+        if (cat.IsSystem)
+        {
+            throw new InvalidOperationException("System category cannot be renamed"); }
+        var exists = await _db.AttachmentCategories.AsNoTracking().AnyAsync(c => c.OwnerUserId == ownerUserId && c.Name == name && c.Id != id, ct);
+        if (exists)
+        {
+            throw new ArgumentException("Category name already exists");
+        }
+        cat.Rename(name);
+        await _db.SaveChangesAsync(ct);
+        var inUse = await _db.Attachments.AsNoTracking().AnyAsync(a => a.OwnerUserId == ownerUserId && a.CategoryId == id, ct);
+        return new AttachmentCategoryDto(cat.Id, cat.Name, cat.IsSystem, inUse);
     }
 }

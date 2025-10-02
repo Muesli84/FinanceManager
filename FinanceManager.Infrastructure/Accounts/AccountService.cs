@@ -4,6 +4,7 @@ using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
+using FinanceManager.Domain.Attachments; // added
 
 namespace FinanceManager.Infrastructure.Accounts;
 
@@ -60,14 +61,26 @@ public sealed class AccountService : IAccountService
         var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == id && a.OwnerUserId == ownerUserId, ct);
         if (account == null) return false;
         var bankContactId = account.BankContactId;
+
+        // Delete attachments linked to this account
+        await _db.Attachments
+            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Account && a.EntityId == account.Id)
+            .ExecuteDeleteAsync(ct);
+
         _db.Accounts.Remove(account);
         await _db.SaveChangesAsync(ct);
+
         bool anyOther = await _db.Accounts.AsNoTracking().AnyAsync(a => a.BankContactId == bankContactId, ct);
         if (!anyOther)
         {
             var bankContact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == bankContactId && c.Type == ContactType.Bank, ct);
             if (bankContact != null)
             {
+                // Delete attachments linked to the bank contact being auto-removed
+                await _db.Attachments
+                    .Where(a => a.OwnerUserId == bankContact.OwnerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == bankContact.Id)
+                    .ExecuteDeleteAsync(ct);
+
                 _db.Contacts.Remove(bankContact);
                 await _db.SaveChangesAsync(ct);
             }

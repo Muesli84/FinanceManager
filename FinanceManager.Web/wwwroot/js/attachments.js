@@ -73,3 +73,41 @@ export function AttachmentsPanel_setCategoryAttr(elementId, categoryId){
   if (!el) return;
   if (!categoryId) el.removeAttribute('data-category'); else el.setAttribute('data-category', categoryId);
 }
+
+// Lazy loading via IntersectionObserver within a scrollable container
+export function registerInfiniteScroll(containerId, sentinelId, dotnet){
+  const container = document.getElementById(containerId);
+  const sentinel = document.getElementById(sentinelId);
+  if (!container || !sentinel) return;
+
+  // use existing registry so that we can clean up observers on dispose
+  const existing = __apRegistry.get(container);
+  if (existing && existing.io){
+    // update dotnet target
+    existing.ioCtx.dotnet = dotnet;
+    return;
+  }
+
+  const ioCtx = { dotnet };
+  const io = new IntersectionObserver(async (entries) => {
+    for (const entry of entries){
+      if (entry.isIntersecting){
+        if (!ioCtx.dotnet) return;
+        try { await ioCtx.dotnet.invokeMethodAsync('OnNeedMoreAsync'); } catch {}
+      }
+    }
+  }, { root: container, rootMargin: '0px 0px 150px 0px', threshold: 0 });
+
+  io.observe(sentinel);
+  __apRegistry.set(container, { io, ioCtx });
+}
+
+export function unregisterInfiniteScroll(containerId){
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const reg = __apRegistry.get(container);
+  if (reg && reg.io){
+    try { reg.io.disconnect(); } catch {}
+    __apRegistry.delete(container);
+  }
+}

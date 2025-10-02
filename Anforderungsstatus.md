@@ -136,17 +136,17 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-KPI-006      | ~       | Quartalsdividenden Übersicht                                            | Endpoint `/api/securities/dividends`, KPI-Kachel                                                                                                                                 |
 | FA-KPI-007       | ✔      | Favoritenberichte als Home‑KPIs (Editiermodus + Dialog + Darstellung)   | Startseite: Editiermodus mit dynamischem KPI‑Hinzufügen über Plus‑Platzhalter; Dialog bietet vordefinierte KPIs oder Berichtsfavoriten; Anzeigeoptionen: (a) nur aktiver Gesamtbetrag, (b) Gesamtbetrag + Vergleichswerte als Balken, (c) Berichtsgrafik. Klick auf KPI öffnet Bericht (Ansichtmodus). Löschen eines Favoriten löscht zugehörige KPIs. Tests stellen Lösch‑Kaskade sicher. |
 | FA-ATT-001       | ✖      | Anhänge an Kontoauszugeintrag (DraftEntry) hochladen                    | Geplant: `IAttachmentService.UploadAsync`, Endpoint `POST /api/attachments/{entityKind}/{entityId}`, UI Upload in `StatementDraftEntryDetail`                                    |
-| FA-ATT-002       | ✖      | Anhänge nach Buchung weiterhin abrufbar                                 | Geplant: Umschlüsselung DraftEntry→StatementEntry in `StatementDraftService.BookAsync` via `IAttachmentService.ReassignAsync`                                                    |
+| FA-ATT-002       | ✔      | Anhänge nach Buchung weiterhin abrufbar                                 | Implementiert: `StatementDraftService.BookAsync`/`PropagateEntryAttachmentsAsync` nutzt `IAttachmentService.ReassignAsync` (DraftEntry→Posting, Draft→Account) und `CreateReferenceAsync` für weitere Postings (ohne Blob-Kopie). |
 | FA-ATT-003       | ✖      | Anhänge an gebuchten Postings/StatementEntry anzeigen                   | Geplant: Anzeige über StatementEntry/Posting-Ansicht (UI/Endpoint)                                                                                                              |
 | FA-ATT-004       | ~      | Anhänge an Kontakten verwalten                                          | `AttachmentsPanel` vorbereitet; API/Service nutzen `AttachmentEntityKind.Contact`; Integration in ContactDetail im Aufbau                                                       |
-| FA-ATT-005       | ~      | Kategorien für Anhänge verwalten                                        | API vorhanden (List/Create/Delete), UI: Kategorien anlegen direkt im Panel (Plus-Button); eigene Verwaltungsseite offen                                                         |
+| FA-ATT-005       | ✔      | Kategorien für Anhänge verwalten                                        | API List/Create/Delete/Update; UI: Setup-Tab `SetupAttachmentCategoriesTab` (Anlegen, Umbenennen, Löschen). Löschen ist für System- oder genutzte Kategorien gesperrt; Umbenennung auch bei genutzten Kategorien erlaubt. |
 | FA-ATT-006       | ✔      | Kategorie beim Upload wählbar/änderbar                                  | `AttachmentsPanel`: Filter + Upload mit Kategorie + Bearbeitung Kategorie                                                                                                       |
 | FA-ATT-007       | ✔      | Download eines Anhangs                                                  | `GET /api/attachments/{id}/download` (Content-Disposition: attachment) + Download-Button im `AttachmentsPanel`                                                                 |
 | FA-ATT-008       | ✔      | Meta-Anzeige (Name, Größe, Typ, Upload-Datum, Kategorie)                 | `AttachmentDto` Felder vorhanden; UI‑Liste `AttachmentsPanel` zeigt Metadaten + Kategoriefilter                                                                                 |
-| FA-ATT-009       | ✖      | Validierung Größe/Typ/Duplikat-Hash optional                            | Geplant: appsettings-Validierung (MaxSize, MIME-Whitelist), SHA-256 Hash                                                                                                        |
-| FA-ATT-010       | ✖      | Löschung nur durch Besitzer                                             | Geplant: OwnerUserId-Prüfung in Service/Controller                                                                                                                               |
-| FA-ATT-011       | ✖      | Buchungsvorgang überträgt Anhänge (ohne Blob-Kopie)                     | Geplant: Metadaten-Update (EntityKind/EntityId) transaktional mit Buchung                                                                                                       |
-| FA-ATT-012       | ✖      | API: paginierbare Listen                                                | Geplant: `GET /api/attachments/{entityKind}/{entityId}?skip&take`                                                                                                               |
+| FA-ATT-009       | ✔      | Validierung Größe/Typ/Duplikat-Hash optional                            | Implementiert: `AttachmentsController` prüft Größe (konfigurierbar, Default 10 MB) und MIME-Whitelist (konfigurierbar) via `AttachmentUploadOptions`; SHA‑256 Hash bereits im Service vorhanden. |
+| FA-ATT-010       | ✔      | Löschung nur durch Besitzer                                             | Durchgesetzt: Service/Controller filtern konsequent per `OwnerUserId`; `DeleteAsync`/`DownloadAsync`/`Update*` prüfen Ownership.                                                |
+| FA-ATT-011       | ✔      | Buchungsvorgang überträgt Anhänge (ohne Blob-Kopie)                     | Implementiert: `StatementDraftService` verschiebt/zuordnet Anhänge per `IAttachmentService.ReassignAsync` und erzeugt Referenzen (`CreateReferenceAsync`) für weitere Postings. |
+| FA-ATT-012       | ✔      | API: paginierbare Listen                                                | Implementiert: `GET /api/attachments/{entityKind}/{entityId}?skip&take&categoryId&isUrl&q` liefert `PageResult<AttachmentDto>` mit `Items/HasMore/Total`; UI `AttachmentsPanel` nutzt Lazy-Load (Infinite Scroll). |
 | FA-ATT-013       | ✔      | UI Upload (Button, später Drag&Drop)                                    | `AttachmentsPanel`: Button-Upload und Drag&Drop umgesetzt (Blazor InputFile + JS Interop)                                                                                       |
 | FA-ATT-014       | ✔      | Mehrfachupload (nacheinander)                                           | `AttachmentsPanel`: Mehrfachauswahl/Drop → sequenzielles Hochladen                                                                                                             |
 | FA-ATT-015       | ✔      | Fortschritt / Busy-Indikator                                            | `AttachmentsPanel`: Fortschrittsanzeige (done/total) + Busy-State                                                                                                               |
@@ -203,12 +203,12 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-I18N-001     | ✔      | Zwei Sprachen, Fallback                                                 | de/en + Fallback                                                                                                                                                                 |
 | NFA-DATA-001     | ✖      | Zeitreihen effizient gespeichert                                        | Optimierte Speicherung/Aggregationen offen                                                                                                                                       |
 | NFA-PRIV-001     | ✔      | Lokale Speicherung, keine Weitergabe                                    | Keine externe Weitergabe                                                                                                                                                         |
-| NFA-ATT-001      | ✖      | Max. Dateigröße (Default 10 MB)                                         | Geplant: `Attachments:MaxSizeBytes` in appsettings, Validierung im Controller/Service                                                                                           |
-| NFA-ATT-002      | ✖      | MIME-Typ-Whitelist                                                      | Geplant: Konfiguration + Prüfung (pdf, image/png, image/jpeg, text/plain, application/zip)                                                                                      |
+| NFA-ATT-001      | ✔      | Max. Dateigröße (Default 10 MB)                                         | Implementiert: `AttachmentUploadOptions.MaxSizeBytes` (Default 10 MB) + Prüfung im `AttachmentsController`                                                                      |
+| NFA-ATT-002      | ✔      | MIME-Typ-Whitelist                                                      | Implementiert: `AttachmentUploadOptions.AllowedMimeTypes` + Prüfung im `AttachmentsController`                                                                                   |
 | NFA-ATT-003      | ✔      | Speicherung zunächst in DB (BLOB)                                       | BLOB in `Attachments.Content` umgesetzt                                                                                                                                          |
 | NFA-ATT-004      | ✔      | SHA-256 Hash für Duplikatprüfung                                        | Hash-Berechnung beim Upload (`AttachmentService`); (Index vorhanden oder geplant je nach Migration)                                                                              |
 | NFA-ATT-005      | ✔      | Zugriffsschutz (Ownership)                                              | OwnerUserId-Prüfung/Filterung in Service/Controller konsequent                                                                                                                  |
-| NFA-ATT-006      | ✖      | Lokalisierte Fehlermeldungen                                            | Offen                                                                                                                                                                            |
+| NFA-ATT-006      | ~      | Lokalisierte Fehlermeldungen                                            | Teilweise: UI mappt Serverfehler auf lokalisierte Texte (de/en) im `AttachmentsPanel`; API-Meldungen selbst noch nicht lokalisiert.                                             |
 | NFA-ATT-007      | ✖      | Virenscan-Hook (Platzhalter)                                            | Geplant: Hook/Interface, Implementierung später                                                                                                                                  |
 | NFA-NOT-001     | ✖       | Eventgetriebene Benachrichtigungen                                      | Optional (später): Hinweise bei Events (Fristen, System, Benutzeraktionen); Schnittstelle/Bus vorbereiten.                                                                      |
 | NFA-NOT-002     | ✖       | Modulare Benachrichtigungsarchitektur                                   | Optional (später): Erweiterbare Architektur/Registry für neue Benachrichtigungstypen und Targets.                                                                               |
@@ -218,6 +218,27 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
+
+Änderungen (02.10.2025) – Ergänzung 39:
+- Paging-Envelope für Anhänge: `PageResult<T>` eingeführt; `GET /api/attachments/{entityKind}/{entityId}` liefert `Items/HasMore/Total`.
+- UI `AttachmentsPanel` auf Envelope umgestellt (Infinite Scroll mit `HasMore`).
+- Unit Tests angepasst (`AttachmentsControllerTests`).
+- Status aktualisiert: FA‑ATT‑012 auf ✔; FA‑ATT‑010 auf ✔.
+
+Änderungen (02.10.2025) – Ergänzung 38:
+- Anhänge‑Cleanup bei Löschung: Löschen von Konten entfernt deren Anhänge; wird dadurch der letzte zugehörige Bankkontakt gelöscht, werden auch dessen Anhänge entfernt. Löschen von Kontakten löscht deren Anhänge. Löschen archivierter Sparpläne/Wertpapiere löscht die zugehörigen Anhänge. Abgedeckt in AccountService/ContactService/SavingsPlanService/SecurityService.
+- Anhänge im Buchungsprozess: Reassign/Referenzierung umgesetzt. FA‑ATT‑002 und FA‑ATT‑011 auf ✔ gesetzt.
+
+Änderungen (02.10.2025) – Ergänzung 37:
+- Validierung Anhänge: Größenlimit + MIME-Whitelist serverseitig umgesetzt (`AttachmentUploadOptions`, `AttachmentsController`).
+- UI: Fehlermeldungen im `AttachmentsPanel` lokalisiert (Mapping Server-Errors → de/en).
+- Status aktualisiert: FA‑ATT‑009 auf ✔; NFA‑ATT‑001/002 auf ✔; NFA‑ATT‑006 auf ~.
+
+Änderungen (02.10.2025) – Ergänzung 36:
+- Anhangkategorien: Umbenennen nun unterstützt (UI Inline‑Rename in `SetupAttachmentCategoriesTab`, API `PUT /api/attachments/categories/{id}`).
+- Löschen gesperrt für System‑ oder genutzte Kategorien; Umbenennung auch bei genutzten Kategorien möglich.
+- Lokalisierung ergänzt: `Th_Name` in Ressourcen de/en.
+- Status aktualisiert: FA‑ATT‑005 auf ✔.
 
 Änderungen (01.10.2025) – Ergänzung 35:
 - Anhänge-Panel verbessert: Drag&Drop stabilisiert (idempotente Registrierung per WeakMap), doppelte Uploads verhindert (unregister vor Re-Init, Dispose integriert).

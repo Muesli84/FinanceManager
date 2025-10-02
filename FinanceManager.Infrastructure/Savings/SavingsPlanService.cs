@@ -3,6 +3,7 @@ using FinanceManager.Domain; // added for PostingKind
 using FinanceManager.Domain.Savings;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
+using FinanceManager.Domain.Attachments; // added
 
 namespace FinanceManager.Infrastructure.Savings;
 
@@ -89,6 +90,11 @@ public sealed class SavingsPlanService : ISavingsPlanService
         // 4. Prevent deletion if postings reference the plan (future feature; safety for already created postings).
         bool hasPostings = await _db.Postings.AsNoTracking().AnyAsync(p => p.SavingsPlanId == id, ct);
         if (hasPostings) { return false; }
+
+        // Delete attachments of this savings plan
+        await _db.Attachments
+            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.SavingsPlan && a.EntityId == plan.Id)
+            .ExecuteDeleteAsync(ct);
 
         _db.SavingsPlans.Remove(plan);
         await _db.SaveChangesAsync(ct);

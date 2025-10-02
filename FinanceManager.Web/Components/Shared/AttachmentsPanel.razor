@@ -48,7 +48,8 @@ else
         </div>
     }
 
-    <div class="table-responsive">
+    <!-- Limit the list height and allow scrolling to avoid oversized panel with many attachments -->
+    <div id="@_listContainerId" class="table-responsive" style="max-height: 440px; overflow: auto;">
         <table class="fm-table wide">
             <thead>
                 <tr>
@@ -124,6 +125,7 @@ else
                 }
             </tbody>
         </table>
+        <div id="@_sentinelId" style="height:1px;"></div>
     </div>
 }
 
@@ -145,18 +147,25 @@ else
     private IJSObjectReference? _module;
     private DotNetObjectReference<AttachmentsPanel>? _selfRef;
     private string _dropId => $"ap-drop-{(short)ParentKind}-{ParentId}";
+    private string _listContainerId => $"ap-list-{(short)ParentKind}-{ParentId}";
+    private string _sentinelId => $"{_listContainerId}-sentinel";
 
     private Guid? _editingId;
     private string _editCategoryId = string.Empty;
     private string _editFileName = string.Empty;
 
+    // Lazy loading state
+    private const int _pageSize = 50;
+    private bool _hasMore = true;
+    private bool _loadingMore = false;
+
     private List<AttachmentDto> Filtered => string.IsNullOrWhiteSpace(_selectedCategoryId)
         ? _items
-        : _items.Where(a => a.CategoryId?.ToString() == _selectedCategoryId).ToList();
+        : _items; // server-side category filter is applied in paging calls
 
     protected override async Task OnParametersSetAsync()
     {
-        await LoadAsync();
+        await LoadAsync(reset: true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -178,6 +187,10 @@ else
                 // unregister previous (if any) then register fresh to keep handlers single
                 await _module.InvokeVoidAsync("unregisterDropArea", _dropId);
                 await _module.InvokeVoidAsync("registerDropArea", _dropId, uploadUrl, _selfRef);
+
+                // register infinite scroll on the list container
+                await _module.InvokeVoidAsync("unregisterInfiniteScroll", _listContainerId);
+                await _module.InvokeVoidAsync("registerInfiniteScroll", _listContainerId, _sentinelId, _selfRef);
             }
             catch { }
         }
@@ -186,7 +199,7 @@ else
     [JSInvokable]
     public Task OnDropUploadProgress(int done, int total, string? error)
     {
-        _uploadBusy = true; _uploadDone = done; _uploadTotal = total; _uploadError = error;
+        _uploadBusy = true; _uploadDone = done; _uploadTotal = total; _uploadError = MapServerError(error);
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -195,28 +208,65 @@ else
     public async Task OnDropUploadCompleted()
     {
         _uploadBusy = false;
-        await LoadAsync();
+        await LoadAsync(reset: true);
     }
 
-    private async Task LoadAsync()
+    [JSInvokable]
+    public async Task OnNeedMoreAsync()
     {
-        _loaded = false;
+        if (!_hasMore || _loadingMore) { return; }
+        _loadingMore = true;
         try
         {
-            // Load categories first
-            var cats = await Http.GetFromJsonAsync<List<AttachmentCategoryDto>>("/api/attachments/categories");
-            _categories.Clear(); _categoryNames.Clear();
-            foreach (var c in cats ?? new())
+            await LoadAsync(reset: false);
+        }
+        finally
+        {
+            _loadingMore = false;
+        }
+    }
+
+    private sealed class PageEnvelope<T>
+    {
+        public List<T> Items { get; set; } = new();
+        public bool HasMore { get; set; }
+        public int? Total { get; set; }
+    }
+
+    private async Task LoadAsync(bool reset)
+    {
+        if (reset)
+        {
+            _loaded = false;
+        }
+        try
+        {
+            if (reset)
             {
-                _categories.Add(new CategoryDto { Id = c.Id, Name = c.Name });
-                _categoryNames[c.Id] = c.Name;
+                // Load categories first on full refresh
+                var cats = await Http.GetFromJsonAsync<List<AttachmentCategoryDto>>("/api/attachments/categories");
+                _categories.Clear(); _categoryNames.Clear();
+                foreach (var c in cats ?? new())
+                {
+                    _categories.Add(new CategoryDto { Id = c.Id, Name = c.Name });
+                    _categoryNames[c.Id] = c.Name;
+                }
+                _items.Clear();
+                _hasMore = true;
             }
 
-            // Load attachments for the given parent
-            var url = $"/api/attachments/{(short)ParentKind}/{ParentId}?skip=0&take=500";
-            var list = await Http.GetFromJsonAsync<List<AttachmentDto>>(url);
-            _items.Clear();
-            _items.AddRange(list ?? new());
+            if (_hasMore)
+            {
+                var skip = _items.Count;
+                var url = $"/api/attachments/{(short)ParentKind}/{ParentId}?skip={skip}&take={_pageSize}";
+                if (Guid.TryParse(_selectedCategoryId, out var cat))
+                {
+                    url += $"&categoryId={cat}";
+                }
+                var page = await Http.GetFromJsonAsync<PageEnvelope<AttachmentDto>>(url) ?? new PageEnvelope<AttachmentDto>();
+                _items.AddRange(page.Items ?? new());
+                _hasMore = page.HasMore;
+            }
         }
         catch { }
         finally { _loaded = true; StateHasChanged(); }
@@ -232,6 +282,7 @@ else
             }
         }
         catch { }
+        _ = LoadAsync(reset: true);
         StateHasChanged();
     }
 
@@ -290,7 +341,7 @@ else
                 }
                 catch (Exception ex)
                 {
-                    _uploadError = ex.Message;
+                    _uploadError = MapServerError(ex.Message);
                 }
             }
         }
@@ -298,14 +349,18 @@ else
         {
             _uploadBusy = false;
         }
-        await LoadAsync();
+        await LoadAsync(reset: true);
     }
 
     private async Task UploadFileAsync(IBrowserFile file)
     {
         using var content = new MultipartFormDataContent();
         await using var stream = file.OpenReadStream(1024L * 1024L * 1024L); // 1 GB limit per file
-        content.Add(new StreamContent(stream), "file", file.Name);
+        var fileContent = new StreamContent(stream);
+        // Ensure the file part carries the browser-provided content type so the server binder populates FormFile.ContentType
+        var ct = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(ct);
+        content.Add(fileContent, "file", file.Name);
         if (Guid.TryParse(_selectedCategoryId, out var cat))
         {
             content.Add(new StringContent(cat.ToString()), "categoryId");
@@ -315,7 +370,7 @@ else
         if (!resp.IsSuccessStatusCode)
         {
             var msg = await resp.Content.ReadAsStringAsync();
-            throw new InvalidOperationException(string.IsNullOrWhiteSpace(msg) ? "Upload failed" : msg);
+            throw new InvalidOperationException(MapServerError(msg));
         }
     }
 
@@ -345,7 +400,7 @@ else
                 return;
             }
             _editingId = null; _editCategoryId = string.Empty; _editFileName = string.Empty;
-            await LoadAsync();
+            await LoadAsync(reset: true);
         }
         catch (Exception ex)
         {
@@ -367,7 +422,7 @@ else
                 _uploadError = string.IsNullOrWhiteSpace(msg) ? Localizer["Err_DeleteFailed"] : msg;
                 return;
             }
-            await LoadAsync();
+            await LoadAsync(reset: true);
         }
         catch (Exception ex)
         {
@@ -383,9 +438,55 @@ else
         return $"{len:0.##} {sizes[order]}";
     }
 
+    private string? MapServerError(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) { return null; }
+        var text = raw.Trim();
+        // Try extract {"error":"..."}
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(text);
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && doc.RootElement.TryGetProperty("error", out var el))
+            {
+                var inner = el.GetString();
+                if (!string.IsNullOrWhiteSpace(inner)) { text = inner; }
+            }
+        }
+        catch { }
+        var lower = text.ToLowerInvariant();
+        if (lower.Contains("unsupported content type"))
+        {
+            return Localizer["Err_UnsupportedContentType"]; // show generic friendly text
+        }
+        if (lower.Contains("file too large"))
+        {
+            // Try to extract max bytes
+            try
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(text, "([0-9]{1,18})\\s*bytes", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (m.Success && long.TryParse(m.Groups[1].Value, out var max))
+                {
+                    return string.Format(Localizer["Err_FileTooLarge"], FormatSize(max));
+                }
+            }
+            catch { }
+            return Localizer["Err_FileTooLarge_General"];            
+        }
+        if (lower.Contains("empty file"))
+        {
+            return Localizer["Err_EmptyFile"];
+        }
+        if (lower.Contains("file or url required"))
+        {
+            return Localizer["Err_UploadFailed"];
+        }
+        return text; // fallback to server message
+    }
+
     public async ValueTask DisposeAsync()
     {
         try { if (_module != null) { await _module.InvokeVoidAsync("unregisterDropArea", _dropId); } } catch { }
+        try { if (_module != null) { await _module.InvokeVoidAsync("unregisterInfiniteScroll", _listContainerId); } } catch { }
         try { if (_module is IAsyncDisposable m) { await m.DisposeAsync(); } } catch { }
         try { _selfRef?.Dispose(); } catch { }
     }

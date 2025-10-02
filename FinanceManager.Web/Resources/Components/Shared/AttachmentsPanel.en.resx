@@ -29,4 +29,9 @@
   <data name="Btn_AddCategory" xml:space="preserve"><value>New category</value></data>
   <data name="Prompt_NewCategory" xml:space="preserve"><value>Enter new category name:</value></data>
   <data name="Err_CreateCategoryFailed" xml:space="preserve"><value>Creating the category failed</value></data>
+  <data name="Err_UnsupportedContentType" xml:space="preserve"><value>This file type is not supported.</value></data>
+  <data name="Err_FileTooLarge" xml:space="preserve"><value>File is too large (max. {0}).</value></data>
+  <data name="Err_FileTooLarge_General" xml:space="preserve"><value>File is too large.</value></data>
+  <data name="Err_EmptyFile" xml:space="preserve"><value>Empty file cannot be uploaded.</value></data>
+  <data name="Err_UploadFailed" xml:space="preserve"><value>Upload failed.</value></data>
 </root>

@@ -48,25 +48,6 @@ public sealed class StatementDraftsController : ControllerBase
         _attachments = attachments;
     }
 
-    // Minimal no-op implementation used by test ctor
-    private sealed class NoopAttachmentService : IAttachmentService
-    {
-        public Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, CancellationToken ct)
-            => Task.FromResult(new AttachmentDto(Guid.Empty, (short)kind, entityId, fileName, contentType, 0L, categoryId, DateTime.UtcNow, false));
-        public Task<AttachmentDto> CreateUrlAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, string url, string? fileName, Guid? categoryId, CancellationToken ct)
-            => Task.FromResult(new AttachmentDto(Guid.Empty, (short)kind, entityId, fileName ?? url, "text/uri-list", 0L, categoryId, DateTime.UtcNow, true));
-        public Task<IReadOnlyList<AttachmentDto>> ListAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, int skip, int take, CancellationToken ct)
-            => Task.FromResult<IReadOnlyList<AttachmentDto>>(Array.Empty<AttachmentDto>());
-        public Task<(Stream Content, string FileName, string ContentType)?> DownloadAsync(Guid ownerUserId, Guid attachmentId, CancellationToken ct)
-            => Task.FromResult<(Stream, string, string)?>(null);
-        public Task<bool> DeleteAsync(Guid ownerUserId, Guid attachmentId, CancellationToken ct) => Task.FromResult(false);
-        public Task<bool> UpdateCategoryAsync(Guid ownerUserId, Guid attachmentId, Guid? categoryId, CancellationToken ct) => Task.FromResult(false);
-        public Task<bool> UpdateCoreAsync(Guid ownerUserId, Guid attachmentId, string? fileName, Guid? categoryId, CancellationToken ct) => Task.FromResult(false);
-        public Task ReassignAsync(AttachmentEntityKind fromKind, Guid fromId, AttachmentEntityKind toKind, Guid toId, Guid ownerUserId, CancellationToken ct) => Task.CompletedTask;
-        public Task<AttachmentDto> CreateReferenceAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Guid masterAttachmentId, CancellationToken ct)
-            => Task.FromResult(new AttachmentDto(Guid.Empty, (short)kind, entityId, "ref", "application/octet-stream", 0L, null, DateTime.UtcNow, false));
-    }
-
     public sealed record UploadRequest([Required] string FileName);
 
     public sealed record UploadResult(StatementDraftDto? FirstDraft, object? SplitInfo);
