@@ -1,0 +1,243 @@
+﻿@using System.Net.Http.Json
+@using FinanceManager.Shared.Dtos
+@inject IHttpClientFactory ClientFactory
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Setup> Localizer
+
+<div>
+    <h4 style="margin-top:0;">@Localizer["AttachmentCategories_TabTitle"]</h4>
+
+    @if (_loading)
+    {
+        <div>@Localizer["Msg_Loading"]</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="error">@_error</div>
+        <button class="icon-btn" @onclick="LoadAsync" title="@Localizer["Btn_Retry"]">
+            <svg class="icon"><use href="icons/sprite.svg#refresh" /></svg>
+        </button>
+    }
+    else
+    {
+        <div class="form-grid">
+            <div class="form-row">
+                <label>@Localizer["AttachmentCategories_Label_NewName"]</label>
+                <input type="text" @bind="_newName" @bind:after="OnChanged" maxlength="100" />
+                <button type="button" class="icon-btn" disabled="@(!_canAdd || _busy)" title="@Localizer["Btn_Add"]" @onclick="AddAsync">
+                    <svg class="icon"><use href="icons/sprite.svg#plus" /></svg>
+                </button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_actionError))
+        {
+            <div class="error" style="margin:.5rem 0;">@_actionError</div>
+        }
+        @if (_actionOk)
+        {
+            <div class="success" style="margin:.5rem 0;">@Localizer["AttachmentCategories_ActionSuccess"]</div>
+        }
+
+        <div class="table-responsive" style="margin-top:.5rem;">
+            <table class="fm-table wide">
+                <thead>
+                    <tr>
+                        <th>@Localizer["Th_Name"]</th>
+                        <th style="width:10rem;">@Localizer["AttachmentCategories_Th_IsSystem"]</th>
+                        <th style="width:8rem;">@Localizer["Th_Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_items.Count == 0)
+                    {
+                        <tr><td colspan="3" style="opacity:.7;">@Localizer["AttachmentCategories_NoEntries"]</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var c in _items)
+                        {
+                            var isEditing = _editId == c.Id;
+                            <tr>
+                                <td>
+                                    @if (isEditing)
+                                    {
+                                        <input type="text" @bind="_editName" @bind:after="OnChanged" maxlength="100" disabled="@_busy" />
+                                    }
+                                    else
+                                    {
+                                        @c.Name
+                                    }
+                                </td>
+                                <td>@(c.IsSystem ? "✔" : "-")</td>
+                                <td>
+                                    @if (isEditing)
+                                    {
+                                        <button class="icon-btn" title="@Localizer["Btn_Save"]" disabled="@(!_canSaveEdit || _busy)" @onclick="SaveEditAsync">
+                                            <svg class="icon"><use href="icons/sprite.svg#save" /></svg>
+                                        </button>
+                                        <button class="icon-btn" title="@Localizer["Btn_Cancel"]" disabled="@_busy" @onclick="CancelEdit">
+                                            <svg class="icon"><use href="icons/sprite.svg#clear" /></svg>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="icon-btn" title="@Localizer["Btn_Edit"]" disabled="@_busy" @onclick="(() => BeginEdit(c))">
+                                            <svg class="icon"><use href="icons/sprite.svg#edit" /></svg>
+                                        </button>
+                                        <button class="icon-btn danger" title="@Localizer["Btn_Delete"]" disabled="@(c.IsSystem || _busy)" @onclick="(() => DeleteAsync(c.Id))">
+                                            <svg class="icon"><use href="icons/sprite.svg#delete" /></svg>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<AttachmentCategoryDto> _items = new();
+    private bool _loading;
+    private bool _busy;
+    private string? _error;
+    private string? _actionError;
+    private bool _actionOk;
+
+    private string _newName = string.Empty;
+    private bool _canAdd => !string.IsNullOrWhiteSpace(_newName) && _newName.Trim().Length >= 2;
+
+    // edit state
+    private Guid _editId;
+    private string _editName = string.Empty;
+    private bool _canSaveEdit => !string.IsNullOrWhiteSpace(_editName) && _editName.Trim().Length >= 2;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private void OnChanged()
+    {
+        _actionOk = false; _actionError = null;
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true; _error = null; _actionError = null; _actionOk = false; _editId = Guid.Empty; _editName = string.Empty;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var list = await http.GetFromJsonAsync<List<AttachmentCategoryDto>>("/api/attachments/categories");
+            _items.Clear();
+            if (list != null) { _items.AddRange(list.OrderBy(x => x.Name)); }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _loading = false; }
+    }
+
+    private async Task AddAsync()
+    {
+        var name = _newName?.Trim() ?? string.Empty;
+        if (name.Length < 2) return;
+        _busy = true; _actionError = null; _actionOk = false;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            using var resp = await http.PostAsJsonAsync("/api/attachments/categories", new { Name = name });
+            if (resp.IsSuccessStatusCode)
+            {
+                var dto = await resp.Content.ReadFromJsonAsync<AttachmentCategoryDto>();
+                if (dto != null)
+                {
+                    _items.Add(dto);
+                    _items.Sort((a,b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+                    _newName = string.Empty;
+                    _actionOk = true;
+                }
+            }
+            else
+            {
+                _actionError = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private void BeginEdit(AttachmentCategoryDto c)
+    {
+        if (_busy) return;
+        _editId = c.Id; _editName = c.Name; _actionError = null; _actionOk = false;
+    }
+
+    private void CancelEdit()
+    {
+        _editId = Guid.Empty; _editName = string.Empty; _actionError = null; _actionOk = false;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editId == Guid.Empty) return;
+        var name = _editName?.Trim() ?? string.Empty;
+        if (name.Length < 2) return;
+        _busy = true; _actionError = null; _actionOk = false;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            using var resp = await http.PutAsJsonAsync($"/api/attachments/categories/{_editId}", new { Name = name });
+            if (resp.IsSuccessStatusCode)
+            {
+                var dto = await resp.Content.ReadFromJsonAsync<AttachmentCategoryDto>();
+                if (dto != null)
+                {
+                    var idx = _items.FindIndex(x => x.Id == dto.Id);
+                    if (idx >= 0) { _items[idx] = dto; }
+                    else { _items.Add(dto); }
+                    _items.Sort((a,b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+                    _actionOk = true;
+                    CancelEdit();
+                }
+            }
+            else
+            {
+                _actionError = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        _busy = true; _actionError = null; _actionOk = false;
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            using var resp = await http.DeleteAsync($"/api/attachments/categories/{id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                var idx = _items.FindIndex(x => x.Id == id);
+                if (idx >= 0) _items.RemoveAt(idx);
+                _actionOk = true;
+            }
+            else
+            {
+                _actionError = await resp.Content.ReadAsStringAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+        }
+        finally { _busy = false; }
+    }
+}

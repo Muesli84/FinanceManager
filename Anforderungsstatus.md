@@ -121,7 +121,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-WERT-007      | ✔      | Speicherung Kursposten                                                  | SecurityPrice Entity + Unique Index                                                                                                                                              |
 | FA-WERT-008      | ✖      | Renditeberechnung                                                       | Offen                                                                                                                                                                            |
 | FA-WERT-009      | ✔      | Kursliste im UI (Infinite Scroll)                                       | `SecurityPrices.razor`                                                                                                                                                           |
-| FA-REP-001       | ✖      | Buchungsaggregation (Monat, Quartal, Jahr)                              | Offen (wird teilweise durch FA-REP-008 abgedeckt)                                                                                                                                |
+| FA-REP-001       | ✖      | Buchungsaggregation (Monat, Quartal, Jahr)                              | Offen (wird teilweise durch FA-REP-008 abgedeckt)                                                                                                                              |
 | FA-REP-002       | ✖      | Year-To-Date Berechnung                                                 | Offen (in FA-REP-008 vorgesehen)                                                                                                                                                 |
 | FA-REP-003       | ✖      | Vergleich mit Vorjahr                                                   | Offen (in FA-REP-008 vorgesehen)                                                                                                                                                 |
 | FA-REP-004       | ✖      | GuV pro Monat/Kategorie                                                 | Offen (Kategorie-Gruppierung in FA-REP-008 Ansatz)                                                                                                                               |
@@ -130,33 +130,33 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-REP-007       | ✖      | Export von Postenlisten (CSV & Excel)                                   | Offen                                                                                                                                                                            |
 | FA-KPI-001       | ✖      | Dividenden aktueller Monat                                              | Offen                                                                                                                                                                            |
 | FA-KPI-002       | ✖      | Dividenden aktuelles Jahr                                               | Offen                                                                                                                                                                            |
-| FA-KPI-003       | ~      | Einnahmen/Ausgaben pro Monat                                            | BarChart (All-Accounts Aggregation)                                                                                                                                              |
+| FA-KPI-003      | ~       | Einnahmen/Ausgaben pro Monat                                            | BarChart (All-Accounts Aggregation)                                                                                                                                              |
 | FA-KPI-004       | ✖      | Gesamtdepotrendite aktuelles Jahr                                       | Offen                                                                                                                                                                            |
 | FA-KPI-005       | ✖      | KPI-Fallback Jahresanfang                                               | Offen                                                                                                                                                                            |
 | FA-KPI-006      | ~       | Quartalsdividenden Übersicht                                            | Endpoint `/api/securities/dividends`, KPI-Kachel                                                                                                                                 |
-| FA-KPI-007       | ✔      | Favoritenberichte als Home‑KPIs (Editiermodus + Dialog + Darstellung)   | Startseite: Editiermodus mit dynamischem KPI‑Hinzufügen über Plus‑Platzhalter; Dialog bietet vordefinierte KPIs oder Berichtsfavoriten; Anzeigeoptionen: (a) nur aktueller Gesamtbetrag, (b) Gesamtbetrag + Vergleichswerte als Balken, (c) Berichtsgrafik. Klick auf KPI öffnet Bericht (Ansichtmodus). Löschen eines Favoriten löscht zugehörige KPIs. Tests stellen Lösch‑Kaskade sicher. |
-| FA-ATT-001       | ✖      | Anhänge an Kontoauszugeintrag (DraftEntry) hochladen                    | Geplant: `IAttachmentService.UploadAsync`, Endpoint `POST /api/attachments/{entityKind}/{entityId}`, UI Upload in `StatementDraftEntryDetail`                                    |
-| FA-ATT-002       | ✖      | Anhänge nach Buchung weiterhin abrufbar                                 | Geplant: Umschlüsselung DraftEntry→StatementEntry in `StatementDraftService.BookAsync` via `IAttachmentService.ReassignAsync`                                                    |
-| FA-ATT-003       | ✖      | Anhänge an gebuchten Postings/StatementEntry anzeigen                   | Geplant: Anzeige über StatementEntry/Posting-Ansicht (UI/Endpoint)                                                                                                              |
-| FA-ATT-004       | ✖      | Anhänge an Kontakten verwalten                                          | Geplant: Upload/Liste/Löschen für `AttachmentEntityKind.Contact`                                                                                                                |
-| FA-ATT-005       | ✖      | Kategorien für Anhänge verwalten                                        | Geplant: `AttachmentCategories` (CRUD) + Controller                                                                                                                              |
-| FA-ATT-006       | ✖      | Kategorie beim Upload wählbar/änderbar                                  | Geplant: `PUT /api/attachments/{id}` zum Setzen/Ändern der Kategorie                                                                                                            |
-| FA-ATT-007       | ✖      | Download eines Anhangs                                                  | Geplant: `GET /api/attachments/{id}/download` (Content-Disposition: attachment)                                                                                                 |
-| FA-ATT-008       | ✖      | Meta-Anzeige (Name, Größe, Typ, Upload-Datum, Kategorie)                 | Geplant: `AttachmentDto` Felder + UI-Liste                                                                                                                                       |
-| FA-ATT-009       | ✖      | Validierung Größe/Typ/Duplikat-Hash optional                            | Geplant: appsettings-Validierung (MaxSize, MIME-Whitelist), SHA-256 Hash                                                                                                        |
-| FA-ATT-010       | ✖      | Löschung nur durch Besitzer                                             | Geplant: OwnerUserId-Prüfung im Service/Controller                                                                                                                               |
-| FA-ATT-011       | ✖      | Buchungsvorgang überträgt Anhänge (ohne Blob-Kopie)                     | Geplant: Metadaten-Update (EntityKind/EntityId) transaktional mit Buchung                                                                                                       |
-| FA-ATT-012       | ✖      | API: paginierbare Listen                                                | Geplant: `GET /api/attachments/{entityKind}/{entityId}?skip&take`                                                                                                               |
-| FA-ATT-013       | ✖      | UI Upload (Button, später Drag&Drop)                                    | Geplant: einfacher Button-Upload in Phase 1                                                                                                                                     |
-| FA-ATT-014       | ✖      | Mehrfachupload (nacheinander)                                           | Geplant: Batch-Verarbeitung im Controller                                                                                                                                       |
-| FA-ATT-015       | ✖      | Fortschritt / Busy-Indikator                                            | Geplant: UI Busy-State beim Upload                                                                                                                                               |
+| FA-KPI-007       | ✔      | Favoritenberichte als Home‑KPIs (Editiermodus + Dialog + Darstellung)   | Startseite: Editiermodus mit dynamischem KPI‑Hinzufügen über Plus‑Platzhalter; Dialog bietet vordefinierte KPIs oder Berichtsfavoriten; Anzeigeoptionen: (a) nur aktiver Gesamtbetrag, (b) Gesamtbetrag + Vergleichswerte als Balken, (c) Berichtsgrafik. Klick auf KPI öffnet Bericht (Ansichtmodus). Löschen eines Favoriten löscht zugehörige KPIs. Tests stellen Lösch‑Kaskade sicher. |
+| FA-ATT-001       | ✔      | Anhänge an Kontoauszugeintrag (DraftEntry) hochladen                    | Implementiert: Ein einziger Anhang ergibt sich automatisch beim Upload des Kontoauszugs. `StatementDraftService.CreateDraftHeader` lädt die Originaldatei via `IAttachmentService.UploadAsync` als `AttachmentEntityKind.StatementDraft` (kein separater Entry‑Upload). |
+| FA-ATT-002       | ✔      | Anhänge nach Buchung weiterhin abrufbar                                 | Implementiert: `StatementDraftService.BookAsync`/`PropagateEntryAttachmentsAsync` nutzt `IAttachmentService.ReassignAsync` (DraftEntry→Posting, Draft→Account) und `CreateReferenceAsync` für weitere Postings (ohne Blob-Kopie). |
+| FA-ATT-003       | ✔      | Anhänge an gebuchten Postings anzeigen                                  | PostingsAccount/Contact/Security: Ribbon „Anhänge“ öffnet Overlay mit `AttachmentsPanel` (`ParentKind = Posting`). StatementEntry-Ansicht entfällt.                              |
+| FA-ATT-004       | ✔      | Anhänge an Kontakten verwalten                                          | `ContactDetail.razor` integriert `AttachmentsPanel` (`ParentKind = Contact`) inkl. Ribbon-Aktion; Upload, Kategoriefilter und Download über bestehende API.                      |
+| FA-ATT-005       | ✔      | Kategorien für Anhänge verwalten                                        | API List/Create/Delete/Update; UI: Setup-Tab `SetupAttachmentCategoriesTab` (Anlegen, Umbenennen, Löschen). Löschen ist für System- oder genutzte Kategorien gesperrt; Umbenennung auch bei genutzten Kategorien erlaubt. |
+| FA-ATT-006       | ✔      | Kategorie beim Upload wählbar/änderbar                                  | `AttachmentsPanel`: Filter + Upload mit Kategorie + Bearbeitung Kategorie                                                                                                       |
+| FA-ATT-007       | ✔      | Download eines Anhangs                                                  | `GET /api/attachments/{id}/download` (Content-Disposition: attachment) + Download-Button im `AttachmentsPanel`                                                                 |
+| FA-ATT-008       | ✔      | Meta-Anzeige (Name, Größe, Typ, Upload-Datum, Kategorie)                 | `AttachmentDto` Felder vorhanden; UI‑Liste `AttachmentsPanel` zeigt Metadaten + Kategoriefilter                                                                                 |
+| FA-ATT-009       | ✔      | Validierung Größe/Typ/Duplikat-Hash optional                            | Implementiert: `AttachmentsController` prüft Größe (konfigurierbar, Default 10 MB) und MIME-Whitelist (konfigurierbar) via `AttachmentUploadOptions`; SHA‑256 Hash bereits im Service vorhanden. |
+| FA-ATT-010       | ✔      | Löschung nur durch Besitzer                                             | Durchgesetzt: Service/Controller filtern konsequent per `OwnerUserId`; `DeleteAsync`/`DownloadAsync`/`Update*` prüfen Ownership.                                                |
+| FA-ATT-011       | ✔      | Buchungsvorgang überträgt Anhänge (ohne Blob-Kopie)                     | Implementiert: `StatementDraftService` verschiebt/zuordnet Anhänge per `IAttachmentService.ReassignAsync` und erzeugt Referenzen (`CreateReferenceAsync`) für weitere Postings. |
+| FA-ATT-012       | ✔      | API: paginierbare Listen                                                | Implementiert: `GET /api/attachments/{entityKind}/{entityId}?skip&take&categoryId&isUrl&q` liefert `PageResult<AttachmentDto>` mit `Items/HasMore/Total`; UI `AttachmentsPanel` nutzt Lazy-Load (Infinite Scroll). |
+| FA-ATT-013       | ✔      | UI Upload (Button, später Drag&Drop)                                    | `AttachmentsPanel`: Button-Upload und Drag&Drop umgesetzt (Blazor InputFile + JS Interop)                                                                                       |
+| FA-ATT-014       | ✔      | Mehrfachupload (nacheinander)                                           | `AttachmentsPanel`: Mehrfachauswahl/Drop → sequenzielles Hochladen                                                                                                             |
+| FA-ATT-015       | ✔      | Fortschritt / Busy-Indikator                                            | `AttachmentsPanel`: Fortschrittsanzeige (done/total) + Busy-State                                                                                                               |
 | FA-NOT-001      | ✔       | Zeitgesteuerte Monatsabschluss‑Benachrichtigung (letzter Werktag)      | `BusinessDayCalculator` (Wochenende), `MonthlyReminderScheduler` + `MonthlyReminderJob` (HostedService). Nager.Date‑Feiertagskalender (Land + Counties/Subdivision) und Nutzer‑Zeitzone/Uhrzeit werden berücksichtigt; Provider wählbar (Memory/NagerDate). Texte lokalisiert. |
 | FA-NOT-002      | ✔       | Konfiguration Monatsabschluss‑Hinweis                                   | User-Setting `MonthlyReminderEnabled`, Uhrzeit (Hour/Minute), Feiertags‑Provider (Memory/NagerDate), `HolidayCountryCode` + `HolidaySubdivisionCode`; API `UserNotificationSettingsController`, UI `SetupNotificationsTab`. Individueller Nachrichtentext offen. |
 | FA-NOT-003      | ✔       | Darstellung Hinweis auf Startseite                                      | `HomeNotifications` Komponente, `NotificationsController` + `NotificationService` (List/Dismiss); zeigt optional Aktionslink.                                                    |
 | FA-API-001       | ✔      | Web API für alle Entitäten                                              | Controller (Accounts, Contacts, Statements, Securities, etc.)                                                                                                                    |
 | FA-API-002       | ~      | Suchkriterien für API                                                   | Kontakte: type + q; weitere Entitäten partiell                                                                                                                                   |
 | FA-API-003       | ✔      | Authentifizierung & Autorisierung                                       | JWT + `[Authorize]`                                                                                                                                                              |
-| FA-API-004       | ~      | Rate Limiting/Caching Kursabfragen                                      | Worker-seitig (AlphaVantage) – Gateway-Limit offen                                                                                                                               |
+| FA-API-004      | ~      | Rate Limiting/Caching Kursabfragen                                      | Worker-seitig (AlphaVantage) – Gateway-Limit offen                                                                                                                               |
 | FA-AUTH-001      | ✔      | Anmeldung erforderlich                                                  | JWT Auth Pipeline                                                                                                                                                                |
 | FA-AUTH-002      | ✔      | JWT-Token bei Anmeldung                                                 | JwtBearer                                                                                                                                                                        |
 | FA-AUTH-003      | ✔      | Token im Authorization Header                                           | JwtBearer                                                                                                                                                                        |
@@ -196,19 +196,19 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-REL-002      | ✔      | Langläufer im Hintergrund mit Fortschritt (Restore)                     | BackgroundTaskManager + Executor + Panel                                                                                                                                         |
 | NFA-REL-003      | ✔      | Einheitliche Background-Task Queue                                      | TaskRunner + Executors + UI Panel                                                                                                                                                |
 | NFA-USAB-001     | ~      | Responsive UI                                                           | Teilweise optimiert                                                                                                                                                              |
-| NFA-USAB-002     | ✔      | Einheitliche Aktions‑Symbole via Sprite                                 | `wwwroot/icons/sprite.svg`                                                                                                                                                      |
+| NFA-USAB-002     | ✔      | Einheitliche Aktions‑Symbole via Sprite                                 | `wwwroot/icons/sprite.svg` (+ neues `attachment` Symbol)                                                                                                                         |
 | NFA-USAB-003     | ✖      | Bestätigungsdialoge kritische Aktionen + globale Abschalt-Option        | Konzept offen                                                                                                                                                                    |
 | NFA-ARCH-001     | ✔      | Trennung Domäne/Präsentation                                            | Layered Architecture                                                                                                                                                             |
 | NFA-LOG-001      | ✔      | Zentrales Logging                                                       | Serilog Pipeline                                                                                                                                                                |
 | NFA-I18N-001     | ✔      | Zwei Sprachen, Fallback                                                 | de/en + Fallback                                                                                                                                                                 |
 | NFA-DATA-001     | ✖      | Zeitreihen effizient gespeichert                                        | Optimierte Speicherung/Aggregationen offen                                                                                                                                       |
 | NFA-PRIV-001     | ✔      | Lokale Speicherung, keine Weitergabe                                    | Keine externe Weitergabe                                                                                                                                                         |
-| NFA-ATT-001      | ✖      | Max. Dateigröße (Default 10 MB)                                         | Geplant: `Attachments:MaxSizeBytes` in appsettings, Validierung im Controller/Service                                                                                           |
-| NFA-ATT-002      | ✖      | MIME-Typ-Whitelist                                                      | Geplant: Konfiguration + Prüfung (pdf, image/png, image/jpeg, text/plain, application/zip)                                                                                      |
-| NFA-ATT-003      | ✖      | Speicherung zunächst in DB (BLOB)                                       | Geplant: BLOB in `Attachments.Content`; spätere Umstellung auf File-Storage offen                                                                                               |
-| NFA-ATT-004      | ✖      | SHA-256 Hash für Duplikatprüfung                                        | Geplant: Hash-Berechnung beim Upload, Index `IX_Attachments_Sha256_OwnerUserId`                                                                                                  |
-| NFA-ATT-005      | ✖      | Zugriffsschutz (Ownership)                                              | Geplant: OwnerUserId-Prüfung in allen Attachment-Endpunkten                                                                                                                     |
-| NFA-ATT-006      | ✖      | Lokalisierte Fehlermeldungen                                            | Geplant: Ressourcen für Größe/Typ/NotFound                                                                                                                                        |
+| NFA-ATT-001      | ✔      | Max. Dateigröße (Default 10 MB)                                         | Implementiert: `AttachmentUploadOptions.MaxSizeBytes` (Default 10 MB) + Prüfung im `AttachmentsController`                                                                      |
+| NFA-ATT-002      | ✔      | MIME-Typ-Whitelist                                                      | Implementiert: `AttachmentUploadOptions.AllowedMimeTypes` + Prüfung im `AttachmentsController`                                                                                   |
+| NFA-ATT-003      | ✔      | Speicherung zunächst in DB (BLOB)                                       | BLOB in `Attachments.Content` umgesetzt                                                                                                                                          |
+| NFA-ATT-004      | ✔      | SHA-256 Hash für Duplikatprüfung                                        | Hash-Berechnung beim Upload (`AttachmentService`); (Index vorhanden oder geplant je nach Migration)                                                                              |
+| NFA-ATT-005      | ✔      | Zugriffsschutz (Ownership)                                              | OwnerUserId-Prüfung/Filterung in Service/Controller konsequent                                                                                                                  |
+| NFA-ATT-006      | ✔      | Lokalisierte Fehlermeldungen                                            |  UI mappt Serverfehler auf lokalisierte Texte (de/en) im `AttachmentsPanel`;                                                                                                     |
 | NFA-ATT-007      | ✖      | Virenscan-Hook (Platzhalter)                                            | Geplant: Hook/Interface, Implementierung später                                                                                                                                  |
 | NFA-NOT-001     | ✖       | Eventgetriebene Benachrichtigungen                                      | Optional (später): Hinweise bei Events (Fristen, System, Benutzeraktionen); Schnittstelle/Bus vorbereiten.                                                                      |
 | NFA-NOT-002     | ✖       | Modulare Benachrichtigungsarchitektur                                   | Optional (später): Erweiterbare Architektur/Registry für neue Benachrichtigungstypen und Targets.                                                                               |
@@ -219,122 +219,50 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
 
+Änderungen (03.10.2025) – Ergänzung 40:
+- FA‑ATT‑003 umgesetzt: Postings‑Seiten (Account/Contact/Security) mit Ribbon‑Aktion „Anhänge“ → Overlay `AttachmentsPanel` (`ParentKind = Posting`). StatementEntry‑Ansicht entfällt.
+- FA‑ATT‑004 abgeschlossen: `ContactDetail` integriert Attachment‑Overlay (`ParentKind = Contact`) inkl. Upload, Kategoriefilter und Download.
+- FA‑ATT‑001 abgeschlossen: Einziger Anhang pro Kontoauszug wird beim Upload gespeichert (Draft‑Ebene).
+- Ressourcen de/en ergänzt für Postings‑Seiten und ContactDetail (Attachments‑Titel/Buttons).
+
+Änderungen (02.10.2025) – Ergänzung 39:
+- Paging-Envelope für Anhänge: `PageResult<T>` eingeführt; `GET /api/attachments/{entityKind}/{entityId}` liefert `Items/HasMore/Total`.
+- UI `AttachmentsPanel` auf Envelope umgestellt (Infinite Scroll mit `HasMore`).
+- Unit Tests angepasst (`AttachmentsControllerTests`).
+- Status aktualisiert: FA‑ATT‑012 auf ✔; FA‑ATT‑010 auf ✔.
+
+Änderungen (02.10.2025) – Ergänzung 38:
+- Anhänge‑Cleanup bei Löschung: Löschen von Konten entfernt deren Anhänge; wird dadurch der letzte zugehörige Bankkontakt gelöscht, werden auch dessen Anhänge entfernt. Löschen von Kontakten löscht deren Anhänge. Löschen archivierter Sparpläne/Wertpapiere löscht die zugehörigen Anhänge. Abgedeckt in AccountService/ContactService/SavingsPlanService/SecurityService.
+- Anhänge im Buchungsprozess: Reassign/Referenzierung umgesetzt. FA‑ATT‑002 und FA‑ATT‑011 auf ✔ gesetzt.
+
+Änderungen (02.10.2025) – Ergänzung 37:
+- Validierung Anhänge: Größenlimit + MIME-Whitelist serverseitig umgesetzt (`AttachmentUploadOptions`, `AttachmentsController`).
+- UI: Fehlermeldungen im `AttachmentsPanel` lokalisiert (Mapping Server-Errors → de/en).
+- Status aktualisiert: FA‑ATT‑009 auf ✔; NFA‑ATT‑001/002 auf ✔; NFA‑ATT‑006 auf ~.
+
+Änderungen (02.10.2025) – Ergänzung 36:
+- Anhangkategorien: Umbenennen nun unterstützt (UI Inline‑Rename in `SetupAttachmentCategoriesTab`, API `PUT /api/attachments/categories/{id}`).
+- Löschen gesperrt für System‑ oder genutzte Kategorien; Umbenennung auch bei genutzten Kategorien möglich.
+- Lokalisierung ergänzt: `Th_Name` in Ressourcen de/en.
+- Status aktualisiert: FA‑ATT‑005 auf ✔.
+
+Änderungen (01.10.2025) – Ergänzung 35:
+- Anhänge-Panel verbessert: Drag&Drop stabilisiert (idempotente Registrierung per WeakMap), doppelte Uploads verhindert (unregister vor Re-Init, Dispose integriert).
+- Kategorie-Neuanlage direkt im Panel: Plus-Button öffnet Prompt, erstellt Kategorie via API, lädt Liste neu und selektiert sie. Resx-Texte de/en ergänzt.
+- API Fix: `POST /api/attachments/categories` nutzt `Created("/api/attachments/categories", dto)` statt `CreatedAtAction` (Routing-Fehler behoben).
+- Status aktualisiert: FA‑ATT‑006, FA‑ATT‑013..015 auf ✔; FA‑ATT‑005 auf ~; NFA‑ATT‑003/004/005 auf ✔.
+
+Änderungen (01.10.2025) – Ergänzung 34:
+- Neues Attachment‑Overlay auf Kontodetailseite: Ribbon‑Aktion „Anhänge“ öffnet Overlay mit Liste und Kategoriefilter. Umsetzung über wiederverwendbare Komponente `AttachmentsPanel` (Blazor).
+- Download‑Button in `AttachmentsPanel` nutzt `/api/attachments/{id}/download`.
+- Sprite um Symbol `attachment` ergänzt; Ressourcen de/en für `AccountDetail` und `AttachmentsPanel` hinzugefügt.
+- Status aktualisiert: FA‑ATT‑007 auf ✔, FA‑ATT‑008 auf ✔. Andere FA‑ATT bleiben offen (Upload, Reassign, Kontakte, Paging etc.).
+
 Änderungen (01.10.2025) – Ergänzung 33:
 - Neue Sammelanforderung „Allgemeines Datei‑Anhangssystem“ aufgenommen. Phase 1 (Kontoauszugeinträge → Postings) und Phase 2 (Kontakte + Kategorien) geplant. Alle FA‑ATT/NFA‑ATT aktuell ✖ (noch nicht implementiert). Branch-Vorschlag: `feature/attachments-phase1`.
 
 Änderungen (01.10.2025) – Ergänzung 32:
 - Manuelle Kontierung wieder ermöglicht: Duplikat‑Reset für bereits als „bereits gebucht“ markierte Einträge. UI-Hinweis/Buttons lokalisiert (de/en). Nach Reset ist der Eintrag wieder editierbar (Read‑Only wird aufgehoben).
 
-Änderungen (30.09.2025) – Ergänzung 31:
-- FA-AUTH-019 auf ✔: Admin‑Benachrichtigung bei IP‑Sperre implementiert. Zentralisierung über `IIpBlockService.RegisterUnknownUserFailureAsync`/`BlockByAddressAsync`; Benachrichtigungserstellung via `INotificationWriter` als `SystemAlert`. UI zeigt Aktionslink an und navigiert zu `/setup?section=ip-blocks&focus=<ip>`. `Setup.razor` wertet `section`/`focus` Query‑Parameter aus.
-
-Änderungen (29.09.2025) – Ergänzung 30:
-- FA-NOT-001 auf ✔: Feiertagskalender integriert (Nager.Date) inkl. Land und Counties/Subdivision; Provider-Auswahl (Memory/NagerDate); Scheduler berücksichtigt Nutzer‑Zeitzone/Uhrzeit und gewählten Provider.
-- FA-NOT-002 erweitert: Einstellungen umfassen nun Provider sowie Land/Subdivision; UI lädt Subdivisions dynamisch (Meta‑API).
-- Meta‑APIs ergänzt: `/api/meta/holiday-providers`, `/api/meta/holiday-countries`, `/api/meta/holiday-subdivisions`.
-
-Änderungen (29.09.2025) – Ergänzung 29:
-- FA-NOT-001 erweitert: Reminder berücksichtigt jetzt Nutzer‑Zeitzone und konfigurierbare Uhrzeit (Default 09:00); Texte lokalisiert. Feiertage weiterhin offen.
-- FA-NOT-002 auf ✔: Konfiguration (aktiviert/deaktiviert + Uhrzeit) in UI/API/Domain umgesetzt.
-
-Änderungen (29.09.2025) – Ergänzung 28:
-- FA-I18N-002 auf ✔: Benutzerkultur wird zur Laufzeit angewendet (Claim `pref_lang` im JWT; DB nur als Fallback). UI `SetupProfileTab` + API vorhanden; Register/Login senden Browserwerte (`preferredLanguage`, `timeZoneId`).
-- JWT erweitert um Claims `pref_lang` und `tz`; Auth-Service setzt diese bei Register/Login.
-- RequestCulture-Provider bevorzugt Claim und greift nur bei Bedarf auf DB zu.
-
-Änderungen (29.09.2025) – Ergänzung 26–27:
-- Profil‑Einstellungen eingeführt (UI/API), Browser‑Erkennung Sprache/Zeitzone, `User.TimeZoneId` gespeichert. Scheduler ursprünglich ohne TZ, jetzt mit TZ + Uhrzeit.
-- Setup erweitert: Tab „Profil“ + JS‑Interop (`/js/profile.js`).
-- Scheduler/Job initial implementiert und später erweitert; Tests für 2024 vorhanden.
-
-Änderungen (29.09.2025) – Ergänzung 25:
-- Neue Anforderungen für Monatsabschluss‑Benachrichtigung ergänzt: FA-NOT-001 (Zeitsteuerung), FA-NOT-002 (Konfiguration), FA-NOT-003 (Darstellung). Status: ✖ (geplant).
-- Optional/NFA ergänzt: NFA-NOT-001 (eventgetriebene Benachrichtigungen), NFA-NOT-002 (modulare Architektur). Status: ✖ (geplant).
-
-Änderungen (29.09.2025) – Ergänzung 24:
-- FA-AUTH-014 auf ✔: Benutzer‑Fehlversuchszähler mit 5‑Minuten‑Reset im `UserAuthService` verdrahtet.
-- FA-AUTH-015 auf ✔: Globaler Zähler für unbekannte Benutzer mit 5‑Minuten‑Reset über `IpBlock`.
-- FA-AUTH-016 auf ✔: Automatische IP‑Sperre ab 3 Fehlversuchen; Entsperrung über Admin möglich.
-- FA-AUTH-017 auf ✔: `IpBlockMiddleware` blockiert gesperrte IPs (403) – in Pipeline registriert.
-- FA-AUTH-018 auf ✔: Admin‑Verwaltung Sperrliste implementiert (`AdminIpBlocksController`, `SetupIpBlockTab` im Setup‑Bereich, Ressourcen de/en).
-
-Änderungen (29.09.2025) – Ergänzung 23:
-- Neue Anforderungen FA-AUTH-014..019 hinzugefügt (Fehlversuchszähler Benutzer/Global, IP‑Sperrliste, Middleware, Admin‑Verwaltung, Admin‑Benachrichtigung).
-- Datenmodell begonnen: `User` um `LastFailedLoginUtc` erweitert; neue Entität `IpBlock` (Zähler für unbekannte Benutzer + Blockstatus). DbSet/ModelConfig vorbereitet. Status: 014..016 ~, 017..019 ✖.
-
-+Änderungen (27.09.2025) – Ergänzung 22:
- - Neue Anforderung FA-KPI-007 hinzugefügt: Favoritenberichte als Home‑KPIs inkl. Editiermodus, Plus‑Platzhalter, Auswahl‑Dialog (vordefinierte KPIs oder Berichtsfavoriten), Anzeigeoptionen (Total/Total+Vergleiche/Berichtsgrafik), Navigation zum Bericht in Ansichtmodus, Lösch‑Kaskade bei Favoriten, Tests.
-- FA-REP-008-15 auf ✔ gesetzt: Filterung in Aggregation + API umgesetzt. Service filtert Kategorie-/Entitäts‑Top‑Level vor Aggregation; Controller nimmt Filter entgegen. Test hinzugefügt: `ReportAggregationServiceTests.QueryAsync_ShouldApplyEntityFilters_ForTwoKinds_WithTwoSelectedValuesEach` (zwei Buchungsarten, je zwei Filterwerte).  
-- FA-REP-008-16 auf ✔ gesetzt: Multi‑Kind Filter voll unterstützt (separate Listen pro PostingKind). UI: Filter‑Dialog Tabs + Scroll; Child‑Rows Fix für Konten im Multi‑Mode (Fallback, falls `ParentGroupKey` fehlt).  
- - FA-REP-008-14 auf ✔: UI für Entitätswertfilter (Single‑Kind) vollständig, inkl. Dialog und Anwendung im Report.  
- - FA-REP-008-17 auf ✔: Filter werden im Favoriten gespeichert (Domain `ReportFavorite` erweitert um Filter‑CSV, Service/Controller/DTO angepasst).  
- - FA-REP-008-18 auf ✔: Gespeicherte Filter werden beim Laden eines Favoriten angewendet (`ApplyFavorite`).  
- - Favoriten-Dialog bereinigt: Keine Auswahl der Buchungsarten beim Speichern eines Favoriten.  
- - UX: Beim normalen Speichern wird der Editiermodus verlassen.  
- - Technisch: Datenbankschema für Favoriten um Filter-Felder erweitert (Migration ausstehend/erforderlich).  
- - FA-KPI-007 auf ✔ gesetzt: Umsetzung vollständig (Favoriten- und vordefinierte KPIs hinzufügen, bearbeiten, Reihenfolge anpassen, Navigation; Persistenz inkl. Lösch‑Kaskade; UI lokalisiert).
-
-Änderungen (26.09.2025) – Ergänzung 21:  
-- Neue Teilanforderungen FA-REP-008-14..19 (Entitätswertfilter UI, API/Service, Multi-Kind, Persistenz in Favoriten, Anwendung + UX). Status jeweils ✖.  
-- NFA-REP-008-08 ergänzt (Performance: Filterung auf DB‑Ebene).  
-
-Änderungen (26.09.2025) – Ergänzung 20:  
-- FA-REP-008-02 auf ✔ gesetzt (Entitätstyp‑Multi‑Gruppierung).  
-- FA-REP-008 Gesamtstatus auf ✔ aktualisiert.  
-
-Änderungen (26.09.2025) – Ergänzung 19:  
-- Analysedatum (monatsweise) eingeführt: API (`ReportAggregationQuery.AnalysisDate`, `ReportAggregatesController`), Service‑Logik (`ReportAggregationService`: Anchoring für Latest‑Periode, Vorperiode/Vorjahr, YTD‑Cutoff, `Take`‑Trimming) und UI (`ReportDashboard`: Month‑Picker mit Vor-/Zurück‑Buttons).  
-- Labels lokalisiert (de/en).  
-
-Änderungen (26.09.2025) – Ergänzung 18:  
-- Berichtsdashboard umgesetzt: Favoriten CRUD (`ReportFavoritesController`, `ReportFavoriteService`), Aggregation (`ReportAggregationService`, `/api/report-aggregates`), UI `ReportDashboard.razor` (Filter, Kategorie-Gruppierung, Drilldown, Vergleiche, Mini-Chart, YTD).  
-- FA-REP-008 Gesamtstatus auf ~ (ein Unterpunkt offen: 008-02).  
-- FA-REP-008 Unterpunkte 01,03–12 auf ✔ gesetzt; 02 bleibt ✖.  
-- NFA-REP-008-03 auf ✔ (User-Scope durch OwnerUserId), NFA-REP-008-04 auf ✔ (ARIA), NFA-REP-008-05 auf ~ (teilweise Lokalisierung), übrige NFA weiterhin ✖.  
-
-Änderungen (25.09.2025) – Ergänzung 17:  
-- NFA-REP-006-03 von ~ auf ✔ gesetzt: Kulturabhängige Achsen-Labels (Monate abgekürzt, Jahr nur falls nötig, Q/H mit optionalem Jahr), Tooltips lokalisiert.
-
-Änderungen (25.09.2025) – Ergänzung 16:
-- NFA-REP-006-02 von ~ auf ✔ gesetzt: Flexbasiertes AutoFit Layout ohne horizontales Scrollen, gleichmäßige Balkenbreite, Label-Ausdünnung integriert.
-- NFA-REP-006-03 weiter ~: Tooltips nun lokalisiert (Datum & Betrag gemäß Culture), Achsenlabels weiterhin vereinfachtes Muster (`yy-M` / `yy-Q#`).
-
-Änderungen (24.09.2025) – Ergänzung 15:
-- FA-REP-006-08 auf ✔ gesetzt: Zeitraumbegrenzung implementiert (`maxYearsBack` Query, Service-Filter, UI-Parameter `MaxYearsBack` in `AggregateBarChart`).  
-
-Änderungen (24.09.2025) – Ergänzung 14:
-- FA-REP-006-10 von ~ auf ✔ gesetzt: Intervallwechsel zeigt jetzt Overlay-Spinner (`chart-loading-overlay`) und initialer Skeleton-Load implementiert.
-
-Änderungen (22.09.2025) – Ergänzung 13:
-- Reporting erweitert: Aggregierte Endpoints für alle Konten (`/api/accounts/aggregates`), alle Sparpläne (`/api/savings-plans/aggregates`) und Quartalsdividenden (`/api/securities/dividends`).
-- Home KPI-Grid (Schachbrett) mit drei Graph-Kacheln (Alle Konten 7M, Monatssparen 7M, Quartalsdividenden Vorjahr→aktuell) hinzugefügt.
-- `AggregateBarChart`: Optionaler Parameter `Take` jetzt weglassbar (liefert komplette Reihe), zusätzliche Parameter `HideIntervalSelector`, `InitialPeriod` für kompakte KPIs.
-- Quartalsdarstellung: Labels von `yy-M` auf `yy-Q#` umgestellt.
-- Neuer KPI-Eintrag FA-KPI-006 (Quartalsdividenden) auf Status `~` gesetzt.
-- FA-REP-006 Beschreibung aktualisiert (Erweiterung um *all*-Aggregationen). Zeitraumbegrenzung (FA-REP-006-08) weiterhin offen.
-
-Änderungen (21.09.2025) – Ergänzung 12:
-- Reporting erweitert: Reusable `AggregateBarChart`, zusätzliche Report-Controller (Contact, SavingsPlan, Security), HalfYear-Intervall hinzugefügt, Accessibility (aria-label) implementiert. Status-Updates für FA-REP-006 Sub-Items (01,02,06,07,09 auf ✔; 10 weiterhin ~; NFA-REP-006-04 & -05 auf ✔). Zeitfensterbegrenzung (006-08) weiter offen.
-
-Änderungen (21.09.2025) – Ergänzung 11:
-- FA-REP-006 hinzugefügt / detailliert in Unterpunkte FA-REP-006-01..10 sowie NFA-REP-006-01..05; Gesamtstatus ~ (Teil-Implementierung nur Account, ohne HalfYear & Wiederverwendungskomponente).
-
-Änderungen (21.09.2025) – Ergänzung 10:
-- FA-AUSZ-016-12 von ✖ auf ✔ gesetzt: Min-Entries Merge-Algorithmus (`ApplyMonthlyMinMerge`) implementiert; UI & User-Settings erweitert; Tests ergänzt.
-
-Änderungen (21.09.2025) – Ergänzung 9:
-- FA-UI-003 auf ✔ gesetzt; alle priorisierten Seiten migriert (inkl. Sparpläne, Kategorien, Kategorie-Detail, Postings*, StatementDrafts*, Users/Admin, Home); Einzelabruf Kategorie hinzugefügt; Ribbon Kategorien-Link in Sparpläne-Übersicht.
-Änderungen (21.09.2025) – Ergänzung 8:
-- FA-UI-003 Beschreibung erweitert (explizites `aria-disabled`, ARIA Roles, Pfeiltasten-Navigation, Tests hinzugefügt).
-
-Änderungen (20.09.2025) – Ergänzung 7:
-- FA-UI-003 Status von ✖ auf ~ geändert; Beschreibung aktualisiert (Ribbon-Komponente eingeführt, weitere Seiten & Accessibility offen).
-
-Änderungen (20.09.2025) – Ergänzung 6:
-- Neu: FA-UI-003 (Einheitliches Menüband für Aktionsbuttons) → ✖.
-
-Änderungen (20.09.2025) – Ergänzung 5:
-- Neu: FA-AUSZ-017 hinzugefügt (Persistenter Navigationskontext Entry ↔ verknüpfte Drafts) → ✔.
-- FA-AUSZ-013 Beschreibung präzisiert (fehlende Gesamtaggregation über alle Split-Drafts noch offen) → Status weiterhin ~.
 
 (Frühere Änderungsnotizen siehe vorherige Versionen.)

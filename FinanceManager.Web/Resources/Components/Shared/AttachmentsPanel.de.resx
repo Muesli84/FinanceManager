@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Loading" xml:space="preserve"><value>Lade...</value></data>
+  <data name="Filter_Category" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="AllCategories" xml:space="preserve"><value>Alle Kategorien</value></data>
+  <data name="Count" xml:space="preserve"><value>{0} Einträge</value></data>
+  <data name="Th_Uploaded" xml:space="preserve"><value>Hochgeladen</value></data>
+  <data name="Th_Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Th_Size" xml:space="preserve"><value>Größe</value></data>
+  <data name="Th_Type" xml:space="preserve"><value>Typ</value></data>
+  <data name="Th_Category" xml:space="preserve"><value>Kategorie</value></data>
+  <data name="Th_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="NoEntries" xml:space="preserve"><value>Keine Einträge.</value></data>
+  <data name="Download" xml:space="preserve"><value>Download</value></data>
+  <data name="Edit" xml:space="preserve"><value>Bearbeiten</value></data>
+  <data name="Delete" xml:space="preserve"><value>Löschen</value></data>
+  <data name="Apply" xml:space="preserve"><value>Übernehmen</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Upload_Hint" xml:space="preserve"><value>Dateien hierher ziehen</value></data>
+  <data name="Upload_SubHint" xml:space="preserve"><value>oder über die Schaltfläche mehrere Dateien auswählen</value></data>
+  <data name="Btn_Upload" xml:space="preserve"><value>Upload</value></data>
+  <data name="Upload_Progress" xml:space="preserve"><value>Upload {0} / {1} ...</value></data>
+  <data name="Confirm_Delete" xml:space="preserve"><value>Diesen Anhang löschen?</value></data>
+  <data name="Err_UpdateFailed" xml:space="preserve"><value>Aktualisierung fehlgeschlagen</value></data>
+  <data name="Err_DeleteFailed" xml:space="preserve"><value>Löschen fehlgeschlagen</value></data>
+  <data name="Btn_AddCategory" xml:space="preserve"><value>Neue Kategorie</value></data>
+  <data name="Prompt_NewCategory" xml:space="preserve"><value>Neuen Kategorienamen eingeben:</value></data>
+  <data name="Err_CreateCategoryFailed" xml:space="preserve"><value>Erstellen der Kategorie fehlgeschlagen</value></data>
+  <data name="Err_UnsupportedContentType" xml:space="preserve"><value>Dieser Dateityp wird nicht unterstützt.</value></data>
+  <data name="Err_FileTooLarge" xml:space="preserve"><value>Datei ist zu groß (max. {0}).</value></data>
+  <data name="Err_FileTooLarge_General" xml:space="preserve"><value>Datei ist zu groß.</value></data>
+  <data name="Err_EmptyFile" xml:space="preserve"><value>Leere Datei kann nicht hochgeladen werden.</value></data>
+  <data name="Err_UploadFailed" xml:space="preserve"><value>Upload fehlgeschlagen.</value></data>
+</root>

@@ -18,6 +18,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using FinanceManager.Application.Notifications;
 using FinanceManager.Infrastructure.Notifications;
+using FinanceManager.Web.Infrastructure.Attachments;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,6 +54,9 @@ builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 1024L * 1024L * 1024L; // 1 GB
 });
+
+// Attachment upload validation options
+builder.Services.Configure<AttachmentUploadOptions>(builder.Configuration.GetSection("Attachments"));
 
 // Background task queue
 builder.Services.AddSingleton<IBackgroundTaskManager, BackgroundTaskManager>();

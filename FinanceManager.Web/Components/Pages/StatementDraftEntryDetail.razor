@@ -7,6 +7,7 @@
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
 @inject IStringLocalizer<Components.Pages.StatementDraftEntryDetail> Localizer
+@using FinanceManager.Domain.Attachments
 
 @code { enum StatementDraftStatus { Draft=0, Committed=1, Expired=2 } }
 
@@ -332,6 +333,19 @@ else
     }
 }
 
+@if (_showAttachments)
+{
+    <div class="split-center" @onclick="(()=> _showAttachments = false)">
+        <div class="split-dialog" style="max-width:90vH;" @onclick:stopPropagation="true">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+                <h3 style="margin:0;font-size:1rem;">@Localizer["Attachments_Title"]</h3>
+                <button class="icon-btn" title='@Localizer["Btn_Close"]' @onclick="(()=> _showAttachments=false)"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+            </div>
+            <AttachmentsPanel ParentKind="@AttachmentEntityKind.StatementDraftEntry" ParentId="@EntryId" />
+        </div>
+    </div>
+}
+
 @code {
     // Ribbon State
     private enum TabId { Entry }
@@ -402,6 +416,13 @@ else
                     IconSvg = "<svg><use href='/icons/sprite.svg#link'/></svg>",
                     Disabled = _hasUnsavedChanges,
                     Callback = () => { OpenSplitDialog(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Attachments"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#attachment'/></svg>",
+                    Disabled = _hasUnsavedChanges,
+                    Callback = () => { _showAttachments = true; StateHasChanged(); return Task.CompletedTask; }
                 }
             }
         };
@@ -553,6 +574,9 @@ else
     private Guid? _selectedSplitDraftId;
     private string? _splitError;
     private List<SplitDraftOption> _candidateSplits = new();
+
+    // Attachments UI
+    private bool _showAttachments;
 
     private IEnumerable<SplitDraftOption> FilteredSplitDrafts => string.IsNullOrWhiteSpace(_splitFilter)
         ? _candidateSplits

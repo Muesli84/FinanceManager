@@ -277,7 +277,7 @@ public sealed class BackupService : IBackupService
         // Drafts
         var drafts = await _db.StatementDrafts.AsNoTracking()
             .Where(d => d.OwnerUserId == userId)
-            .Select(d => new { d.Id, d.OwnerUserId, d.AccountName, d.Description, d.DetectedAccountId, d.OriginalFileName, d.OriginalFileContent, d.OriginalFileContentType, d.Status, d.CreatedUtc, d.ModifiedUtc })
+            .Select(d => new { d.Id, d.OwnerUserId, d.AccountName, d.Description, d.DetectedAccountId, d.OriginalFileName, d.Status, d.CreatedUtc, d.ModifiedUtc })
             .ToListAsync(ct);
         var draftIds = drafts.Select(d => d.Id).ToList();
         var draftEntries = await _db.StatementDraftEntries.AsNoTracking()

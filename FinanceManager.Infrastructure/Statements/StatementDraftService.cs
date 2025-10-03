@@ -13,6 +13,9 @@ using Microsoft.EntityFrameworkCore;
 using FinanceManager.Application.Aggregates;
 using Microsoft.Extensions.Logging; // added
 using Microsoft.Extensions.Logging.Abstractions; // added
+using FinanceManager.Application.Attachments; // added
+using FinanceManager.Domain.Attachments; // added
+using System.Globalization; // added
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -22,9 +25,26 @@ public sealed partial class StatementDraftService : IStatementDraftService
     private readonly IReadOnlyList<IStatementFileReader> _statementFileReaders;
     private readonly IPostingAggregateService _aggregateService;
     private readonly ILogger<StatementDraftService> _logger; // added
+    private readonly IAttachmentService? _attachments; // optional to keep compatibility with tests
     private List<StatementDraftDto>? allDrafts = null;
     private List<FinanceManager.Domain.Securities.Security>? allSecurities = null;
     private List<Domain.Accounts.Account>? allAccounts = null;
+
+    // helper: move entry attachments to bank posting and create references for other postings
+    private async Task PropagateEntryAttachmentsAsync(Guid ownerUserId, StatementDraftEntry entry, Guid bankPostingId, IEnumerable<Guid> otherPostingIds, CancellationToken ct)
+    {
+        if (_attachments == null) { return; }
+        var list = await _attachments.ListAsync(ownerUserId, AttachmentEntityKind.StatementDraftEntry, entry.Id, 0, 200, ct);
+        if (list == null || list.Count == 0) { return; }
+        await _attachments.ReassignAsync(AttachmentEntityKind.StatementDraftEntry, entry.Id, AttachmentEntityKind.Posting, bankPostingId, ownerUserId, ct);
+        foreach (var att in list)
+        {
+            foreach (var pid in otherPostingIds)
+            {
+                await _attachments.CreateReferenceAsync(ownerUserId, AttachmentEntityKind.Posting, pid, att.Id, ct);
+            }
+        }
+    }
 
     public ImportSplitInfo? LastImportSplitInfo { get; private set; } // exposes metadata of last CreateDraftAsync call (scoped service)
 
@@ -38,11 +58,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
         int MonthlyThreshold
     );
 
-    public StatementDraftService(AppDbContext db, IPostingAggregateService aggregateService, IEnumerable<IStatementFileReader>? readers = null, ILogger<StatementDraftService>? logger = null) // logger param added
+    public StatementDraftService(AppDbContext db, IPostingAggregateService aggregateService, IEnumerable<IStatementFileReader>? readers = null, ILogger<StatementDraftService>? logger = null, IAttachmentService? attachments = null) // logger param added
     {
         _db = db;
         _aggregateService = aggregateService;
         _logger = logger ?? NullLogger<StatementDraftService>.Instance;
+        _attachments = attachments;
         _statementFileReaders = (readers is not null && readers.ToList().Any()) ? readers.ToList() : new List<IStatementFileReader>
         {
             new ING_PDfReader(),
@@ -677,10 +698,74 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
     }
 
+    private async Task<Guid> EnsureStatementsSystemCategoryAsync(Guid ownerUserId, CancellationToken ct)
+    {
+        // Sprache des Users ermitteln (PreferredLanguage, z.B. "de" / "en")
+        var lang = await _db.Users.AsNoTracking()
+            .Where(u => u.Id == ownerUserId)
+            .Select(u => u.PreferredLanguage)
+            .FirstOrDefaultAsync(ct);
+
+        var name = GetStatementsCategoryName(lang);
+        // Suchen: system category mit exakt diesem Namen
+        var existing = await _db.AttachmentCategories.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.OwnerUserId == ownerUserId && c.IsSystem && c.Name == name, ct);
+        if (existing != null)
+        {
+            return existing.Id;
+        }
+
+        // Anlegen (IsSystem = true)
+        var cat = new AttachmentCategory(ownerUserId, name, isSystem: true);
+        _db.AttachmentCategories.Add(cat);
+        await _db.SaveChangesAsync(ct);
+        return cat.Id;
+    }
+
+    private static string GetStatementsCategoryName(string? preferredLanguage)
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(preferredLanguage))
+            {
+                var culture = new CultureInfo(preferredLanguage);
+                var two = culture.TwoLetterISOLanguageName.ToLowerInvariant();
+                return two switch
+                {
+                    "en" => "Bank statements",
+                    // weitere Sprachen später ergänzbar
+                    _ => "Kontoauszüge"
+                };
+            }
+        }
+        catch (CultureNotFoundException)
+        {
+            // Fallback unten
+        }
+        return "Kontoauszüge";
+    }
+
     private async Task<StatementDraft> CreateDraftHeader(Guid ownerUserId, string originalFileName, byte[] fileBytes, StatementParseResult parsedDraft, CancellationToken ct)
     {
         var draft = new StatementDraft(ownerUserId, originalFileName, parsedDraft.Header.AccountNumber, parsedDraft.Header.Description);
-        draft.SetOriginalFile(fileBytes, null);
+
+        // store original via attachment service when available
+        if (_attachments != null)
+        {
+            // NEW: Kategorie "Kontoauszüge" (lokalisiert) ermitteln/erzeugen
+            var catId = await EnsureStatementsSystemCategoryAsync(ownerUserId, ct);
+
+            using var ms = new MemoryStream(fileBytes, writable: false);
+            await _attachments.UploadAsync(
+                ownerUserId,
+                AttachmentEntityKind.StatementDraft,
+                draft.Id,
+                ms,
+                originalFileName,
+                "application/octet-stream",
+                catId,
+                ct);
+        }
 
         if (!string.IsNullOrWhiteSpace(parsedDraft.Header.IBAN))
         {
@@ -863,6 +948,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
         draft.MarkCommitted();
         await _db.SaveChangesAsync(ct);
 
+        // Move attachments from draft to account on commit
+        if (_attachments != null)
+        {
+            await _attachments.ReassignAsync(AttachmentEntityKind.StatementDraft, draft.Id, AttachmentEntityKind.Account, accountId, ownerUserId, ct);
+        }
+
         return new CommitResult(import.Id, draft.Entries.Count);
     }
 
@@ -902,6 +993,99 @@ public sealed partial class StatementDraftService : IStatementDraftService
         draft.SetDetectedAccount(accountId);
         await ClassifyInternalAsync(draft, null, ownerUserId, ct);
         await _db.SaveChangesAsync(ct);
+        return await GetDraftAsync(draft.Id, ownerUserId, ct);
+    }
+
+    public async Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+
+        if (contactId == null)
+        {
+            entry.ClearContact();
+        }
+        else
+        {
+            bool contactExists = await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == contactId && c.OwnerUserId == ownerUserId, ct);
+            if (!contactExists) { return null; }
+            entry.MarkAccounted(contactId.Value);
+        }
+        await _db.SaveChangesAsync(ct);
+        return await GetDraftAsync(draftId, ownerUserId, ct);
+    }
+
+    public async Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+
+        entry.MarkCostNeutral(isCostNeutral ?? false);
+        await _db.SaveChangesAsync(ct);
+        return await GetDraftAsync(draftId, ownerUserId, ct);
+    }
+
+    public async Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts.Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null!; }
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null!; }
+        entry.AssignSavingsPlan(savingsPlanId);
+        await _db.SaveChangesAsync(ct);
+        return (await GetDraftAsync(draftId, ownerUserId, ct))!;
+    }
+
+    public async Task<StatementDraftDto?> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, Guid? splitDraftId, Guid ownerUserId, CancellationToken ct)
+    {
+        var draft = await _db.StatementDrafts
+            .Include(d => d.Entries)
+            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        if (draft == null) { return null; }
+
+        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
+        if (entry == null) { return null; }
+        if (draft.Status != StatementDraftStatus.Draft) { return null; }
+
+        if (splitDraftId != null)
+        {
+            if (entry.ContactId == null)
+            {
+                throw new InvalidOperationException("Contact required for split.");
+            }
+            var contact = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == entry.ContactId && c.OwnerUserId == ownerUserId, ct);
+            if (contact == null || !contact.IsPaymentIntermediary)
+            {
+                throw new InvalidOperationException("Contact is not a payment intermediary.");
+            }
+            var splitDraft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == splitDraftId && d.OwnerUserId == ownerUserId, ct);
+            if (splitDraft == null) { throw new InvalidOperationException("Split draft not found."); }
+            if (splitDraft.DetectedAccountId != null) { throw new InvalidOperationException("Split draft must not have an account assigned."); }
+            bool inUse = await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == splitDraftId, ct);
+            if (inUse) { throw new InvalidOperationException("Split draft already linked."); }
+            // Require different upload groups
+            if (draft.UploadGroupId != null && splitDraft.UploadGroupId != null && draft.UploadGroupId == splitDraft.UploadGroupId)
+            {
+                throw new InvalidOperationException("Split drafts must NOT originate from the same upload (UploadGroupId must differ).");
+            }
+            entry.AssignSplitDraft(splitDraftId.Value);
+        }
+        else
+        {
+            entry.ClearSplitDraft();
+        }
+        await _db.SaveChangesAsync(ct);
+        if (splitDraftId != null)
+        {
+            await ReevaluateParentEntryStatusAsync(ownerUserId, splitDraftId.Value, ct);
+        }
         return await GetDraftAsync(draft.Id, ownerUserId, ct);
     }
 
@@ -957,100 +1141,6 @@ public sealed partial class StatementDraftService : IStatementDraftService
         return await GetDraftAsync(draftId, ownerUserId, ct);
     }
 
-    // Restore interface methods grouped here
-    public async Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct)
-    {
-        var draft = await _db.StatementDrafts.Include(d => d.Entries)
-            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        if (draft == null) { return null!; }
-        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
-        if (entry == null) { return null!; }
-        entry.AssignSavingsPlan(savingsPlanId);
-        await _db.SaveChangesAsync(ct);
-        return (await GetDraftAsync(draftId, ownerUserId, ct))!;
-    }
-
-    public async Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct)
-    {
-        var draft = await _db.StatementDrafts.Include(d => d.Entries)
-            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        if (draft == null) { return null; }
-        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
-        if (entry == null) { return null; }
-
-        if (contactId == null)
-        {
-            entry.ClearContact();
-        }
-        else
-        {
-            bool contactExists = await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == contactId && c.OwnerUserId == ownerUserId, ct);
-            if (!contactExists) { return null; }
-            entry.MarkAccounted(contactId.Value);
-        }
-        await _db.SaveChangesAsync(ct);
-        return await GetDraftAsync(draftId, ownerUserId, ct);
-    }
-
-    public async Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct)
-    {
-        var draft = await _db.StatementDrafts.Include(d => d.Entries)
-            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        if (draft == null) { return null; }
-        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
-        if (entry == null) { return null; }
-
-        entry.MarkCostNeutral(isCostNeutral ?? false);
-        await _db.SaveChangesAsync(ct);
-        return await GetDraftAsync(draftId, ownerUserId, ct);
-    }
-
-    public async Task<StatementDraftDto?> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, Guid? splitDraftId, Guid ownerUserId, CancellationToken ct)
-    {
-        var draft = await _db.StatementDrafts
-            .Include(d => d.Entries)
-            .FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
-        if (draft == null) { return null; }
-
-        var entry = draft.Entries.FirstOrDefault(e => e.Id == entryId);
-        if (entry == null) { return null; }
-        if (draft.Status != StatementDraftStatus.Draft) { return null; }
-
-        if (splitDraftId != null)
-        {
-            if (entry.ContactId == null)
-            {
-                throw new InvalidOperationException("Contact required for split.");
-            }
-            var contact = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == entry.ContactId && c.OwnerUserId == ownerUserId, ct);
-            if (contact == null || !contact.IsPaymentIntermediary)
-            {
-                throw new InvalidOperationException("Contact is not a payment intermediary.");
-            }
-            var splitDraft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == splitDraftId && d.OwnerUserId == ownerUserId, ct);
-            if (splitDraft == null) { throw new InvalidOperationException("Split draft not found."); }
-            if (splitDraft.DetectedAccountId != null) { throw new InvalidOperationException("Split draft must not have an account assigned."); }
-            bool inUse = await _db.StatementDraftEntries.AnyAsync(e => e.SplitDraftId == splitDraftId, ct);
-            if (inUse) { throw new InvalidOperationException("Split draft already linked."); }
-            // NEW (Option A): Require different upload groups (must NOT come from same upload)
-            if (draft.UploadGroupId != null && splitDraft.UploadGroupId != null && draft.UploadGroupId == splitDraft.UploadGroupId)
-            {
-                throw new InvalidOperationException("Split drafts must NOT originate from the same upload (UploadGroupId must differ).");
-            }
-            entry.AssignSplitDraft(splitDraftId.Value);
-        }
-        else
-        {
-            entry.ClearSplitDraft();
-        }
-        await _db.SaveChangesAsync(ct);
-        if (splitDraftId != null)
-        {
-            await ReevaluateParentEntryStatusAsync(ownerUserId, splitDraftId.Value, ct);
-        }
-        return await GetDraftAsync(draft.Id, ownerUserId, ct);
-    }
-
     public async Task<StatementDraft?> SetEntrySecurityAsync(
         Guid draftId,
         Guid entryId,
@@ -1082,7 +1172,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             return new DraftValidationResultDto(draftId, false, messages);
         }
         // Ignore entries that are already booked in validation scope
-        var scopedEntryQuery = _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || entryId == e.Id))
+        var scopedEntryQuery = _db.StatementDraftEntries.Where(e => e.DraftId == draftId && (entryId == null || entryId == e.Id))
             .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked);
 
         var entries = await scopedEntryQuery.ToArrayAsync(ct);
@@ -1099,7 +1189,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             ? null
             : await _db.Accounts.AsNoTracking().FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId, ct);
 
-        // Cycle detection per original implementation
+        // Cycle detection for split relations
         var visited = new HashSet<Guid>();
         var stack = new HashSet<Guid>();
         bool DetectCycle(Guid id)
@@ -1146,7 +1236,6 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 .FirstOrDefaultAsync(d => d.Id == parentEntry.SplitDraftId && d.OwnerUserId == ownerUserId, token);
             if (firstChild == null) { return; }
             var groupDrafts = await LoadSplitGroupAsync(firstChild, draft, ownerUserId, token);
-            // Exclude already-booked child entries from validation
             var groupEntries = groupDrafts.SelectMany(d => d.Entries)
                 .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked)
                 .ToList();
@@ -1176,14 +1265,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     }
                     else
                     {
-                        await ValidateSplitBranchAsync(ce, prefix, token); // deeper recursion
+                        await ValidateSplitBranchAsync(ce, prefix, token);
                     }
                 }
                 if (self != null && ce.ContactId == self.Id && ce.SavingsPlanId == null)
                 {
                     messages.Add(new("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", prefix + "Für Eigentransfer ist ein Sparplan sinnvoll.", draft.Id, ce.Id));
                 }
-                // Security validations reused from original logic
                 if (ce.SecurityId != null && account != null)
                 {
                     if (ce.ContactId != account.BankContactId)
@@ -1293,7 +1381,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
         await _db.SaveChangesAsync(ct);
 
-        // Reuse original savings plan validation + due info (unchanged) ------------------
+        // Savings plan extra info
         var planIds = entries.Where(e => e.SavingsPlanId != null).Select(e => e.SavingsPlanId!.Value).Distinct().ToList();
         if (planIds.Count > 0)
         {
@@ -1393,7 +1481,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         var self = await _db.Contacts.FirstAsync(c => c.OwnerUserId == ownerUserId && c.Type == ContactType.Self, ct);
         var allEntriesScope = await _db.StatementDraftEntries.Where(e => e.DraftId == draft.Id && (entryId == null || e.Id == entryId)).ToListAsync(ct);
 
-        // NEW: ignore entries that were detected as already booked
+        // ignore entries already booked
         var toBook = (entryId == null ? allEntriesScope : allEntriesScope.Where(e => e.Id == entryId.Value))
             .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked)
             .ToList();
@@ -1419,6 +1507,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             _db.Postings.Add(bankPosting); await UpsertAggregatesAsync(bankPosting, token);
             var contactPosting = new Domain.Postings.Posting(e.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, amount, e.Subject, e.RecipientName, e.BookingDescription, null).SetGroup(gid);
             _db.Postings.Add(contactPosting); await UpsertAggregatesAsync(contactPosting, token);
+            // Attachments handling happens by caller after all postings are created (needs posting ids)
             return gid;
         }
         async Task CreateSecurityPostingsAsync(StatementDraftEntry e, Guid gid, CancellationToken token)
@@ -1451,41 +1540,59 @@ public sealed partial class StatementDraftService : IStatementDraftService
             if (c == null) { continue; }
             if (c.IsPaymentIntermediary && e.SplitDraftId != null)
             {
+                // create postings with amount 0 for parent
                 var gidZero = await CreateBankAndContactPostingAsync(e, 0m, e.ContactId, ct);
                 await CreateSecurityPostingsAsync(e, gidZero, ct);
+
+                // resolve created postings for this entry to propagate attachments
+                if (_attachments != null)
+                {
+                    var allForGroup = _db.Postings.Local.Where(p => p.SourceId == e.Id && p.GroupId == gidZero).ToList();
+                    var bank = allForGroup.FirstOrDefault(p => p.Kind == PostingKind.Bank);
+                    var others = allForGroup.Where(p => p.Id != bank!.Id).Select(p => p.Id).ToList();
+                    if (bank != null)
+                    {
+                        await PropagateEntryAttachmentsAsync(ownerUserId, e, bank.Id, others, ct);
+                    }
+                }
+
                 await BookSplitDraftGroupAsync(e.SplitDraftId.Value, ownerUserId, draft.Id, self, account, ct, new HashSet<Guid>());
             }
             else
             {
+                // normal booking
                 var gid = await CreateBankAndContactPostingAsync(e, e.Amount, e.ContactId, ct);
+                // optional savings plan posting
+                Guid? spPostingId = null;
                 if (e.SavingsPlanId != null && e.ContactId == self.Id)
                 {
                     var spPosting = new Domain.Postings.Posting(e.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, -e.Amount, e.Subject, e.RecipientName, e.BookingDescription, null).SetGroup(gid);
                     _db.Postings.Add(spPosting); await UpsertAggregatesAsync(spPosting, ct);
-                    await UpdateRecurringPlanIfDueAsync(e.SavingsPlanId.Value, e.BookingDate, ct);
+                    spPostingId = spPosting.Id;
                 }
                 await CreateSecurityPostingsAsync(e, gid, ct);
+
+                // resolve created postings for this entry to propagate attachments
+                if (_attachments != null)
+                {
+                    var allForGroup = _db.Postings.Local.Where(p => p.SourceId == e.Id && p.GroupId == gid).ToList();
+                    var bank = allForGroup.FirstOrDefault(p => p.Kind == PostingKind.Bank);
+                    var others = allForGroup.Where(p => p.Id != bank!.Id).Select(p => p.Id).ToList();
+                    if (spPostingId.HasValue && !others.Contains(spPostingId.Value)) { others.Add(spPostingId.Value); }
+                    if (bank != null)
+                    {
+                        await PropagateEntryAttachmentsAsync(ownerUserId, e, bank.Id, others, ct);
+                    }
+                }
             }
         }
 
-        if (entryId == null)
-        {
-            // Entire draft booking: if nothing to book (all duplicates), still mark draft committed
-            draft.MarkCommitted();
-        }
-        else
-        {
-            foreach (var e in toBook)
-            {
-                _db.StatementDraftEntries.Remove(e);
-            }
-            await _db.SaveChangesAsync(ct);
-            if (!await _db.StatementDraftEntries.AnyAsync(e => e.DraftId == draft.Id, ct))
-            {
-                draft.MarkCommitted();
-            }
-        }
+        draft.MarkCommitted();
         await _db.SaveChangesAsync(ct);
+        if (_attachments != null)
+        {
+            await _attachments.ReassignAsync(AttachmentEntityKind.StatementDraft, draft.Id, AttachmentEntityKind.Account, account.Id, ownerUserId, ct);
+        }
 
         // Archive savings plans if flagged and fully funded
         var flaggedPlans = toBook.Where(e => e.SavingsPlanId != null && e.ArchiveSavingsPlanOnBooking).Select(e => e.SavingsPlanId!.Value).Distinct().ToList();
@@ -1598,20 +1705,53 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 {
                     var gidZero = await CreateBankAndContactAsync(ce, 0m);
                     await CreateSecurityAsync(ce, gidZero);
+
+                    // propagate attachments from entry to postings
+                    if (_attachments != null)
+                    {
+                        var allForGroup = _db.Postings.Local.Where(p => p.SourceId == ce.Id && p.GroupId == gidZero).ToList();
+                        var bank = allForGroup.FirstOrDefault(p => p.Kind == PostingKind.Bank);
+                        var others = allForGroup.Where(p => p.Id != bank!.Id).Select(p => p.Id).ToList();
+                        if (bank != null)
+                        {
+                            await PropagateEntryAttachmentsAsync(ownerUserId, ce, bank.Id, others, ct);
+                        }
+                    }
+
                     await BookSplitDraftGroupAsync(ce.SplitDraftId.Value, ownerUserId, childDraft.Id, self, account, ct, visited);
                 }
                 else
                 {
                     var gid = await CreateBankAndContactAsync(ce, ce.Amount);
+                    Guid? spId = null;
                     if (ce.SavingsPlanId != null && ce.ContactId == self.Id)
                     {
                         var sp = new Domain.Postings.Posting(ce.Id, PostingKind.SavingsPlan, null, null, ce.SavingsPlanId, null, ce.BookingDate, -ce.Amount, ce.Subject, ce.RecipientName, ce.BookingDescription, null).SetGroup(gid);
                         _db.Postings.Add(sp); await UpsertAggregatesAsync(sp, ct);
+                        spId = sp.Id;
                     }
                     await CreateSecurityAsync(ce, gid);
+
+                    if (_attachments != null)
+                    {
+                        var allForGroup = _db.Postings.Local.Where(p => p.SourceId == ce.Id && p.GroupId == gid).ToList();
+                        var bank = allForGroup.FirstOrDefault(p => p.Kind == PostingKind.Bank);
+                        var others = allForGroup.Where(p => p.Id != bank!.Id).Select(p => p.Id).ToList();
+                        if (spId.HasValue && !others.Contains(spId.Value)) { others.Add(spId.Value); }
+                        if (bank != null)
+                        {
+                            await PropagateEntryAttachmentsAsync(ownerUserId, ce, bank.Id, others, ct);
+                        }
+                    }
                 }
             }
             childDraft.MarkCommitted();
+            await _db.SaveChangesAsync(ct);
+            // NEW: move child draft attachments to the bank account as well
+            if (_attachments != null)
+            {
+                await _attachments.ReassignAsync(AttachmentEntityKind.StatementDraft, childDraft.Id, AttachmentEntityKind.Account, account.Id, ownerUserId, ct);
+            }
         }
     }
 
@@ -1636,7 +1776,6 @@ public sealed partial class StatementDraftService : IStatementDraftService
         {
             return (null, null);
         }
-        // Reversed ordering: now ascending by CreatedUtc then Id (previously descending) to match requested inverse order.
         var orderedIds = await _db.StatementDrafts.AsNoTracking()
             .Where(d => d.OwnerUserId == ownerUserId && d.UploadGroupId == current.UploadGroupId && d.Status != StatementDraftStatus.Committed)
             .OrderBy(d => d.CreatedUtc)
@@ -1694,7 +1833,6 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
         if (entry.Status != StatementDraftEntryStatus.AlreadyBooked)
         {
-            // nothing to reset
             return new StatementDraftEntryDto(
                 entry.Id,
                 entry.BookingDate,
@@ -1718,7 +1856,6 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 entry.SecurityTaxAmount);
         }
 
-        // Reset status to Open and clear contact/security to ensure fresh classification/editing
         entry.ResetOpen();
         entry.ClearContact();
         entry.SetSecurity(null, null, null, null, null);
@@ -1746,4 +1883,5 @@ public sealed partial class StatementDraftService : IStatementDraftService
             entry.SecurityFeeAmount,
             entry.SecurityTaxAmount);
     }
+
 }

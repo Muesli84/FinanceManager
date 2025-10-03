@@ -34,7 +34,7 @@
     protected override async Task OnParametersSetAsync()
     {
         _draft = await Http.GetFromJsonAsync<StatementDraftDto>($"/api/statement-drafts/{Id}");
-        _hasFile = _draft != null;
+        _hasFile = _draft != null; // always true for existing drafts; actual file may be missing but controller handles 404
         await LoadAccountsAsync();
         _selectedAccountId = _draft?.DetectedAccountId;
         await LoadSavingsPlansAsync();
@@ -109,12 +109,10 @@
                 Label = Localizer["Ribbon_Validate"],
                 IconSvg = "<svg><use href='/icons/sprite.svg#check'/></svg>",
                 Size = Ribbon<TabId>.RibbonItemSize.Small,
-                // Jetzt awaited, damit UI nach Abschluss sofort aktualisiert
                 Callback = async () => { await ValidateDraft(); }
             }
         };
 
-        // Buchen nur anbieten, wenn Entwurf buchbar
         if (_draft != null && _draft.Status == FinanceManager.Domain.StatementDraftStatus.Draft)
         {
             manageItems.Insert(0, new Ribbon<TabId>.RibbonItem
@@ -122,10 +120,7 @@
                 Label = Localizer["Ribbon_Book"],
                 IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
                 Size = Ribbon<TabId>.RibbonItemSize.Large,
-                Disabled = _booking
-                          || _draft.Entries.Count == 0
-                          || _draft.DetectedAccountId == null
-                          || _pendingWarningConfirmation, // während Warnbestätigung Button ausblenden
+                Disabled = _booking || _draft.Entries.Count == 0 || _draft.DetectedAccountId == null || _pendingWarningConfirmation,
                 Callback = () => { _ = BookDraft(); return Task.CompletedTask; }
             });
         }
@@ -219,7 +214,6 @@
         }
     }
 
-    // (Optional) Nach Book/ForceBook sofort erneutes Ribbon-Build + Refresh sicherstellen
     private async Task BookDraft()
     {
         _bookingError = null; _pendingWarningConfirmation = false; _lastValidation = null; _booking = true;
@@ -386,7 +380,7 @@
             Nav.NavigateTo($"/statement-drafts/{_draft.ParentDraftId}/entries/{_draft.ParentEntryId}{qp}");
         }
     }
-    private void ToggleViewer() { if (!_hasFile) { return; } _showViewer = !_showViewer; _fileUrl = _showViewer ? $"/api/statement-drafts/{Id}/file" : null; }
+    private void ToggleViewer() { if (!_hasFile) { return; } _showViewer = !_showViewer; _fileUrl = _showViewer ? $"/api/statement-drafts/{Id}/file" : null; StateHasChanged(); }
     private void DownloadFile() { if (!_hasFile) { return; } Nav.NavigateTo($"/api/statement-drafts/{Id}/file", forceLoad:true); }
 
     private void BackGeneric()
@@ -439,10 +433,6 @@ else
         </div>
     }
     <p><strong>@Localizer["File"]:</strong> @_draft.OriginalFileName</p>
-    @if (_hasFile)
-    {
-        <p style="margin-top:-.6rem;font-size:.65rem;opacity:.6;">@Localizer["OriginalStored"]</p>
-    }
     <p><strong>@Localizer["Status"]:</strong> @_draft.Status</p>
     <p>
         <strong>@Localizer["Account"]:</strong> 
@@ -504,7 +494,7 @@ else
             </thead>
             <tbody>
                 @foreach (var e in _draft.Entries
-                    .OrderBy(e => e.Status == StatementDraftEntryStatus.AlreadyBooked) // AlreadyBooked to end
+                    .OrderBy(e => e.Status == StatementDraftEntryStatus.AlreadyBooked)
                     .ThenBy(e => e.BookingDate))
                 {
                     var entryMessages = _validation?.Messages.Where(m => m.EntryId == e.Id).ToList() ?? new();
@@ -528,19 +518,15 @@ else
                         <td>@e.CurrencyCode</td>
                         <td class="wrap">@e.Subject</td>
                         <td class="wrap">
-                            @{
-                                string recipient = "-";
-                                if (e.ContactId != null)
-                                {
-                                    var contact = _contacts.FirstOrDefault(a => a.Id == e.ContactId);
-                                    recipient = contact?.Name ?? (string.IsNullOrWhiteSpace(e.RecipientName) ? "-" : e.RecipientName);
-                                }
-                                else
-                                {
-                                    recipient = string.IsNullOrWhiteSpace(e.RecipientName) ? "-" : e.RecipientName;
-                                }
+                            @if (e.ContactId != null)
+                            {
+                                var contact = _contacts.FirstOrDefault(a => a.Id == e.ContactId);
+                                @contact?.Name
                             }
-                            @recipient
+                            else
+                            {
+                                <span>@(string.IsNullOrWhiteSpace(e.RecipientName) ? "-" : e.RecipientName)</span>
+                            }
                         </td>
                         <td>
                             @if (e.SavingsPlanId != null)

@@ -24,6 +24,8 @@ using FinanceManager.Application.Security; // new
 using FinanceManager.Infrastructure.Security; // new
 using FinanceManager.Application.Notifications; // new
 using FinanceManager.Infrastructure.Notifications; // new
+using FinanceManager.Application.Attachments; // new
+using FinanceManager.Infrastructure.Attachments; // new
 
 namespace FinanceManager.Infrastructure;
 
@@ -60,6 +62,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IHomeKpiService, HomeKpiService>();
         services.AddScoped<IIpBlockService, IpBlockService>(); // new
         services.AddScoped<INotificationService, NotificationService>(); // new
+        services.AddScoped<IAttachmentService, AttachmentService>(); // new
+        services.AddScoped<IAttachmentCategoryService, AttachmentCategoryService>(); // new
         return services;
     }
 }

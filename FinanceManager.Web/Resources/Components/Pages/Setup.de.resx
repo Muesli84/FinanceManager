@@ -168,6 +168,9 @@
   <data name="Th_Actions" xml:space="preserve">
     <value>Aktionen</value>
   </data>
+  <data name="Th_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
   <data name="Msg_Loading" xml:space="preserve">
     <value>Lade ...</value>
   </data>
@@ -281,5 +284,26 @@
   </data>
   <data name="Tab_Profile" xml:space="preserve">
     <value>Profil</value>
+  </data>
+  <data name="Tab_AttachmentCategories" xml:space="preserve">
+    <value>Anhangkategorien</value>
+  </data>
+  <data name="AttachmentCategories_TabTitle" xml:space="preserve">
+    <value>Anhangkategorien</value>
+  </data>
+  <data name="AttachmentCategories_Label_NewName" xml:space="preserve">
+    <value>Neue Kategorie</value>
+  </data>
+  <data name="AttachmentCategories_Th_IsSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="AttachmentCategories_NoEntries" xml:space="preserve">
+    <value>Keine Kategorien vorhanden.</value>
+  </data>
+  <data name="AttachmentCategories_ActionSuccess" xml:space="preserve">
+    <value>Aktion erfolgreich.</value>
+  </data>
+  <data name="Btn_Add" xml:space="preserve">
+    <value>Hinzufügen</value>
   </data>
 </root>

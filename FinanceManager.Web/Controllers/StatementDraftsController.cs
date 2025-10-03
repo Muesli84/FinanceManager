@@ -17,6 +17,8 @@ using FinanceManager.Domain.Securities;
 using FinanceManager.Web.Services;
 using System.Text.Json;
 using FinanceManager.Infrastructure.Statements; // for ImportSplitInfo
+using FinanceManager.Application.Attachments; // new
+using FinanceManager.Domain.Attachments; // new
 
 namespace FinanceManager.Web.Controllers;
 
@@ -30,17 +32,20 @@ public sealed class StatementDraftsController : ControllerBase
     private readonly ICurrentUserService _current;
     private readonly ILogger<StatementDraftsController> _logger;
     private readonly IBackgroundTaskManager _taskManager; // unified background task system
+    private readonly IAttachmentService _attachments; // new
 
     public StatementDraftsController(
         IStatementDraftService drafts,
         ICurrentUserService current,
         ILogger<StatementDraftsController> logger,
-        IBackgroundTaskManager taskManager)
+        IBackgroundTaskManager taskManager,
+        IAttachmentService attachments)
     {
         _drafts = drafts;
         _current = current;
         _logger = logger;
         _taskManager = taskManager;
+        _attachments = attachments;
     }
 
     public sealed record UploadRequest([Required] string FileName);
@@ -364,13 +369,15 @@ public sealed class StatementDraftsController : ControllerBase
     [HttpGet("{draftId:guid}/file")]
     public async Task<IActionResult> DownloadOriginalAsync(Guid draftId, CancellationToken ct)
     {
-        var draft = await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
+        var draft = await _drafts.GetDraftHeaderAsync(draftId, _current.UserId, ct);
         if (draft == null) { return NotFound(); }
-        var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-        var entity = await db.StatementDrafts.AsNoTracking().FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == _current.UserId, ct);
-        if (entity == null || entity.OriginalFileContent == null) { return NotFound(); }
-        var contentType = string.IsNullOrWhiteSpace(entity.OriginalFileContentType) ? MediaTypeNames.Application.Octet : entity.OriginalFileContentType;
-        return File(entity.OriginalFileContent, contentType, entity.OriginalFileName);
+        var list = await _attachments.ListAsync(_current.UserId, AttachmentEntityKind.StatementDraft, draftId, 0, 1, ct);
+        var fileMeta = list.FirstOrDefault();
+        if (fileMeta == null) { return NotFound(); }
+        var payload = await _attachments.DownloadAsync(_current.UserId, fileMeta.Id, ct);
+        if (payload == null) { return NotFound(); }
+        var (content, fileName, contentType) = payload.Value;
+        return File(content, string.IsNullOrWhiteSpace(contentType) ? MediaTypeNames.Application.Octet : contentType, fileName);
     }
 
     public sealed record AddEntryRequest([Required] DateTime BookingDate, [Required] decimal Amount, [Required, MaxLength(500)] string Subject);

@@ -41,4 +41,7 @@
   <data name="Ribbon_Merge" xml:space="preserve"><value>Zusammenführen</value></data>
   <data name="Ribbon_Postings" xml:space="preserve"><value>Posten</value></data>
   <data name="Chart_Title_Contact" xml:space="preserve"><value>Ergebnisse</value></data>
+  <data name="Ribbon_Attachments" xml:space="preserve"><value>Anhänge</value></data>
+  <data name="Attachments_Title" xml:space="preserve"><value>Anhänge</value></data>
+  <data name="Btn_Close" xml:space="preserve"><value>Schließen</value></data>
 </root>

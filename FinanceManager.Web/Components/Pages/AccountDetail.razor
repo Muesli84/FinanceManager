@@ -7,6 +7,7 @@
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @using FinanceManager.Web.Components.Shared
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.AccountDetail> Localizer
+@using FinanceManager.Domain.Attachments
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="AccountDetail.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -72,6 +73,19 @@ else
             <AggregateBarChart Endpoint="@($"/api/accounts/{Id}/aggregates")" Title="@Localizer["Chart_Title_Account"]" />
         </div>
     }
+}
+
+@if (_showAttachments && Id != null)
+{
+    <div class="split-center" @onclick="(()=> _showAttachments = false)">
+        <div class="split-dialog" style="max-width:90vH;" @onclick:stopPropagation="true">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+                <h3 style="margin:0;font-size:1rem;">@Localizer["Attachments_Title"]</h3>
+                <button class="icon-btn" title='@Localizer["Btn_Close"]' @onclick="(()=> _showAttachments=false)"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+            </div>
+            <AttachmentsPanel ParentKind="@AttachmentEntityKind.Account" ParentId="@Id!.Value" />
+        </div>
+    </div>
 }
 
 @code {
@@ -145,6 +159,13 @@ else
                     IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
                     Disabled = _busy,
                     Callback = () => { OpenPostings(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Attachments"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#attachment'/></svg>",
+                    Disabled = _busy,
+                    Callback = () => { OpenAttachments(); return Task.CompletedTask; }
                 }
             };
             related = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Related"], Items = relatedItems };
@@ -172,6 +193,7 @@ else
     private bool _busy;
     private string? _error;
     private bool _chartsLoaded;
+    private bool _showAttachments;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -268,6 +290,7 @@ else
     private void Back() => Nav.NavigateTo("/accounts", forceLoad: true);
     private void OpenBankContact(){ if (!string.IsNullOrWhiteSpace(_model.BankContactId)) { Nav.NavigateTo($"/contacts/{_model.BankContactId}"); } }
     private void OpenPostings(){ if (Id != null) { Nav.NavigateTo($"/postings/account/{Id}"); } }
+    private void OpenAttachments(){ if (Id != null) { _showAttachments = true; StateHasChanged(); } }
 
     private sealed class AccountEditModel
     {

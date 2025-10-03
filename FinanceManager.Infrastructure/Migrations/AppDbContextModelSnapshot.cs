@@ -90,6 +90,96 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.ToTable("AccountShares");
                 });
 
+            modelBuilder.Entity("FinanceManager.Domain.Attachments.Attachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("Content")
+                        .HasColumnType("BLOB");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<short>("EntityKind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ReferenceAttachmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UploadedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("ReferenceAttachmentId");
+
+                    b.HasIndex("Sha256", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "EntityKind", "EntityId");
+
+                    b.ToTable("Attachments");
+                });
+
+            modelBuilder.Entity("FinanceManager.Domain.Attachments.AttachmentCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("AttachmentCategories");
+                });
+
             modelBuilder.Entity("FinanceManager.Domain.Contacts.AliasName", b =>
                 {
                     b.Property<Guid>("Id")
@@ -716,12 +806,6 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<DateTime?>("ModifiedUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<byte[]>("OriginalFileContent")
-                        .HasColumnType("BLOB");
-
-                    b.Property<string>("OriginalFileContentType")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("OriginalFileName")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -1062,6 +1146,19 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.HasIndex("OwnerUserId", "CreatedUtc");
 
                     b.ToTable("Backups");
+                });
+
+            modelBuilder.Entity("FinanceManager.Domain.Attachments.Attachment", b =>
+                {
+                    b.HasOne("FinanceManager.Domain.Attachments.AttachmentCategory", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FinanceManager.Domain.Attachments.Attachment", null)
+                        .WithMany()
+                        .HasForeignKey("ReferenceAttachmentId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("FinanceManager.Domain.Contacts.Contact", b =>

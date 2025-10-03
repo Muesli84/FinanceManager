@@ -3,6 +3,7 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
+using FinanceManager.Domain.Attachments; // added
 
 namespace FinanceManager.Infrastructure.Contacts;
 
@@ -58,6 +59,12 @@ public sealed class ContactService : IContactService
         {
             throw new ArgumentException("Deleting the 'Self' contact is not allowed.");
         }
+
+        // Delete attachments for this contact
+        await _db.Attachments
+            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == contact.Id)
+            .ExecuteDeleteAsync(ct);
+
         _db.Contacts.Remove(contact);
         await _db.SaveChangesAsync(ct);
         return true;
@@ -200,6 +207,11 @@ public sealed class ContactService : IContactService
                 .Where(a => a.BankContactId == source.Id)
                 .ExecuteUpdateAsync(s => s.SetProperty(a => a.BankContactId, target.Id), ct);
         }
+
+        // Reassign attachments from source contact to target contact
+        await _db.Attachments
+            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == source.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.EntityId, target.Id), ct);
 
         _db.Contacts.Remove(source);
 

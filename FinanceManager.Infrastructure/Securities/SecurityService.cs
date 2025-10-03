@@ -2,6 +2,7 @@ using FinanceManager.Application.Securities;
 using FinanceManager.Domain.Securities;
 using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
+using FinanceManager.Domain.Attachments; // added
 
 namespace FinanceManager.Infrastructure.Securities;
 
@@ -147,6 +148,12 @@ public sealed class SecurityService : ISecurityService
         var entity = await _db.Securities.FirstOrDefaultAsync(s => s.Id == id && s.OwnerUserId == ownerUserId, ct);
         if (entity == null) { return false; }
         if (entity.IsActive) { return false; }
+
+        // Delete attachments for this security
+        await _db.Attachments
+            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Security && a.EntityId == entity.Id)
+            .ExecuteDeleteAsync(ct);
+
         _db.Securities.Remove(entity);
         await _db.SaveChangesAsync(ct);
         return true;

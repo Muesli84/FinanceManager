@@ -20,6 +20,7 @@
     <button class="fm-tab @(IsActiveSection(TabNotifications)?"active":null)" @onclick="() => Activate(TabNotifications)">@Localizer["Notifications_TabTitle"]</button>
     <button class="fm-tab @(IsActiveSection(TabProfile)?"active":null)" @onclick="() => Activate(TabProfile)">@Localizer["Tab_Profile"]</button>
     <button class="fm-tab @(IsActiveSection(TabIpBlocks)?"active":null)" @onclick="() => Activate(TabIpBlocks)">@Localizer["Tab_IpBlocks"]</button>
+    <button class="fm-tab @(IsActiveSection(TabAttachmentCategories)?"active":null)" @onclick="() => Activate(TabAttachmentCategories)">@Localizer["Tab_AttachmentCategories"]</button>
     <button class="fm-tab @(IsActiveSection(TabLegacy)?"active":null)" @onclick="() => Activate(TabLegacy)">@Localizer["Tab_LegacyImport"]</button>
 </div>
 
@@ -40,6 +41,9 @@
             break;
         case TabIpBlocks:
             <SetupIpBlockTab />
+            break;
+        case TabAttachmentCategories:
+            <SetupAttachmentCategoriesTab />
             break;
         case TabLegacy:
             <SetupLegacyImportTab />
@@ -67,6 +71,7 @@
     private const string TabNotifications = "notifications";
     private const string TabProfile = "profile";
     private const string TabIpBlocks = "ip-blocks";
+    private const string TabAttachmentCategories = "attachment-categories";
     private const string TabLegacy = "legacy";
     private string _activeSection = TabBackup;
 
@@ -115,6 +120,7 @@
         || section == TabNotifications
         || section == TabProfile
         || section == TabIpBlocks
+        || section == TabAttachmentCategories
         || section == TabLegacy;
 
     private void BuildRibbon()

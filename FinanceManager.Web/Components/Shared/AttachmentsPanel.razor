@@ -1,0 +1,495 @@
+@using FinanceManager.Domain.Attachments
+@using FinanceManager.Shared.Dtos
+@inject HttpClient Http
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.AttachmentsPanel> Localizer
+@inject IJSRuntime JS
+
+@if (!_loaded)
+{
+    <div style="opacity:.7;font-size:.8rem;">@Localizer["Loading"]</div>
+}
+else
+{
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem;">
+        <label style="margin:0;">@Localizer["Filter_Category"]</label>
+        <select @bind="_selectedCategoryId" @bind:after="OnCategoryChanged" style="min-width:220px;">
+            <option value="">-- @Localizer["AllCategories"] --</option>
+            @foreach (var c in _categories)
+            {
+                <option value="@c.Id">@c.Name</option>
+            }
+        </select>
+        <span style="font-size:.75rem;opacity:.7;">@string.Format(Localizer["Count"], Filtered.Count)</span>
+    </div>
+
+    <div id="@_dropId" data-category="@_selectedCategoryId" class="drop-upload" style="margin:.5rem 0 1rem 0;padding:1rem;border:1px dashed #555;border-radius:6px;background:#1c1c1c;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+            <svg class="icon" style="width:20px;height:20px;opacity:.8;"><use href="/icons/sprite.svg#upload" /></svg>
+            <div style="opacity:.9;">
+                <div style="font-size:.9rem;">@Localizer["Upload_Hint"]</div>
+                <div style="font-size:.75rem;opacity:.8;">@Localizer["Upload_SubHint"]</div>
+            </div>
+        </div>
+        <label class="icon-btn" style="padding:.35rem .7rem;cursor:pointer;">
+            <InputFile OnChange="OnFilesSelected" multiple style="display:none;" />
+            <svg class="icon"><use href="/icons/sprite.svg#upload" /></svg>
+            <span style="margin-left:.35rem;">@Localizer["Btn_Upload"]</span>
+        </label>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_uploadError))
+    {
+        <div class="error" style="margin-bottom:.75rem;">@_uploadError</div>
+    }
+    @if (_uploadBusy)
+    {
+        <div style="margin-bottom:.75rem;opacity:.8;">
+            @Localizer["Upload_Progress", _uploadDone, _uploadTotal]
+        </div>
+    }
+
+    <!-- Limit the list height and allow scrolling to avoid oversized panel with many attachments -->
+    <div id="@_listContainerId" class="table-responsive" style="max-height: 440px; overflow: auto;">
+        <table class="fm-table wide">
+            <thead>
+                <tr>
+                    <th style="width:10rem;">@Localizer["Th_Uploaded"]</th>
+                    <th>@Localizer["Th_Name"]</th>
+                    <th style="width:8rem;text-align:right;">@Localizer["Th_Size"]</th>
+                    <th style="width:12rem;">@Localizer["Th_Category"]</th>
+                    <th style="width:10rem;">@Localizer["Th_Actions"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Filtered.Count == 0)
+                {
+                    <tr><td colspan="6" style="opacity:.6;">@Localizer["NoEntries"]</td></tr>
+                }
+                else
+                {
+                    @foreach (var a in Filtered.OrderByDescending(x => x.UploadedUtc))
+                    {
+                        var isEditing = _editingId == a.Id;
+                        <tr>
+                            <td>@a.UploadedUtc.ToLocalTime().ToString("g")</td>
+                            <td class="wrap">
+                                @if (isEditing)
+                                {
+                                    <input type="text" @bind="_editFileName" />
+                                }
+                                else
+                                {
+                                    @a.FileName
+                                }
+                            </td>
+                            <td style="text-align:right;">@FormatSize(a.SizeBytes)</td>
+                            <td>
+                                @if (isEditing)
+                                {
+                                    <div style="display:flex;gap:.35rem;align-items:center;">
+                                        <select @bind="_editCategoryId" style="min-width:180px;">
+                                            <option value="">-- @Localizer["AllCategories"] --</option>
+                                            @foreach (var c in _categories)
+                                            {
+                                                <option value="@c.Id">@c.Name</option>
+                                            }
+                                        </select>
+                                        <button class="icon-btn" title="@Localizer["Btn_AddCategory"]" @onclick="CreateCategoryFromEditAsync">
+                                            <svg class="icon"><use href="/icons/sprite.svg#plus" /></svg>
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @(a.CategoryId.HasValue && _categoryNames.TryGetValue(a.CategoryId.Value, out var name) ? name : "-")
+                                }
+                            </td>
+                            <td style="white-space:nowrap;display:flex;gap:.25rem;">
+                                @if (!a.IsUrl)
+                                {
+                                    <a href="@($"/api/attachments/{a.Id}/download")" class="icon-btn" title="@Localizer["Download"]"><svg><use href="/icons/sprite.svg#download" /></svg></a>
+                                }
+                                @if (!isEditing)
+                                {
+                                    <button class="icon-btn" title="@Localizer["Edit"]" @onclick="(()=> BeginEdit(a))"><svg><use href="/icons/sprite.svg#edit" /></svg></button>
+                                    <button class="icon-btn danger" title="@Localizer["Delete"]" @onclick="(()=> DeleteAsync(a.Id))"><svg><use href="/icons/sprite.svg#delete" /></svg></button>
+                                }
+                                else
+                                {
+                                    <button class="icon-btn" title="@Localizer["Apply"]" @onclick="(()=> ApplyEditAsync(a.Id))"><svg><use href="/icons/sprite.svg#save" /></svg></button>
+                                    <button class="icon-btn" title="@Localizer["Cancel"]" @onclick="CancelEdit"><svg><use href="/icons/sprite.svg#undo" /></svg></button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+        <div id="@_sentinelId" style="height:1px;"></div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public AttachmentEntityKind ParentKind { get; set; }
+    [Parameter, EditorRequired] public Guid ParentId { get; set; }
+
+    private readonly List<AttachmentDto> _items = new();
+    private readonly List<CategoryDto> _categories = new();
+    private readonly Dictionary<Guid, string> _categoryNames = new();
+    private string _selectedCategoryId = string.Empty;
+    private bool _loaded;
+
+    private bool _uploadBusy;
+    private int _uploadDone;
+    private int _uploadTotal;
+    private string? _uploadError;
+
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<AttachmentsPanel>? _selfRef;
+    private string _dropId => $"ap-drop-{(short)ParentKind}-{ParentId}";
+    private string _listContainerId => $"ap-list-{(short)ParentKind}-{ParentId}";
+    private string _sentinelId => $"{_listContainerId}-sentinel";
+
+    private Guid? _editingId;
+    private string _editCategoryId = string.Empty;
+    private string _editFileName = string.Empty;
+
+    // Lazy loading state
+    private const int _pageSize = 50;
+    private bool _hasMore = true;
+    private bool _loadingMore = false;
+
+    private List<AttachmentDto> Filtered => string.IsNullOrWhiteSpace(_selectedCategoryId)
+        ? _items
+        : _items; // server-side category filter is applied in paging calls
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync(reset: true);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_module == null)
+        {
+            try
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", "/js/attachments.js");
+                _selfRef = DotNetObjectReference.Create(this);
+            }
+            catch { }
+        }
+        if (_module != null)
+        {
+            var uploadUrl = $"/api/attachments/{(short)ParentKind}/{ParentId}";
+            try
+            {
+                // unregister previous (if any) then register fresh to keep handlers single
+                await _module.InvokeVoidAsync("unregisterDropArea", _dropId);
+                await _module.InvokeVoidAsync("registerDropArea", _dropId, uploadUrl, _selfRef);
+
+                // register infinite scroll on the list container
+                await _module.InvokeVoidAsync("unregisterInfiniteScroll", _listContainerId);
+                await _module.InvokeVoidAsync("registerInfiniteScroll", _listContainerId, _sentinelId, _selfRef);
+            }
+            catch { }
+        }
+    }
+
+    [JSInvokable]
+    public Task OnDropUploadProgress(int done, int total, string? error)
+    {
+        _uploadBusy = true; _uploadDone = done; _uploadTotal = total; _uploadError = MapServerError(error);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public async Task OnDropUploadCompleted()
+    {
+        _uploadBusy = false;
+        await LoadAsync(reset: true);
+    }
+
+    [JSInvokable]
+    public async Task OnNeedMoreAsync()
+    {
+        if (!_hasMore || _loadingMore) { return; }
+        _loadingMore = true;
+        try
+        {
+            await LoadAsync(reset: false);
+        }
+        finally
+        {
+            _loadingMore = false;
+        }
+    }
+
+    private sealed class PageEnvelope<T>
+    {
+        public List<T> Items { get; set; } = new();
+        public bool HasMore { get; set; }
+        public int? Total { get; set; }
+    }
+
+    private async Task LoadAsync(bool reset)
+    {
+        if (reset)
+        {
+            _loaded = false;
+        }
+        try
+        {
+            if (reset)
+            {
+                // Load categories first on full refresh
+                var cats = await Http.GetFromJsonAsync<List<AttachmentCategoryDto>>("/api/attachments/categories");
+                _categories.Clear(); _categoryNames.Clear();
+                foreach (var c in cats ?? new())
+                {
+                    _categories.Add(new CategoryDto { Id = c.Id, Name = c.Name });
+                    _categoryNames[c.Id] = c.Name;
+                }
+                _items.Clear();
+                _hasMore = true;
+            }
+
+            if (_hasMore)
+            {
+                var skip = _items.Count;
+                var url = $"/api/attachments/{(short)ParentKind}/{ParentId}?skip={skip}&take={_pageSize}";
+                if (Guid.TryParse(_selectedCategoryId, out var cat))
+                {
+                    url += $"&categoryId={cat}";
+                }
+                var page = await Http.GetFromJsonAsync<PageEnvelope<AttachmentDto>>(url) ?? new PageEnvelope<AttachmentDto>();
+                _items.AddRange(page.Items ?? new());
+                _hasMore = page.HasMore;
+            }
+        }
+        catch { }
+        finally { _loaded = true; StateHasChanged(); }
+    }
+
+    private void OnCategoryChanged()
+    {
+        try
+        {
+            if (_module != null)
+            {
+                _ = _module.InvokeVoidAsync("AttachmentsPanel_setCategoryAttr", _dropId, _selectedCategoryId);
+            }
+        }
+        catch { }
+        _ = LoadAsync(reset: true);
+        StateHasChanged();
+    }
+
+    private async Task CreateCategoryFromEditAsync()
+    {
+        try
+        {
+            var name = await JS.InvokeAsync<string>("prompt", Localizer["Prompt_NewCategory"].Value);
+            name = name?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(name)) { return; }
+            var resp = await Http.PostAsJsonAsync("/api/attachments/categories", new { Name = name });
+            if (!resp.IsSuccessStatusCode)
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                _uploadError = string.IsNullOrWhiteSpace(msg) ? Localizer["Err_CreateCategoryFailed"] : msg;
+                StateHasChanged();
+                return;
+            }
+            var dto = await resp.Content.ReadFromJsonAsync<AttachmentCategoryDto>();
+            if (dto != null)
+            {
+                // Refresh categories list and select the new one for editing
+                var cats = await Http.GetFromJsonAsync<List<AttachmentCategoryDto>>("/api/attachments/categories");
+                _categories.Clear(); _categoryNames.Clear();
+                foreach (var c in cats ?? new())
+                {
+                    _categories.Add(new CategoryDto { Id = c.Id, Name = c.Name });
+                    _categoryNames[c.Id] = c.Name;
+                }
+                _editCategoryId = dto.Id.ToString();
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _uploadError = ex.Message;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        _uploadError = null;
+        var files = e.GetMultipleFiles();
+        if (files == null || files.Count == 0) { return; }
+        _uploadBusy = true; _uploadDone = 0; _uploadTotal = files.Count; StateHasChanged();
+        try
+        {
+            foreach (var file in files)
+            {
+                try
+                {
+                    await UploadFileAsync(file);
+                    _uploadDone++;
+                    StateHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    _uploadError = MapServerError(ex.Message);
+                }
+            }
+        }
+        finally
+        {
+            _uploadBusy = false;
+        }
+        await LoadAsync(reset: true);
+    }
+
+    private async Task UploadFileAsync(IBrowserFile file)
+    {
+        using var content = new MultipartFormDataContent();
+        await using var stream = file.OpenReadStream(1024L * 1024L * 1024L); // 1 GB limit per file
+        var fileContent = new StreamContent(stream);
+        // Ensure the file part carries the browser-provided content type so the server binder populates FormFile.ContentType
+        var ct = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(ct);
+        content.Add(fileContent, "file", file.Name);
+        if (Guid.TryParse(_selectedCategoryId, out var cat))
+        {
+            content.Add(new StringContent(cat.ToString()), "categoryId");
+        }
+        var url = $"/api/attachments/{(short)ParentKind}/{ParentId}";
+        var resp = await Http.PostAsync(url, content);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var msg = await resp.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(MapServerError(msg));
+        }
+    }
+
+    private void BeginEdit(AttachmentDto a)
+    {
+        _editingId = a.Id;
+        _editCategoryId = a.CategoryId?.ToString() ?? string.Empty;
+        _editFileName = a.FileName;
+        StateHasChanged();
+    }
+
+    private void CancelEdit()
+    {
+        _editingId = null; _editCategoryId = string.Empty; _editFileName = string.Empty; StateHasChanged();
+    }
+
+    private async Task ApplyEditAsync(Guid id)
+    {
+        try
+        {
+            var payload = new { FileName = string.IsNullOrWhiteSpace(_editFileName) ? (string?)null : _editFileName, CategoryId = Guid.TryParse(_editCategoryId, out var cat) ? (Guid?)cat : null };
+            var resp = await Http.PutAsJsonAsync($"/api/attachments/{id}", payload);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                _uploadError = string.IsNullOrWhiteSpace(msg) ? Localizer["Err_UpdateFailed"] : msg;
+                return;
+            }
+            _editingId = null; _editCategoryId = string.Empty; _editFileName = string.Empty;
+            await LoadAsync(reset: true);
+        }
+        catch (Exception ex)
+        {
+            _uploadError = ex.Message;
+        }
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        try
+        {
+            bool ok = true;
+            try { ok = await JS.InvokeAsync<bool>("confirm", Localizer["Confirm_Delete"].Value); } catch { }
+            if (!ok) { return; }
+            var resp = await Http.DeleteAsync($"/api/attachments/{id}");
+            if (!resp.IsSuccessStatusCode)
+            {
+                var msg = await resp.Content.ReadAsStringAsync();
+                _uploadError = string.IsNullOrWhiteSpace(msg) ? Localizer["Err_DeleteFailed"] : msg;
+                return;
+            }
+            await LoadAsync(reset: true);
+        }
+        catch (Exception ex)
+        {
+            _uploadError = ex.Message;
+        }
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes; int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1) { order++; len /= 1024; }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private string? MapServerError(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) { return null; }
+        var text = raw.Trim();
+        // Try extract {"error":"..."}
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(text);
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && doc.RootElement.TryGetProperty("error", out var el))
+            {
+                var inner = el.GetString();
+                if (!string.IsNullOrWhiteSpace(inner)) { text = inner; }
+            }
+        }
+        catch { }
+        var lower = text.ToLowerInvariant();
+        if (lower.Contains("unsupported content type"))
+        {
+            return Localizer["Err_UnsupportedContentType"]; // show generic friendly text
+        }
+        if (lower.Contains("file too large"))
+        {
+            // Try to extract max bytes
+            try
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(text, "([0-9]{1,18})\\s*bytes", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (m.Success && long.TryParse(m.Groups[1].Value, out var max))
+                {
+                    return string.Format(Localizer["Err_FileTooLarge"], FormatSize(max));
+                }
+            }
+            catch { }
+            return Localizer["Err_FileTooLarge_General"];            
+        }
+        if (lower.Contains("empty file"))
+        {
+            return Localizer["Err_EmptyFile"];
+        }
+        if (lower.Contains("file or url required"))
+        {
+            return Localizer["Err_UploadFailed"];
+        }
+        return text; // fallback to server message
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { if (_module != null) { await _module.InvokeVoidAsync("unregisterDropArea", _dropId); } } catch { }
+        try { if (_module != null) { await _module.InvokeVoidAsync("unregisterInfiniteScroll", _listContainerId); } } catch { }
+        try { if (_module is IAsyncDisposable m) { await m.DisposeAsync(); } } catch { }
+        try { _selfRef?.Dispose(); } catch { }
+    }
+
+    private sealed class CategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+}
