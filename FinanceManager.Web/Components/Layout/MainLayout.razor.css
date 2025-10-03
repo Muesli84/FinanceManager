@@ -18,3 +18,15 @@
         right: 0.75rem;
         top: 0.5rem;
     }
+
+.brand {
+    
+}
+
+    .brand span {
+        vertical-align: top;
+    }
+
+    .brand .brand-logo {
+        max-height: 32px;
+    }

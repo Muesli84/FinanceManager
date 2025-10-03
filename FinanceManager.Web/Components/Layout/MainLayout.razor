@@ -1,12 +1,17 @@
 ﻿@inherits LayoutComponentBase
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Layout.MainLayout> L
+@inject Microsoft.AspNetCore.Components.NavigationManager Nav
+@implements IDisposable
 
 <link rel="stylesheet" href="/css/ribbon.css" />
 
 <div class="app-shell dark-mode">
     <nav class="sidebar">
-        <div class="brand">@L["Brand"]</div>
+        <div class="brand">
+            <img src="@_logoPath" alt="App Logo" class="brand-logo" />
+            <span>@L["Brand"]</span>
+        </div>
         <ul class="nav-links">
             @if (CurrentUser.IsAuthenticated)
             {
@@ -40,3 +45,71 @@
     <a href="." class="reload">@L["Error_Reload"]</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private string _logoPath = "/icons/finance_manager.png";
+
+    protected override void OnInitialized()
+    {
+        UpdateLogo(Nav.Uri);
+        Nav.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        UpdateLogo(e.Location);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateLogo(string uri)
+    {
+        string path;
+        try
+        {
+            path = new Uri(uri, UriKind.Absolute).AbsolutePath.ToLowerInvariant();
+        }
+        catch
+        {
+            // Fallback if uri is not absolute
+            path = uri.ToLowerInvariant();
+        }
+
+        if (path.StartsWith("/accounts"))
+        {
+            _logoPath = "/icons/finance_manager-accounts.png";
+        }
+        else if (path.StartsWith("/contacts"))
+        {
+            _logoPath = "/icons/finance_manager-contacts.png";
+        }
+        else if (path.StartsWith("/statement-drafts"))
+        {
+            _logoPath = "/icons/finance_manager-statementdrafts.png";
+        }
+        else if (path.StartsWith("/reports"))
+        {
+            _logoPath = "/icons/finance_manager-reports.png";
+        }
+        else if (path.StartsWith("/savings-plans"))
+        {
+            _logoPath = "/icons/finance_manager-savingplans.png";
+        }
+        else if (path.StartsWith("/securities"))
+        {
+            _logoPath = "/icons/finance_manager-securities.png";
+        }
+        else if (path.StartsWith("/setup"))
+        {
+            _logoPath = "/icons/finance_manager-setup.png";
+        }
+        else
+        {
+            _logoPath = "/icons/finance_manager.png"; // Home and default
+        }
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= HandleLocationChanged;
+    }
+}

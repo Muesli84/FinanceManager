@@ -16,7 +16,10 @@ html, body { margin:0; padding:0; background: var(--bg); color: var(--text); }
 
 .dark-mode { background: var(--bg); color: var(--text); }
 
-.app-shell { display:flex; min-height:100vh; }
+.app-shell {
+    display: flex;
+    min-height: 100vh;
+}
 .sidebar { width: var(--sidebar-width); background: var(--bg-alt); padding:1rem; display:flex; flex-direction:column; border-right:1px solid var(--border); }
 .brand { font-size:1.25rem; font-weight:600; margin-bottom:1rem; }
 .nav-links { list-style:none; margin:0; padding:0; flex-grow:1; }
