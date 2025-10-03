@@ -523,7 +523,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 }
 
                 // Zwischen zwei Anchors:
-                // Sonderfall: genau 1 kleiner Monat -> an rechten Anchor hängen (Test-Konvention)
+                // Sonderfall: genau 1 kleiner Monat -> an rechten Anchor hangen (Test-Konvention)
                 if (smallRun.Count == 1)
                 {
                     result.Add(current); // linker Anchor unverändert
@@ -1493,10 +1493,14 @@ public sealed partial class StatementDraftService : IStatementDraftService
             var plan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Id == planId, token);
             if (plan == null) { return; }
             if (plan.Type != SavingsPlanType.Recurring || plan.TargetDate == null || plan.Interval == null) { return; }
-            while (plan.TargetDate.Value.Date <= bookingDate.Date)
+
+            // Use domain logic with month-end rule, no business-day logic
+            if (plan.AdvanceTargetDateIfDue(bookingDate))
             {
-                plan.SetTarget(plan.TargetAmount, plan.TargetDate.Value.AddMonths(GetMonthsToAdd(plan.Interval.Value)));
+                _db.SavingsPlans.Update(plan);
+                await _db.SaveChangesAsync(token);
             }
+
             updatedPlanIds.Add(plan.Id);
         }
 
@@ -1569,6 +1573,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     var spPosting = new Domain.Postings.Posting(e.Id, PostingKind.SavingsPlan, null, null, e.SavingsPlanId, null, e.BookingDate, -e.Amount, e.Subject, e.RecipientName, e.BookingDescription, null).SetGroup(gid);
                     _db.Postings.Add(spPosting); await UpsertAggregatesAsync(spPosting, ct);
                     spPostingId = spPosting.Id;
+
+                    // Advance recurring savings plan target date if due (month-end rule), using booking date
+                    await UpdateRecurringPlanIfDueAsync(e.SavingsPlanId.Value, e.BookingDate, ct);
                 }
                 await CreateSecurityPostingsAsync(e, gid, ct);
 
@@ -1587,6 +1594,32 @@ public sealed partial class StatementDraftService : IStatementDraftService
             }
         }
 
+        // PARTIAL BOOKING: remove only booked entry and keep draft open when other entries remain
+        if (entryId != null)
+        {
+            // remove the processed entry/entries from the draft
+            foreach (var e in toBook)
+            {
+                _db.StatementDraftEntries.Remove(e);
+            }
+            await _db.SaveChangesAsync(ct);
+
+            bool anyRemaining = await _db.StatementDraftEntries.AnyAsync(x => x.DraftId == draft.Id, ct);
+            if (!anyRemaining)
+            {
+                draft.MarkCommitted();
+                await _db.SaveChangesAsync(ct);
+
+                if (_attachments != null)
+                {
+                    await _attachments.ReassignAsync(AttachmentEntityKind.StatementDraft, draft.Id, AttachmentEntityKind.Account, account.Id, ownerUserId, ct);
+                }
+            }
+
+            return new BookingResult(true, false, validation, null, toBook.Count, await GetNextStatementDraftAsync(draft));
+        }
+
+        // FULL BOOKING: commit whole draft
         draft.MarkCommitted();
         await _db.SaveChangesAsync(ct);
         if (_attachments != null)

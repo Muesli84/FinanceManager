@@ -716,4 +716,86 @@ public sealed class StatementDraftBookingTests
 
         conn.Dispose();
     }
+
+    [Fact]
+    public async Task Booking_SelfContactWithRecurringSavingsPlan_MonthEnd_31Jan_To_29Feb()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, _) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+
+        var plan = new SavingsPlan(owner, "Recurring", SavingsPlanType.Recurring, 1000m, new DateTime(2024, 1, 31), SavingsPlanInterval.Monthly);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        var e = draft.AddEntry(new DateTime(2024, 1, 31), 100m, "Save", self.Name, new DateTime(2024, 1, 31), "EUR", null, false);
+        e.AssignSavingsPlan(plan.Id);
+        e.MarkAccounted(self.Id);
+        db.Entry(e).State = EntityState.Added;
+        await db.SaveChangesAsync();
+
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+
+        var updatedPlan = await db.SavingsPlans.FirstAsync(p => p.Id == plan.Id);
+        updatedPlan.TargetDate!.Value.Date.Should().Be(new DateTime(2024, 2, 29));
+
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_SelfContactWithRecurringSavingsPlan_NonMonthEnd_30Jan_To_29Feb_Capped()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, _) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+
+        var plan = new SavingsPlan(owner, "Recurring", SavingsPlanType.Recurring, 1000m, new DateTime(2024, 1, 30), SavingsPlanInterval.Monthly);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        var e = draft.AddEntry(new DateTime(2024, 1, 30), 100m, "Save", self.Name, new DateTime(2024, 1, 30), "EUR", null, false);
+        e.AssignSavingsPlan(plan.Id);
+        e.MarkAccounted(self.Id);
+        db.Entry(e).State = EntityState.Added;
+        await db.SaveChangesAsync();
+
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+
+        var updatedPlan = await db.SavingsPlans.FirstAsync(p => p.Id == plan.Id);
+        updatedPlan.TargetDate!.Value.Date.Should().Be(new DateTime(2024, 2, 29));
+
+        conn.Dispose();
+    }
+
+    [Fact]
+    public async Task Booking_SelfContactWithRecurringSavingsPlan_MultipleAdvance_To_MarchEnd()
+    {
+        var (sut, db, conn, owner) = Create();
+        var (acc, _) = await AddAccountAsync(db, owner);
+        var draft = await CreateDraftAsync(db, owner, acc.Id);
+        var self = await db.Contacts.FirstAsync(c => c.OwnerUserId == owner && c.Type == ContactType.Self);
+
+        var plan = new SavingsPlan(owner, "Recurring", SavingsPlanType.Recurring, 1000m, new DateTime(2024, 1, 31), SavingsPlanInterval.Monthly);
+        db.SavingsPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        // Booking on March 15th should advance Jan 31 -> Feb 29 -> Mar 31 (stop because > March 15)
+        var e = draft.AddEntry(new DateTime(2024, 3, 15), 100m, "Save", self.Name, new DateTime(2024, 3, 15), "EUR", null, false);
+        e.AssignSavingsPlan(plan.Id);
+        e.MarkAccounted(self.Id);
+        db.Entry(e).State = EntityState.Added;
+        await db.SaveChangesAsync();
+
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
+        res.Success.Should().BeTrue();
+
+        var updatedPlan = await db.SavingsPlans.FirstAsync(p => p.Id == plan.Id);
+        updatedPlan.TargetDate!.Value.Date.Should().Be(new DateTime(2024, 3, 31));
+
+        conn.Dispose();
+    }
 }
