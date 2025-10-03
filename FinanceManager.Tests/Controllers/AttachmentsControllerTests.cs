@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Tests.Controllers;
 
@@ -28,6 +29,8 @@ public sealed class AttachmentsControllerTests
         public bool IsAuthenticated => true;
         public bool IsAdmin => false;
     }
+
+    private static LocalizedString L(string key, string value) => new(key, value, resourceNotFound: false);
 
     private static (
         AttachmentsController controller,
@@ -44,7 +47,22 @@ public sealed class AttachmentsControllerTests
             MaxSizeBytes = 10 * 1024, // 10 KB for tests
             AllowedMimeTypes = new[] { "application/pdf", "image/png", "text/plain" }
         });
-        var controller = new AttachmentsController(svc.Object, cats.Object, current, NullLogger<AttachmentsController>.Instance, opts);
+
+        // Localizer mock with English fallbacks used in assertions
+        var loc = new Mock<IStringLocalizer<AttachmentsController>>();
+        loc.Setup(l => l[It.IsAny<string>()])
+           .Returns((string key) => key switch
+           {
+               "Error_InvalidEntityKind" => L(key, "Invalid entityKind value."),
+               "Error_FileOrUrlRequired" => L(key, "File or URL required."),
+               "Error_EmptyFile" => L(key, "Empty file."),
+               "Error_FileTooLarge" => L(key, "File too large. Max {0}."),
+               "Error_UnsupportedContentType" => L(key, "Unsupported content type '{0}'."),
+               "Error_UnexpectedError" => L(key, "Unexpected error"),
+               _ => L(key, key)
+           });
+
+        var controller = new AttachmentsController(svc.Object, cats.Object, current, NullLogger<AttachmentsController>.Instance, opts, loc.Object);
         return (controller, svc, cats, current);
     }
 

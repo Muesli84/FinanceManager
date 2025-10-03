@@ -27,4 +27,9 @@
   <data name="Ribbon_ClearSearch" xml:space="preserve"><value>Suche leeren</value></data>
   <data name="Ribbon_ClearRange" xml:space="preserve"><value>Zeitraum löschen</value></data>
   <data name="Ribbon_Tab_Postings" xml:space="preserve"><value>Buchungen</value></data>
+  <!-- Related & Attachments -->
+  <data name="Ribbon_Group_Related" xml:space="preserve"><value>Zugehörig</value></data>
+  <data name="Ribbon_Attachments" xml:space="preserve"><value>Anhänge</value></data>
+  <data name="Attachments_Title" xml:space="preserve"><value>Anhänge</value></data>
+  <data name="Btn_Close" xml:space="preserve"><value>Schließen</value></data>
 </root>

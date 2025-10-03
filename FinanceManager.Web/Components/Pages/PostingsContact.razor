@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @using FinanceManager.Web.Components.Shared
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.PostingsContact> Localizer
+@using FinanceManager.Domain.Attachments
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="PostingsContact.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -33,7 +34,8 @@ else
         <tbody>
             @foreach(var p in _items)
             {
-                <tr>
+                var selected = _selectedPostingId == p.Id;
+                <tr style="cursor:pointer;@(selected?"background:#1f2834;":"")" @onclick="(()=> SelectRow(p.Id))">
                     <td>@p.BookingDate.ToShortDateString()</td>
                     <td style="text-align:right;">@p.Amount</td>
                     <td>@(p.Kind == PostingKind.Security && p.SecuritySubType!=null ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
@@ -64,6 +66,19 @@ else
     </div>
 }
 
+@if (_showAttachments && _attachmentPostingId != null)
+{
+    <div class="split-center" @onclick="(()=> _showAttachments = false)">
+        <div class="split-dialog" style="max-width:90vH;" @onclick:stopPropagation="true">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+                <h3 style="margin:0;font-size:1rem;">@Localizer["Attachments_Title"]</h3>
+                <button class="icon-btn" title='@Localizer["Btn_Close"]' @onclick="(()=> _showAttachments=false)"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+            </div>
+            <AttachmentsPanel ParentKind="@AttachmentEntityKind.Posting" ParentId="@_attachmentPostingId.Value" />
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public Guid ContactId { get; set; }
     private const int PageSize = 50;
@@ -75,6 +90,26 @@ else
     private bool _observerAttached;
     private string _search = string.Empty;
     private CancellationTokenSource? _searchCts;
+
+    // Attachments overlay state
+    private bool _showAttachments;
+    private Guid? _attachmentPostingId;
+
+    // Row selection state
+    private Guid? _selectedPostingId;
+    private void SelectRow(Guid id)
+    {
+        _selectedPostingId = _selectedPostingId == id ? null : id;
+        BuildRibbon();
+    }
+
+    private void OpenAttachmentsFromRibbon()
+    {
+        if (_selectedPostingId == null) { return; }
+        _attachmentPostingId = _selectedPostingId;
+        _showAttachments = true;
+        StateHasChanged();
+    }
 
     // Ribbon state
     private enum TabId { Postings }
@@ -109,7 +144,23 @@ else
             }
         };
         var filter = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Filter"], Items = filterItems };
-        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Postings, Title = Localizer["Ribbon_Tab_Postings"], Groups = new(){ nav, filter } } };
+
+        var related = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Related"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Attachments"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#attachment'/></svg>",
+                    Disabled = _selectedPostingId == null,
+                    Callback = () => { OpenAttachmentsFromRibbon(); return Task.CompletedTask; }
+                }
+            }
+        };
+
+        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Postings, Title = Localizer["Ribbon_Tab_Postings"], Groups = new(){ nav, filter, related } } };
         StateHasChanged();
     }
 
@@ -180,6 +231,7 @@ else
         _skip = 0;
         _canLoadMore = true;
         _observerAttached = false; // reattach for new sentinel
+        _selectedPostingId = null;
     }
 
     [JSInvokable]

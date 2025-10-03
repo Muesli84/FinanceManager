@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using FinanceManager.Web.Infrastructure.Attachments;
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -22,20 +23,27 @@ public sealed class AttachmentsController : ControllerBase
     private readonly ICurrentUserService _current;
     private readonly ILogger<AttachmentsController> _logger;
     private readonly AttachmentUploadOptions _options;
+    private readonly IStringLocalizer<AttachmentsController> _localizer;
 
     // API page size safety cap
     private const int MaxTake = 200;
 
-    public AttachmentsController(IAttachmentService service, IAttachmentCategoryService cats, ICurrentUserService current, ILogger<AttachmentsController> logger, IOptions<AttachmentUploadOptions> options)
+    public AttachmentsController(
+        IAttachmentService service,
+        IAttachmentCategoryService cats,
+        ICurrentUserService current,
+        ILogger<AttachmentsController> logger,
+        IOptions<AttachmentUploadOptions> options,
+        IStringLocalizer<AttachmentsController> localizer)
     {
-        _service = service; _cats = cats; _current = current; _logger = logger; _options = options.Value;
+        _service = service; _cats = cats; _current = current; _logger = logger; _options = options.Value; _localizer = localizer;
     }
 
     [HttpGet("{entityKind}/{entityId:guid}")] 
     [ProducesResponseType(typeof(PageResult<AttachmentDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(short entityKind, Guid entityId, [FromQuery] int skip = 0, [FromQuery] int take = 50, [FromQuery] Guid? categoryId = null, [FromQuery] bool? isUrl = null, [FromQuery] string? q = null, CancellationToken ct = default)
     {
-        if (!Enum.IsDefined(typeof(AttachmentEntityKind), entityKind)) { return BadRequest(new { error = "Invalid entityKind" }); }
+        if (!Enum.IsDefined(typeof(AttachmentEntityKind), entityKind)) { return BadRequest(new { error = _localizer["Error_InvalidEntityKind"] }); }
         if (skip < 0) { skip = 0; }
         if (take <= 0) { take = 50; }
         if (take > MaxTake) { take = MaxTake; }
@@ -51,16 +59,21 @@ public sealed class AttachmentsController : ControllerBase
     [ProducesResponseType(typeof(AttachmentDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UploadAsync(short entityKind, Guid entityId, [FromForm] IFormFile? file, [FromForm] Guid? categoryId, [FromForm] string? url, CancellationToken ct)
     {
-        if (!Enum.IsDefined(typeof(AttachmentEntityKind), entityKind)) { return BadRequest(new { error = "Invalid entityKind" }); }
-        if (file == null && string.IsNullOrWhiteSpace(url)) { return BadRequest(new { error = "file or url required" }); }
+        if (!Enum.IsDefined(typeof(AttachmentEntityKind), entityKind)) { return BadRequest(new { error = _localizer["Error_InvalidEntityKind"] }); }
+        if (file == null && string.IsNullOrWhiteSpace(url)) { return BadRequest(new { error = _localizer["Error_FileOrUrlRequired"] }); }
 
         // Validation: either URL or file; if file then enforce size and mime
         if (file != null)
         {
-            if (file.Length <= 0) { return BadRequest(new { error = "Empty file" }); }
+            if (file.Length <= 0) { return BadRequest(new { error = _localizer["Error_EmptyFile"] }); }
             if (file.Length > _options.MaxSizeBytes)
             {
-                return BadRequest(new { error = $"File too large. Max {_options.MaxSizeBytes} bytes." });
+                // show limit in MB if cleanly divisible by MB, else bytes
+                const long OneMb = 1024L * 1024L;
+                string limitStr = (_options.MaxSizeBytes % OneMb == 0)
+                    ? string.Format(System.Globalization.CultureInfo.CurrentUICulture, "{0} MB", _options.MaxSizeBytes / OneMb)
+                    : string.Format(System.Globalization.CultureInfo.CurrentUICulture, "{0:N0} bytes", _options.MaxSizeBytes);
+                return BadRequest(new { error = string.Format(System.Globalization.CultureInfo.CurrentUICulture, _localizer["Error_FileTooLarge"], limitStr) });
             }
             if (_options.AllowedMimeTypes?.Length > 0)
             {
@@ -68,7 +81,7 @@ public sealed class AttachmentsController : ControllerBase
                 var ok = _options.AllowedMimeTypes.Any(m => string.Equals(m, ctIn, StringComparison.OrdinalIgnoreCase));
                 if (!ok)
                 {
-                    return BadRequest(new { error = $"Unsupported content type '{ctIn}'." });
+                    return BadRequest(new { error = string.Format(System.Globalization.CultureInfo.CurrentUICulture, _localizer["Error_UnsupportedContentType"], ctIn) });
                 }
             }
         }
@@ -94,7 +107,7 @@ public sealed class AttachmentsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Upload attachment failed for kind={Kind} entity={Entity}", entityKind, entityId);
-            return Problem("Unexpected error", statusCode: 500);
+            return Problem(_localizer["Error_UnexpectedError"], statusCode: 500);
         }
     }
 
