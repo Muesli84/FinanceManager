@@ -468,8 +468,7 @@ public sealed class SetupImportService : ISetupImportService
                 var originalFileName = d.TryGetProperty("OriginalFileName", out var of) && of.ValueKind == JsonValueKind.String ? of.GetString() : "backup";
                 var accountName = d.TryGetProperty("AccountName", out var an) && an.ValueKind == JsonValueKind.String ? an.GetString() : null;
                 var description = d.TryGetProperty("Description", out var de) && de.ValueKind == JsonValueKind.String ? de.GetString() : null;
-                var statusText = d.TryGetProperty("Status", out var st) && st.ValueKind == JsonValueKind.String ? de.GetString() : "";
-                var statusValue = int.TryParse(statusText, out var st2) ? st2 : -1;
+                var statusValue = d.TryGetProperty("Status", out var st) && st.ValueKind == JsonValueKind.Number ? st.GetInt32() : -1;
                 var status = (StatementDraftStatus)statusValue;
                 var entity = new StatementDraft(userId, originalFileName!, accountName, description, statusValue == -1 ? StatementDraftStatus.Draft: status);
                 if (d.TryGetProperty("DetectedAccountId", out var da) && da.ValueKind == JsonValueKind.String)
