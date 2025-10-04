@@ -7,11 +7,10 @@ public sealed class SecurityPriceWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SecurityPriceWorker> _logger;
-    private readonly IPriceProvider _prices;
 
-    public SecurityPriceWorker(IServiceScopeFactory scopeFactory, ILogger<SecurityPriceWorker> logger, IPriceProvider prices)
+    public SecurityPriceWorker(IServiceScopeFactory scopeFactory, ILogger<SecurityPriceWorker> logger)
     {
-        _scopeFactory = scopeFactory; _logger = logger; _prices = prices;
+        _scopeFactory = scopeFactory; _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -25,7 +24,7 @@ public sealed class SecurityPriceWorker : BackgroundService
             }
             catch (RequestLimitExceededException ex)
             {
-                _logger.LogWarning(ex, "AlphaVantage limit exceeded. Pausing worker run.");                
+                _logger.LogWarning(ex, "AlphaVantage limit exceeded. Pausing worker run.");
             }
             catch (Exception ex)
             {
@@ -39,6 +38,8 @@ public sealed class SecurityPriceWorker : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var prices = scope.ServiceProvider.GetRequiredService<IPriceProvider>();
+
         var today = DateTime.UtcNow.Date;
         var endInclusive = today.AddDays(-1);
         while (endInclusive.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
@@ -58,12 +59,12 @@ public sealed class SecurityPriceWorker : BackgroundService
                 .Select(p => p.Date)
                 .FirstOrDefaultAsync(ct);
 
-            var startExclusive = last == default ? endInclusive.AddYears(-2) : last; 
+            var startExclusive = last == default ? endInclusive.AddYears(-2) : last;
             if (endInclusive <= startExclusive) { continue; }
 
-            var prices = await _prices.GetDailyPricesAsync(sec.AlphaVantageCode!, startExclusive, endInclusive, ct);
-            if (prices.Count == 0) { continue; }
-            foreach (var (date, close) in prices)
+            var pricesList = await prices.GetDailyPricesAsync(sec.AlphaVantageCode!, startExclusive, endInclusive, ct);
+            if (pricesList.Count == 0) { continue; }
+            foreach (var (date, close) in pricesList)
             {
                 if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) continue;
                 db.SecurityPrices.Add(new FinanceManager.Domain.Securities.SecurityPrice(sec.Id, date, close));

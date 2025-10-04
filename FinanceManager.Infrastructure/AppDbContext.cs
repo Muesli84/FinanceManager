@@ -62,6 +62,8 @@ public class AppDbContext : DbContext
             b.Property(x => x.ImportSplitMode).HasConversion<short>().IsRequired();
             b.Property(x => x.ImportMaxEntriesPerDraft).IsRequired();
             b.Property(x => x.ImportMonthlySplitThreshold);
+            b.Property(x => x.AlphaVantageApiKey).HasMaxLength(120);
+            b.Property(x => x.ShareAlphaVantageApiKey).HasDefaultValue(false);
         });
 
         modelBuilder.Entity<Account>(b =>

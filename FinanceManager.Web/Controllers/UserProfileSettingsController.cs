@@ -30,7 +30,9 @@ public sealed class UserProfileSettingsController : ControllerBase
             .Select(u => new UserProfileSettingsDto
             {
                 PreferredLanguage = u.PreferredLanguage,
-                TimeZoneId = u.TimeZoneId
+                TimeZoneId = u.TimeZoneId,
+                HasAlphaVantageApiKey = u.AlphaVantageApiKey != null,
+                ShareAlphaVantageApiKey = u.ShareAlphaVantageApiKey
             })
             .SingleOrDefaultAsync(ct);
         dto ??= new();
@@ -41,6 +43,11 @@ public sealed class UserProfileSettingsController : ControllerBase
     {
         [MaxLength(10)] public string? PreferredLanguage { get; set; }
         [MaxLength(100)] public string? TimeZoneId { get; set; }
+
+        // New: AlphaVantage key controls
+        [MaxLength(120)] public string? AlphaVantageApiKey { get; set; }  // optional: set/replace
+        public bool? ClearAlphaVantageApiKey { get; set; }                // optional: clear
+        public bool? ShareAlphaVantageApiKey { get; set; }                // optional: admin-only
     }
 
     [HttpPut]
@@ -55,6 +62,30 @@ public sealed class UserProfileSettingsController : ControllerBase
         {
             user.SetPreferredLanguage(req.PreferredLanguage);
             user.SetTimeZoneId(req.TimeZoneId);
+
+            // AlphaVantage key set/clear
+            if (req.ClearAlphaVantageApiKey == true)
+            {
+                user.SetAlphaVantageKey(null);
+            }
+            else if (!string.IsNullOrWhiteSpace(req.AlphaVantageApiKey))
+            {
+                user.SetAlphaVantageKey(req.AlphaVantageApiKey);
+            }
+
+            // Share flag: nur Admin darf aktivieren/deaktivieren
+            if (req.ShareAlphaVantageApiKey.HasValue)
+            {
+                if (!user.IsAdmin && req.ShareAlphaVantageApiKey.Value)
+                {
+                    return Forbid();
+                }
+                if (user.IsAdmin)
+                {
+                    user.SetShareAlphaVantageKey(req.ShareAlphaVantageApiKey.Value);
+                }
+            }
+
             await _db.SaveChangesAsync(ct);
             return NoContent();
         }

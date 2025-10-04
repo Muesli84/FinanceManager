@@ -16,4 +16,12 @@
   <data name="Btn_Save" xml:space="preserve"><value>Save</value></data>
   <data name="Btn_Reset" xml:space="preserve"><value>Reset</value></data>
   <data name="SaveSuccess" xml:space="preserve"><value>Settings saved.</value></data>
+	<!-- AlphaVantage: new -->
+	<data name="Label_AlphaVantageKey" xml:space="preserve"><value>AlphaVantage API key</value></data>
+	<data name="Placeholder_AlphaVantageKey" xml:space="preserve"><value>Enter new key or leave empty</value></data>
+	<data name="Msg_KeyPresent" xml:space="preserve"><value>Key configured</value></data>
+	<data name="Msg_KeyMissing" xml:space="preserve"><value>No key configured</value></data>
+	<data name="Btn_ClearKey" xml:space="preserve"><value>Remove key</value></data>
+	<data name="Label_ShareKey" xml:space="preserve"><value>Share key for all users</value></data>
+	<data name="Help_ShareKey" xml:space="preserve"><value>Admins only: make your key available to all users.</value></data>
 </root>

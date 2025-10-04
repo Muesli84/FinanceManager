@@ -65,8 +65,9 @@ builder.Services.AddSingleton<IBackgroundTaskExecutor, BookingTaskExecutor>();
 builder.Services.AddSingleton<IBackgroundTaskExecutor, BackupRestoreTaskExecutor>();
 builder.Services.AddHostedService<BackgroundTaskRunner>();
 
-// NEW: Security prices
-builder.Services.AddSingleton<IPriceProvider, AlphaVantagePriceProvider>();
+// NEW: AlphaVantage key resolver + prices
+builder.Services.AddScoped<IAlphaVantageKeyResolver, AlphaVantageKeyResolver>();
+builder.Services.AddScoped<IPriceProvider, AlphaVantagePriceProvider>();
 builder.Services.AddHostedService<SecurityPriceWorker>();
 
 // Holidays
