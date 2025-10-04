@@ -151,6 +151,7 @@ public sealed partial class StatementDraftService
             if (entry.IsAnnounced)
             {
                 // keep announced unless fully accounted
+                continue;
             }
 
             TryAutoAssignContact(contacts, aliasLookup, bankContactId, selfContact, entry);

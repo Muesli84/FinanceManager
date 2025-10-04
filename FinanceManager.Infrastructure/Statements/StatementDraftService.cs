@@ -1512,7 +1512,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
 
         // ignore entries already booked
         var toBook = (entryId == null ? allEntriesScope : allEntriesScope.Where(e => e.Id == entryId.Value))
-            .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked)
+            .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked && e.Status != StatementDraftEntryStatus.Announced)
             .ToList();
 
         var updatedPlanIds = new HashSet<Guid>();

@@ -378,4 +378,7 @@
   <data name="Ribbon_Attachments" xml:space="preserve">
     <value>Attachments</value>
   </data>
+  <data name="Msg_ReadOnlyAnnounced" xml:space="preserve">
+    <value>This entry is just announced and is read-only.</value>
+  </data>
 </root>

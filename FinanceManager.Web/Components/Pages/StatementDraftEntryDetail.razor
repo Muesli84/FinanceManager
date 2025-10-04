@@ -63,13 +63,17 @@ else
     }
     <div style="margin-bottom:1rem;">
         <label><input type="checkbox" @bind="_editMode" @bind:after="(()=>{BuildRibbon();})" disabled="@IsReadOnly" /> @Localizer["EditMode"]</label>
-        @if (IsReadOnly)
+    @if (IsDuplicate)
         {
             <div style="margin-top:.3rem;color:#cc6;font-size:.75rem;">@Localizer["Msg_ReadOnlyAlreadyBooked"]</div>
             <div style="margin-top:.5rem;display:flex;gap:.5rem;">
                 <button class="icon-btn" @onclick="ResetDuplicateWithConfirm"><svg><use href="/icons/sprite.svg#refresh" /></svg>&nbsp;@Localizer["Btn_ResetDuplicate"]</button>
             </div>
         }
+    @if (IsAnnounced)
+    {
+        <div style="margin-top:.3rem;color:#cc6;font-size:.75rem;">@Localizer["Msg_ReadOnlyAnnounced"]</div>
+    }
         @if (_editMode && _vm != null && !IsReadOnly)
         {
             <div class="edit-core" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin-top:.5rem;max-width:960px;">
@@ -1203,7 +1207,9 @@ else
 
     private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);
 
-    private bool IsReadOnly => _vm?.Entry.Status == StatementDraftEntryStatus.AlreadyBooked;
+    private bool IsReadOnly => IsDuplicate || IsAnnounced;
+    private bool IsDuplicate => _vm?.Entry.Status == StatementDraftEntryStatus.AlreadyBooked;
+    private bool IsAnnounced => _vm?.Entry.Status == StatementDraftEntryStatus.Announced;
 
     private async Task ResetDuplicateWithConfirm()
     {

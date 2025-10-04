@@ -502,6 +502,8 @@ else
                     var entryWarnings = entryMessages.Count(m=>m.Severity=="Warning");
                     var rowStyle = e.Status == StatementDraftEntryStatus.AlreadyBooked
                         ? "opacity:.55;background:#141414;"
+                        : e.Status == StatementDraftEntryStatus.Announced 
+                        ? "opacity:.55;background:#131313;"
                         : string.Empty;
                     <tr style="cursor:pointer;@rowStyle" @onclick="(() => OpenEntry(e.Id))">
                         <td>
