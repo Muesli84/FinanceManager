@@ -1202,7 +1202,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
         // Ignore entries that are already booked in validation scope
         var scopedEntryQuery = _db.StatementDraftEntries.Where(e => e.DraftId == draftId && (entryId == null || entryId == e.Id))
-            .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked);
+            .Where(e => e.Status != StatementDraftEntryStatus.AlreadyBooked && e.Status != StatementDraftEntryStatus.Announced);
 
         var entries = await scopedEntryQuery.ToArrayAsync(ct);
 
