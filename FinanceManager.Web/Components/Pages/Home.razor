@@ -19,6 +19,21 @@
 
 <HomeNotifications />
 
+@if (_uploadInProgress)
+{
+    <div class="upload-progress" role="status" aria-live="polite">
+        <div class="hdr">
+            <span class="title">@Localizer["Upload_Progress_Title"]</span>
+            <span class="cnt">@_uploadDone/@_uploadTotal</span>
+        </div>
+        <div class="bar"><div class="bar-inner" style="width:@UploadPercent%"></div></div>
+        @if(!string.IsNullOrWhiteSpace(_currentFileName))
+        {
+            <div class="file" title="@_currentFileName">@_currentFileName</div>
+        }
+    </div>
+}
+
 @if (_importSuccess && _draftId != null)
 {
     <div class="alert alert-success" style="margin-top:1rem;">
@@ -66,7 +81,7 @@
 
 @if(_showHiddenInput)
 {
-    <InputFile id="home-import-input" OnChange="OnFileChanged" style="display:none;" />
+    <InputFile id="home-import-input" OnChange="OnFileChanged" multiple style="display:none;" />
 }
 
 @code {
@@ -127,6 +142,13 @@
 
     private SplitInfoDto? _splitInfo;
 
+    // Upload progress state
+    private bool _uploadInProgress;
+    private int _uploadTotal;
+    private int _uploadDone;
+    private string? _currentFileName;
+    private int UploadPercent => _uploadTotal == 0 ? 0 : (int)Math.Round((double)(_uploadDone * 100m / _uploadTotal));
+
     // --- Home KPI state ---
     private bool _kpiEditMode;
     private List<HomeKpiDto> _kpis = new();
@@ -174,22 +196,56 @@
 
     private async Task OnFileChanged(InputFileChangeEventArgs e)
     {
-        var file = e.File;
-        if (file == null) { return; }
-        using var content = new MultipartFormDataContent();
-        await using var stream = file.OpenReadStream(10_000_000);
-        content.Add(new StreamContent(stream), "file", file.Name);
-        var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
-        if (resp.IsSuccessStatusCode)
+        var files = e.GetMultipleFiles();
+        if (files == null || files.Count == 0)
         {
-            var result = await resp.Content.ReadFromJsonAsync<UploadResultDto>();
-            if (result?.FirstDraft != null)
-            {
-                _draftId = result.FirstDraft.DraftId; // match backend property
-                _importSuccess = true;
-            }
-            _splitInfo = result?.SplitInfo;
+            return;
         }
+
+        _uploadInProgress = true;
+        _uploadTotal = files.Count;
+        _uploadDone = 0;
+        _currentFileName = null;
+        StateHasChanged();
+
+        Guid? firstDraftId = null;
+        SplitInfoDto? lastSplitInfo = null;
+
+        foreach (var file in files)
+        {
+            _currentFileName = file.Name;
+            StateHasChanged();
+
+            using var content = new MultipartFormDataContent();
+            await using var stream = file.OpenReadStream(10_000_000);
+            content.Add(new StreamContent(stream), "file", file.Name);
+            var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
+            if (resp.IsSuccessStatusCode)
+            {
+                var result = await resp.Content.ReadFromJsonAsync<UploadResultDto>();
+                if (result?.FirstDraft != null && !firstDraftId.HasValue)
+                {
+                    firstDraftId = result.FirstDraft.DraftId;
+                }
+                if (result?.SplitInfo != null)
+                {
+                    lastSplitInfo = result.SplitInfo;
+                }
+            }
+
+            _uploadDone++;
+            StateHasChanged();
+        }
+
+        _uploadInProgress = false;
+        _currentFileName = null;
+
+        if (firstDraftId.HasValue)
+        {
+            _draftId = firstDraftId.Value;
+            _importSuccess = true;
+        }
+        _splitInfo = lastSplitInfo;
         StateHasChanged();
     }
 
@@ -604,6 +660,15 @@
 .fav-kpi .clickable { cursor:pointer; }
 .kpi-amount { font-size:1.1rem; font-weight:700; margin-top:.25rem; }
 .small-loading { font-size:.65rem; opacity:.7; }
+
+/* Upload progress */
+.upload-progress { margin-top:.75rem; max-width:740px; border:1px solid #2a323a; background:#141a20; border-radius:8px; padding:.6rem .75rem; }
+.upload-progress .hdr { display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-bottom:.4rem; }
+.upload-progress .title { font-weight:600; font-size:.85rem; }
+.upload-progress .cnt { font-size:.8rem; opacity:.8; }
+.upload-progress .bar { width:100%; height:8px; background:#0f1419; border:1px solid #2a323a; border-radius:6px; overflow:hidden; }
+.upload-progress .bar-inner { height:100%; background:#2d6cdf; width:0; transition:width .2s ease; }
+.upload-progress .file { margin-top:.35rem; font-size:.7rem; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* Reuse mini-chart styles */
 .mini-chart { border:1px solid var(--border); padding:.4rem .5rem; border-radius:.4rem; background:#141618; }
