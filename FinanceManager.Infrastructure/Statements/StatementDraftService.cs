@@ -15,7 +15,8 @@ using Microsoft.Extensions.Logging; // added
 using Microsoft.Extensions.Logging.Abstractions; // added
 using FinanceManager.Application.Attachments; // added
 using FinanceManager.Domain.Attachments; // added
-using System.Globalization; // added
+using System.Globalization;
+using FinanceManager.Shared.Extensions; // added
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -179,7 +180,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
             .FirstOrDefault();
         if (parsedDraft is null)
         {
-            throw new InvalidOperationException("No valid statement file reader found or no movements detected.");
+            //throw new InvalidOperationException("No valid statement file reader found or no movements detected.");
+            return;
         }
 
         if (allAccounts is null)
@@ -195,18 +197,42 @@ public sealed partial class StatementDraftService : IStatementDraftService
         if (security is not null)
             foreach (var draft in allDrafts.Where(draft => draft.DetectedAccountId == account.Id))
             {
-                var draftEntries = await _db.StatementDraftEntries
+                var draftEntries = (await _db.StatementDraftEntries
                     .Where(e => e.DraftId == draft.DraftId)
                     .Where(e => e.ContactId == account.BankContactId)
                     .Where(e => e.SecurityId == security.Id)
                     .Where(e => e.Amount == line.Amount)
-                    .Where(e => e.BookingDate == line.BookingDate)
-                    .ToListAsync(ct);
+                    .ToListAsync(ct))
+                    .Where(e => (e.BookingDate == line.BookingDate) || (line.ValutaDate == e.ValutaDate && e.BookingDate.ToFirstOfMonth() == line.BookingDate.ToFirstOfMonth()))
+                    .ToList();
                 if (!draftEntries.Any()) continue;
                 var entries = draftEntries.ToList();
                 if (entries.Count == 0) continue;
 
-                if (entries.Count > 1) continue;
+                if (entries.Count > 1) {
+                    var entry2 = entries.FirstOrDefault();
+                    entry2.SetSecurity(entry2.SecurityId, line.PostingDescription switch
+                    {
+                        "Dividend" => SecurityTransactionType.Dividend,
+                        "Sell" => SecurityTransactionType.Sell,
+                        "Buy" => SecurityTransactionType.Buy,
+                        _ => entry2.SecurityTransactionType
+                    }, line.PostingDescription switch
+                    {
+                        "Dividend" => null,
+                        "Sell" => line.Quantity ?? entry2.SecurityQuantity,
+                        "Buy" => line.Quantity ?? entry2.SecurityQuantity,
+                        _ => entry2.SecurityQuantity
+                    }, line.FeeAmount ?? entry2.SecurityFeeAmount, line.TaxAmount ?? entry2.SecurityTaxAmount);
+                    await _db.SaveChangesAsync();
+
+                    foreach (var entry3 in entries.Skip(1))
+                    {
+                        entry3.MarkAlreadyBooked();
+                        await _db.SaveChangesAsync();
+                    }
+                    continue;
+                };
                 var entry = entries.FirstOrDefault();
                 entry.SetSecurity(entry.SecurityId, line.PostingDescription switch
                 {
@@ -233,146 +259,149 @@ public sealed partial class StatementDraftService : IStatementDraftService
             .FirstOrDefault();
         if (parsedDraft is null)
         {
-            throw new InvalidOperationException("No valid statement file reader found or no movements detected.");
+            await AddStatementDetailsAsync(ownerUserId, originalFileName, fileBytes, ct);
         }
 
-        var uploadGroupId = Guid.NewGuid();
-
-        // Erweiterung: MinEntries laden
-        var userSettings = await _db.Users.AsNoTracking()
-            .Where(u => u.Id == ownerUserId)
-            .Select(u => new
-            {
-                u.ImportSplitMode,
-                u.ImportMaxEntriesPerDraft,
-                u.ImportMonthlySplitThreshold,
-                u.ImportMinEntriesPerDraft
-            })
-            .SingleOrDefaultAsync(ct);
-
-        var mode = userSettings?.ImportSplitMode ?? ImportSplitMode.MonthlyOrFixed;
-        var maxPerDraft = userSettings?.ImportMaxEntriesPerDraft ?? 250;
-        var monthlyThreshold = userSettings?.ImportMonthlySplitThreshold ?? maxPerDraft;
-        var minPerDraft = userSettings?.ImportMinEntriesPerDraft ?? 1;
-
-        var allMovements = parsedDraft.Movements
-            .OrderBy(m => m.BookingDate)
-            .ThenBy(m => m.Subject)
-            .ToList();
-
-        bool useMonthly = mode switch
+        if (parsedDraft is not null)
         {
-            ImportSplitMode.Monthly => true,
-            ImportSplitMode.FixedSize => false,
-            ImportSplitMode.MonthlyOrFixed => allMovements.Count > monthlyThreshold,
-            _ => false
-        };
+            var uploadGroupId = Guid.NewGuid();
 
-        static IEnumerable<List<T>> Chunk<T>(IReadOnlyList<T> source, int size)
-        {
-            if (size <= 0)
-            {
-                yield return source.ToList();
-                yield break;
-            }
-            for (int i = 0; i < source.Count; i += size)
-            {
-                yield return source.Skip(i).Take(size).ToList();
-            }
-        }
-
-        // Zwischendarstellung für spätere Min-Merge-Logik
-        var preliminaryGroups = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
-
-        if (useMonthly)
-        {
-            var groups = allMovements
-                .GroupBy(m => new { m.BookingDate.Year, m.BookingDate.Month })
-                .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month);
-
-            foreach (var g in groups)
-            {
-                var monthLabel = $"{g.Key.Year:D4}-{g.Key.Month:D2}";
-                var parts = Chunk(g.ToList(), maxPerDraft).ToList();
-                if (parts.Count == 1)
+            // Erweiterung: MinEntries laden
+            var userSettings = await _db.Users.AsNoTracking()
+                .Where(u => u.Id == ownerUserId)
+                .Select(u => new
                 {
-                    preliminaryGroups.Add((monthLabel, parts[0], false, g.Key.Year, g.Key.Month));
+                    u.ImportSplitMode,
+                    u.ImportMaxEntriesPerDraft,
+                    u.ImportMonthlySplitThreshold,
+                    u.ImportMinEntriesPerDraft
+                })
+                .SingleOrDefaultAsync(ct);
+
+            var mode = userSettings?.ImportSplitMode ?? ImportSplitMode.MonthlyOrFixed;
+            var maxPerDraft = userSettings?.ImportMaxEntriesPerDraft ?? 250;
+            var monthlyThreshold = userSettings?.ImportMonthlySplitThreshold ?? maxPerDraft;
+            var minPerDraft = userSettings?.ImportMinEntriesPerDraft ?? 1;
+
+            var allMovements = parsedDraft.Movements
+                .OrderBy(m => m.BookingDate)
+                .ThenBy(m => m.Subject)
+                .ToList();
+
+            bool useMonthly = mode switch
+            {
+                ImportSplitMode.Monthly => true,
+                ImportSplitMode.FixedSize => false,
+                ImportSplitMode.MonthlyOrFixed => allMovements.Count > monthlyThreshold,
+                _ => false
+            };
+
+            static IEnumerable<List<T>> Chunk<T>(IReadOnlyList<T> source, int size)
+            {
+                if (size <= 0)
+                {
+                    yield return source.ToList();
+                    yield break;
+                }
+                for (int i = 0; i < source.Count; i += size)
+                {
+                    yield return source.Skip(i).Take(size).ToList();
+                }
+            }
+
+            // Zwischendarstellung für spätere Min-Merge-Logik
+            var preliminaryGroups = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+
+            if (useMonthly)
+            {
+                var groups = allMovements
+                    .GroupBy(m => new { m.BookingDate.Year, m.BookingDate.Month })
+                    .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month);
+
+                foreach (var g in groups)
+                {
+                    var monthLabel = $"{g.Key.Year:D4}-{g.Key.Month:D2}";
+                    var parts = Chunk(g.ToList(), maxPerDraft).ToList();
+                    if (parts.Count == 1)
+                    {
+                        preliminaryGroups.Add((monthLabel, parts[0], false, g.Key.Year, g.Key.Month));
+                    }
+                    else
+                    {
+                        for (int p = 0; p < parts.Count; p++)
+                        {
+                            preliminaryGroups.Add(($"{monthLabel} (Teil {p + 1})", parts[p], true, g.Key.Year, g.Key.Month));
+                        }
+                    }
+                }
+
+                // MinEntries-Merge nur anwenden wenn:
+                // - monatlicher Modus effektiv
+                // - minPerDraft > 1
+                // - Gruppe kein gesplitteter Teil (IsSplitPart == false)
+                if (minPerDraft > 1)
+                {
+                    preliminaryGroups = ApplyMonthlyMinMerge(preliminaryGroups, minPerDraft);
+                }
+            }
+            else
+            {
+                var chunks = Chunk(allMovements, maxPerDraft).ToList();
+                if (chunks.Count == 1)
+                {
+                    preliminaryGroups.Add((string.Empty, chunks[0], false, null, null));
                 }
                 else
                 {
-                    for (int p = 0; p < parts.Count; p++)
+                    for (int i = 0; i < chunks.Count; i++)
                     {
-                        preliminaryGroups.Add(($"{monthLabel} (Teil {p + 1})", parts[p], true, g.Key.Year, g.Key.Month));
+                        preliminaryGroups.Add(($"(Teil {i + 1})", chunks[i], false, null, null));
                     }
                 }
             }
 
-            // MinEntries-Merge nur anwenden wenn:
-            // - monatlicher Modus effektiv
-            // - minPerDraft > 1
-            // - Gruppe kein gesplitteter Teil (IsSplitPart == false)
-            if (minPerDraft > 1)
+            // Finalisieren + Logging
+            var largest = preliminaryGroups.Count == 0 ? 0 : preliminaryGroups.Max(g => g.Movements.Count);
+            LastImportSplitInfo = new ImportSplitInfo(mode, useMonthly, preliminaryGroups.Count, allMovements.Count, maxPerDraft, largest, monthlyThreshold);
+
+            _logger.LogInformation("ImportSplit result: Mode={Mode} EffectiveUseMonthly={UseMonthly} Movements={Movements} Drafts={DraftCount} MaxEntriesPerDraft={MaxPerDraft} LargestDraftSize={Largest} Threshold={Threshold} File={File} MinEntries={Min}",
+                mode, useMonthly, allMovements.Count, preliminaryGroups.Count, maxPerDraft, largest, monthlyThreshold, originalFileName, minPerDraft);
+
+            var baseDescription = parsedDraft.Header.Description;
+
+            foreach (var group in preliminaryGroups)
             {
-                preliminaryGroups = ApplyMonthlyMinMerge(preliminaryGroups, minPerDraft);
-            }
-        }
-        else
-        {
-            var chunks = Chunk(allMovements, maxPerDraft).ToList();
-            if (chunks.Count == 1)
-            {
-                preliminaryGroups.Add((string.Empty, chunks[0], false, null, null));
-            }
-            else
-            {
-                for (int i = 0; i < chunks.Count; i++)
+                ct.ThrowIfCancellationRequested();
+
+                var draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
+                draft.SetUploadGroup(uploadGroupId);
+
+                if (!string.IsNullOrWhiteSpace(group.Label))
                 {
-                    preliminaryGroups.Add(($"(Teil {i + 1})", chunks[i], false, null, null));
+                    draft.Description = string.IsNullOrWhiteSpace(baseDescription)
+                        ? group.Label
+                        : $"{baseDescription} {group.Label}";
                 }
+
+                foreach (var movement in group.Movements)
+                {
+                    var contact = _db.Contacts.AsNoTracking()
+                        .FirstOrDefault(c => c.OwnerUserId == ownerUserId && c.Id == movement.ContactId);
+
+                    draft.AddEntry(
+                        movement.BookingDate,
+                        movement.Amount,
+                        movement.Subject ?? string.Empty,
+                        contact?.Name ?? movement.Counterparty,
+                        movement.ValutaDate,
+                        movement.CurrencyCode,
+                        movement.PostingDescription,
+                        movement.IsPreview,
+                        false);
+                }
+
+                yield return await FinishDraftAsync(draft, ownerUserId, ct);
             }
-        }
-
-        // Finalisieren + Logging
-        var largest = preliminaryGroups.Count == 0 ? 0 : preliminaryGroups.Max(g => g.Movements.Count);
-        LastImportSplitInfo = new ImportSplitInfo(mode, useMonthly, preliminaryGroups.Count, allMovements.Count, maxPerDraft, largest, monthlyThreshold);
-
-        _logger.LogInformation("ImportSplit result: Mode={Mode} EffectiveUseMonthly={UseMonthly} Movements={Movements} Drafts={DraftCount} MaxEntriesPerDraft={MaxPerDraft} LargestDraftSize={Largest} Threshold={Threshold} File={File} MinEntries={Min}",
-            mode, useMonthly, allMovements.Count, preliminaryGroups.Count, maxPerDraft, largest, monthlyThreshold, originalFileName, minPerDraft);
-
-        var baseDescription = parsedDraft.Header.Description;
-
-        foreach (var group in preliminaryGroups)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            var draft = await CreateDraftHeader(ownerUserId, originalFileName, fileBytes, parsedDraft, ct);
-            draft.SetUploadGroup(uploadGroupId);
-
-            if (!string.IsNullOrWhiteSpace(group.Label))
-            {
-                draft.Description = string.IsNullOrWhiteSpace(baseDescription)
-                    ? group.Label
-                    : $"{baseDescription} {group.Label}";
-            }
-
-            foreach (var movement in group.Movements)
-            {
-                var contact = _db.Contacts.AsNoTracking()
-                    .FirstOrDefault(c => c.OwnerUserId == ownerUserId && c.Id == movement.ContactId);
-
-                draft.AddEntry(
-                    movement.BookingDate,
-                    movement.Amount,
-                    movement.Subject ?? string.Empty,
-                    contact?.Name ?? movement.Counterparty,
-                    movement.ValutaDate,
-                    movement.CurrencyCode,
-                    movement.PostingDescription,
-                    movement.IsPreview,
-                    false);
-            }
-
-            yield return await FinishDraftAsync(draft, ownerUserId, ct);
         }
     }
 

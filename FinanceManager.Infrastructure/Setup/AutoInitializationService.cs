@@ -92,70 +92,7 @@ namespace FinanceManager.Infrastructure.Setup
                     _logger.LogInformation("AutoInit: 'skip'-Datei in 'init'-Verzeichnis gefunden – Vorgang wird übersprungen.");
                     return;
                 }
-
-                _logger.LogInformation("AutoInit: Starte Initialisierung aus '{InitDir}' für Admin '{Admin}'.", initDir, admin.Username);
-
-                // 1) Setup-Importe (init-*.json) in Reihenfolge, erste Datei mit replace=true
-                var setupFiles = Directory
-                    .EnumerateFiles(initDir, "init-*.json", SearchOption.TopDirectoryOnly)
-                    .OrderBy(f => Path.GetFileName(f))
-                    .ToList();
-
-                var isFirst = true;
-                foreach (var file in setupFiles)
-                {
-                    try
-                    {
-                        _logger.LogInformation("AutoInit: Importiere Setup-Datei '{File}' (replace={Replace}).", Path.GetFileName(file), isFirst);
-                        await using var fs = File.OpenRead(file);
-                        await _setupImportService.ImportAsync(admin.Id, fs, isFirst, ct);
-                        isFirst = false;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "AutoInit: Fehler beim Import der Setup-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(file));
-                    }
-                }
-
-                // 2) Statement-Drafts (draft-*.csv / draft-*.pdf)
-                var draftJson = Directory.EnumerateFiles(initDir, "draft-*.json", SearchOption.TopDirectoryOnly);
-                var draftCsv = Directory.EnumerateFiles(initDir, "draft-*.csv", SearchOption.TopDirectoryOnly);
-                var draftPdf = Directory.EnumerateFiles(initDir, "draft-*.pdf", SearchOption.TopDirectoryOnly);
-                var draftFiles = draftJson.Concat(draftCsv).Concat(draftPdf).OrderBy(f => Path.GetFileName(f)).ToList();
-                var drafts = new List<StatementDraftDto>();
-                drafts.AddRange((await _statementDraftService.GetOpenDraftsAsync(admin.Id, ct)).Select(d => _statementDraftService.GetDraftAsync(d.DraftId, admin.Id, ct).Result));
-                foreach (var file in draftFiles)
-                {
-                    try
-                    {
-                        _logger.LogInformation("AutoInit: Importiere Draft-Datei '{File}'.", Path.GetFileName(file));
-                        var bytes = await File.ReadAllBytesAsync(file, ct);
-                        await foreach (var draft in _statementDraftService.CreateDraftAsync(admin.Id, Path.GetFileName(file), bytes, ct))
-                            drafts.Add(draft);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "AutoInit: Fehler beim Import der Draft-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(file));
-                    }
-                }
-                _logger.LogInformation("AutoInit: Initialisierung abgeschlossen. SetupFiles={SetupCount}, DraftFiles={DraftCount}.", setupFiles.Count, draftFiles.Count);
-
-                var statementDetailsFiles = Directory.EnumerateFiles(initDir, "statement-detail*.pdf", SearchOption.TopDirectoryOnly);
-                foreach (var file in statementDetailsFiles)
-                {
-                    try
-                    {
-                        _logger.LogInformation("AutoInit: Importiere Statement-Detail-Datei '{File}'.", Path.GetFileName(file));
-                        var bytes = await File.ReadAllBytesAsync(file, ct);
-                        await _statementDraftService.AddStatementDetailsAsync(admin.Id, Path.GetFileName(file), bytes, ct);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "AutoInit: Fehler beim Import der Statement-Detail-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(file));
-                    }
-                }
-
-                await ExecuteActions(admin, initDir, drafts, ct);
+                await ExecuteActions(admin, initDir, ct);
             }
             catch (Exception ex)
             {
@@ -164,8 +101,10 @@ namespace FinanceManager.Infrastructure.Setup
             }
         }
 
-        private async Task ExecuteActions(Domain.Users.User admin, string initDir, List<StatementDraftDto> drafts, CancellationToken ct)
+        private async Task ExecuteActions(Domain.Users.User admin, string initDir, CancellationToken ct)
         {
+            var drafts = new List<StatementDraftDto>();
+            drafts.AddRange((await _statementDraftService.GetOpenDraftsAsync(admin.Id, ct)).Select(d => _statementDraftService.GetDraftAsync(d.DraftId, admin.Id, ct).Result));
             var actionFiless = Directory.EnumerateFiles(initDir, "action-*.txt", SearchOption.TopDirectoryOnly);
             foreach (var file in actionFiless)
             {
@@ -177,6 +116,58 @@ namespace FinanceManager.Infrastructure.Setup
                     {
                         switch (action[0])
                         {
+                            case "backup-import":
+                                {
+                                    // 1) Setup-Importe (init-*.json) in Reihenfolge, erste Datei mit replace=true
+                                    var setupFiles = Directory
+                                        .EnumerateFiles(initDir, "init-*.json", SearchOption.TopDirectoryOnly)
+                                        .OrderBy(f => Path.GetFileName(f))
+                                        .Where(f => Path.GetFileName(f) == action[1])
+                                        .ToList();
+
+                                    var isFirst = action.Length > 2 && bool.Parse(action[2]);
+                                    foreach (var setupFile in setupFiles)
+                                    {
+                                        try
+                                        {
+                                            _logger.LogInformation("AutoInit: Importiere Setup-Datei '{File}' (replace={Replace}).", Path.GetFileName(setupFile), isFirst);
+                                            await using var fs = File.OpenRead(setupFile);
+                                            await _setupImportService.ImportAsync(admin.Id, fs, isFirst, ct);
+                                            isFirst = false;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            _logger.LogError(ex, "AutoInit: Fehler beim Import der Setup-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(setupFile));
+                                        }
+                                    }
+                                    drafts.Clear();
+                                    drafts.AddRange((await _statementDraftService.GetOpenDraftsAsync(admin.Id, ct)).Select(d => _statementDraftService.GetDraftAsync(d.DraftId, admin.Id, ct).Result));
+                                }
+                                break;
+                            case "statement-import":
+                                {
+                                    // 2) Statement-Drafts (draft-*.csv / draft-*.pdf)
+                                    var draftJson = Directory.EnumerateFiles(initDir, "draft-*.json", SearchOption.TopDirectoryOnly);
+                                    var draftCsv = Directory.EnumerateFiles(initDir, "draft-*.csv", SearchOption.TopDirectoryOnly);
+                                    var draftPdf = Directory.EnumerateFiles(initDir, "draft-*.pdf", SearchOption.TopDirectoryOnly);
+                                    var draftFiles = draftJson.Concat(draftCsv).Concat(draftPdf).OrderBy(f => Path.GetFileName(f)).ToList();
+                                    
+                                    foreach (var draftFile in draftFiles.Where(f => Path.GetFileName(f) == action[1]))
+                                    {
+                                        try
+                                        {
+                                            _logger.LogInformation("AutoInit: Importiere Draft-Datei '{File}'.", Path.GetFileName(draftFile));
+                                            var bytes = await File.ReadAllBytesAsync(draftFile, ct);
+                                            await foreach (var draft in _statementDraftService.CreateDraftAsync(admin.Id, Path.GetFileName(draftFile), bytes, ct))
+                                                drafts.Add(draft);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            _logger.LogError(ex, "AutoInit: Fehler beim Import der Draft-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(draftFile));
+                                        }
+                                    }
+                                }
+                                break;
                             case "statement-entry-assignent":
                                 {
                                     var offset = drafts.Select(f => Path.GetFileName(f.OriginalFileName)).ToList().IndexOf(action[1]);
@@ -204,6 +195,7 @@ namespace FinanceManager.Infrastructure.Setup
                                         if (offset >= 0)
                                         {
                                             var draft = drafts[offset];
+                                            _logger.LogInformation("Buche Postenpaket {File}.", draft.Description);
                                             if (!draft.Entries.Any())
                                                 await _statementDraftService.CancelAsync(draft.DraftId, admin.Id, ct);
                                             else
@@ -220,7 +212,9 @@ namespace FinanceManager.Infrastructure.Setup
                                     {
                                         var offset = 0;
                                         foreach (var draft in drafts)
-                                            foreach (var entry in draft.Entries)
+                                        {
+                                            var draft2 = await _statementDraftService.GetDraftAsync(draft.DraftId, admin.Id, ct);
+                                            foreach (var entry in draft2.Entries)
                                                 if (entry.Subject == action[1])
                                                 {
                                                     var dbEntry = await _db.StatementDraftEntries.FirstAsync(e => e.Id == entry.Id, ct);
@@ -229,6 +223,27 @@ namespace FinanceManager.Infrastructure.Setup
                                                         dbEntry.MarkAccounted(dbEntry.ContactId.Value);
                                                     await _db.SaveChangesAsync(ct);
                                                 }
+                                        }
+                                    }
+                                }
+                                break;
+                            case "statement-set-contact":
+                                {
+                                    var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Name == action[2], ct);
+                                    if (contact is not null)
+                                    {
+                                        var offset = 0;
+                                        foreach (var draft in drafts)
+                                        {
+                                            var draft2 = await _statementDraftService.GetDraftAsync(draft.DraftId, admin.Id, ct);
+                                            foreach (var entry in draft2.Entries)
+                                                if (entry.Subject.Contains(action[1]))
+                                                {
+                                                    var dbEntry = await _db.StatementDraftEntries.FirstAsync(e => e.Id == entry.Id, ct);
+                                                    dbEntry.MarkAccounted(contact.Id);
+                                                    await _db.SaveChangesAsync(ct);
+                                                }
+                                        }
                                     }
                                 }
                                 break;
@@ -237,9 +252,18 @@ namespace FinanceManager.Infrastructure.Setup
                                     var savingsPlan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Name == action[1], ct);
                                     if (savingsPlan is not null)
                                     {
-                                        savingsPlan.SetContractNumber(action[2].Trim());
+                                        savingsPlan.SetContractNumber(action[2].Trim());                                        
                                         await _db.SaveChangesAsync(ct);
                                     }
+                                }
+                                break;
+                            case "savings-advancetargetdue":
+                                {
+                                    foreach (var savingsPlan in await _db.SavingsPlans.ToListAsync(ct))
+                                    {
+                                        savingsPlan.AdvanceTargetDateIfDue(DateTime.UtcNow);
+                                    }
+                                    await _db.SaveChangesAsync(ct);
                                 }
                                 break;
                             case "security-set-alphavantagecode":
@@ -252,10 +276,81 @@ namespace FinanceManager.Infrastructure.Setup
                                     }
                                 }
                                 break;
+                            case "statement-set-security":
+                                {
+                                    var security = await _db.Securities.FirstOrDefaultAsync(s => s.Name == action[2], ct);
+                                    if (!Enum.TryParse<SecurityTransactionType>(action[3], out var transType))
+                                        transType = (SecurityTransactionType)(-1);
+                                    var quantity = decimal.Parse(action[4]);
+                                    var fee = decimal.Parse(action[5]);
+                                    var tax = decimal.Parse(action[6]);
+                                    foreach (var draft in drafts)
+                                    {
+                                        var draft2 = await _statementDraftService.GetDraftAsync(draft.DraftId, admin.Id, ct);
+                                        foreach (var entry in draft2.Entries)
+                                            if (entry.Subject.Contains(action[1]))
+                                            {
+                                                var dbEntry = await _db.StatementDraftEntries.FirstAsync(e => e.Id == entry.Id, ct);
+                                                var entryType = transType;
+                                                if (entryType == (SecurityTransactionType)(-1))
+                                                {
+                                                    if (dbEntry.Amount > 0)
+                                                        entryType = SecurityTransactionType.Sell;
+                                                    else
+                                                        entryType = SecurityTransactionType.Buy;
+                                                }
+                                                dbEntry.SetSecurity(security.Id, transType, quantity, fee, tax);
+                                                if (dbEntry.ContactId.HasValue)
+                                                    dbEntry.MarkAccounted(dbEntry.ContactId.Value);
+                                                await _db.SaveChangesAsync(ct);
+                                            }
+                                    }
+                                }
+                                break;
+                            case "statement-set-security-type":
+                                {
+                                    var transType = (SecurityTransactionType)Enum.Parse(typeof(SecurityTransactionType), action[2]);
+                                    foreach (var draft in drafts)
+                                    {
+                                        var draft2 = await _statementDraftService.GetDraftAsync(draft.DraftId, admin.Id, ct);
+                                        foreach (var entry in draft2.Entries)
+                                            if (entry.BookingDescription == action[1] || entry.Subject.StartsWith(action[1]))
+                                            {
+                                                var dbEntry = await _db.StatementDraftEntries.FirstAsync(e => e.Id == entry.Id, ct);
+                                                dbEntry.SetSecurity(dbEntry.SecurityId, transType, dbEntry.SecurityQuantity, dbEntry.SecurityFeeAmount, dbEntry.SecurityTaxAmount);
+                                                if (dbEntry.ContactId.HasValue)
+                                                    dbEntry.MarkAccounted(dbEntry.ContactId.Value);
+                                                await _db.SaveChangesAsync(ct);
+                                            }
+                                    }
+                                }
+                                break;
                             case "statement-reclassify":
                                 {
                                     foreach (var draft in drafts)
-                                        await _statementDraftService.ClassifyAsync(draft.DraftId, null, admin.Id, ct);
+                                    {                                        
+                                        var draft2 = await _statementDraftService.ClassifyAsync(draft.DraftId, null, admin.Id, ct);
+                                        if (draft2 is not null)
+                                            MarkDuplicates(draft2);
+                                    }
+                                }
+                                break;
+                            case "statement-import-details":
+                                {
+                                    var statementDetailsFiles = Directory.EnumerateFiles(initDir, "statement-detail*.pdf", SearchOption.TopDirectoryOnly);
+                                    foreach (var statementDetailsFile in statementDetailsFiles)
+                                    {
+                                        try
+                                        {
+                                            _logger.LogInformation("AutoInit: Importiere Statement-Detail-Datei '{File}'.", Path.GetFileName(statementDetailsFile));
+                                            var bytes = await File.ReadAllBytesAsync(statementDetailsFile, ct);
+                                            await _statementDraftService.AddStatementDetailsAsync(admin.Id, Path.GetFileName(file), bytes, ct);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            _logger.LogError(ex, "AutoInit: Fehler beim Import der Statement-Detail-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(file));
+                                        }
+                                    }
                                 }
                                 break;
                             case "savings-set-amount":
@@ -265,6 +360,30 @@ namespace FinanceManager.Infrastructure.Setup
                                         savingsPlan.SetTarget(newAmount, savingsPlan.TargetDate);
                                 }
                                 break;
+                            case "statement-checkduplicates":
+                                {
+                                    string value = "";
+                                    foreach (var draft in drafts)
+                                    {
+                                        MarkDuplicates(draft);
+
+                                        foreach (var entry in draft.Entries
+                                            .Where(e => e.SecurityId is not null && e.SecurityId != Guid.Empty)
+                                            .Where(e => !e.BookingDescription.Contains("Zins"))
+                                            .Where(e => !e.Subject.Contains("Zins"))
+                                            .Where(e => e.Subject.StartsWith("WP-ABRECHNUNG ")))
+                                        {
+                                            var name = entry.Subject.Replace("WP-ABRECHNUNG ", "").Trim().Split(' ').First();
+                                            var security = await _db.Securities.FirstOrDefaultAsync(s => s.Id == entry.SecurityId, ct);
+                                            var line = $"\"statement-set-security\":\"{name}\":\"{security.Name}\":\"\":\"\":\"\":\"\"";
+                                            value += line + Environment.NewLine;
+                                        }
+                                    }
+                                    Console.WriteLine(value);
+
+                                }
+                                break;
+
                         }
                         await _db.SaveChangesAsync();
                     }
@@ -273,6 +392,42 @@ namespace FinanceManager.Infrastructure.Setup
                 {
                     _logger.LogError(ex, "AutoInit: Fehler beim Import der Draft-Datei '{File}'. Setze mit nächster Datei fort.", Path.GetFileName(file));
                 }
+            }
+        }
+
+        private void MarkDuplicates(StatementDraftDto draft)
+        {
+            // Ermittelt innerhalb des Drafts Duplikate auf Basis der geforderten Felder
+            // (BookingDate, ValutaDate, Amount, ContactId, SecurityId, SavingsPlanId)
+            // und setzt deren Status auf Open.
+            var entries = _db.StatementDraftEntries
+                .Where(e => e.DraftId == draft.DraftId)
+                .ToList();
+
+            var duplicateGroups = entries
+                .GroupBy(e => new
+                {
+                    Booking = e.BookingDate.Date,
+                    Valuta = e.ValutaDate?.Date,
+                    e.Amount,
+                    e.ContactId,
+                    e.SecurityId,
+                    e.SavingsPlanId
+                })
+                .Where(g => g.Count() > 1)
+                .ToList();
+
+            foreach (var group in duplicateGroups)
+            {
+                foreach (var entry in group.Skip(1))
+                {
+                    _db.StatementDraftEntries.Remove(entry);
+                }
+            }
+
+            if (duplicateGroups.Count > 0)
+            {
+                _db.SaveChanges();
             }
         }
 

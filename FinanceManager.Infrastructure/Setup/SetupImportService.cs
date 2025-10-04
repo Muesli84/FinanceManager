@@ -468,7 +468,10 @@ public sealed class SetupImportService : ISetupImportService
                 var originalFileName = d.TryGetProperty("OriginalFileName", out var of) && of.ValueKind == JsonValueKind.String ? of.GetString() : "backup";
                 var accountName = d.TryGetProperty("AccountName", out var an) && an.ValueKind == JsonValueKind.String ? an.GetString() : null;
                 var description = d.TryGetProperty("Description", out var de) && de.ValueKind == JsonValueKind.String ? de.GetString() : null;
-                var entity = new StatementDraft(userId, originalFileName!, accountName, description);
+                var statusText = d.TryGetProperty("Status", out var st) && st.ValueKind == JsonValueKind.String ? de.GetString() : "";
+                var statusValue = int.TryParse(statusText, out var st2) ? st2 : -1;
+                var status = (StatementDraftStatus)statusValue;
+                var entity = new StatementDraft(userId, originalFileName!, accountName, description, statusValue == -1 ? StatementDraftStatus.Draft: status);
                 if (d.TryGetProperty("DetectedAccountId", out var da) && da.ValueKind == JsonValueKind.String)
                 {
                     var old = da.GetGuid(); if (accountMap.TryGetValue(old, out var mapped)) entity.SetDetectedAccount(mapped);
@@ -900,7 +903,43 @@ public sealed class SetupImportService : ISetupImportService
         // 3) Kontoauszug-Entwürfe erzeugen (Enumeration zwingend, sonst passiert nichts)
         await foreach (var draft in _statementDraftService.CreateDraftAsync(userId, "backup.ndjson", fileBytes, ct))
         {
-            var result = await _statementDraftService.BookAsync(draft.DraftId, null, userId, false, ct);
+            MarkDuplicates(draft);
+        }
+    }
+
+    private void MarkDuplicates(StatementDraftDto draft)
+    {
+        // Ermittelt innerhalb des Drafts Duplikate auf Basis der geforderten Felder
+        // (BookingDate, ValutaDate, Amount, ContactId, SecurityId, SavingsPlanId)
+        // und setzt deren Status auf Open.
+        var entries = _db.StatementDraftEntries
+            .Where(e => e.DraftId == draft.DraftId)
+            .ToList();
+
+        var duplicateGroups = entries
+            .GroupBy(e => new
+            {
+                Booking = e.BookingDate.Date,
+                Valuta = e.ValutaDate?.Date,
+                e.Amount,
+                e.ContactId,
+                e.SecurityId,
+                e.SavingsPlanId
+            })
+            .Where(g => g.Count() > 1)
+            .ToList();
+
+        foreach (var group in duplicateGroups)
+        {
+            foreach (var entry in group)
+            {
+                entry.ResetOpen();
+            }
+        }
+
+        if (duplicateGroups.Count > 0)
+        {
+            _db.SaveChanges();
         }
     }
 

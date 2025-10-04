@@ -23,6 +23,11 @@ public sealed class StatementDraft : Entity, IAggregateRoot
         Status = StatementDraftStatus.Draft;
         Description = description ?? Path.GetFileNameWithoutExtension(originalFileName);
     }
+    public StatementDraft(Guid ownerUserId, string originalFileName, string? accountNumber, string? description, StatementDraftStatus status)
+        :this(ownerUserId, originalFileName, accountNumber, description)
+    {
+        Status = status;
+    }
     public Guid OwnerUserId { get; private set; }
     public string OriginalFileName { get; private set; } = null!;
     public string? AccountName { get; set; }
