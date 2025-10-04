@@ -90,6 +90,7 @@ else
 
 @code {
     [Parameter] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
     private bool IsNew => !Id.HasValue;
 
     // Ribbon state
@@ -287,7 +288,16 @@ else
         _busy = false; BuildRibbon();
     }
 
-    private void Back() => Nav.NavigateTo("/accounts", forceLoad: true);
+    private void Back()
+    {
+        if (!string.IsNullOrWhiteSpace(BackNav))
+        {
+            var target = Uri.UnescapeDataString(BackNav);
+            Nav.NavigateTo(target, forceLoad: true);
+            return;
+        }
+        Nav.NavigateTo("/accounts", forceLoad: true);
+    }
     private void OpenBankContact(){ if (!string.IsNullOrWhiteSpace(_model.BankContactId)) { Nav.NavigateTo($"/contacts/{_model.BankContactId}"); } }
     private void OpenPostings(){ if (Id != null) { Nav.NavigateTo($"/postings/account/{Id}"); } }
     private void OpenAttachments(){ if (Id != null) { _showAttachments = true; StateHasChanged(); } }

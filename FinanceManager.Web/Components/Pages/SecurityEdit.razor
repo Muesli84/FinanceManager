@@ -84,6 +84,7 @@
 
 @code {
     [Parameter] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
     private bool IsEdit => Id.HasValue;
     private SecurityVm _model = new();
     private SecurityEditModel _edit = new();
@@ -232,6 +233,7 @@
             if (Guid.TryParse(query.Get("entryId"), out var eid)) { _prefillEntryId = eid; }
             var prefillName = query.Get("prefillName");
             if (!string.IsNullOrWhiteSpace(prefillName)) { _pendingPrefillName = prefillName; }
+            BackNav = query.Get("back");
         }
     }
 
@@ -324,6 +326,11 @@
 
     private void Back()
     {
+        if (!string.IsNullOrWhiteSpace(BackNav))
+        {
+            Nav.NavigateTo(Uri.UnescapeDataString(BackNav!), forceLoad: true);
+            return;
+        }
         if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
             Nav.NavigateTo($"/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}", forceLoad: true);
         else

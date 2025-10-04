@@ -23,4 +23,10 @@
   <data name="Ribbon_Back" xml:space="preserve"><value>Back</value></data>
   <data name="Ribbon_ClearSearch" xml:space="preserve"><value>Clear search</value></data>
   <data name="Ribbon_Tab_Postings" xml:space="preserve"><value>Postings</value></data>
+  <!-- Linked group -->
+  <data name="Ribbon_Group_Linked" xml:space="preserve"><value>Linked information</value></data>
+  <data name="Ribbon_OpenAccount" xml:space="preserve"><value>Open account</value></data>
+  <data name="Ribbon_OpenContact" xml:space="preserve"><value>Open contact</value></data>
+  <data name="Ribbon_OpenSavingsPlan" xml:space="preserve"><value>Open savings plan</value></data>
+  <data name="Ribbon_OpenSecurity" xml:space="preserve"><value>Open security</value></data>
 </root>

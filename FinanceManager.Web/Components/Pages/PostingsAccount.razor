@@ -41,7 +41,7 @@ else
             @foreach(var p in _items)
             {
                 var selected = _selectedPostingId == p.Id;
-                <tr style="cursor:pointer;@(selected?"background:#1f2834;":"")" @onclick="(()=> SelectRow(p.Id))">
+                <tr style="cursor:pointer;@(selected?"background:#1f2834;":"")" @onclick="(()=> SelectRowAsync(p.Id))">
                     <td>@p.BookingDate.ToShortDateString()</td>
                     <td style="text-align:right;">@p.Amount</td>
                     <td>@(p.Kind == PostingKind.Security && p.SecuritySubType!=null ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
@@ -87,6 +87,7 @@ else
 
 @code {
     [Parameter] public Guid AccountId { get; set; }
+    [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
     private const int PageSize = 50;
     private bool _loading; private bool _canLoadMore = true; private int _skip;
     private List<PostingDto> _items = new();
@@ -104,10 +105,47 @@ else
 
     // Row selection state
     private Guid? _selectedPostingId;
-    private void SelectRow(Guid id)
+
+    // Resolved links for the selected posting (from GroupId API)
+    private Guid? _linkedAccountId, _linkedContactId, _linkedPlanId, _linkedSecurityId;
+    private bool _linksLoading;
+
+    private static bool HasId(Guid? id) => id.HasValue && id.Value != Guid.Empty;
+    private string BuildBackValue() => Uri.EscapeDataString("/" + Nav.ToBaseRelativePath(Nav.Uri));
+
+    private async Task SelectRowAsync(Guid id)
     {
-        _selectedPostingId = _selectedPostingId == id ? null : id;
+        if (_selectedPostingId == id)
+        {
+            _selectedPostingId = null;
+            _linkedAccountId = _linkedContactId = _linkedPlanId = _linkedSecurityId = null;
+            BuildRibbon();
+            return;
+        }
+        _selectedPostingId = id;
+        await ResolveSelectedLinksAsync();
         BuildRibbon();
+    }
+
+    private async Task ResolveSelectedLinksAsync()
+    {
+        _linkedAccountId = _linkedContactId = _linkedPlanId = _linkedSecurityId = null;
+        var sel = _items.FirstOrDefault(i => i.Id == _selectedPostingId);
+        if (sel == null) { return; }
+        // Fallback to own ids if no group
+        if (sel.GroupId == Guid.Empty)
+        {
+            _linkedAccountId = sel.AccountId; _linkedContactId = sel.ContactId; _linkedPlanId = sel.SavingsPlanId; _linkedSecurityId = sel.SecurityId;
+            return;
+        }
+        try
+        {
+            _linksLoading = true;
+            var dto = await Http.GetFromJsonAsync<GroupLinksResponse>($"/api/postings/group/{sel.GroupId}");
+            _linkedAccountId = dto?.AccountId; _linkedContactId = dto?.ContactId; _linkedPlanId = dto?.SavingsPlanId; _linkedSecurityId = dto?.SecurityId;
+        }
+        catch { /* ignore and keep nulls */ }
+        finally { _linksLoading = false; }
     }
 
     private void OpenAttachmentsFromRibbon()
@@ -116,6 +154,31 @@ else
         _attachmentPostingId = _selectedPostingId;
         _showAttachments = true;
         StateHasChanged();
+    }
+
+    private void OpenLinkedAccount()
+    {
+        if (!HasId(_linkedAccountId)) { return; }
+        var back = BuildBackValue();
+        Nav.NavigateTo($"/accounts/{_linkedAccountId}?back={back}");
+    }
+    private void OpenLinkedContact()
+    {
+        if (!HasId(_linkedContactId)) { return; }
+        var back = BuildBackValue();
+        Nav.NavigateTo($"/contacts/{_linkedContactId}?back={back}");
+    }
+    private void OpenLinkedPlan()
+    {
+        if (!HasId(_linkedPlanId)) { return; }
+        var back = BuildBackValue();
+        Nav.NavigateTo($"/savings-plans/{_linkedPlanId}?back={back}");
+    }
+    private void OpenLinkedSecurity()
+    {
+        if (!HasId(_linkedSecurityId)) { return; }
+        var back = BuildBackValue();
+        Nav.NavigateTo($"/securities/{_linkedSecurityId}?back={back}");
     }
 
     // Ribbon state
@@ -176,13 +239,50 @@ else
             }
         };
 
-        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Postings, Title = Localizer["Ribbon_Tab_Postings"], Groups = new(){ nav, filter, related } } };
+        var linked = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Linked"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_OpenAccount"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
+                    Disabled = _selectedPostingId == null || _linksLoading || !HasId(_linkedAccountId),
+                    Callback = () => { OpenLinkedAccount(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_OpenContact"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
+                    Disabled = _selectedPostingId == null || _linksLoading || !HasId(_linkedContactId),
+                    Callback = () => { OpenLinkedContact(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_OpenSavingsPlan"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
+                    Disabled = _selectedPostingId == null || _linksLoading || !HasId(_linkedPlanId),
+                    Callback = () => { OpenLinkedPlan(); return Task.CompletedTask; }
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_OpenSecurity"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
+                    Disabled = _selectedPostingId == null || _linksLoading || !HasId(_linkedSecurityId),
+                    Callback = () => { OpenLinkedSecurity(); return Task.CompletedTask; }
+                }
+            }
+        };
+
+        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Postings, Title = Localizer["Ribbon_Tab_Postings"], Groups = new(){ nav, filter, related, linked } } };
         StateHasChanged();
     }
 
     private enum PostingKind { Bank=0, Contact=1, SavingsPlan=2, Security=3 }
     private enum SecurityPostingSubType { Trade=0, Fee=1, Tax=2, Dividend=3 }
-    private sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
+    private sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid? GroupId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
+    private sealed record GroupLinksResponse(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -260,6 +360,7 @@ else
         _canLoadMore = true;
         _observerAttached = false; // reattach for new sentinel
         _selectedPostingId = null;
+        _linkedAccountId = _linkedContactId = _linkedPlanId = _linkedSecurityId = null;
     }
 
     [JSInvokable]
@@ -295,5 +396,13 @@ else
         finally { _loading=false; StateHasChanged(); }
     }
 
-    private void Back() => Nav.NavigateTo($"/accounts/{AccountId}");
+    private void Back()
+    {
+        if (!string.IsNullOrWhiteSpace(BackNav))
+        {
+            Nav.NavigateTo(BackNav!);
+            return;
+        }
+        Nav.NavigateTo($"/accounts/{AccountId}");
+    }
 }

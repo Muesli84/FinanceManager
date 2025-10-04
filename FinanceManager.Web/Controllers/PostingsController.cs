@@ -26,7 +26,9 @@ public sealed class PostingsController : ControllerBase
         _db = db; _current = current;
     }
 
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity);
+    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId);
+
+    public sealed record GroupLinksDto(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
     [HttpGet("account/{accountId:guid}")]
     public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
@@ -103,7 +105,8 @@ public sealed class PostingsController : ControllerBase
                     x.Recipient,
                     x.Description,
                     x.P.SecuritySubType,
-                    x.P.Quantity))
+                    x.P.Quantity,
+                    x.P.GroupId))
                 .ToListAsync(ct);
 
             return Ok(result);
@@ -168,7 +171,8 @@ public sealed class PostingsController : ControllerBase
                                 p.RecipientName ?? seOpt.RecipientName,
                                 p.Description ?? seOpt.BookingDescription,
                                 p.SecuritySubType,
-                                p.Quantity))
+                                p.Quantity,
+                                p.GroupId))
             .ToListAsync(ct);
         return Ok(result);
     }
@@ -211,7 +215,8 @@ public sealed class PostingsController : ControllerBase
                                 p.RecipientName ?? seOpt.RecipientName,
                                 p.Description ?? seOpt.BookingDescription,
                                 p.SecuritySubType,
-                                p.Quantity))
+                                p.Quantity,
+                                p.GroupId))
             .ToListAsync(ct);
         return Ok(result);
     }
@@ -254,8 +259,41 @@ public sealed class PostingsController : ControllerBase
                                 p.RecipientName ?? seOpt.RecipientName,
                                 p.Description ?? seOpt.BookingDescription,
                                 p.SecuritySubType,
-                                p.Quantity))
+                                p.Quantity,
+                                p.GroupId))
             .ToListAsync(ct);
         return Ok(result);
+    }
+
+    [HttpGet("group/{groupId:guid}")]
+    public async Task<ActionResult<GroupLinksDto>> GetGroupLinksAsync(Guid groupId, CancellationToken ct)
+    {
+        if (groupId == Guid.Empty) { return BadRequest(); }
+
+        var baseQuery = _db.Postings.AsNoTracking().Where(p => p.GroupId == groupId);
+        // Collect candidate ids
+        var accountIds = await baseQuery.Select(p => p.AccountId).Where(id => id != null).Select(id => id!.Value).Distinct().ToListAsync(ct);
+        var contactIds = await baseQuery.Select(p => p.ContactId).Where(id => id != null).Select(id => id!.Value).Distinct().ToListAsync(ct);
+        var planIds = await baseQuery.Select(p => p.SavingsPlanId).Where(id => id != null).Select(id => id!.Value).Distinct().ToListAsync(ct);
+        var securityIds = await baseQuery.Select(p => p.SecurityId).Where(id => id != null).Select(id => id!.Value).Distinct().ToListAsync(ct);
+
+        // Ownership guard: ensure at least one entity of the group belongs to current user
+        var anyOwned =
+            (accountIds.Count > 0 && await _db.Accounts.AsNoTracking().AnyAsync(a => accountIds.Contains(a.Id) && a.OwnerUserId == _current.UserId, ct)) ||
+            (contactIds.Count > 0 && await _db.Contacts.AsNoTracking().AnyAsync(c => contactIds.Contains(c.Id) && c.OwnerUserId == _current.UserId, ct)) ||
+            (planIds.Count > 0 && await _db.SavingsPlans.AsNoTracking().AnyAsync(s => planIds.Contains(s.Id) && s.OwnerUserId == _current.UserId, ct)) ||
+            (securityIds.Count > 0 && await _db.Securities.AsNoTracking().AnyAsync(s => securityIds.Contains(s.Id) && s.OwnerUserId == _current.UserId, ct));
+
+        if (!anyOwned)
+        {
+            return NotFound();
+        }
+
+        var dto = new GroupLinksDto(
+            accountIds.FirstOrDefault(),
+            contactIds.FirstOrDefault(),
+            planIds.FirstOrDefault(),
+            securityIds.FirstOrDefault());
+        return Ok(dto);
     }
 }

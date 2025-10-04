@@ -23,4 +23,10 @@
   <data name="Ribbon_Back" xml:space="preserve"><value>Zurück</value></data>
   <data name="Ribbon_ClearSearch" xml:space="preserve"><value>Suche leeren</value></data>
   <data name="Ribbon_Tab_Postings" xml:space="preserve"><value>Buchungen</value></data>
+  <!-- Linked group -->
+  <data name="Ribbon_Group_Linked" xml:space="preserve"><value>Verknüpfte Informationen</value></data>
+  <data name="Ribbon_OpenAccount" xml:space="preserve"><value>Konto öffnen</value></data>
+  <data name="Ribbon_OpenContact" xml:space="preserve"><value>Kontakt öffnen</value></data>
+  <data name="Ribbon_OpenSavingsPlan" xml:space="preserve"><value>Sparplan öffnen</value></data>
+  <data name="Ribbon_OpenSecurity" xml:space="preserve"><value>Wertpapier öffnen</value></data>
 </root>

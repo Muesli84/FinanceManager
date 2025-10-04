@@ -118,6 +118,7 @@
 
 @code {
     [Parameter] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
     private SavingsPlanEditModel _model = new();
     private bool IsEdit => Id.HasValue;
     private string? _error;
@@ -397,6 +398,11 @@
 
     private void Back()
     {
+        if (!string.IsNullOrWhiteSpace(BackNav))
+        {
+            Navigation.NavigateTo(Uri.UnescapeDataString(BackNav!), true);
+            return;
+        }
         if (_returnDraftId != null && _returnEntryId != null)
         {
             Navigation.NavigateTo($"/statement-drafts/{_returnDraftId}/entries/{_returnEntryId}", true);

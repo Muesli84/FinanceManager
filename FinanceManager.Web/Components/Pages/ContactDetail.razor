@@ -88,7 +88,7 @@ else
                 <div class="error" style="margin-top:.3rem;">@_aliasError</div>
             }
         </div>
-        @if (!string.IsNullOrEmpty(_error))
+        @if (!string.IsNullOrWhiteSpace(_error))
         {
             <div class="error" style="margin-top:.75rem;">@_error</div>
         }
@@ -126,6 +126,7 @@ else
 
 @code {
     [Parameter] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
 
     // Ribbon state
     private enum TabId { Contact }
@@ -247,9 +248,9 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
+        ParseQueryParams();
         if (CurrentUser.IsAuthenticated)
         {
-            ParseQueryParams();
             await LoadCategoriesAsync();
 
             if (IsEdit)
@@ -298,6 +299,7 @@ else
         }
         if (Guid.TryParse(query.Get("draftId"), out var did)) { _prefillDraftId = did; }
         if (Guid.TryParse(query.Get("entryId"), out var eid)) { _prefillEntryId = eid; }
+        BackNav = query.Get("back");
     }
 
     private async Task LoadCategoriesAsync()
@@ -337,7 +339,7 @@ else
                         await AfterSaveAssignToDraftIfNeeded(dto.Id);
                     }
                 }
-                else _error = Localizer["ErrorCreateFailed"];
+                else _error = Localizer["ErrorCreateFailed"]; 
             }
         }
         catch (Exception ex)
@@ -385,6 +387,11 @@ else
 
     private void Back()
     {
+        if (!string.IsNullOrWhiteSpace(BackNav))
+        {
+            Navigation.NavigateTo(Uri.UnescapeDataString(BackNav!), forceLoad: true);
+            return;
+        }
         if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
         {
             Navigation.NavigateTo($"/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}", forceLoad: true);
