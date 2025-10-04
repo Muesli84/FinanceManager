@@ -9,6 +9,11 @@
 
 <Ribbon TTabEnum="PostingsSavingsPlan.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
+@if (_exporting)
+{
+    <div class="small-loading" style="margin:.5rem 0;">@Localizer["Loading"]</div>
+}
+
 <h3>@Localizer["Title"]</h3>
 <div style="margin-bottom:.75rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
     <input placeholder='@Localizer["SearchPlaceholder"]' @bind="_search" @bind:after="OnSearchChanged" style="min-width:260px;" />
@@ -77,6 +82,8 @@ else
     private string _search = string.Empty;
     private CancellationTokenSource? _searchCts;
 
+    private bool _exporting;
+
     // Ribbon state
     private enum TabId { Postings }
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
@@ -119,6 +126,23 @@ else
             BuildRibbon();
         }
         catch { }
+    }
+
+    private async Task ExportAsync(string format)
+    {
+        if (_exporting) { return; }
+        _exporting = true; StateHasChanged();
+        try
+        {
+            var parts = new List<string>();
+            parts.Add($"format={Uri.EscapeDataString(format)}");
+            if (!string.IsNullOrWhiteSpace(_search)) { parts.Add($"q={Uri.EscapeDataString(_search)}"); }
+            var qs = parts.Count > 0 ? ("?" + string.Join('&', parts)) : string.Empty;
+            var url = $"/api/postings/savings-plan/{PlanId}/export{qs}";
+            var js = $@"(function(){{var a=document.createElement('a'); a.href={System.Text.Json.JsonSerializer.Serialize(url)}; a.download=''; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>document.body.removeChild(a),200);}})()";
+            try { await JS.InvokeVoidAsync("eval", js); } catch { Nav.NavigateTo(url, forceLoad: true); }
+        }
+        finally { _exporting = false; StateHasChanged(); }
     }
 
     private void BuildRibbon()
@@ -189,7 +213,29 @@ else
             }
         };
 
-        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Postings, Title = Localizer["Ribbon_Tab_Postings"], Groups = new(){ nav, filter, linked } } };
+        var export = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Export"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_ExportCsv"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#download'/></svg>",
+                    Disabled = _loading || _exporting,
+                    Callback = () => ExportAsync("csv")
+                },
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_ExportExcel"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#download'/></svg>",
+                    Disabled = _loading || _exporting,
+                    Callback = () => ExportAsync("xlsx")
+                }
+            }
+        };
+
+        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Postings, Title = Localizer["Ribbon_Tab_Postings"], Groups = new(){ nav, filter, linked, export } } };
         StateHasChanged();
     }
 

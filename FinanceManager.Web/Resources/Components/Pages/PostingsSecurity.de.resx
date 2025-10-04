@@ -34,4 +34,8 @@
   <data name="Ribbon_OpenContact" xml:space="preserve"><value>Kontakt öffnen</value></data>
   <data name="Ribbon_OpenSavingsPlan" xml:space="preserve"><value>Sparplan öffnen</value></data>
   <data name="Ribbon_OpenSecurity" xml:space="preserve"><value>Wertpapier öffnen</value></data>
+  <!-- Export -->
+  <data name="Ribbon_Group_Export" xml:space="preserve"><value>Export</value></data>
+  <data name="Ribbon_ExportCsv" xml:space="preserve"><value>CSV exportieren</value></data>
+  <data name="Ribbon_ExportExcel" xml:space="preserve"><value>Excel exportieren</value></data>
 </root>

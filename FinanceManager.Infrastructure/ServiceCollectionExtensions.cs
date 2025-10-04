@@ -64,6 +64,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationService, NotificationService>(); // new
         services.AddScoped<IAttachmentService, AttachmentService>(); // new
         services.AddScoped<IAttachmentCategoryService, AttachmentCategoryService>(); // new
+        services.AddScoped<IPostingExportService, PostingExportService>(); // new
         return services;
     }
 }
