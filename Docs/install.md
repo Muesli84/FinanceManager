@@ -13,7 +13,7 @@
 
 ### Projektspezifisch (FinanceManager)
 - Zwingend: `Jwt:Key` (geheimer Schlüssel zur Token-Signierung). Ohne diesen startet die App nicht.
-- Zwingend: `AlphaVantage:ApiKey` (für Kursabruf). Ohne Schlüssel schlägt der Start fehl (Service wird bei DI erstellt).
+- Optional: AlphaVantage‑Schlüssel (für Kursabruf). Dieser wird im Setup-Bereich unter „Profil“ pro Benutzer hinterlegt; ein Administrator kann seinen Schlüssel für alle Benutzer freigeben. Ohne freigegebenen Admin‑Schlüssel ruht der Kurs‑Worker.
 - Optional: `Api:BaseAddress` (falls die App hinter einem Proxy läuft und der interne HttpClient absolute Basis benötigt).
 - Für Reverse-Proxy/TLS-Termination: `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` (damit `Request.IsHttps` korrekt erkannt wird → Secure-Cookie `fm_auth`).
 
@@ -63,7 +63,6 @@ Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
 # Erforderliche App-Settings
 Environment=Jwt:Key=__SET_A_RANDOM_LONG_SECRET__
 Environment=ConnectionStrings:Default=Data Source=/var/www/financemanager/app.db
-Environment=AlphaVantage:ApiKey=__YOUR_ALPHA_VANTAGE_KEY__
 # Forwarded Headers für TLS am Reverse Proxy (setzt Request.IsHttps richtig)
 Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 
@@ -125,7 +124,7 @@ sudo ln -s /etc/nginx/sites-available/financemanager /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Dateirechte: Stelle sicher, dass `/var/www/financemanager` für `www-data` lesbar ist und der DB‑Ordner schreibbar (z. B. `chown -R www-data:www-data /var/www/financemanager`).
+Dateirechte: Stelle sicher, dass `/var/www/financemanager` für `www-data` lesbar ist und der DB‑Ordner schreibbar (z. B. `chown -R www-data:www-data /var/www/financemanager`).\
 
 ---
 
@@ -190,7 +189,6 @@ Hinweise:
 ```
 Environment=Jwt:Key=__SET_A_RANDOM_LONG_SECRET__
 Environment=ConnectionStrings:Default=Data Source=/var/www/financemanager/app.db
-Environment=AlphaVantage:ApiKey=__YOUR_ALPHA_VANTAGE_KEY__
 Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
 Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 ```
@@ -222,7 +220,10 @@ Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 - Windows: Event Viewer → Windows Logs → Application
 - Browser: http://localhost:5000 (Kestrel) oder https://example.com (über Nginx/IIS)
 - Datenbank: Beim ersten Start wird die SQLite‑DB erstellt und migriert. Schreibrechte prüfen, falls Fehler.
-- AlphaVantage Limits: Bei API‑Limitierungen pausiert der Preis‑Worker automatisch (Log‑Warnung). Gültigen API‑Key sicherstellen.
+- AlphaVantage Hinweise:
+  - Schlüssel im Setup‑Bereich unter „Profil“ hinterlegen (Benutzer) bzw. als Admin für alle freigeben.
+  - Ohne freigegebenen Admin‑Schlüssel ruht der Kurs‑Worker; Benutzeraufrufe verwenden ihren eigenen Schlüssel.
+  - Bei API‑Limitierungen pausiert der Kurs‑Worker automatisch (Log‑Warnung).
 
 ---
 
