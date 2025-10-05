@@ -1,0 +1,137 @@
+@page "/postings/{Id:guid}"
+@rendermode InteractiveServer
+@inject NavigationManager Nav
+@inject IServiceProvider Services
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.PostingDetail> Localizer
+@using FinanceManager.Web.Components.Shared
+@using FinanceManager.Domain.Attachments
+@using FinanceManager.Web.ViewModels
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<Ribbon TTabEnum="PostingDetail.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
+<h3>@Localizer["Title"]</h3>
+@if(_vm?.Loading ?? true)
+{
+    <p>@Localizer["Loading"]</p>
+}
+else if(_vm!.Detail == null)
+{
+    <p>@Localizer["NotFound"]</p>
+}
+else
+{
+    <div style="margin:.5rem 0 1rem 0;">
+        <div><strong>@Localizer["Date"]:</strong> @_vm.Detail!.BookingDate.ToShortDateString()</div>
+        <div><strong>@Localizer["Amount"]:</strong> @_vm.Detail!.Amount</div>
+        <div><strong>@Localizer["Kind"]:</strong> @_vm.Detail!.Kind (@_vm.Detail!.SecuritySubType)</div>
+        <div><strong>@Localizer["Subject"]:</strong> @_vm.Detail!.Subject</div>
+        <div><strong>@Localizer["Recipient"]:</strong> @_vm.Detail!.RecipientName</div>
+        <div><strong>@Localizer["Description"]:</strong> @_vm.Detail!.Description</div>
+    </div>
+    <h4 id="attachments-section">@Localizer["Attachments"]</h4>
+    <AttachmentsPanel ParentKind="@AttachmentEntityKind.Posting" ParentId="@Id" />
+}
+
+@code{
+    [Parameter] public Guid Id { get; set; }
+    [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
+
+    private PostingDetailViewModel? _vm;
+
+    // Ribbon state
+    private enum TabId { Detail }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Detail;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_vm is not null)
+        {
+            _vm.StateChanged -= VmOnStateChanged;
+            _vm.AuthenticationRequired -= VmOnAuthenticationRequired;
+            await _vm.DisposeAsync();
+        }
+        _vm = ActivatorUtilities.CreateInstance<PostingDetailViewModel>(Services);
+        _vm.StateChanged += VmOnStateChanged;
+        _vm.AuthenticationRequired += VmOnAuthenticationRequired;
+        _vm.Configure(Id);
+        await _vm.InitializeAsync();
+        RebuildRibbon();
+    }
+
+    private void VmOnAuthenticationRequired(object? sender, string? returnUrl)
+    {
+        var back = Nav.ToBaseRelativePath(Nav.Uri);
+        var url = string.IsNullOrWhiteSpace(back) ? "/login" : $"/login?returnUrl={Uri.EscapeDataString(back)}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void VmOnStateChanged(object? sender, EventArgs e)
+    {
+        RebuildRibbon();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
+        {
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
+            {
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
+                {
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
+            }
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Detail,
+                Title = Localizer["Ribbon_Tab_Detail"],
+                Groups = groups
+            }
+        };
+        StateHasChanged();
+    }
+
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "Back": Back(); break;
+            case "OpenAccount": if (_vm!.LinkedAccountId != null) Nav.NavigateTo($"/accounts/{_vm.LinkedAccountId}?back={BuildBackValue()}"); break;
+            case "OpenContact": if (_vm!.LinkedContactId != null) Nav.NavigateTo($"/contacts/{_vm.LinkedContactId}?back={BuildBackValue()}"); break;
+            case "OpenSavingsPlan": if (_vm!.LinkedPlanId != null) Nav.NavigateTo($"/savings-plans/{_vm.LinkedPlanId}?back={BuildBackValue()}"); break;
+            case "OpenSecurity": if (_vm!.LinkedSecurityId != null) Nav.NavigateTo($"/securities/{_vm.LinkedSecurityId}?back={BuildBackValue()}"); break;
+        }
+    }
+
+    private string BuildBackValue() => Uri.EscapeDataString("/" + Nav.ToBaseRelativePath(Nav.Uri));
+
+    private void Back()
+    {
+        if (!string.IsNullOrWhiteSpace(BackNav))
+        {
+            Nav.NavigateTo(BackNav!);
+            return;
+        }
+        if (_vm?.LinkedAccountId != null) { Nav.NavigateTo($"/accounts/{_vm.LinkedAccountId}"); return; }
+        if (_vm?.LinkedContactId != null) { Nav.NavigateTo($"/contacts/{_vm.LinkedContactId}"); return; }
+        if (_vm?.LinkedPlanId != null) { Nav.NavigateTo($"/savings-plans/{_vm.LinkedPlanId}"); return; }
+        if (_vm?.LinkedSecurityId != null) { Nav.NavigateTo($"/securities/{_vm.LinkedSecurityId}"); return; }
+        Nav.NavigateTo("/");
+    }
+}

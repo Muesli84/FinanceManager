@@ -61,9 +61,20 @@ public sealed class ContactService : IContactService
         }
 
         // Delete attachments for this contact
-        await _db.Attachments
-            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == contact.Id)
-            .ExecuteDeleteAsync(ct);
+        var attQuery = _db.Attachments
+            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == contact.Id);
+        if (_db.Database.IsRelational())
+        {
+            await attQuery.ExecuteDeleteAsync(ct);
+        }
+        else
+        {
+            var atts = await attQuery.ToListAsync(ct);
+            if (atts.Count > 0)
+            {
+                _db.Attachments.RemoveRange(atts);
+            }
+        }
 
         _db.Contacts.Remove(contact);
         await _db.SaveChangesAsync(ct);

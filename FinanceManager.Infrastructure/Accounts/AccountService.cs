@@ -63,9 +63,17 @@ public sealed class AccountService : IAccountService
         var bankContactId = account.BankContactId;
 
         // Delete attachments linked to this account
-        await _db.Attachments
-            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Account && a.EntityId == account.Id)
-            .ExecuteDeleteAsync(ct);
+        var accountAttQuery = _db.Attachments
+            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Account && a.EntityId == account.Id);
+        if (_db.Database.IsRelational())
+        {
+            await accountAttQuery.ExecuteDeleteAsync(ct);
+        }
+        else
+        {
+            var atts = await accountAttQuery.ToListAsync(ct);
+            if (atts.Count > 0) _db.Attachments.RemoveRange(atts);
+        }
 
         _db.Accounts.Remove(account);
         await _db.SaveChangesAsync(ct);
@@ -77,9 +85,17 @@ public sealed class AccountService : IAccountService
             if (bankContact != null)
             {
                 // Delete attachments linked to the bank contact being auto-removed
-                await _db.Attachments
-                    .Where(a => a.OwnerUserId == bankContact.OwnerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == bankContact.Id)
-                    .ExecuteDeleteAsync(ct);
+                var contactAttQuery = _db.Attachments
+                    .Where(a => a.OwnerUserId == bankContact.OwnerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == bankContact.Id);
+                if (_db.Database.IsRelational())
+                {
+                    await contactAttQuery.ExecuteDeleteAsync(ct);
+                }
+                else
+                {
+                    var catts = await contactAttQuery.ToListAsync(ct);
+                    if (catts.Count > 0) _db.Attachments.RemoveRange(catts);
+                }
 
                 _db.Contacts.Remove(bankContact);
                 await _db.SaveChangesAsync(ct);

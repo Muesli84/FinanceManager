@@ -6,6 +6,7 @@ using System.Text.Json;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using FinanceManager.Application;
 
 namespace FinanceManager.Tests.ViewModels;
 
@@ -36,6 +37,21 @@ public sealed class SecurityPricesViewModelTests
         public HttpClient CreateClient(string name) => _client;
     }
 
+    private sealed class TestCurrentUserService : ICurrentUserService
+    {
+        public Guid UserId { get; set; } = Guid.NewGuid();
+        public string? PreferredLanguage { get; set; }
+        public bool IsAuthenticated { get; set; } = true;
+        public bool IsAdmin { get; set; } = false;
+    }
+
+    private static IServiceProvider CreateSp()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<ICurrentUserService>(new TestCurrentUserService());
+        return services.BuildServiceProvider();
+    }
+
     private static string PricesJson(int count, DateTime? start = null)
     {
         var s = start ?? new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -62,7 +78,7 @@ public sealed class SecurityPricesViewModelTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
         var factory = new TestHttpClientFactory(client);
-        var sp = new ServiceCollection().BuildServiceProvider();
+        var sp = CreateSp();
         var vm = new SecurityPricesViewModel(sp, factory);
         var events = 0;
         vm.StateChanged += (_, __) => events++;
@@ -98,7 +114,7 @@ public sealed class SecurityPricesViewModelTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
         var factory = new TestHttpClientFactory(client);
-        var sp = new ServiceCollection().BuildServiceProvider();
+        var sp = CreateSp();
         var vm = new SecurityPricesViewModel(sp, factory);
         vm.ForSecurity(Guid.NewGuid());
 
@@ -118,7 +134,7 @@ public sealed class SecurityPricesViewModelTests
     public void OpenBackfillDialog_SetsDefaultsAndOpens()
     {
         var factory = new TestHttpClientFactory(CreateHttpClient(_ => new HttpResponseMessage(HttpStatusCode.OK)));
-        var sp = new ServiceCollection().BuildServiceProvider();
+        var sp = CreateSp();
         var vm = new SecurityPricesViewModel(sp, factory);
 
         vm.OpenBackfillDialogDefaultPeriod();
@@ -134,7 +150,7 @@ public sealed class SecurityPricesViewModelTests
     public async Task ConfirmBackfill_ValidationErrors()
     {
         var factory = new TestHttpClientFactory(CreateHttpClient(_ => new HttpResponseMessage(HttpStatusCode.OK)));
-        var sp = new ServiceCollection().BuildServiceProvider();
+        var sp = CreateSp();
         var vm = new SecurityPricesViewModel(sp, factory);
         vm.ForSecurity(Guid.NewGuid());
 
@@ -171,7 +187,7 @@ public sealed class SecurityPricesViewModelTests
             };
         });
         var factory = new TestHttpClientFactory(client);
-        var sp = new ServiceCollection().BuildServiceProvider();
+        var sp = CreateSp();
         var vm = new SecurityPricesViewModel(sp, factory);
         vm.ForSecurity(Guid.NewGuid());
         vm.OpenBackfillDialogDefaultPeriod();
@@ -190,7 +206,7 @@ public sealed class SecurityPricesViewModelTests
     {
         var client = CreateHttpClient(req => new HttpResponseMessage(HttpStatusCode.InternalServerError));
         var factory = new TestHttpClientFactory(client);
-        var sp = new ServiceCollection().BuildServiceProvider();
+        var sp = CreateSp();
         var vm = new SecurityPricesViewModel(sp, factory);
         vm.ForSecurity(Guid.NewGuid());
         vm.OpenBackfillDialogDefaultPeriod();

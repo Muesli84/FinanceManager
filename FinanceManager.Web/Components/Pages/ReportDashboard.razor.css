@@ -1,0 +1,189 @@
+/* Styles scoped to ReportDashboard */
+
+/* Modal overlay + dialog */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.modal {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 28px #000a, 0 0 0 1px #000 inset;
+  padding: 1rem 1rem .8rem 1rem;
+  max-width: 720px;
+  width: 100%;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+  margin-top: .75rem;
+}
+
+.small-loading, .small-empty { font-size: .85rem; opacity: .8; padding: .35rem 0; }
+
+.tabs-bar { display: flex; gap: .35rem; margin-bottom: .5rem; }
+.tab-btn { background: var(--bg-alt); border:1px solid var(--border); padding:.35rem .6rem; border-radius: 999px; font-size: .8rem; }
+.tab-btn.active { background: #253041; border-color: var(--accent); }
+
+.option-list { max-height: 320px; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: #141519; padding: .35rem .4rem; }
+
+/* Result overlay for loading */
+.result-box { position: relative; }
+.query-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(1px); display:flex; align-items:center; justify-content:center; z-index: 10; }
+
+/* Filters panel layout */
+.filters-panel {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+  margin: 0 0 1rem 0;
+}
+
+.filter-group {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem .9rem;
+}
+
+.filter-group .group-title {
+  font-size: .8rem;
+  text-transform: uppercase;
+  opacity: .75;
+  letter-spacing: .05em;
+  font-weight: 700;
+  margin: 0 0 .5rem 0;
+}
+
+/* Wide group spans two columns */
+.filter-group.wide {
+  grid-column: span 2;
+}
+
+/* Rows inside filter panel */
+.filters-panel .row {
+  margin: .5rem 0;
+}
+
+.filters-panel .row.inline {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.filters-panel .month-row input[type="month"] {
+  width: auto;
+  min-width: 140px;
+}
+
+.take-label .take-input {
+  width: 80px;
+}
+
+/* Posting kinds multi select */
+.multi-kind-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem .75rem;
+}
+
+.mk-item {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .9rem;
+}
+
+.mk-item.line {
+  display: flex;
+  padding: .35rem .25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.mk-item.line input {
+    width:unset;
+}
+
+/* Toggle (expand/collapse) button in table */
+.toggle-btn {
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.toggle-btn .ico {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+/* Make small icon buttons actually small */
+.icon-btn.small {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.icon-btn.small svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Mini chart styling */
+.mini-chart {
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  border-radius: var(--radius);
+  padding: .35rem .5rem;
+  margin: 0 0 .6rem 0;
+}
+
+.mini-chart .bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 70px; /* matches computed scale target */
+  overflow: hidden;
+}
+
+.mini-chart .bar-wrap {
+  flex: 1 1 0;
+  display: flex;
+  align-items: flex-end;
+  min-width: 3px;
+}
+
+.mini-chart .bar-inner {
+  width: 100%;
+  background: #4dabf7;
+  border-radius: 3px 3px 0 0;
+}
+
+.mini-chart .bar-inner.pos { background: #51cf66; }
+.mini-chart .bar-inner.neg { background: #ff6b6b; }
+
+/* Table tweaks */
+.report-table .child-label {
+  padding-left: .5rem;
+}
+
+.report-table .delta {
+  opacity: .9;
+}

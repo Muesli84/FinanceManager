@@ -30,6 +30,51 @@ public sealed class PostingsController : ControllerBase
 
     public sealed record GroupLinksDto(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<PostingDto>> GetById(Guid id, CancellationToken ct)
+    {
+        var p = await _db.Postings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (p == null) { return NotFound(); }
+
+        bool owned = false;
+        if (p.AccountId.HasValue)
+        {
+            owned |= await _db.Accounts.AsNoTracking().AnyAsync(a => a.Id == p.AccountId.Value && a.OwnerUserId == _current.UserId, ct);
+        }
+        if (!owned && p.ContactId.HasValue)
+        {
+            owned |= await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == p.ContactId.Value && c.OwnerUserId == _current.UserId, ct);
+        }
+        if (!owned && p.SavingsPlanId.HasValue)
+        {
+            owned |= await _db.SavingsPlans.AsNoTracking().AnyAsync(s => s.Id == p.SavingsPlanId.Value && s.OwnerUserId == _current.UserId, ct);
+        }
+        if (!owned && p.SecurityId.HasValue)
+        {
+            owned |= await _db.Securities.AsNoTracking().AnyAsync(s => s.Id == p.SecurityId.Value && s.OwnerUserId == _current.UserId, ct);
+        }
+        if (!owned) { return NotFound(); }
+
+        var se = await _db.StatementEntries.AsNoTracking().FirstOrDefaultAsync(se => se.Id == p.SourceId, ct);
+        var dto = new PostingDto(
+            p.Id,
+            p.BookingDate,
+            p.Amount,
+            p.Kind,
+            p.AccountId,
+            p.ContactId,
+            p.SavingsPlanId,
+            p.SecurityId,
+            p.SourceId,
+            p.Subject ?? se?.Subject,
+            p.RecipientName ?? se?.RecipientName,
+            p.Description ?? se?.BookingDescription,
+            p.SecuritySubType,
+            p.Quantity,
+            p.GroupId);
+        return Ok(dto);
+    }
+
     [HttpGet("account/{accountId:guid}")]
     public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {

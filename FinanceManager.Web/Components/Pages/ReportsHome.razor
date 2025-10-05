@@ -1,11 +1,12 @@
 @page "/reports"
 @rendermode InteractiveServer
-@inject HttpClient Http
 @inject NavigationManager Nav
+@inject IServiceProvider Services
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ReportsHome> Localizer
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Domain
 @using FinanceManager.Domain.Reports
+@using FinanceManager.Web.ViewModels
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -16,18 +17,18 @@
 
 <h2 style="margin-top:0;">@Localizer["Heading"]</h2>
 
-@if(_loading)
+@if(_vm?.Loading ?? true)
 {
     <p>@Localizer["Loading"]</p>
 }
-else if(_favorites.Count == 0)
+else if(_vm!.Favorites.Count == 0)
 {
     <div class="empty-info">@Localizer["NoFavorites"]</div>
 }
 else
 {
     <ul class="fav-grid">
-        @foreach(var f in _favorites)
+        @foreach(var f in _vm!.Favorites)
         {
             <li>
                 <button class="fav-card" @onclick="(()=>OpenFavorite(f.Id))" title="@Localizer["OpenFavorite"]">
@@ -45,56 +46,72 @@ else
     private TabId _activeTab = TabId.Reports;
     private Task OnActiveTabChanged(TabId t){ _activeTab = t; return Task.CompletedTask; }
 
-    private readonly List<FavoriteDto> _favorites = new();
-    private bool _loading;
+    private ReportsHomeViewModel? _vm;
 
     protected override async Task OnInitializedAsync()
     {
-        _loading = true;
-        try
+        if (_vm is not null)
         {
-            var list = await Http.GetFromJsonAsync<List<FavoriteDto>>("/api/report-favorites") ?? new();
-            _favorites.Clear();
-            _favorites.AddRange(list.OrderBy(f => f.Name));
+            _vm.StateChanged -= VmOnStateChanged;
+            _vm.AuthenticationRequired -= VmOnAuthenticationRequired;
+            await _vm.DisposeAsync();
         }
-        finally
-        {
-            _loading = false;
-            BuildRibbon();
-        }
+        _vm = ActivatorUtilities.CreateInstance<ReportsHomeViewModel>(Services);
+        _vm.StateChanged += VmOnStateChanged;
+        _vm.AuthenticationRequired += VmOnAuthenticationRequired;
+        await _vm.InitializeAsync();
+        BuildRibbon();
+    }
+
+    private void VmOnAuthenticationRequired(object? sender, string? returnUrl)
+    {
+        var url = "/login";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void VmOnStateChanged(object? sender, EventArgs e)
+    {
+        BuildRibbon();
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void BuildRibbon()
     {
-        var actions = new Ribbon<TabId>.RibbonGroup
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Title = Localizer["Ribbon_Group_Actions"],
-            Items = new()
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_Reload"], IconSvg="<svg><use href='/icons/sprite.svg#refresh'/></svg>", Callback=()=> { _=ReloadAsync(); return Task.CompletedTask; } },
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_NewReport"], IconSvg="<svg><use href='/icons/sprite.svg#plus'/></svg>", Size=Ribbon<TabId>.RibbonItemSize.Large, Callback=()=> { NewReportEdit(); return Task.CompletedTask; } }
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
+                {
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
             }
-        };
-        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id=TabId.Reports, Title=Localizer["Ribbon_Tab"], Groups = new(){ actions } } };
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
+        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id=TabId.Reports, Title=Localizer["Ribbon_Tab"], Groups = groups } };
     }
 
-    private Task ReloadAsync()
+    private void HandleRibbonAction(string action)
     {
-        _ = OnInitializedAsync();
-        return Task.CompletedTask;
+        switch (action)
+        {
+            case "Reload": _ = _vm!.ReloadAsync(); break;
+            case "NewReport": Nav.NavigateTo("/reports/dashboard?edit=true"); break;
+        }
     }
 
     private void OpenFavorite(Guid id)
     {
         Nav.NavigateTo($"/reports/dashboard?favoriteId={id}&edit=false");
     }
-
-    private void NewReportEdit()
-    {
-        Nav.NavigateTo("/reports/dashboard?edit=true");
-    }
-
-    private sealed record FavoriteDto(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds);
 }
 
 <style>

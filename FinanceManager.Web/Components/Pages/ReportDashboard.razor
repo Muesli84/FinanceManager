@@ -4,20 +4,22 @@
 @using System.Web
 @using FinanceManager.Domain
 @using FinanceManager.Domain.Reports
-@inject HttpClient Http
 @inject NavigationManager Nav
+@inject HttpClient Http
+@inject IServiceProvider Services
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ReportDashboard> Localizer
 @using FinanceManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components
+@using FinanceManager.Web.ViewModels
 
-<PageTitle>@(_activeFavoriteId.HasValue && !string.IsNullOrWhiteSpace(_favoriteName) ? _favoriteName : Localizer["PageTitle"])</PageTitle>
+<PageTitle>@((_vm?.ActiveFavoriteId.HasValue ?? false) && !string.IsNullOrWhiteSpace(_vm?.FavoriteName) ? _vm!.FavoriteName : Localizer["PageTitle"])</PageTitle>
 
 <Ribbon TTabEnum="ReportDashboard.TabId"
         Tabs="_tabs"
         ActiveTab="_activeTab"
         ActiveTabChanged="OnActiveTabChanged" />
 
-<h2 style="margin-top:0;">@(string.IsNullOrWhiteSpace(_favoriteName) ? Localizer["Heading"] : _favoriteName.Trim())</h2>
+<h2 style="margin-top:0;">@(string.IsNullOrWhiteSpace(_vm?.FavoriteName) ? Localizer["Heading"] : _vm!.FavoriteName.Trim())</h2>
 
 @if(!_loaded)
 {
@@ -76,27 +78,27 @@ else
     }
 
     <div class="result-box">
-        @if(_queryBusy)
+        @if(_vm?.IsBusy == true)
         {
             <div class="query-overlay">@Localizer["Loading"]</div>
         }
-        @if(!_queryBusy && _points.Count == 0)
+        @if(!(_vm?.IsBusy ?? false) && (_vm?.Points.Count ?? 0) == 0)
         {
             <div class="empty-info">@Localizer["NoData"]</div>
         }
-        else if(_points.Count > 0)
+        else if((_vm?.Points.Count ?? 0) > 0)
         {
             @if(_showChart)
             {
                 <div class="mini-chart" aria-label="@Localizer["Aria_Chart"]">
-                    @{ var byPeriod = _points.Where(p=>p.ParentGroupKey==null || p.GroupKey.StartsWith("Type:")).GroupBy(p=>p.PeriodStart).Select(g=> new { g.Key, Sum = g.Where(x=>x.ParentGroupKey==null || x.GroupKey.StartsWith("Type:")).Sum(x=>x.Amount) }).OrderBy(x=>x.Key).ToList();
+                    @{ var byPeriod = _vm!.GetChartByPeriod();
                        var max = byPeriod.Select(x=>Math.Abs(x.Sum)).DefaultIfEmpty(0m).Max();
                        var scale = max==0?0:70m/max; }
                     <div class="bars">
                         @foreach(var bp in byPeriod)
                         {
                             var h = bp.Sum>0 ? (int)Math.Round((double)(bp.Sum*scale)) : (int)Math.Round((double)(-bp.Sum*scale));
-                            <div class="bar-wrap" title="@bp.Key.ToString("yyyy-MM-dd") @bp.Sum">
+                            <div class="bar-wrap" title="@bp.PeriodStart.ToString("yyyy-MM-dd") @bp.Sum">
                                 <div class="bar-inner @(bp.Sum>=0?"pos":"neg")" style="height:@(h)px"></div>
                             </div>
                         }
@@ -115,16 +117,16 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var top in TopLevelRows)
+                    @foreach (var top in _vm!.GetTopLevelRows())
                     {
-                        var rowClass = IsNegativeRow(top) ? "neg" : string.Empty;
-                        var hasChildren = HasChildren(top.GroupKey);
-                        var expanded = hasChildren && _expanded.TryGetValue(top.GroupKey, out var exTop) && exTop;
+                        var rowClass = ReportDashboardViewModel.IsNegative(top) ? "neg" : string.Empty;
+                        var hasChildren = _vm!.HasChildren(top.GroupKey);
+                        var expanded = hasChildren && _vm!.IsExpanded(top.GroupKey);
                         <tr class="@rowClass @(top.GroupKey.StartsWith("Type:")?"type-row": (top.GroupKey.StartsWith("Category:")?"category-row":"entity-row"))">
                             <td>
                                 @if(hasChildren)
                                 {
-                                    <button type="button" class="toggle-btn" @onclick="(()=>Toggle(top.GroupKey))" title="@(expanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@expanded">
+                                    <button type="button" class="toggle-btn" @onclick="(()=>_vm!.ToggleExpanded(top.GroupKey))" title="@(expanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@expanded">
                                         <svg class="ico"><use href="/icons/sprite.svg#@(expanded?"chevron-down":"chevron-right")" /></svg>
                                     </button>
                                 }
@@ -137,16 +139,16 @@ else
                         </tr>
                         @if(hasChildren && expanded)
                         {
-                            foreach(var child in ChildRows(top.GroupKey))
+                            foreach(var child in _vm!.GetChildRows(top.GroupKey))
                             {
-                                var childCls = IsNegativeRow(child) ? "neg" : string.Empty;
-                                var childHasChildren = HasChildren(child.GroupKey);
-                                var childExpanded = childHasChildren && _expanded.TryGetValue(child.GroupKey, out var exCh) && exCh;
+                                var childCls = ReportDashboardViewModel.IsNegative(child) ? "neg" : string.Empty;
+                                var childHasChildren = _vm!.HasChildren(child.GroupKey);
+                                var childExpanded = childHasChildren && _vm!.IsExpanded(child.GroupKey);
                                 <tr class="child-row @childCls @(child.GroupKey.StartsWith("Category:")?"category-row":"entity-row")">
                                     <td>
                                         @if(childHasChildren)
                                         {
-                                            <button type="button" class="toggle-btn" @onclick="(()=>Toggle(child.GroupKey))" title="@(childExpanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@childExpanded">
+                                            <button type="button" class="toggle-btn" @onclick="(()=>_vm!.ToggleExpanded(child.GroupKey))" title="@(childExpanded?Localizer["Collapse"]:Localizer["Expand"])" aria-expanded="@childExpanded">
                                                 <svg class="ico"><use href="/icons/sprite.svg#@(childExpanded?"chevron-down":"chevron-right")" /></svg>
                                             </button>
                                         }
@@ -159,9 +161,9 @@ else
                                 </tr>
                                 @if(childHasChildren && childExpanded)
                                 {
-                                    foreach(var grand in ChildRows(child.GroupKey))
+                                    foreach(var grand in _vm!.GetChildRows(child.GroupKey))
                                     {
-                                        var gCls = IsNegativeRow(grand) ? "neg" : string.Empty;
+                                        var gCls = ReportDashboardViewModel.IsNegative(grand) ? "neg" : string.Empty;
                                         <tr class="child-row entity-row @gCls">
                                             <td></td>
                                             <td class="child-label">@GetDisplayName(grand)</td>
@@ -175,14 +177,14 @@ else
                             }
                         }
                     }
-                    @if(ShowTotalRow)
+                    @if(_vm!.GetTopLevelRows().Any())
                     {
-                        var totals = TotalRow;
-                        <tr class="total-row">
+                        var totals = _vm!.GetTotals();
+                         <tr class="total-row">
                             <td></td>
                             <td>@Localizer["Total_Label"]</td>
-                            @if(ShowCategoryColumn){<td></td>}
-                            @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(totals.Prev.HasValue ? totals.Prev.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@(totals.Prev.HasValue ? FormatDelta(totals.Amount, totals.Prev) : "-")</td>}
+                            @if(_vm!.ShowCategoryColumn){<td></td>}
+                            @if(_vm!.ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(totals.Prev.HasValue ? totals.Prev.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@(totals.Prev.HasValue ? FormatDelta(totals.Amount, totals.Prev) : "-")</td>}
                             @if(_compareYear){<td class="amt-year" style="text-align:right;">@(totals.Year.HasValue ? totals.Year.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@(totals.Year.HasValue ? FormatDelta(totals.Amount, totals.Year) : "-")</td>}
                             <td class="amt-current" style="text-align:right;">@totals.Amount.ToString("N2")</td>
                         </tr>
@@ -193,37 +195,37 @@ else
     </div>
 }
 
-@if(_showFavDialog)
+@if(_vm?.ShowFavoriteDialog == true)
 {
-    <div class="modal-overlay" @onclick="CloseFavoriteDialog">
+    <div class="modal-overlay" @onclick="(()=> _vm!.CloseFavoriteDialog())">
         <div class="modal" @onclick:stopPropagation="true">
-            <h3>@(_favDialogIsUpdate ? Localizer["Dialog_Fav_Title_Update"] : Localizer["Dialog_Fav_Title_New"])</h3>
+            <h3>@((_vm?.FavoriteDialogIsUpdate ?? false) ? Localizer["Dialog_Fav_Title_Update"] : Localizer["Dialog_Fav_Title_New"])</h3>
             <div class="form-row">
                 <label>@Localizer["Dialog_Fav_Name"]</label>
-                <input type="text" @bind="_favoriteName" />
+                <input type="text" @bind="_vm!.FavoriteName" />
             </div>
-            @if(!string.IsNullOrWhiteSpace(_favoriteError))
+            @if(!string.IsNullOrWhiteSpace(_vm?.FavoriteError))
             {
-                <div class="error-msg">@_favoriteError</div>
+                <div class="error-msg">@Localizer[_vm!.FavoriteError!]</div>
             }
             <div class="dialog-actions">
-                <button class="btn" @onclick="SubmitFavoriteDialog" disabled="@string.IsNullOrWhiteSpace(_favoriteName)">@Localizer["Dialog_Save"]</button>
-                <button class="btn secondary" @onclick="CloseFavoriteDialog">@Localizer["Dialog_Cancel"]</button>
+                <button class="btn" @onclick="(()=> SubmitFavoriteDialogAsync())" disabled="@string.IsNullOrWhiteSpace(_vm!.FavoriteName)">@Localizer["Dialog_Save"]</button>
+                <button class="btn secondary" @onclick="(()=> _vm!.CloseFavoriteDialog())">@Localizer["Dialog_Cancel"]</button>
             </div>
         </div>
     </div>
 }
 
-@if(_showFilterDialog)
+@if(_vm?.ShowFilterDialog == true)
 {
-    <div class="modal-overlay" @onclick="CloseFilterDialog">
+    <div class="modal-overlay" @onclick="(()=> _vm!.CloseFilterDialog())">
         <div class="modal" style="min-width:540px;" @onclick:stopPropagation="true">
             <h3>@Localizer["FilterDialog_Title"]</h3>
-            @if (_filterOptionsLoading)
+            @if (_vm!.FilterOptionsLoading)
             {
                 <div class="small-loading">@Localizer["Loading"]</div>
             }
-            else if (!_filterOptionsByKind.Any(kvp => kvp.Value.Count > 0))
+            else if (!_vm!.FilterOptionsByKind.Any(kvp => kvp.Value.Count > 0))
             {
                 <div class="small-empty">@Localizer["NoData"]</div>
             }
@@ -235,29 +237,29 @@ else
                         @foreach (var k in _selectedKinds)
                         {
                             var kind = (PostingKind)k;
-                            var isActive = k == GetActiveFilterTabKind();
+                            var isActive = k == _vm!.GetActiveFilterTabKind();
                             var cls = isActive ? "tab-btn active" : "tab-btn";
-                            <button type="button" class="@cls" role="tab" aria-selected="@isActive" @onclick="(()=> { _activeFilterTabKind = k; StateHasChanged(); })">@Localizer[$"PostingKind_{kind}"]</button>
+                            <button type="button" class="@cls" role="tab" aria-selected="@isActive" @onclick="(()=> { _vm!.ActiveFilterTabKind = k; StateHasChanged(); })">@Localizer[$"PostingKind_{kind}"]</button>
                         }
                     </div>
                 }
                 <div class="scroll-box option-list">
-                    @foreach (var opt in GetOptionsForKind(GetActiveFilterTabKind()))
+                    @foreach (var opt in _vm!.GetOptionsForKind(_vm!.GetActiveFilterTabKind()))
                     {
-                        var currentKind = (PostingKind)GetActiveFilterTabKind();
-                        var sel = IsOptionSelectedTemp(currentKind, opt.Id);
-                        <label class="mk-item line"><input type="checkbox" checked="@sel" @onchange="e => ToggleTempForKind(currentKind, opt.Id, e.Value is bool b && b)" /> @opt.Name</label>
+                        var currentKind = (PostingKind)_vm!.GetActiveFilterTabKind();
+                        var sel = _vm!.IsOptionSelectedTemp((int)currentKind, opt.Id);
+                        <label class="mk-item line"><input type="checkbox" checked="@sel" @onchange="e => _vm!.ToggleTempForKind((int)currentKind, opt.Id, e.Value is bool b && b)" /> @opt.Name</label>
                     }
-                    @if (GetOptionsForKind(GetActiveFilterTabKind()).Count == 0)
+                    @if (_vm!.GetOptionsForKind(_vm!.GetActiveFilterTabKind()).Count == 0)
                     {
                         <div class="small-empty">@Localizer["NoData"]</div>
                     }
                 </div>
             }
             <div class="dialog-actions">
-                <button class="btn" @onclick="ApplyFilterDialog" disabled="@(_filterOptionsLoading)">@Localizer["FilterDialog_Apply"]</button>
-                <button class="btn secondary" @onclick="CloseFilterDialog">@Localizer["FilterDialog_Cancel"]</button>
-                <button class="btn secondary" @onclick="(()=> { ClearTempFilters(); StateHasChanged(); })" disabled="@(SelectedTempFiltersCount()==0)">@Localizer["Button_ClearFilters"]</button>
+                <button class="btn" @onclick="(()=> _vm!.ApplyTempAndReloadAsync(_analysisMonth))" disabled="@(_vm!.FilterOptionsLoading)">@Localizer["FilterDialog_Apply"]</button>
+                <button class="btn secondary" @onclick="(()=> _vm!.CloseFilterDialog())">@Localizer["FilterDialog_Cancel"]</button>
+                <button class="btn secondary" @onclick="(()=> _vm!.ClearTempFilters())" disabled="@(_vm!.GetSelectedTempFiltersCount()==0)">@Localizer["Button_ClearFilters"]</button>
             </div>
         </div>
     </div>
@@ -272,45 +274,11 @@ else
     private TabId _activeTab = TabId.Dashboard;
     private Task OnActiveTabChanged(TabId t){ _activeTab = t; return Task.CompletedTask; }
 
-    private void BuildRibbon()
-    {
-        var navGroup = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Navigation"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_BackToOverview"], IconSvg="<svg><use href='/icons/sprite.svg#back'/></svg>", Size=Ribbon<TabId>.RibbonItemSize.Large, Callback= ()=> { Nav.NavigateTo("/reports"); return Task.CompletedTask; } }
-            }
-        };
-        var actions = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_ReportActions"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem{ Label=_editMode? Localizer["Ribbon_View"]: Localizer["Ribbon_Edit"], IconSvg=_editMode? "<svg><use href='/icons/sprite.svg#eye'/></svg>":"<svg><use href='/icons/sprite.svg#edit'/></svg>", Size=Ribbon<TabId>.RibbonItemSize.Large, Callback= ()=> { ToggleEditMode(); return Task.CompletedTask; } },
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_Save"], IconSvg="<svg><use href='/icons/sprite.svg#save'/></svg>", Disabled=!_editMode, Callback= ()=> { OnSaveRequested(); return Task.CompletedTask; } },
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_SaveAs"], IconSvg="<svg><use href='/icons/sprite.svg#save-as'/></svg>", Disabled=!_editMode, Callback= ()=> { OpenFavoriteDialog(false); return Task.CompletedTask; } },
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_DeleteFavorite"], IconSvg="<svg><use href='/icons/sprite.svg#trash'/></svg>", Disabled=!_activeFavoriteId.HasValue, Callback= ()=> { if(_activeFavoriteId.HasValue){ _ = DeleteFavoriteAsync(_activeFavoriteId.Value); } return Task.CompletedTask; } },
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_ReloadData"], IconSvg="<svg><use href='/icons/sprite.svg#refresh'/></svg>", Callback = ()=> { _=LoadAsync(); return Task.CompletedTask; } }
-            }
-        };
-        var filters = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Filter"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_OpenFilters"], IconSvg="<svg><use href='/icons/sprite.svg#filters'/></svg>", Disabled=_filterOptionsLoading || !_editMode,  Size=Ribbon<TabId>.RibbonItemSize.Small, Callback= ()=> { OpenFilterDialog(); return Task.CompletedTask; } },
-                new Ribbon<TabId>.RibbonItem{ Label=Localizer["Ribbon_ClearFilters"], IconSvg="<svg><use href='/icons/sprite.svg#clear'/></svg>", Disabled= SelectedFiltersCount()==0, Size=Ribbon<TabId>.RibbonItemSize.Small, Callback= ()=> { ClearFilters(); return Task.CompletedTask; } },
-            }
-        };
-        _tabs = new() { new Ribbon<TabId>.RibbonTab<TabId> { Id = TabId.Dashboard, Title = Localizer["Ribbon_Tab"], Groups = new() { navGroup, actions, filters } } };
-    }
+    private ReportDashboardViewModel? _vm;
 
     // State
     private bool _loaded;
-    private bool _queryBusy;
     private bool _editMode;
-    private bool _showFilterDialog;
 
     private List<int> _selectedKinds = new(){ (int)PostingKind.Bank }; // multi selection
     private ReportInterval _interval = ReportInterval.Month;
@@ -319,17 +287,8 @@ else
     private bool _compareYear;
     private bool _showChart = true;
     private int _take = 24;
-    private string _favoriteName = string.Empty;
-    private Guid? _activeFavoriteId;
-    private string? _favoriteError;
 
     private readonly PostingKind[] _postingKindValues = new[]{ PostingKind.Bank, PostingKind.Contact, PostingKind.SavingsPlan, PostingKind.Security };
-
-    private readonly Dictionary<string,bool> _expanded = new();
-
-    private List<PointDto> _points = new();
-    private List<PointDto> _latestPerGroup = new();
-    private int? _activeFilterTabKind; // active tab (kind) in filter dialog
 
     private bool IsMulti => _selectedKinds.Count > 1;
     private int PrimaryKind => _selectedKinds.First();
@@ -363,535 +322,17 @@ else
         _ = LoadAsync();
     }
 
-    // Top-level filter UI state (overlay)
-    private bool _filterOptionsLoading;
-    private Dictionary<int, List<SimpleOption>> _filterOptionsByKind = new();
-    // Selected filters (entity level)
-    private HashSet<Guid> _selAccounts = new();
-    private HashSet<Guid> _selContacts = new();
-    private HashSet<Guid> _selSavings = new();
-    private HashSet<Guid> _selSecurities = new();
-    // Selected filters (category level)
-    private HashSet<Guid> _selContactCats = new();
-    private HashSet<Guid> _selSavingsCats = new();
-    private HashSet<Guid> _selSecurityCats = new();
+    // Top-level filter UI state handled by ViewModel
 
-    // Dialog temp buffers
-    private HashSet<Guid> _tempAccounts = new();
-    private HashSet<Guid> _tempContacts = new();
-    private HashSet<Guid> _tempSavings = new();
-    private HashSet<Guid> _tempSecurities = new();
-    private HashSet<Guid> _tempContactCats = new();
-    private HashSet<Guid> _tempSavingsCats = new();
-    private HashSet<Guid> _tempSecurityCats = new();
+    // Dialog temp buffers handled by ViewModel
 
-    private sealed class SimpleOption
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-    }
+    // Selected filters are managed in the ViewModel
 
-    private async Task LoadFilterOptionsAsync()
-    {
-        _filterOptionsLoading = true; _filterOptionsByKind.Clear();
-        try
-        {
-            foreach (var k in _selectedKinds)
-            {
-                var kind = (PostingKind)k;
-                var list = new List<SimpleOption>();
-                if (_includeCategory && IsCategorySupported(k))
-                {
-                    if (kind == PostingKind.Contact)
-                    {
-                        var resp = await Http.GetAsync("/api/contact-categories");
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var cats = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new();
-                            list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
-                        }
-                    }
-                    else if (kind == PostingKind.SavingsPlan)
-                    {
-                        var resp = await Http.GetAsync("/api/savings-plan-categories");
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var cats = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>() ?? new();
-                            list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
-                        }
-                    }
-                    else if (kind == PostingKind.Security)
-                    {
-                        var resp = await Http.GetAsync("/api/security-categories");
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var cats = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>() ?? new();
-                            list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
-                        }
-                    }
-                }
-                else
-                {
-                    if (kind == PostingKind.Bank)
-                    {
-                        var resp = await Http.GetAsync("/api/accounts?skip=0&take=1000");
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var acc = await resp.Content.ReadFromJsonAsync<List<AccountDto>>() ?? new();
-                            list = acc.Select(a => new SimpleOption { Id = a.Id, Name = a.Name }).ToList();
-                        }
-                    }
-                    else if (kind == PostingKind.Contact)
-                    {
-                        var resp = await Http.GetAsync("/api/contacts?all=true");
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var con = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
-                            list = con.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
-                        }
-                    }
-                    else if (kind == PostingKind.SavingsPlan)
-                    {
-                        var resp = await Http.GetAsync("/api/savings-plans?onlyActive=false");
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var sav = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new();
-                            list = sav.Select(p => new SimpleOption { Id = p.Id, Name = p.Name }).ToList();
-                        }
-                    }
-                    else if (kind == PostingKind.Security)
-                    {
-                        var resp = await Http.GetAsync("/api/securities?onlyActive=false");
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var sec = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>() ?? new();
-                            list = sec.Select(s => new SimpleOption { Id = s.Id, Name = s.Name }).ToList();
-                        }
-                    }
-                }
-                _filterOptionsByKind[k] = list;
-            }
-        }
-        finally
-        {
-            _filterOptionsLoading = false;
-            StateHasChanged();
-        }
-    }
+    // Analysis totals
+    private bool ShowTotalRow => _vm!.GetTopLevelRows().Any();
+    // moved totals helpers into ViewModel
 
-    private void ClearFilters()
-    {
-        _selAccounts.Clear();
-        _selContacts.Clear();
-        _selSavings.Clear();
-        _selSecurities.Clear();
-        _selContactCats.Clear();
-        _selSavingsCats.Clear();
-        _selSecurityCats.Clear();
-        _ = LoadAsync();
-    }
-
-    private void OpenFilterDialog()
-    {
-        // copy current selections into temp
-        _tempAccounts = new HashSet<Guid>(_selAccounts);
-        _tempContacts = new HashSet<Guid>(_selContacts);
-        _tempSavings = new HashSet<Guid>(_selSavings);
-        _tempSecurities = new HashSet<Guid>(_selSecurities);
-        _tempContactCats = new HashSet<Guid>(_selContactCats);
-        _tempSavingsCats = new HashSet<Guid>(_selSavingsCats);
-        _tempSecurityCats = new HashSet<Guid>(_selSecurityCats);
-
-        _showFilterDialog = true;
-        _activeFilterTabKind = _selectedKinds.FirstOrDefault();
-        _ = LoadFilterOptionsAsync();
-        StateHasChanged();
-    }
-
-    private void CloseFilterDialog() => _showFilterDialog = false;
-
-    private bool IsOptionSelectedTemp(PostingKind kind, Guid id)
-    {
-        if (_includeCategory && IsCategorySupported((int)kind))
-        {
-            return kind switch
-            {
-                PostingKind.Contact => _tempContactCats.Contains(id),
-                PostingKind.SavingsPlan => _tempSavingsCats.Contains(id),
-                PostingKind.Security => _tempSecurityCats.Contains(id),
-                _ => false
-            };
-        }
-        else
-        {
-            return kind switch
-            {
-                PostingKind.Bank => _tempAccounts.Contains(id),
-                PostingKind.Contact => _tempContacts.Contains(id),
-                PostingKind.SavingsPlan => _tempSavings.Contains(id),
-                PostingKind.Security => _tempSecurities.Contains(id),
-                _ => false
-            };
-        }
-    }
-
-    private void ToggleTempForKind(PostingKind kind, Guid id, bool isChecked)
-    {
-        HashSet<Guid> set = _includeCategory && IsCategorySupported((int)kind)
-            ? kind switch
-            {
-                PostingKind.Contact => _tempContactCats,
-                PostingKind.SavingsPlan => _tempSavingsCats,
-                PostingKind.Security => _tempSecurityCats,
-                _ => _tempAccounts
-            }
-            : kind switch
-            {
-                PostingKind.Bank => _tempAccounts,
-                PostingKind.Contact => _tempContacts,
-                PostingKind.SavingsPlan => _tempSavings,
-                PostingKind.Security => _tempSecurities,
-                _ => _tempAccounts
-            };
-        if (isChecked) { set.Add(id); } else { set.Remove(id); }
-    }
-
-    private int SelectedFiltersCount()
-    {
-        if (IsMulti)
-        {
-            var entityCount = _selAccounts.Count + _selContacts.Count + _selSavings.Count + _selSecurities.Count;
-            var catCount = _selContactCats.Count + _selSavingsCats.Count + _selSecurityCats.Count;
-            // In category mode, only categories are applied for supported kinds; bank uses entity
-            return _includeCategory ? (catCount + _selAccounts.Count) : entityCount;
-        }
-        else
-        {
-            var kind = (PostingKind)PrimaryKind;
-            if (_includeCategory && IsCategorySupported(PrimaryKind))
-            {
-                return kind switch
-                {
-                    PostingKind.Contact => _selContactCats.Count,
-                    PostingKind.SavingsPlan => _selSavingsCats.Count,
-                    PostingKind.Security => _selSecurityCats.Count,
-                    _ => 0
-                };
-            }
-            else
-            {
-                return kind switch
-                {
-                    PostingKind.Bank => _selAccounts.Count,
-                    PostingKind.Contact => _selContacts.Count,
-                    PostingKind.SavingsPlan => _selSavings.Count,
-                    PostingKind.Security => _selSecurities.Count,
-                    _ => 0
-                };
-            }
-        }
-    }
-
-    private int SelectedTempFiltersCount()
-    {
-        if (IsMulti)
-        {
-            var entityCount = _tempAccounts.Count + _tempContacts.Count + _tempSavings.Count + _tempSecurities.Count;
-            var catCount = _tempContactCats.Count + _tempSavingsCats.Count + _tempSecurityCats.Count;
-            return _includeCategory ? (catCount + _tempAccounts.Count) : entityCount;
-        }
-        else
-        {
-            var kind = (PostingKind)PrimaryKind;
-            if (_includeCategory && IsCategorySupported(PrimaryKind))
-            {
-                return kind switch
-                {
-                    PostingKind.Contact => _tempContactCats.Count,
-                    PostingKind.SavingsPlan => _tempSavingsCats.Count,
-                    PostingKind.Security => _tempSecurityCats.Count,
-                    _ => 0
-                };
-            }
-            else
-            {
-                return kind switch
-                {
-                    PostingKind.Bank => _tempAccounts.Count,
-                    PostingKind.Contact => _tempContacts.Count,
-                    PostingKind.SavingsPlan => _tempSavings.Count,
-                    PostingKind.Security => _tempSecurities.Count,
-                    _ => 0
-                };
-            }
-        }
-    }
-
-    private void ClearTempFilters()
-    {
-        _tempAccounts.Clear();
-        _tempContacts.Clear();
-        _tempSavings.Clear();
-        _tempSecurities.Clear();
-        _tempContactCats.Clear();
-        _tempSavingsCats.Clear();
-        _tempSecurityCats.Clear();
-    }
-
-    private async Task ApplyFilterDialog()
-    {
-        _selAccounts = new HashSet<Guid>(_tempAccounts);
-        _selContacts = new HashSet<Guid>(_tempContacts);
-        _selSavings = new HashSet<Guid>(_tempSavings);
-        _selSecurities = new HashSet<Guid>(_tempSecurities);
-        _selContactCats = new HashSet<Guid>(_tempContactCats);
-        _selSavingsCats = new HashSet<Guid>(_tempSavingsCats);
-        _selSecurityCats = new HashSet<Guid>(_tempSecurityCats);
-        _showFilterDialog = false;
-        await LoadAsync();
-    }
-
-    private IEnumerable<PointDto> TopLevelRows
-    {
-        get
-        {
-            if (IsMulti)
-            {
-                return _points.Where(p => p.GroupKey.StartsWith("Type:"))
-                    .GroupBy(p => p.GroupKey)
-                    .Select(g => g.OrderBy(x => x.PeriodStart).Last())
-                    .OrderBy(p => IsNegativeRow(p))
-                    .ThenByDescending(p => p.Amount)
-                    .ToList();
-            }
-            if (IsCategoryGroupingSingle)
-            {
-                return _points.Where(p => p.ParentGroupKey == null && p.GroupKey.StartsWith("Category:"))
-                    .GroupBy(p => p.GroupKey)
-                    .Select(g => g.OrderBy(x => x.PeriodStart).Last())
-                    .OrderBy(p => IsNegativeRow(p))
-                    .ThenByDescending(p => p.Amount);
-            }
-            return _latestPerGroup
-                .OrderBy(p => IsNegativeRow(p))
-                .ThenByDescending(p => p.Amount);
-        }
-    }
-
-    private IEnumerable<PointDto> ChildRows(string parentKey)
-    {
-        if (parentKey.StartsWith("Type:"))
-        {
-            // Determine posting kind from the parent key
-            var kindName = parentKey.Substring("Type:".Length);
-            var hasKind = Enum.TryParse<PostingKind>(kindName, out var kind);
-
-            // Category mode only applies to kinds that support categories
-            var useCategoryChildren = _includeCategory && hasKind && IsCategorySupported((int)kind);
-
-            if (useCategoryChildren)
-            {
-                // Category children
-                return _points.Where(p => p.ParentGroupKey == parentKey && p.GroupKey.StartsWith("Category:"))
-                    .GroupBy(p => p.GroupKey)
-                    .Select(g => g.OrderBy(x => x.PeriodStart).Last())
-                    .OrderBy(p => IsNegativeRow(p))
-                    .ThenByDescending(p => p.Amount);
-            }
-
-            // Entity children; prefer linked by ParentGroupKey, but also include fallback when linkage is missing
-            IEnumerable<PointDto> candidates = _points.Where(p => p.ParentGroupKey == parentKey && !p.GroupKey.StartsWith("Category:"));
-            if (!candidates.Any() && hasKind)
-            {
-                // Fallback: derive by GroupKey prefix when service did not set ParentGroupKey
-                // Account -> "Account:", Contact -> "Contact:", SavingsPlan -> "SavingsPlan:", Security -> "Security:"
-                var prefix = kind switch
-                {
-                    PostingKind.Bank => "Account:",
-                    PostingKind.Contact => "Contact:",
-                    PostingKind.SavingsPlan => "SavingsPlan:",
-                    PostingKind.Security => "Security:",
-                    _ => string.Empty
-                };
-                if (!string.IsNullOrEmpty(prefix))
-                {
-                    candidates = _points.Where(p => p.ParentGroupKey == null && p.GroupKey.StartsWith(prefix));
-                }
-            }
-
-            return candidates
-                .GroupBy(p => p.GroupKey)
-                .Select(g => g.OrderBy(x => x.PeriodStart).Last())
-                .OrderBy(p => IsNegativeRow(p))
-                .ThenByDescending(p => p.Amount);
-        }
-        if (parentKey.StartsWith("Category:"))
-        {
-            return _points.Where(p => p.ParentGroupKey == parentKey)
-                .GroupBy(p => p.GroupKey)
-                .Select(g => g.OrderBy(x => x.PeriodStart).Last())
-                .OrderBy(p => IsNegativeRow(p))
-                .ThenByDescending(p => p.Amount);
-        }
-        return Enumerable.Empty<PointDto>();
-    }
-
-    private bool HasChildren(string key) => ChildRows(key).Any();
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (!_loaded)
-        {
-            _loaded = true;
-        }
-
-        _editMode = Edit.GetValueOrDefault(false);
-
-        if (FavoriteId.HasValue)
-        {
-            await LoadAndApplyFavoriteAsync(FavoriteId.Value);
-        }
-        BuildRibbon();
-        await LoadFilterOptionsAsync();
-        if (_points.Count == 0)
-        {
-            await LoadAsync();
-        }
-    }
-
-    private async Task LoadAndApplyFavoriteAsync(Guid id)
-    {
-        try
-        {
-            var fav = await Http.GetFromJsonAsync<FavoriteDto>($"/api/report-favorites/{id}");
-            if (fav is not null)
-            {
-                ApplyFavorite(fav);
-            }
-        }
-        catch (Exception ex)
-        {
-            _favoriteError = ex.Message;
-        }
-    }
-
-    private async Task LoadAsync()
-    {
-        if(_queryBusy) { return; }
-        if (_selectedKinds.Count == 0) { return; }
-        _queryBusy = true; _favoriteError = null; StateHasChanged();
-        try
-        {
-            var filters = BuildFilters();
-            var req = new QueryRequest(PrimaryKind, _interval, _take, _includeCategory, _comparePrevious, _compareYear, IsMulti ? _selectedKinds : null, _analysisMonth, filters);
-            var resp = await Http.PostAsJsonAsync("/api/report-aggregates", req);
-            if (resp.IsSuccessStatusCode)
-            {
-                var result = await resp.Content.ReadFromJsonAsync<AggregationResponse>() ?? new AggregationResponse(_interval, new(), false, false);
-                _points = result.Points.OrderBy(p => p.GroupKey).ThenBy(p => p.PeriodStart).ToList();
-                _latestPerGroup = _points.Where(p => !p.GroupKey.StartsWith("Type:") && !p.GroupKey.StartsWith("Category:") && p.ParentGroupKey == null)
-                    .GroupBy(p => p.GroupKey)
-                    .Select(g => g.OrderBy(x => x.PeriodStart).Last())
-                    .OrderBy(p => IsNegativeRow(p))
-                    .ThenByDescending(p => p.Amount)
-                    .ToList();
-                if (!IsCategoryGroupingSingle && !IsMulti)
-                {
-                    _expanded.Clear();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _favoriteError = ex.Message;
-        }
-        finally
-        {
-            _queryBusy = false;
-            BuildRibbon();
-            StateHasChanged();
-        }
-    }
-
-    private FiltersRequest? BuildFilters()
-    {
-        // Build allow-lists based on current selection and mode
-        if (SelectedFiltersCount() == 0)
-        {
-            return null;
-        }
-        if (_includeCategory)
-        {
-            return new FiltersRequest(
-                _selAccounts.ToList(),
-                null,
-                null,
-                null,
-                _selContactCats.ToList(),
-                _selSavingsCats.ToList(),
-                _selSecurityCats.ToList());
-        }
-        else
-        {
-            return new FiltersRequest(
-                _selAccounts.ToList(),
-                _selContacts.ToList(),
-                _selSavings.ToList(),
-                _selSecurities.ToList(),
-                null,
-                null,
-                null);
-        }
-    }
-
-    private void Toggle(string key)
-    {
-        if (_expanded.ContainsKey(key))
-        {
-            _expanded[key] = !_expanded[key];
-        }
-        else
-        {
-            _expanded[key] = true;
-        }
-    }
-
-    private void OnToggleKind(int value, bool isChecked)
-    {
-        var beforePrimary = PrimaryKind;
-        if (isChecked)
-        {
-            if (!_selectedKinds.Contains(value)) { _selectedKinds.Add(value); }
-        }
-        else
-        {
-            _selectedKinds.Remove(value);
-            if (_selectedKinds.Count == 0)
-            {
-                _selectedKinds.Add((int)PostingKind.Bank);
-            }
-        }
-        _selectedKinds = _selectedKinds.Distinct().ToList();
-        // Reset filters when primary kind changes or multi-mode toggled
-        if (beforePrimary != PrimaryKind || IsMulti)
-        {
-            ClearFilters();
-            _ = LoadFilterOptionsAsync();
-        }
-        _ = LoadAsync();
-    }
-
-    private void OnIncludeCategoryChanged()
-    {
-        // switching between entity/category modes: clear selections to avoid mixing
-        ClearFilters();
-        _ = LoadFilterOptionsAsync();
-        _ = LoadAsync();
-    }
-
-    // Active tab kind for filter dialog (stores PostingKind as int) - field declared above with other state
-
-    private string GetDisplayName(PointDto p)
+    private string GetDisplayName(ReportDashboardViewModel.PointDto p)
     {
         if (p.GroupKey.StartsWith("Type:"))
         {
@@ -905,7 +346,7 @@ else
         return p.GroupName;
     }
 
-    private static bool IsNegativeRow(PointDto p)
+    private static bool IsNegativeRow(ReportDashboardViewModel.PointDto p)
     {
         if (p.Amount < 0m)
         {
@@ -938,293 +379,262 @@ else
         return string.Format("{0} ({1:+0.0;-0.0;0.0}%)", diff.ToString("N2"), pct);
     }
 
-    private async Task SaveFavoriteAsync()
+    private void RebuildRibbon()
     {
-        var payload = new FavCreate
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Name = string.IsNullOrWhiteSpace(_favoriteName) ? Localizer["Default_FavoriteName"] : _favoriteName.Trim(),
-            PostingKind = PrimaryKind,
-            IncludeCategory = _includeCategory,
-            Interval = _interval,
-            Take = _take,
-            ComparePrevious = _comparePrevious,
-            CompareYear = _compareYear,
-            ShowChart = _showChart,
-            Expandable = true,
-            PostingKinds = IsMulti ? _selectedKinds.ToArray() : null,
-            Filters = ToFavFilters(BuildFilters())
-        };
-        var resp = await Http.PostAsJsonAsync("/api/report-favorites", payload);
-        if (resp.IsSuccessStatusCode)
-        {
-            var dto = await resp.Content.ReadFromJsonAsync<FavoriteDto>();
-            if (dto is not null)
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                _activeFavoriteId = dto.Id;
-                _favoriteName = dto.Name;
-                BuildRibbon();
-                var uri = new Uri(Nav.Uri);
-                var baseUrl = uri.GetLeftPart(UriPartial.Path);
-                Nav.NavigateTo($"{baseUrl}?favoriteId={_activeFavoriteId}&edit=false", forceLoad: false);
+                var size = it.Size == UiRibbonItemSize.Large
+                    ? Ribbon<TabId>.RibbonItemSize.Large
+                    : Ribbon<TabId>.RibbonItemSize.Small;
+
+                items.Add(new Ribbon<TabId>.RibbonItem
+                {
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
+            }
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
+
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Dashboard,
+                Title = Localizer["Ribbon_Tab"],
+                Groups = groups
+            }
+        };
+        StateHasChanged();
+    }
+
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "Back":
+                Nav.NavigateTo("/reports");
+                break;
+            case "ToggleEdit":
+                ToggleEditMode();
+                break;
+            case "Save":
+                OnSaveRequested();
+                break;
+            case "SaveAs":
+                _vm!.OpenFavoriteDialog(false, Localizer["Default_FavoriteName"]);
+                break;
+            case "DeleteFavorite":
+                if(_vm!.ActiveFavoriteId.HasValue){ _ = DeleteFavoriteAsync(_vm.ActiveFavoriteId.Value); }
+                break;
+            case "Reload":
+                _ = LoadAsync();
+                break;
+            case "FiltersOpen":
+                _vm!.OpenFilterDialog();
+                break;
+            case "FiltersClear":
+                ClearFilters();
+                break;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _vm = ActivatorUtilities.CreateInstance<ReportDashboardViewModel>(Services);
+        _vm.StateChanged += (_, __) => { RebuildRibbon(); InvokeAsync(StateHasChanged); };
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_loaded)
+        {
+            _loaded = true;
+        }
+
+        _vm!.EditMode = Edit.GetValueOrDefault(false);
+
+        if (FavoriteId.HasValue)
+        {
+            await LoadAndApplyFavoriteAsync(FavoriteId.Value);
+        }
+        RebuildRibbon();
+        await _vm!.LoadFilterOptionsAsync();
+        if ((_vm?.Points.Count ?? 0) == 0)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        if (_vm?.IsBusy == true) { return; }
+        if (_selectedKinds.Count == 0) { return; }
+        StateHasChanged();
+        try
+        {
+            // Sync component state into ViewModel
+            _vm!.SelectedKinds = _selectedKinds.ToList();
+            _vm.Interval = (int)_interval;
+            _vm.IncludeCategory = _includeCategory;
+            _vm.ComparePrevious = _comparePrevious;
+            _vm.CompareYear = _compareYear;
+            _vm.ShowChart = _showChart;
+            _vm.Take = _take;
+
+            await _vm.ReloadAsync(_analysisMonth, default);
+
+            if (!IsCategoryGroupingSingle && !IsMulti)
+            {
+                _vm.Expanded.Clear();
             }
         }
-        else
+        catch (Exception)
         {
-            _favoriteError = await resp.Content.ReadAsStringAsync();
+            // error will be shown through VM operations when saving/updating favorites
         }
-        StateHasChanged();
-    }
-
-    private async Task UpdateFavoriteAsync()
-    {
-        if (!_activeFavoriteId.HasValue) { return; }
-        var payload = new FavCreate
+        finally
         {
-            Name = _favoriteName.Trim(),
-            PostingKind = PrimaryKind,
-            IncludeCategory = _includeCategory,
-            Interval = _interval,
-            Take = _take,
-            ComparePrevious = _comparePrevious,
-            CompareYear = _compareYear,
-            ShowChart = _showChart,
-            Expandable = true,
-            PostingKinds = IsMulti ? _selectedKinds.ToArray() : null,
-            Filters = ToFavFilters(BuildFilters())
-        };
-        var resp = await Http.PutAsJsonAsync($"/api/report-favorites/{_activeFavoriteId}", payload);
-        if (resp.IsSuccessStatusCode)
-        {
-            var dto = await resp.Content.ReadFromJsonAsync<FavoriteDto>();
-            if (dto is not null)
-            {
-                _favoriteName = dto.Name;
-            }
+            RebuildRibbon();
+            StateHasChanged();
         }
-        else
-        {
-            _favoriteError = await resp.Content.ReadAsStringAsync();
-        }
-        StateHasChanged();
-    }
-
-    private async Task DeleteFavoriteAsync(Guid id)
-    {
-        var resp = await Http.DeleteAsync($"/api/report-favorites/{id}");
-        if (resp.IsSuccessStatusCode)
-        {
-            _activeFavoriteId = null;
-            _favoriteName = string.Empty;
-            BuildRibbon();
-            Nav.NavigateTo("/reports");
-        }
-    }
-
-    private void ApplyFavorite(FavoriteDto fav)
-    {
-        _activeFavoriteId = fav.Id;
-        _favoriteName = fav.Name;
-        _selectedKinds = fav.PostingKinds?.Count > 0 ? fav.PostingKinds.Select(x=>x).ToList() : new List<int>{ fav.PostingKind };
-        _includeCategory = fav.IncludeCategory;
-        _interval = fav.Interval;
-        _take = fav.Take;
-        _comparePrevious = fav.ComparePrevious;
-        _compareYear = fav.CompareYear;
-        _showChart = fav.ShowChart;
-        // apply saved filters (all dimensions)
-        _selAccounts = new HashSet<Guid>(fav.Filters?.AccountIds ?? Array.Empty<Guid>());
-        _selContacts = new HashSet<Guid>(fav.Filters?.ContactIds ?? Array.Empty<Guid>());
-        _selSavings = new HashSet<Guid>(fav.Filters?.SavingsPlanIds ?? Array.Empty<Guid>());
-        _selSecurities = new HashSet<Guid>(fav.Filters?.SecurityIds ?? Array.Empty<Guid>());
-        _selContactCats = new HashSet<Guid>(fav.Filters?.ContactCategoryIds ?? Array.Empty<Guid>());
-        _selSavingsCats = new HashSet<Guid>(fav.Filters?.SavingsPlanCategoryIds ?? Array.Empty<Guid>());
-        _selSecurityCats = new HashSet<Guid>(fav.Filters?.SecurityCategoryIds ?? Array.Empty<Guid>());
-        _ = LoadFilterOptionsAsync();
-        BuildRibbon();
-        _ = LoadAsync();
-    }
-
-    private bool _showFavDialog;
-    private bool _favDialogIsUpdate;
-    private void OpenFavoriteDialog(bool update)
-    {
-        _favDialogIsUpdate = update;
-        if (!update) { _favoriteName = string.Empty; }
-        _favoriteError = null;
-        _showFavDialog = true;
-        StateHasChanged();
-    }
-    private void CloseFavoriteDialog() => _showFavDialog = false;
-    private void SubmitFavoriteDialog()
-    {
-        if (_favDialogIsUpdate && _activeFavoriteId.HasValue) { _ = UpdateFavoriteAsync(); }
-        else { _ = SaveFavoriteAsync(); }
-        _showFavDialog = false;
     }
 
     private void ToggleEditMode()
     {
         _editMode = !_editMode;
-        BuildRibbon();
+        RebuildRibbon();
         var uri = new Uri(Nav.Uri);
         var baseUrl = uri.GetLeftPart(UriPartial.Path);
-        var favPart = _activeFavoriteId.HasValue ? $"favoriteId={_activeFavoriteId.Value}&" : string.Empty;
+        var favPart = _vm!.ActiveFavoriteId.HasValue ? $"favoriteId={_vm.ActiveFavoriteId.Value}&" : string.Empty;
         Nav.NavigateTo($"{baseUrl}?{favPart}edit={_editMode}", forceLoad: false);
     }
 
     private void OnSaveRequested()
     {
-        if (_activeFavoriteId.HasValue)
+        if (_vm!.ActiveFavoriteId.HasValue)
         {
-            _ = UpdateFavoriteAsync();
-            ToggleEditMode();
+            _vm!.OpenFavoriteDialog(true);
         }
         else
         {
-            OpenFavoriteDialog(false);
+            _vm!.OpenFavoriteDialog(false, Localizer["Default_FavoriteName"]);
         }
     }
 
-    // Helpers for filter dialog tabs/options
-    private int GetActiveFilterTabKind()
+    private void OnIncludeCategoryChanged()
     {
-        if (_activeFilterTabKind.HasValue && _selectedKinds.Contains(_activeFilterTabKind.Value))
+        ClearFilters();
+        _ = _vm!.LoadFilterOptionsAsync();
+        _ = LoadAsync();
+    }
+
+    private void OnToggleKind(int value, bool isChecked)
+    {
+        var beforePrimary = PrimaryKind;
+        if (isChecked)
         {
-            return _activeFilterTabKind.Value;
+            if (!_selectedKinds.Contains(value)) { _selectedKinds.Add(value); }
         }
-        return _selectedKinds.First();
-    }
-
-    private List<SimpleOption> GetOptionsForKind(int k)
-    {
-        return _filterOptionsByKind.TryGetValue(k, out var list) ? list : new List<SimpleOption>();
-    }
-
-    private sealed record QueryRequest(int PostingKind, ReportInterval Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate, FiltersRequest? Filters);
-    private sealed record FiltersRequest(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds);
-    private sealed record AggregationResponse(ReportInterval Interval, List<PointDto> Points, bool ComparedPrevious, bool ComparedYear);
-    private sealed record PointDto(DateTime PeriodStart, string GroupKey, string GroupName, string? CategoryName, decimal Amount, string? ParentGroupKey, decimal? PreviousAmount, decimal? YearAgoAmount);
-    private sealed record FavoriteDto(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, int Take, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds, FavFiltersDto? Filters);
-
-    private sealed class FavCreate
-    {
-        public string Name { get; set; } = string.Empty;
-        public int PostingKind { get; set; }
-        public bool IncludeCategory { get; set; }
-        public ReportInterval Interval { get; set; }
-        public int Take { get; set; }
-        public bool ComparePrevious { get; set; }
-        public bool CompareYear { get; set; }
-        public bool ShowChart { get; set; }
-        public bool Expandable { get; set; }
-        public IReadOnlyCollection<int>? PostingKinds { get; set; }
-        public FavFiltersDto? Filters { get; set; }
-    }
-
-    private sealed class FavFiltersDto
-    {
-        public IReadOnlyCollection<Guid>? AccountIds { get; set; }
-        public IReadOnlyCollection<Guid>? ContactIds { get; set; }
-        public IReadOnlyCollection<Guid>? SavingsPlanIds { get; set; }
-        public IReadOnlyCollection<Guid>? SecurityIds { get; set; }
-        public IReadOnlyCollection<Guid>? ContactCategoryIds { get; set; }
-        public IReadOnlyCollection<Guid>? SavingsPlanCategoryIds { get; set; }
-        public IReadOnlyCollection<Guid>? SecurityCategoryIds { get; set; }
-    }
-
-    private static FavFiltersDto? ToFavFilters(FiltersRequest? f)
-         => f == null ? null : new FavFiltersDto
-         {
-             AccountIds = f.AccountIds,
-             ContactIds = f.ContactIds,
-             SavingsPlanIds = f.SavingsPlanIds,
-             SecurityIds = f.SecurityIds,
-             ContactCategoryIds = f.ContactCategoryIds,
-             SavingsPlanCategoryIds = f.SavingsPlanCategoryIds,
-             SecurityCategoryIds = f.SecurityCategoryIds
-         };
- 
-     // Lightweight DTOs used in filter option loading
-    private sealed class AccountDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed class ContactDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed class SavingsPlanDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed class SecurityDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed class ContactCategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed class SavingsPlanCategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed class SecurityCategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-
-    private bool ShowTotalRow => TopLevelRows.Any();
-    private (decimal Amount, decimal? Prev, decimal? Year) TotalRow
-    {
-        get
+        else
         {
-            var rows = TopLevelRows.ToList();
-            var amount = rows.Sum(r => r.Amount);
-            decimal? prev = ShowPreviousColumns ? rows.Where(r => r.PreviousAmount.HasValue).Sum(r => r.PreviousAmount!.Value) : null;
-            decimal? year = _compareYear ? rows.Where(r => r.YearAgoAmount.HasValue).Sum(r => r.YearAgoAmount!.Value) : null;
-            return (amount, prev, year);
+            _selectedKinds.Remove(value);
+            if (_selectedKinds.Count == 0)
+            {
+                _selectedKinds.Add((int)PostingKind.Bank);
+            }
         }
+        _selectedKinds = _selectedKinds.Distinct().ToList();
+        if (beforePrimary != PrimaryKind || IsMulti)
+        {
+            ClearFilters();
+            _ = _vm!.LoadFilterOptionsAsync();
+        }
+        _ = LoadAsync();
+    }
+
+    private async Task SubmitFavoriteDialogAsync()
+    {
+        var res = await _vm!.SubmitFavoriteDialogAsync(Localizer["Default_FavoriteName"], PrimaryKind, _includeCategory, (int)_interval, _take, _comparePrevious, _compareYear, _showChart, true, IsMulti ? _selectedKinds : null, BuildFilters());
+        if (res is not null)
+        {
+            _vm!.ActiveFavoriteId = res.Id;
+            _vm!.FavoriteName = res.Name;
+            RebuildRibbon();
+            var uri = new Uri(Nav.Uri);
+            var baseUrl = uri.GetLeftPart(UriPartial.Path);
+            Nav.NavigateTo($"{baseUrl}?favoriteId={_vm!.ActiveFavoriteId}&edit=false", forceLoad: false);
+        }
+    }
+
+    private async Task DeleteFavoriteAsync(Guid id)
+    {
+        var ok = await _vm!.DeleteFavoriteAsync(id, default);
+        if (ok)
+        {
+            _vm!.ActiveFavoriteId = null;
+            _vm!.FavoriteName = string.Empty;
+            RebuildRibbon();
+            Nav.NavigateTo("/reports");
+        }
+    }
+
+    private async Task LoadAndApplyFavoriteAsync(Guid id)
+    {
+        try
+        {
+            var fav = await Http.GetFromJsonAsync<ReportDashboardViewModel.FavoriteDto>($"/api/report-favorites/{id}");
+            if (fav is not null)
+            {
+                ApplyFavorite(fav);
+            }
+        }
+        catch (Exception)
+        {
+            // ignore; favorite load failure message is handled elsewhere
+        }
+    }
+
+    private void ApplyFavorite(ReportDashboardViewModel.FavoriteDto fav)
+    {
+        _vm!.ActiveFavoriteId = fav.Id;
+        _vm!.FavoriteName = fav.Name;
+        _selectedKinds = fav.PostingKinds?.Count > 0 ? fav.PostingKinds.Select(x=>x).ToList() : new List<int>{ fav.PostingKind };
+        _includeCategory = fav.IncludeCategory;
+        _interval = (ReportInterval)fav.Interval;
+        _take = fav.Take;
+        _comparePrevious = fav.ComparePrevious;
+        _compareYear = fav.CompareYear;
+        _showChart = fav.ShowChart;
+        _vm!.SelectedAccounts.Clear(); foreach (var id in fav.Filters?.AccountIds ?? Array.Empty<Guid>()) { _vm.SelectedAccounts.Add(id); }
+        _vm!.SelectedContacts.Clear(); foreach (var id in fav.Filters?.ContactIds ?? Array.Empty<Guid>()) { _vm.SelectedContacts.Add(id); }
+        _vm!.SelectedSavingsPlans.Clear(); foreach (var id in fav.Filters?.SavingsPlanIds ?? Array.Empty<Guid>()) { _vm.SelectedSavingsPlans.Add(id); }
+        _vm!.SelectedSecurities.Clear(); foreach (var id in fav.Filters?.SecurityIds ?? Array.Empty<Guid>()) { _vm.SelectedSecurities.Add(id); }
+        _vm!.SelectedContactCategories.Clear(); foreach (var id in fav.Filters?.ContactCategoryIds ?? Array.Empty<Guid>()) { _vm.SelectedContactCategories.Add(id); }
+        _vm!.SelectedSavingsCategories.Clear(); foreach (var id in fav.Filters?.SavingsPlanCategoryIds ?? Array.Empty<Guid>()) { _vm.SelectedSavingsCategories.Add(id); }
+        _vm!.SelectedSecurityCategories.Clear(); foreach (var id in fav.Filters?.SecurityCategoryIds ?? Array.Empty<Guid>()) { _vm.SelectedSecurityCategories.Add(id); }
+        _ = _vm!.LoadFilterOptionsAsync();
+        RebuildRibbon();
+        _ = LoadAsync();
+    }
+
+    private void ClearFilters()
+    {
+        _vm!.ClearFilters();
+         _ = LoadAsync();
+    }
+
+    private ReportDashboardViewModel.FiltersPayload? BuildFilters()
+    {
+        return _vm!.BuildFiltersPayload();
     }
 }
-<style>
-.filters-panel { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1rem; width:100%; margin-bottom:.9rem; }
-.filter-group { display:flex; flex-direction:column; gap:.55rem; padding:.7rem .75rem .75rem; background:#1b1f24; border:1px solid #2a3138; border-radius:.55rem; }
-.filter-group.wide { grid-column:span 2; }
-@@media (max-width:900px){ .filter-group.wide { grid-column:span 1; } }
-.filter-group .group-title { font-size:.6rem; text-transform:uppercase; letter-spacing:.05em; opacity:.65; }
-.filter-group .row { display:flex; flex-direction:column; gap:.3rem; }
-.filter-group .row.inline { flex-direction:row; align-items:center; gap:.5rem; flex-wrap:wrap; }
-.filter-group .row.month-row { flex-direction:row; align-items:center; gap:.5rem; flex-wrap:nowrap; }
-.take-label { display:flex; align-items:center; gap:.4rem; font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; opacity:.75; }
-.take-input { width:80px; }
-.chk { font-size:.7rem; }
-.multi-kind-list { display:flex; flex-wrap:wrap; gap:.5rem; }
-.multi-kind-list.dialog { background:#1e2328; padding:.4rem .5rem; border:1px solid #2b3137; border-radius:.3rem; }
-.mk-item { font-size:.65rem; display:flex; align-items:center; gap:.25rem; background:#20262b; padding:.2rem .45rem; border-radius:.3rem; border:1px solid #2c333a; }
-.btn.full { width:100%; }
-.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:50; }
-.modal { background:#1f2429; border:1px solid #30363d; padding:1rem 1.2rem 1.1rem; border-radius:.5rem; min-width:340px; display:flex; flex-direction:column; gap:.75rem; }
-.modal { max-height:80vh; overflow:hidden; }
-.modal h3 { margin:.1rem 0 .2rem; font-size:.95rem; }
-.modal .form-row { display:flex; flex-direction:column; gap:.25rem; }
-.dialog-actions { display:flex; gap:.6rem; justify-content:flex-end; }
-.filters-panel input[type=text], .filters-panel select, .filters-panel input[type=number]{ background:#202428; border:1px solid #333; color:#eee; padding:.25rem .4rem; border-radius:.25rem; font-size:.7rem; }
-.filters-panel input[type=checkbox]{ margin-right:.35rem; }
-.result-box { position:relative; display:flex; flex-direction:column; gap:.75rem; }
-.query-overlay { position:absolute; inset:0; background:rgba(10,10,12,.55); display:flex; align-items:center; justify-content:center; font-size:.8rem; backdrop-filter:blur(2px); border-radius:.4rem; z-index:5; }
-.report-table { width:100%; font-size:.7rem; border-collapse:collapse; }
-.report-table thead th.th-prev { background:#1e2430; color:#8fb0ff; }
-.report-table thead th.th-year { background:#261f33; color:#c4a8ff; }
-.report-table thead th.th-current { background:#2a3322; color:#cfe7b5; }
-.report-table tbody td.amt-prev { color:#7f94ad; font-style:italic; }
-.report-table tbody td.amt-year { color:#b79ce8; }
-.report-table tbody td.amt-current { font-weight:600; background:#1d242a; }
-.report-table tbody tr.neg { color:#c94; }
-.report-table tbody td.delta { font-size:.6rem; opacity:.8; }
-.report-table tr.type-row { background:#1d2328; font-weight:600; }
-.report-table tr.category-row { background:#16212a; }
-.report-table tr.child-row { background:#101519; }
-.report-table tr.child-row .child-label { padding-left:1.2rem; position:relative; }
-.report-table tr.child-row .child-label:before { content:""; position:absolute; left:.3rem; top:50%; width:.5rem; height:1px; background:#2d6cdf; }
-.toggle-btn { background:transparent; border:0; cursor:pointer; padding:.15rem; display:flex; align-items:center; }
-.toggle-btn .ico { width:14px; height:14px; fill:#8fb0ff; }
-.empty-info { font-size:.7rem; opacity:.6; }
-.error-msg { color:#e66; font-size:.65rem; margin-top:.4rem; }
-.small-empty, .small-loading { font-size:.65rem; opacity:.7; margin-bottom:.4rem; }
-.mini-chart { border:1px solid var(--border); padding:.4rem .5rem; border-radius:.4rem; background:#141618; }
-.mini-chart .bars { display:flex; align-items:flex-end; gap:.25rem; height:90px; }
-.mini-chart .bar-wrap { flex:1 1 0; display:flex; align-items:flex-end; justify-content:center; }
-.mini-chart .bar-inner { width:8px; border-radius:2px; background:#2d6cdf; }
-.mini-chart .bar-inner.neg { background:#c94; }
-.total-row { border-top:1px solid #333; background:#1b2226; font-weight:600; }
-.total-row td { padding-top:.35rem; }
-
-/* Tabs + Scrollbox for filter dialog */
-.tabs-bar { display:flex; gap:.35rem; border-bottom:1px solid #2b3137; margin:.25rem 0 .5rem; }
-.tab-btn { background:#20262b; color:#ddd; border:1px solid #2b3137; border-bottom:0; padding:.3rem .55rem; font-size:.7rem; border-top-left-radius:.3rem; border-top-right-radius:.3rem; cursor:pointer; }
-.tab-btn.active { background:#242b31; color:#fff; font-weight:600; }
-.scroll-box { max-height:50vh; overflow-y:auto; border:1px solid #2b3137; border-radius:.3rem; background:#1e2328; padding:.4rem .5rem; }
-.option-list { display:flex; flex-direction:column; gap:.35rem; align-items:flex-start; text-align:left; }
-.option-list .mk-item { width:unset; justify-content:flex-start; text-align:left; background:transparent; border:0; padding:.15rem .2rem; }
-.option-list .mk-item input[type=checkbox] { margin-right:.4rem; width:unset;}
-</style>

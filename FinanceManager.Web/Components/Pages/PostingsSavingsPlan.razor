@@ -1,24 +1,20 @@
 @page "/postings/savings-plan/{PlanId:guid}"
 @rendermode InteractiveServer
-@inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
-@using FinanceManager.Web.Components.Shared
+@inject IServiceProvider Services
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.PostingsSavingsPlan> Localizer
+@using FinanceManager.Web.Components.Shared
+@using FinanceManager.Web.ViewModels
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="PostingsSavingsPlan.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
-@if (_exporting)
-{
-    <div class="small-loading" style="margin:.5rem 0;">@Localizer["Loading"]</div>
-}
-
 <h3>@Localizer["Title"]</h3>
 <div style="margin-bottom:.75rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
-    <input placeholder='@Localizer["SearchPlaceholder"]' @bind="_search" @bind:after="OnSearchChanged" style="min-width:260px;" />
+    <input placeholder='@Localizer["SearchPlaceholder"]' value="@_vm?.Search" @oninput="OnSearchInput" style="min-width:260px;" />
 </div>
-@if(_loading && _items.Count==0)
+@if((_vm?.Loading ?? true) && (_vm?.Items.Count ?? 0)==0)
 {
     <p>@Localizer["Loading"]</p>
 }
@@ -36,33 +32,33 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach(var p in _items)
+            @foreach(var p in _vm!.Items)
             {
-                <tr>
+                <tr style="cursor:pointer;" @onclick="(()=> OpenDetail(p.Id))">
                     <td>@p.BookingDate.ToShortDateString()</td>
                     <td style="text-align:right;">@p.Amount</td>
-                    <td>@(p.Kind == PostingKind.Security && p.SecuritySubType!=null ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
+                    <td>@(p.Kind == PostingsSavingsPlanViewModel.PostingKind.Security && p.SecuritySubType!=null ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.RecipientName)?"-":p.RecipientName)</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.Subject)?"-":p.Subject)</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.Description)?"-":p.Description)</td>
                 </tr>
             }
-            @if(_loading)
+            @if(_vm.Loading)
             {
                 <tr><td colspan="6" style="opacity:.6;">@Localizer["Loading"]</td></tr>
             }
         </tbody>
     </table>
     <div style="margin-top:.5rem;">
-        @if(_canLoadMore)
+        @if(_vm.CanLoadMore)
         {
             <div @ref="_sentinel" class="infinite-sentinel" aria-hidden="true"></div>
         }
-        else if(_items.Count==0 && !_loading)
+        else if(_vm.Items.Count==0 && !_vm.Loading)
         {
             <span style="opacity:.6;font-size:.75rem;">@Localizer["NoItems"]</span>
         }
-        else if(!_canLoadMore)
+        else if(!_vm.CanLoadMore)
         {
             <div class="end-of-list" style="opacity:.6;font-size:.65rem;">@Localizer["EndOfList"]</div>
         }
@@ -72,190 +68,37 @@ else
 @code {
     [Parameter] public Guid PlanId { get; set; }
     [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
-    private const int PageSize = 50;
-    private bool _loading; private bool _canLoadMore = true; private int _skip;
-    private List<PostingDto> _items = new();
+
+    private PostingsSavingsPlanViewModel? _vm;
 
     private ElementReference _sentinel;
     private DotNetObjectReference<PostingsSavingsPlan>? _selfRef;
     private bool _observerAttached;
-    private string _search = string.Empty;
-    private CancellationTokenSource? _searchCts;
 
-    private bool _exporting;
-
-    // Ribbon state
     private enum TabId { Postings }
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
     private TabId _activeTab = TabId.Postings;
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-    // Selected links are constant for SavingsPlan page (we know PlanId); derive others on-demand from API for one representative group if needed
-    private Guid? _linkedAccountId, _linkedContactId, _linkedSecurityId;
-    private string BuildBackValue() => Uri.EscapeDataString("/" + Nav.ToBaseRelativePath(Nav.Uri));
-
-    private void OpenLinkedAccount()
+    protected override async Task OnInitializedAsync()
     {
-        if (_linkedAccountId == null || _linkedAccountId == Guid.Empty) { return; }
-        var back = BuildBackValue();
-        Nav.NavigateTo($"/accounts/{_linkedAccountId}?back={back}");
-    }
-    private void OpenLinkedContact()
-    {
-        if (_linkedContactId == null || _linkedContactId == Guid.Empty) { return; }
-        var back = BuildBackValue();
-        Nav.NavigateTo($"/contacts/{_linkedContactId}?back={back}");
-    }
-    private void OpenLinkedPlan()
-    {
-        Nav.NavigateTo($"/savings-plans/{PlanId}");
-    }
-    private void OpenLinkedSecurity()
-    {
-        if (_linkedSecurityId == null || _linkedSecurityId == Guid.Empty) { return; }
-        var back = BuildBackValue();
-        Nav.NavigateTo($"/securities/{_linkedSecurityId}?back={back}");
-    }
-
-    private async Task ResolveLinksOnceAsync(Guid groupId)
-    {
-        try
+        if (_vm is not null)
         {
-            var dto = await Http.GetFromJsonAsync<GroupLinksResponse>($"/api/postings/group/{groupId}");
-            _linkedAccountId = dto?.AccountId; _linkedContactId = dto?.ContactId; _linkedSecurityId = dto?.SecurityId;
-            BuildRibbon();
+            _vm.StateChanged -= VmOnStateChanged;
+            _vm.AuthenticationRequired -= VmOnAuthenticationRequired;
+            await _vm.DisposeAsync();
         }
-        catch { }
-    }
-
-    private async Task ExportAsync(string format)
-    {
-        if (_exporting) { return; }
-        _exporting = true; StateHasChanged();
-        try
-        {
-            var parts = new List<string>();
-            parts.Add($"format={Uri.EscapeDataString(format)}");
-            if (!string.IsNullOrWhiteSpace(_search)) { parts.Add($"q={Uri.EscapeDataString(_search)}"); }
-            var qs = parts.Count > 0 ? ("?" + string.Join('&', parts)) : string.Empty;
-            var url = $"/api/postings/savings-plan/{PlanId}/export{qs}";
-            var js = $@"(function(){{var a=document.createElement('a'); a.href={System.Text.Json.JsonSerializer.Serialize(url)}; a.download=''; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>document.body.removeChild(a),200);}})()";
-            try { await JS.InvokeVoidAsync("eval", js); } catch { Nav.NavigateTo(url, forceLoad: true); }
-        }
-        finally { _exporting = false; StateHasChanged(); }
-    }
-
-    private void BuildRibbon()
-    {
-        var nav = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Navigation"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Back"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { Back(); return Task.CompletedTask; }
-                }
-            }
-        };
-        var filter = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Filter"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_ClearSearch"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#clear'/></svg>",
-                    Disabled = string.IsNullOrWhiteSpace(_search),
-                    Callback = () => { ClearSearch(); return Task.CompletedTask; }
-                }
-            }
-        };
-
-        var linkedIds = GetLinkedEntityIds();
-        var linked = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Linked"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_OpenAccount"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
-                    Disabled = linkedIds.accountId == null,
-                    Callback = () => { OpenLinkedAccount(); return Task.CompletedTask; }
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_OpenContact"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
-                    Disabled = linkedIds.contactId == null,
-                    Callback = () => { OpenLinkedContact(); return Task.CompletedTask; }
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_OpenSavingsPlan"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
-                    Disabled = false,
-                    Callback = () => { OpenLinkedPlan(); return Task.CompletedTask; }
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_OpenSecurity"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#external'/></svg>",
-                    Disabled = linkedIds.securityId == null,
-                    Callback = () => { OpenLinkedSecurity(); return Task.CompletedTask; }
-                }
-            }
-        };
-
-        var export = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Export"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_ExportCsv"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#download'/></svg>",
-                    Disabled = _loading || _exporting,
-                    Callback = () => ExportAsync("csv")
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_ExportExcel"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#download'/></svg>",
-                    Disabled = _loading || _exporting,
-                    Callback = () => ExportAsync("xlsx")
-                }
-            }
-        };
-
-        _tabs = new(){ new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Postings, Title = Localizer["Ribbon_Tab_Postings"], Groups = new(){ nav, filter, linked, export } } };
-        StateHasChanged();
-    }
-
-    private enum PostingKind { Bank=0, Contact=1, SavingsPlan=2, Security=3 }
-    private enum SecurityPostingSubType { Trade=0, Fee=1, Tax=2, Dividend=3 }
-    private sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid? GroupId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
-    private sealed record GroupLinksResponse(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if(_items.Count==0)
-        {
-            await LoadMoreAsync();
-        }
-        BuildRibbon();
+        _vm = ActivatorUtilities.CreateInstance<PostingsSavingsPlanViewModel>(Services);
+        _vm.StateChanged += VmOnStateChanged;
+        _vm.AuthenticationRequired += VmOnAuthenticationRequired;
+        _vm.Configure(PlanId);
+        await _vm.InitializeAsync();
+        RebuildRibbon();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_observerAttached || !_canLoadMore || _loading) { return; }
+        if (_observerAttached || !(_vm?.CanLoadMore ?? false) || (_vm?.Loading ?? false)) { return; }
         if (_sentinel.Context is null) { return; }
         try
         {
@@ -270,80 +113,91 @@ else
         }
     }
 
-    private void OnSearchChanged()
+    private void VmOnAuthenticationRequired(object? sender, string? returnUrl)
     {
-        _searchCts?.Cancel();
-        var cts = new CancellationTokenSource();
-        _searchCts = cts;
-        _ = Task.Run(async () =>
+        var back = Nav.ToBaseRelativePath(Nav.Uri);
+        var url = string.IsNullOrWhiteSpace(back) ? "/login" : $"/login?returnUrl={Uri.EscapeDataString(back)}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void VmOnStateChanged(object? sender, EventArgs e)
+    {
+        RebuildRibbon();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            try
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                await Task.Delay(350, cts.Token); // debounce
-                if (cts.IsCancellationRequested) { return; }
-                await InvokeAsync(async () =>
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    ResetAndSearch();
-                    await LoadMoreAsync();
-                    BuildRibbon();
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
                 });
             }
-            catch (TaskCanceledException) { }
-        });
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Postings,
+                Title = Localizer["Ribbon_Tab_Postings"],
+                Groups = groups
+            }
+        };
+        StateHasChanged();
     }
 
-    private void ClearSearch()
+    private void HandleRibbonAction(string action)
     {
-        if (string.IsNullOrWhiteSpace(_search)) { return; }
-        _search = string.Empty;
-        ResetAndSearch();
-        _ = LoadMoreAsync();
-        BuildRibbon();
-    }
-
-    private void ResetAndSearch()
-    {
-        _items.Clear();
-        _skip = 0;
-        _canLoadMore = true;
-        _observerAttached = false; // reattach for new sentinel
+        switch (action)
+        {
+            case "Back": Back(); break;
+            case "ClearSearch": _vm!.ClearSearch(); _ = _vm.LoadMoreAsync(); break;
+            case "ExportCsv": Export("csv"); break;
+            case "ExportXlsx": Export("xlsx"); break;
+        }
     }
 
     [JSInvokable]
     public async Task LoadMoreFromJs()
     {
-        await LoadMoreAsync();
-        if (_canLoadMore) { await JS.InvokeVoidAsync("fmInfinite.refresh"); }
+        await _vm!.LoadMoreAsync();
+        if (_vm.CanLoadMore) { await JS.InvokeVoidAsync("fmInfinite.refresh"); }
         else { StateHasChanged(); }
     }
 
-    private async Task LoadMoreAsync()
+    private void OnSearchInput(ChangeEventArgs e)
     {
-        if(_loading || !_canLoadMore) return;
-        _loading = true;
-        try
-        {
-            var query = string.IsNullOrWhiteSpace(_search) ? string.Empty : $"&q={Uri.EscapeDataString(_search)}";
-            var resp = await Http.GetAsync($"/api/postings/savings-plan/{PlanId}?skip={_skip}&take={PageSize}{query}");
-            if(resp.IsSuccessStatusCode)
-            {
-                var chunk = await resp.Content.ReadFromJsonAsync<List<PostingDto>>() ?? new();
-                _items.AddRange(chunk);
-                _skip += chunk.Count;
-                if(chunk.Count < PageSize) _canLoadMore = false;
-            }
-        }
-        finally { _loading=false; StateHasChanged(); }
+        _vm!.SetSearch(e.Value?.ToString() ?? string.Empty);
+        _vm.ResetAndSearch();
+        _ = _vm.LoadMoreAsync();
+        RebuildRibbon();
     }
 
-    private (Guid? accountId, Guid? contactId, Guid? planId, Guid? securityId) GetLinkedEntityIds()
+    private void Export(string format)
     {
-        // For SavingsPlan postings list we don't have row selection; derive from any items (same groupId not needed here)
-        var acc = _items.Select(i => i.AccountId).FirstOrDefault(id => id != null);
-        var con = _items.Select(i => i.ContactId).FirstOrDefault(id => id != null);
-        var plan = PlanId;
-        var sec = _items.Select(i => i.SecurityId).FirstOrDefault(id => id != null);
-        return (acc, con, plan, sec);
+        var url = _vm!.GetExportUrl(format);
+        var js = $"(function(){{var a=document.createElement('a'); a.href={System.Text.Json.JsonSerializer.Serialize(url)}; a.download=''; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>document.body.removeChild(a),200);}})()";
+        try { JS.InvokeVoidAsync("eval", js); } catch { Nav.NavigateTo(url, forceLoad: true); }
+    }
+
+    private string BuildBackValue() => Uri.EscapeDataString("/" + Nav.ToBaseRelativePath(Nav.Uri));
+
+    private void OpenDetail(Guid id)
+    {
+        Nav.NavigateTo($"/postings/{id}?back={BuildBackValue()}");
     }
 
     private void Back()

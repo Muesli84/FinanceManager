@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="PageTitle" xml:space="preserve"><value>Posting</value></data>
+  <data name="Title" xml:space="preserve"><value>Posting</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading...</value></data>
+  <data name="NotFound" xml:space="preserve"><value>Posting not found.</value></data>
+  <data name="Date" xml:space="preserve"><value>Date</value></data>
+  <data name="Amount" xml:space="preserve"><value>Amount</value></data>
+  <data name="Kind" xml:space="preserve"><value>Kind</value></data>
+  <data name="Subject" xml:space="preserve"><value>Subject</value></data>
+  <data name="Recipient" xml:space="preserve"><value>Recipient</value></data>
+  <data name="Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Attachments" xml:space="preserve"><value>Attachments</value></data>
+  <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
+  <data name="Ribbon_Group_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Ribbon_Group_Linked" xml:space="preserve"><value>Linked</value></data>
+  <data name="Ribbon_Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Ribbon_Attachments" xml:space="preserve"><value>Attachments</value></data>
+  <data name="Ribbon_OpenAccount" xml:space="preserve"><value>Open account</value></data>
+  <data name="Ribbon_OpenContact" xml:space="preserve"><value>Open contact</value></data>
+  <data name="Ribbon_OpenSavingsPlan" xml:space="preserve"><value>Open savings plan</value></data>
+  <data name="Ribbon_OpenSecurity" xml:space="preserve"><value>Open security</value></data>
+  <data name="Ribbon_Tab_Detail" xml:space="preserve"><value>Detail</value></data>
+</root>
