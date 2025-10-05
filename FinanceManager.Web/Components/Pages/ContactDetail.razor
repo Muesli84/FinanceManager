@@ -11,6 +11,8 @@
 @inject NavigationManager Navigation
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ContactDetail> Localizer
+@using FinanceManager.Web.ViewModels
+@inject IServiceProvider Services
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="ContactDetail.TabId"
@@ -20,27 +22,27 @@
 
 <h1>@Localizer["Title"]</h1>
 
-@if (!_loaded)
+@if (!(_vm?.Loaded ?? false))
 {
     <p>@Localizer["Loading"]</p>
 }
-else if (!CurrentUser.IsAuthenticated)
+else if (!_vm!.IsAuthenticated)
 {
     <p>@Localizer["PleaseLogin"]</p>
 }
 else
 {
-    <EditForm Model="_model" OnValidSubmit="SaveAsync">
+    <EditForm Model="_vm" OnValidSubmit="OnSaveAsync">
         <DataAnnotationsValidator />
         <ValidationSummary />
         <div>
             <label>@Localizer["LabelName"]</label>
-            <InputText @bind-Value="_model.Name" @bind-Value:after="(()=>BuildRibbon())" />
-            <ValidationMessage For="()=>_model.Name" />
+            <InputText @bind-Value="_vm!.Name" @bind-Value:after="(()=>RebuildRibbon())" />
+            <ValidationMessage For="()=>_vm!.Name" />
         </div>
         <div>
             <label>@Localizer["LabelType"]</label>
-            <InputSelect @bind-Value="_model.Type" @bind-Value:after="(()=>BuildRibbon())">
+            <InputSelect @bind-Value="_vm!.Type" @bind-Value:after="(()=>RebuildRibbon())">
                 @foreach (var t in Enum.GetValues<ContactType>())
                 {
                     <option value="@t">@t</option>
@@ -49,9 +51,9 @@ else
         </div>
         <div>
             <label>@Localizer["LabelGroup"]</label>
-            <InputSelect @bind-Value="_model.CategoryId" @bind-Value:after="(()=>BuildRibbon())">
+            <InputSelect @bind-Value="_vm!.CategoryId" @bind-Value:after="(()=>RebuildRibbon())">
                 <option value="">-- @Localizer["None"] --</option>
-                @foreach (var g in _categories.OrderBy(c=>c.Name))
+                @foreach (var g in _vm!.Categories)
                 {
                     <option value="@g.Id">@g.Name</option>
                 }
@@ -59,65 +61,65 @@ else
         </div>
         <div>
             <label>@Localizer["LabelDescription"]</label>
-            <textarea @bind="_model.Description" rows="4" style="width:100%;max-width:520px;"></textarea>
+            <textarea @bind="_vm!.Description" rows="4" style="width:100%;max-width:520px;"></textarea>
         </div>
         <div>
-            <label><input type="checkbox" @bind="_model.IsPaymentIntermediary" @bind:after="(()=>BuildRibbon())" /> @Localizer["LabelIntermediary"]</label>
+            <label><input type="checkbox" @bind="_vm!.IsPaymentIntermediary" @bind:after="(()=>RebuildRibbon())" /> @Localizer["LabelIntermediary"]</label>
         </div>
         <div>
             <label>@Localizer["LabelAliases"]</label>
             <ul style="margin-bottom:.5rem;">
-                @foreach (var alias in _aliases)
+                @foreach (var alias in _vm!.Aliases)
                 {
                     <li style="display:flex;align-items:left;gap:.5rem;">
                         <span>@alias.Pattern</span>
-                        <button type="button" class="icon-btn danger" title='@Localizer["BtnDeleteAlias"]' @onclick="() => DeleteAliasAsync(alias.Id)">
+                        <button type="button" class="icon-btn danger" title='@Localizer["BtnDeleteAlias"]' @onclick="() => _ = _vm!.DeleteAliasAsync(alias.Id)">
                             <svg><use href="/icons/sprite.svg#clear" /></svg>
                         </button>
                     </li>
                 }
             </ul>
             <div style="display:flex;gap:.5rem;">
-                <InputText @bind-Value="_newAlias" placeholder='@Localizer["PlaceholderNewAlias"]' style="flex:1;" />
-                <button type="button" class="icon-btn" title='@Localizer["BtnAddAlias"]' @onclick="AddAliasAsync">
+                <InputText @bind-Value="_vm!.NewAlias" placeholder='@Localizer["PlaceholderNewAlias"]' style="flex:1;" />
+                <button type="button" class="icon-btn" title='@Localizer["BtnAddAlias"]' @onclick="() => _ = _vm!.AddAliasAsync()">
                     <svg><use href="/icons/sprite.svg#plus" /></svg>
                 </button>
             </div>
-            @if (!string.IsNullOrWhiteSpace(_aliasError))
+            @if (!string.IsNullOrWhiteSpace(_vm!.AliasError))
             {
-                <div class="error" style="margin-top:.3rem;">@_aliasError</div>
+                <div class="error" style="margin-top:.3rem;">@_vm.AliasError</div>
             }
         </div>
-        @if (!string.IsNullOrWhiteSpace(_error))
+        @if (!string.IsNullOrWhiteSpace(_vm!.Error))
         {
-            <div class="error" style="margin-top:.75rem;">@_error</div>
+            <div class="error" style="margin-top:.75rem;">@Localizer[_vm.Error]</div>
         }
     </EditForm>
 
-    @if (IsEdit)
+    @if (_vm?.ShowCharts == true)
     {
         <div style="margin-top:1.2rem;">
             <AggregateBarChart Endpoint="@($"/api/contacts/{Id}/aggregates")" Title="@Localizer["Chart_Title_Contact"]" />
         </div>
     }
 
-    @if (IsEdit)
+    @if (!_vm!.IsNew)
     {
-        <ContactMergeDialog Visible="@_showMergeDialog"
-                            CurrentContactId="@Id!.Value"
-                            CurrentContactType="@_model.Type"
-                            OnConfirm="PerformMergeAsync"
-                            OnCancel="CloseMergeDialog" />
+        <ContactMergeDialog Visible="@_vm!.ShowMergeDialog"
+                            CurrentContactId="@_vm!.ContactId!.Value"
+                            CurrentContactType="@_vm!.Type.ToString()"
+                            OnConfirm="OnPerformMergeAsync"
+                            OnCancel="(()=> _vm!.CloseMergeDialog())" />
     }
 }
 
-@if (_showAttachments && Id != null)
+@if (_vm?.ShowAttachments == true && Id != null)
 {
-    <div class="split-center" @onclick="(()=> _showAttachments = false)">
+    <div class="split-center" @onclick="(()=> _vm!.ShowAttachments = false)">
         <div class="split-dialog" style="max-width:90vH;" @onclick:stopPropagation="true">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
                 <h3 style="margin:0;font-size:1rem;">@Localizer["Attachments_Title"]</h3>
-                <button class="icon-btn" title='@Localizer["Btn_Close"]' @onclick="(()=> _showAttachments=false)"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+                <button class="icon-btn" title='@Localizer["Btn_Close"]' @onclick="(()=> _vm!.ShowAttachments=false)"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
             </div>
             <AttachmentsPanel ParentKind="@AttachmentEntityKind.Contact" ParentId="@Id!.Value" />
         </div>
@@ -134,95 +136,79 @@ else
     private TabId _activeTab = TabId.Contact;
     private Task OnActiveTabChanged(TabId t) { _activeTab = t; return Task.CompletedTask; }
 
-    private void BuildRibbon()
+    private ContactDetailViewModel? _vm;
+
+    private Guid? _prefillDraftId;
+    private Guid? _prefillEntryId;
+    private string? _pendingPrefillName;
+
+    protected override async Task OnParametersSetAsync()
     {
-        if (!_loaded || !CurrentUser.IsAuthenticated)
+        ParseQueryParams();
+
+        if (_vm == null || _vm.ContactId != Id)
         {
-            _tabs = new(); return;
-        }
-        var navGroup = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Navigation"],
-            Items = new()
+            if (_vm is not null)
             {
-                new Ribbon<TabId>.RibbonItem
+                _vm.StateChanged -= VmOnStateChanged;
+                _vm.AuthenticationRequired -= VmOnAuthenticationRequired;
+                await _vm.DisposeAsync();
+            }
+            _vm = ActivatorUtilities.CreateInstance<ContactDetailViewModel>(Services);
+            _vm.StateChanged += VmOnStateChanged;
+            _vm.AuthenticationRequired += VmOnAuthenticationRequired;
+            _vm.ForContact(Id);
+
+            if (_vm.IsAuthenticated)
+            {
+                await _vm.InitializeAsync();
+                if (_vm.IsNew && !string.IsNullOrWhiteSpace(_pendingPrefillName))
                 {
-                    Label = Localizer["Ribbon_Back"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { Back(); return Task.CompletedTask; }
+                    _vm.Name = _pendingPrefillName!;
                 }
             }
-        };
-        var editItems = new List<Ribbon<TabId>.RibbonItem>
-        {
-            new Ribbon<TabId>.RibbonItem
+            else
             {
-                Label = Localizer["Ribbon_Save"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
-                Size = Ribbon<TabId>.RibbonItemSize.Large,
-                Disabled = _busy || string.IsNullOrWhiteSpace(_model.Name) || _model.Name.Trim().Length < 2,
-                Callback = () => { _ = SaveAsync(); return Task.CompletedTask; }
+                VmOnAuthenticationRequired(_vm, Navigation.ToBaseRelativePath(Navigation.Uri));
             }
-        };
-        if (IsEdit)
-        {
-            editItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Delete"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
-                Disabled = _busy || IsSelfContact,
-                Callback = () => { _ = DeleteAsync(); return Task.CompletedTask; }
-            });
+            RebuildRibbon();
         }
-        var editGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Edit"], Items = editItems };
+    }
 
-        var relatedItems = new List<Ribbon<TabId>.RibbonItem>();
-        if (IsEdit && Enum.Parse<ContactType>(_model.Type) == ContactType.Bank)
-        {
-            relatedItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Accounts"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#accounts'/></svg>",
-                Callback = () => { OpenBankAccounts(); return Task.CompletedTask; }
-            });
-        }
-        if (IsEdit && !IsSelfContact)
-        {
-            relatedItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Merge"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#merge'/></svg>",
-                Disabled = _busy,
-                Callback = () => { OpenMergeDialog(); return Task.CompletedTask; }
-            });
-        }
-        if (IsEdit)
-        {
-            relatedItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Postings"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
-                Disabled = _busy,
-                Callback = () => { OpenPostings(); return Task.CompletedTask; }
-            });
-            relatedItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Attachments"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#attachment'/></svg>",
-                Disabled = _busy,
-                Callback = () => { OpenAttachments(); return Task.CompletedTask; }
-            });
-        }
-        Ribbon<TabId>.RibbonGroup? relatedGroup = null;
-        if (relatedItems.Any())
-        {
-            relatedGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Related"], Items = relatedItems };
-        }
+    private void VmOnAuthenticationRequired(object? sender, string? returnUrl)
+    {
+        var back = string.IsNullOrWhiteSpace(returnUrl) ? Navigation.ToBaseRelativePath(Navigation.Uri) : returnUrl!;
+        var url = string.IsNullOrWhiteSpace(back) ? "/login" : $"/login?returnUrl={Uri.EscapeDataString(back)}";
+        Navigation.NavigateTo(url, forceLoad: true);
+    }
 
-        var groups = new List<Ribbon<TabId>.RibbonGroup> { navGroup, editGroup };
-        if (relatedGroup != null) groups.Add(relatedGroup);
+    private void VmOnStateChanged(object? sender, EventArgs e)
+    {
+        RebuildRibbon();
+        _ = InvokeAsync(StateHasChanged);
+    }
 
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
+        {
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
+            {
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
+                {
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
+            }
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
@@ -235,118 +221,24 @@ else
         StateHasChanged();
     }
 
-    private ContactEditModel _model = new();
-    private List<CategoryVm> _categories = new();
-    private bool _loaded;
-    private bool _busy;
-    private string? _error;
-
-    private Guid? _prefillDraftId;
-    private Guid? _prefillEntryId;
-
-    private bool IsEdit => Id.HasValue;
-
-    protected override async Task OnParametersSetAsync()
+    private async Task OnSaveAsync()
     {
-        ParseQueryParams();
-        if (CurrentUser.IsAuthenticated)
+        if (_vm is null) { return; }
+        var id = await _vm.SaveAsync();
+        if (id.HasValue)
         {
-            await LoadCategoriesAsync();
-
-            if (IsEdit)
-            {
-                var http = ClientFactory.CreateClient("Api");
-                var resp = await http.GetAsync($"/api/contacts/{Id}");
-                if (resp.IsSuccessStatusCode)
-                {
-                    var dto = await resp.Content.ReadFromJsonAsync<ContactDto>();
-                    if (dto != null)
-                    {
-                        _model.Name = dto.Name;
-                        _model.Type = dto.Type.ToString();
-                        _model.CategoryId = dto.CategoryId?.ToString() ?? string.Empty;
-                        _model.IsPaymentIntermediary = dto.IsPaymentIntermediary;
-                    }
-                }
-                else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    _error = Localizer["ErrorNotFound"];
-                }
-                else
-                {
-                    _error = Localizer["ErrorLoadFailed"];
-                }
-                await LoadAliasesAsync();
-            }
-            else if (!string.IsNullOrWhiteSpace(_pendingPrefillName))
-            {
-                _model.Name = _pendingPrefillName!;
-            }
-        }
-        _loaded = true;
-        BuildRibbon();
-    }
-
-    private string? _pendingPrefillName;
-    private void ParseQueryParams()
-    {
-        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-        var prefillName = query.Get("prefillName");
-        if (!string.IsNullOrWhiteSpace(prefillName))
-        {
-            _pendingPrefillName = prefillName;
-        }
-        if (Guid.TryParse(query.Get("draftId"), out var did)) { _prefillDraftId = did; }
-        if (Guid.TryParse(query.Get("entryId"), out var eid)) { _prefillEntryId = eid; }
-        BackNav = query.Get("back");
-    }
-
-    private async Task LoadCategoriesAsync()
-    {
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.GetAsync("/api/contact-categories");
-        if (resp.IsSuccessStatusCode)
-        {
-            var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new();
-            _categories = list.Select(c => new CategoryVm { Id = c.Id, Name = c.Name }).ToList();
+            await AfterSaveAssignToDraftIfNeeded(id.Value);
         }
     }
 
-    private async Task SaveAsync()
+    private async Task OnPerformMergeAsync(Guid targetId)
     {
-        _busy = true; _error = null; BuildRibbon();
-        try
+        if (_vm is null) { return; }
+        var ok = await _vm.PerformMergeAsync(targetId);
+        if (ok)
         {
-            var categoryId = Guid.TryParse(_model.CategoryId, out var parsed) ? parsed : (Guid?)null;
-            var http = ClientFactory.CreateClient("Api");
-            if (IsEdit)
-            {
-                var update = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId, Description = _model.Description, IsPaymentIntermediary = _model.IsPaymentIntermediary };
-                var resp = await http.PutAsJsonAsync($"/api/contacts/{Id}", update);
-                if (!resp.IsSuccessStatusCode) { _error = Localizer["ErrorSaveFailed"]; }
-                else { await AfterSaveAssignToDraftIfNeeded(Id!.Value); }
-            }
-            else
-            {
-                var create = new { Name = _model.Name.Trim(), Type = Enum.Parse<ContactType>(_model.Type), CategoryId = categoryId, Description = _model.Description, IsPaymentIntermediary = _model.IsPaymentIntermediary };
-                var resp = await http.PostAsJsonAsync("/api/contacts", create);
-                if (resp.IsSuccessStatusCode)
-                {
-                    var dto = await resp.Content.ReadFromJsonAsync<ContactDto>();
-                    if (dto != null)
-                    {
-                        await AfterSaveAssignToDraftIfNeeded(dto.Id);
-                    }
-                }
-                else _error = Localizer["ErrorCreateFailed"]; 
-            }
+            Navigation.NavigateTo($"/contacts/{targetId}", forceLoad: true);
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busy = false; BuildRibbon();
     }
 
     private async Task AfterSaveAssignToDraftIfNeeded(Guid contactId)
@@ -364,25 +256,49 @@ else
         }
         else
         {
-            if (!IsEdit)
+            if (_vm?.IsNew == true)
             {
                 Navigation.NavigateTo("/contacts", forceLoad: true);
             }
         }
     }
 
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "Back":
+                Back();
+                break;
+            case "Save":
+                _ = OnSaveAsync();
+                break;
+            case "Delete":
+                _ = DeleteAsync();
+                break;
+            case "OpenBankAccounts":
+                if (_vm?.ContactId is Guid cid) { Navigation.NavigateTo($"/accounts?bankContactId={cid}"); }
+                break;
+            case "OpenMerge":
+                _vm?.OpenMergeDialog();
+                break;
+            case "OpenPostings":
+                if (_vm?.ContactId is Guid cid2) { Navigation.NavigateTo($"/postings/contact/{cid2}"); }
+                break;
+            case "OpenAttachments":
+                if (_vm is not null) { _vm.ShowAttachments = true; }
+                break;
+        }
+    }
+
     private async Task DeleteAsync()
     {
-        if (!IsEdit) return;
-        _busy = true; _error = null; BuildRibbon();
-        try
+        if (_vm is null || _vm.IsNew) { return; }
+        await _vm.DeleteAsync();
+        if (string.IsNullOrWhiteSpace(_vm.Error))
         {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.DeleteAsync($"/api/contacts/{Id}");
-            if (resp.IsSuccessStatusCode) Back(); else _error = Localizer["ErrorDeleteFailed"];
+            Back();
         }
-        catch (Exception ex) { _error = ex.Message; }
-        _busy = false; BuildRibbon();
     }
 
     private void Back()
@@ -401,134 +317,18 @@ else
             Navigation.NavigateTo("/contacts", forceLoad: true);
         }
     }
-    private void OpenBankAccounts()
+
+    private void ParseQueryParams()
     {
-        if (Id.HasValue)
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        var prefillName = query.Get("prefillName");
+        if (!string.IsNullOrWhiteSpace(prefillName))
         {
-            Navigation.NavigateTo($"/accounts?bankContactId={Id}");
+            _pendingPrefillName = prefillName;
         }
-    }
-    private void OpenPostings()
-    {
-        if (Id.HasValue)
-        {
-            Navigation.NavigateTo($"/postings/contact/{Id}");
-        }
-    }
-    private void OpenAttachments(){ if (Id.HasValue){ _showAttachments = true; StateHasChanged(); } }
-
-    private sealed class ContactEditModel
-    {
-        [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
-        public string Type { get; set; } = ContactType.Person.ToString();
-        public string CategoryId { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public bool IsPaymentIntermediary { get; set; }
-    }
-
-    private sealed class CategoryVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed class ContactCategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private List<AliasVm> _aliases = new();
-    private string _newAlias = string.Empty;
-    private string? _aliasError;
-
-    private async Task LoadAliasesAsync()
-    {
-        if (!IsEdit) { _aliases.Clear(); return; }
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.GetAsync($"/api/contacts/{Id}/aliases");
-        if (resp.IsSuccessStatusCode)
-        {
-            var list = await resp.Content.ReadFromJsonAsync<List<AliasDto>>() ?? new();
-            _aliases = list.Select(a => new AliasVm { Id = a.Id, Pattern = a.Pattern }).ToList();
-        }
-    }
-
-    private async Task AddAliasAsync()
-    {
-        _aliasError = null;
-        var pattern = _newAlias.Trim();
-        if (string.IsNullOrWhiteSpace(pattern)) { _aliasError = Localizer["ErrorAliasEmpty"]; return; }
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.PostAsJsonAsync($"/api/contacts/{Id}/aliases", new { Pattern = pattern });
-        if (resp.IsSuccessStatusCode)
-        {
-            _newAlias = string.Empty;
-            await LoadAliasesAsync();
-        }
-        else
-        {
-            _aliasError = await resp.Content.ReadAsStringAsync();
-        }
-        BuildRibbon();
-    }
-
-    private async Task DeleteAliasAsync(Guid aliasId)
-    {
-        _aliasError = null;
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.DeleteAsync($"/api/contacts/{Id}/aliases/{aliasId}");
-        if (resp.IsSuccessStatusCode)
-        {
-            await LoadAliasesAsync();
-        }
-        else
-        {
-            _aliasError = await resp.Content.ReadAsStringAsync();
-        }
-        BuildRibbon();
-    }
-
-    private sealed class AliasVm { public Guid Id { get; set; } public string Pattern { get; set; } = string.Empty; }
-    private sealed class AliasDto { public Guid Id { get; set; } public string Pattern { get; set; } = string.Empty; }
-
-    private bool _showMergeDialog;
-    private bool _showAttachments;
-    private bool IsSelfContact => Enum.Parse<ContactType>(_model.Type) == ContactType.Self;
-
-    private void OpenMergeDialog()
-    {
-        if (!IsEdit || IsSelfContact)
-        {
-            return;
-        }
-        _showMergeDialog = true; BuildRibbon();
-    }
-
-    private Task CloseMergeDialog()
-    {
-        _showMergeDialog = false;
-        StateHasChanged();
-        BuildRibbon();
-        return Task.CompletedTask;
-    }
-
-    private async Task PerformMergeAsync(Guid targetId)
-    {
-        if (!Id.HasValue || targetId == Guid.Empty)
-        {
-            return;
-        }
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.PostAsJsonAsync($"/api/contacts/{Id}/merge", new { targetContactId = targetId });
-            if (resp.IsSuccessStatusCode)
-            {
-                _showMergeDialog = false;
-                Navigation.NavigateTo($"/contacts/{targetId}", forceLoad: true);
-            }
-            else
-            {
-                var msg = await resp.Content.ReadAsStringAsync();
-                _error = $"Merge failed: {msg}";
-            }
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        StateHasChanged();
-        BuildRibbon();
+        if (Guid.TryParse(query.Get("draftId"), out var did)) { _prefillDraftId = did; }
+        if (Guid.TryParse(query.Get("entryId"), out var eid)) { _prefillEntryId = eid; }
+        BackNav = query.Get("back");
     }
 }

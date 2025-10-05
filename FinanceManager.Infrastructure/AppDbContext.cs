@@ -76,6 +76,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Contact>(b =>
         {
             b.HasIndex(x => new { x.OwnerUserId, x.Name });
+            // Ensure only a single Self contact per owner
+            b.HasIndex(x => new { x.OwnerUserId, x.Type })
+             .IsUnique()
+             .HasFilter("[Type] = 0");
             b.Property(x => x.Name).HasMaxLength(200).IsRequired();
             b.HasOne<ContactCategory>()
              .WithMany()

@@ -5,105 +5,145 @@
 @inject NavigationManager Navigation
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ContactCategories> Localizer
+@using FinanceManager.Web.Components.Shared
+@using FinanceManager.Web.ViewModels
+@inject IServiceProvider Services
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
-<h1>Contact Groups</h1>
+<Ribbon TTabEnum="ContactCategories.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
-@if (!_loaded)
+<h1>@Localizer["Title"]</h1>
+
+@if (!(_vm?.Loaded ?? false))
 {
-    <p>Loading...</p>
+    <p>@Localizer["Loading"]</p>
 }
-else if (!CurrentUser.IsAuthenticated)
+else if (!_vm!.IsAuthenticated)
 {
-    <p>Please login.</p>
+    <p>@Localizer["PleaseLogin"]</p>
 }
 else
 {
-    <EditForm Model="_createModel" OnValidSubmit="CreateAsync">
+    <EditForm Model="_vm" OnValidSubmit="@(() => _vm!.CreateAsync())">
         <DataAnnotationsValidator />
         <div style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:1rem;">
-            <InputText @bind-Value="_createModel.Name" placeholder="New group name" />
-            <button type="submit" disabled="@_busy">@(_busy?"Adding...":"Add")</button>
+            <InputText @bind-Value="_vm!.CreateName" placeholder="@Localizer["NewGroupPlaceholder"]" />
+            <button type="submit" disabled="@_vm.Busy">@(_vm.Busy? Localizer["Adding"] : Localizer["Add"])</button>
         </div>
         <ValidationSummary />
     </EditForm>
 
-    <ul style="padding-left:1.2rem;">
-        @foreach (var c in _categories.OrderBy(c=>c.Name))
-        {
-            <li>@c.Name</li>
-        }
-        @if (_categories.Count == 0)
-        {
-            <li style="opacity:.7;">No groups yet.</li>
-        }
-    </ul>
-
-    <div style="margin-top:1rem;">
-        <button type="button" @onclick="Back">Back</button>
+    <div class="table-responsive">
+        <table class="fm-table">
+            <thead>
+                <tr>
+                    <th>@Localizer["Col_Name"]</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in _vm.Categories)
+                {
+                    <tr>
+                        <td>@c.Name</td>
+                    </tr>
+                }
+                @if (_vm.Categories.Count == 0)
+                {
+                    <tr><td style="opacity:.7;">@Localizer["NoGroups"]</td></tr>
+                }
+            </tbody>
+        </table>
     </div>
 
-    @if (!string.IsNullOrEmpty(_error))
+    @if (!string.IsNullOrEmpty(_vm.Error))
     {
-        <div style="margin-top:.75rem;color:#b00;">@_error</div>
+        <div style="margin-top:.75rem;color:#b00;">@_vm.Error</div>
     }
 }
 
 @code {
-    private List<CategoryVm> _categories = new();
-    private bool _loaded;
-    private bool _busy;
-    private string? _error;
+    private enum TabId { ContactCategories }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.ContactCategories;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-    private CreateCategoryModel _createModel = new();
+    private ContactCategoriesViewModel? _vm;
 
     protected override async Task OnInitializedAsync()
     {
-        if (CurrentUser.IsAuthenticated)
+        if (_vm is not null)
         {
-            await LoadAsync();
+            _vm.StateChanged -= VmOnStateChanged;
+            _vm.AuthenticationRequired -= VmOnAuthenticationRequired;
+            await _vm.DisposeAsync();
         }
-        _loaded = true;
+        _vm = ActivatorUtilities.CreateInstance<ContactCategoriesViewModel>(Services);
+        _vm.StateChanged += VmOnStateChanged;
+        _vm.AuthenticationRequired += VmOnAuthenticationRequired;
+        await _vm.InitializeAsync();
+        RebuildRibbon();
     }
 
-    private async Task LoadAsync()
+    private void VmOnAuthenticationRequired(object? sender, string? returnUrl)
     {
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.GetAsync("/api/contact-categories");
-        if (resp.IsSuccessStatusCode)
-        {
-            var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new();
-            _categories = list.Select(l => new CategoryVm { Id = l.Id, Name = l.Name }).ToList();
-        }
+        var back = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var url = string.IsNullOrWhiteSpace(back) ? "/login" : $"/login?returnUrl={Uri.EscapeDataString(back)}";
+        Navigation.NavigateTo(url, forceLoad: true);
     }
 
-    private async Task CreateAsync()
+    private void VmOnStateChanged(object? sender, EventArgs e)
     {
-        _busy = true; _error = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.PostAsJsonAsync("/api/contact-categories", new { Name = _createModel.Name });
-            if (resp.IsSuccessStatusCode)
-            {
-                _createModel.Name = string.Empty;
-                await LoadAsync();
-            }
-            else
-            {
-                _error = "Create failed";
-            }
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busy = false;
+        RebuildRibbon();
+        _ = InvokeAsync(StateHasChanged);
     }
 
-    private void Back() => Navigation.NavigateTo("/contacts");
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
+        {
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
+            {
+                var size = it.Size == UiRibbonItemSize.Large
+                    ? Ribbon<TabId>.RibbonItemSize.Large
+                    : Ribbon<TabId>.RibbonItemSize.Small;
 
-    private sealed class CategoryVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed class CreateCategoryModel { [Required, MinLength(2)] public string Name { get; set; } = string.Empty; }
-    private sealed class ContactCategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+                items.Add(new Ribbon<TabId>.RibbonItem
+                {
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
+            }
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
+
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.ContactCategories,
+                Title = Localizer["Ribbon_Tab_ContactCategories"],
+                Groups = groups
+            }
+        };
+        StateHasChanged();
+    }
+
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "Back":
+                Navigation.NavigateTo("/contacts");
+                break;
+            case "New":
+                _ = _vm!.CreateAsync();
+                break;
+        }
+    }
 }
