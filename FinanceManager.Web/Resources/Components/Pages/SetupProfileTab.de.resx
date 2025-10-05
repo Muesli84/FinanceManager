@@ -62,4 +62,12 @@
   <data name="Btn_Save" xml:space="preserve"><value>Speichern</value></data>
   <data name="Btn_Reset" xml:space="preserve"><value>Zuruecksetzen</value></data>
   <data name="SaveSuccess" xml:space="preserve"><value>Einstellungen gespeichert.</value></data>
+	<!-- AlphaVantage: neu -->
+	<data name="Label_AlphaVantageKey" xml:space="preserve"><value>AlphaVantage API‑Schlüssel</value></data>
+	<data name="Placeholder_AlphaVantageKey" xml:space="preserve"><value>Neuen Schlüssel eingeben oder leer lassen</value></data>
+	<data name="Msg_KeyPresent" xml:space="preserve"><value>Schlüssel hinterlegt</value></data>
+	<data name="Msg_KeyMissing" xml:space="preserve"><value>Kein Schlüssel hinterlegt</value></data>
+	<data name="Btn_ClearKey" xml:space="preserve"><value>Schlüssel löschen</value></data>
+	<data name="Label_ShareKey" xml:space="preserve"><value>Schlüssel für alle freigeben</value></data>
+	<data name="Help_ShareKey" xml:space="preserve"><value>Nur Administratoren: Macht den eigenen Schlüssel für alle Nutzer verfügbar.</value></data>
 </root>

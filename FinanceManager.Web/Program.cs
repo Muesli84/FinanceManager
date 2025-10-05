@@ -63,11 +63,8 @@ builder.Services.AddSingleton<IBackgroundTaskManager, BackgroundTaskManager>();
 builder.Services.AddSingleton<IBackgroundTaskExecutor, ClassificationTaskExecutor>();
 builder.Services.AddSingleton<IBackgroundTaskExecutor, BookingTaskExecutor>();
 builder.Services.AddSingleton<IBackgroundTaskExecutor, BackupRestoreTaskExecutor>();
+builder.Services.AddSingleton<IBackgroundTaskExecutor, SecurityPricesBackfillExecutor>(); // NEW
 builder.Services.AddHostedService<BackgroundTaskRunner>();
-
-// NEW: Security prices
-builder.Services.AddSingleton<IPriceProvider, AlphaVantagePriceProvider>();
-builder.Services.AddHostedService<SecurityPriceWorker>();
 
 // Holidays
 builder.Services.AddMemoryCache();
@@ -102,6 +99,22 @@ builder.Services.AddScoped(sp =>
     var client = accessor.CreateClient("Api");
     return client;
 });
+
+// NEW: Externer HttpClient für AlphaVantage
+builder.Services.AddHttpClient("AlphaVantage", client =>
+{
+    client.BaseAddress = new Uri("https://www.alphavantage.co/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("FinanceManager/1.0 (+https://github.com/Muesli84/FinanceManager)");
+});
+
+// NEW: AlphaVantage Key Resolver + Price Provider
+builder.Services.AddScoped<IAlphaVantageKeyResolver, AlphaVantageKeyResolver>();
+builder.Services.AddScoped<IPriceProvider, AlphaVantagePriceProvider>();
+builder.Services.AddHostedService<SecurityPriceWorker>();
+
+// NEW: Quota-Options (überschreibbar via "AlphaVantage:Quota" in appsettings)
+builder.Services.Configure<AlphaVantageQuotaOptions>(builder.Configuration.GetSection("AlphaVantage:Quota"));
 
 // JWT
 var keyBytes = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);

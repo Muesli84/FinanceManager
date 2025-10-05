@@ -247,6 +247,19 @@
         }
     }
 
+    private string BuildQuery(params (string key, string? value)[] parts)
+    {
+        var qs = new List<string>();
+        foreach (var (key, value) in parts)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                qs.Add($"{key}={Uri.EscapeDataString(value)}");
+            }
+        }
+        return qs.Count > 0 ? "?" + string.Join("&", qs) : string.Empty;
+    }
+
     private async Task SaveAsync()
     {
         _error = null; var http = ClientFactory.CreateClient("Api");
@@ -275,6 +288,11 @@
                 if (created != null)
                 {
                     await AssignToDraftEntryIfRequestedAsync(created.Id);
+                    if (!_prefillDraftId.HasValue || !_prefillEntryId.HasValue)
+                    {
+                        var q = BuildQuery(("back", BackNav));
+                        Nav.NavigateTo($"/securities/{created.Id}{q}", true);
+                    }
                 }
                 else
                 {
@@ -339,14 +357,32 @@
 
     private void Reload()
     {
-        if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
-            Nav.NavigateTo($"/securities/{Id}?draftId={_prefillDraftId}&entryId={_prefillEntryId}", true);
-        else
-            Nav.NavigateTo($"/securities/{Id}", true);
+        var q = BuildQuery(
+            ("draftId", _prefillDraftId?.ToString()),
+            ("entryId", _prefillEntryId?.ToString()),
+            ("back", BackNav)
+        );
+        Nav.NavigateTo($"/securities/{Id}{q}", true);
     }
 
-    private void OpenPostings(){ if (Id.HasValue){ Nav.NavigateTo($"/postings/security/{Id}"); } }
-    private void OpenPrices(){ if (Id.HasValue){ Nav.NavigateTo($"/securities/{Id}/prices"); } }
+    private void OpenPostings()
+    {
+        if (Id.HasValue)
+        {
+            var q = BuildQuery(("back", BackNav));
+            Nav.NavigateTo($"/postings/security/{Id}{q}");
+        }
+    }
+
+    private void OpenPrices()
+    {
+        if (Id.HasValue)
+        {
+            var q = BuildQuery(("back", BackNav));
+            Nav.NavigateTo($"/securities/{Id}/prices{q}");
+        }
+    }
+
     private void OpenAttachments(){ if (Id.HasValue){ _showAttachments = true; StateHasChanged(); } }
 
     private sealed class SecurityEditModel

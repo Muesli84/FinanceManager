@@ -115,12 +115,15 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-WERT-001      | ✔      | Wertpapiere verwalten                                                   | SecurityService + Controller + UI                                                                                                                                                |
 | FA-WERT-002      | ~      | Wertpapiertransaktionen                                                 | Teilweise (Import/Buchung); Positionslogik offen                                                                                                                                 |
 | FA-WERT-003      | ✔      | Wertpapierposten bei Buchung                                            | PostingKind.Security                                                                                                                                                             |
-| FA-WERT-004      | ~      | Kursabruf AlphaVantage API                                              | SecurityPriceWorker (Rate-Limit Handling)                                                                                                                                        |
-| FA-WERT-005      | ~      | Historische Kurse nachholen                                             | Backfill + inkrementell                                                                                                                                                          |
+| FA-WERT-004      | ✔      | Kursabruf AlphaVantage API                                              | AlphaVantagePriceProvider via IHttpClientFactory; Retry/Backoff; SecurityPriceWorker mit Quota/Pacing, Shared‑Key‑Precheck; Fehlerblockade + Benutzer‑Benachrichtigung |
+| FA-WERT-005      | ✔      | Historische Kurse nachholen                                             | Backfill + inkrementell                                                                                                                                                          |
 | FA-WERT-006      | ✔      | API-Limit erkennen/beachten                                             | Note/Information Handling + Backoff                                                                                                                                              |
 | FA-WERT-007      | ✔      | Speicherung Kursposten                                                  | SecurityPrice Entity + Unique Index                                                                                                                                              |
 | FA-WERT-008      | ✖      | Renditeberechnung                                                       | Offen                                                                                                                                                                            |
 | FA-WERT-009      | ✔      | Kursliste im UI (Infinite Scroll)                                       | `SecurityPrices.razor`                                                                                                                                                           |
+| FA-WERT-010      | ✔      | AlphaVantage‑Schlüssel nutzerbasiert im Profil verwalten                | Domain `User.AlphaVantageApiKey`; API `UserProfileSettingsController` (PUT/GET Flags); UI `SetupProfileTab` (Key setzen/löschen). Keine Speicherung in appsettings.             |
+| FA-WERT-011      | ✔      | Admin kann AlphaVantage‑Schlüssel global freigeben                      | Domain `User.ShareAlphaVantageApiKey`; UI Checkbox (nur Admin); API prüft Admin; Resolver berücksichtigt Freigabe.                                                              |
+| FA-WERT-012      | ✔      | Schlüsselauflösung: Benutzer‑Key zuerst, sonst freigegebener Admin‑Key  | `IAlphaVantageKeyResolver.GetForUserAsync` mit Fallback; `AlphaVantagePriceProvider` priorisiert Benutzerkontext (`ICurrentUserService`), Worker nutzt freigegebenen Key.      |
 | FA-REP-001       | ✔      | Buchungsaggregation (Monat, Quartal, Jahr)                              | Berichtsgenerator mit Favoriten                                                                                                                                                  |
 | FA-REP-002       | ✔      | Year-To-Date Berechnung                                                 | Berichtsgenerator mit Favoriten                                                                                                                                                 |
 | FA-REP-003       | ✔      | Vergleich mit Vorjahr                                                   | Berichtsgenerator mit Favoriten                                                                                                                                                 |
@@ -172,7 +175,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-API-001       | ✔      | Web API für alle Entitäten                                              | Controller (Accounts, Contacts, Statements, Securities, etc.)                                                                                                                    |
 | FA-API-002       | ~      | Suchkriterien für API                                                   | Kontakte: type + q; weitere Entitäten partiell                                                                                                                                   |
 | FA-API-003       | ✔      | Authentifizierung & Autorisierung                                       | JWT + `[Authorize]`                                                                                                                                                              |
-| FA-API-004       | ~      | Rate Limiting/Caching Kursabfragen                                      | Worker-seitig (AlphaVantage) – Gateway-Limit offen                                                                                                                               |
+| FA-API-004       | ~      | Rate Limiting/Caching Kursabfragen                                      | Rate Limiting umgesetzt (Quota/Pacing, 429/Notes beachtet); Caching offen                                                                                                     |
 | FA-AUTH-001      | ✔      | Anmeldung erforderlich                                                  | JWT Auth Pipeline                                                                                                                                                                |
 | FA-AUTH-002      | ✔      | JWT-Token bei Anmeldung                                                 | JwtBearer                                                                                                                                                                        |
 | FA-AUTH-003      | ✔      | Token im Authorization Header                                           | JwtBearer                                                                                                                                                                        |
@@ -208,6 +211,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-SEC-006      | ✖      | Audit Logging sicherheitsrelevanter Aktionen                            | Offen                                                                                                                                                                            |
 | NFA-SEC-007      | ✖      | Login-Sperre nach Fehlversuchen                                         | Offen                                                                                                                                                                            |
 | NFA-SEC-008      | ✖      | Admin-Audit Logging                                                     | Offen                                                                                                                                                                            |
+| NFA-SEC-009      | ~      | Secret-Handling: AlphaVantage‑Key nicht in appsettings speichern        | Schlüssel in DB pro Benutzer; Share‑Flag. DI/Provider angepasst; Installations‑Doku bereinigt (kein `AlphaVantage:ApiKey`, Quota/Logging ergänzt).                           |
 | NFA-REL-001      | ✔      | Fehler beim Kursabruf blockiert Hauptfunktionen nicht                   | Fehlerhandling Worker                                                                                                                                                            |
 | NFA-REL-002      | ✔      | Langläufer im Hintergrund mit Fortschritt (Restore)                     | BackgroundTaskManager + Executor + Panel                                                                                                                                         |
 | NFA-REL-003      | ✔      | Einheitliche Background-Task Queue                                      | TaskRunner + Executors + UI Panel                                                                                                                                                |
@@ -219,13 +223,13 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | NFA-I18N-001     | ✔      | Zwei Sprachen, Fallback                                                 | de/en + Fallback                                                                                                                                                                 |
 | NFA-DATA-001     | ✖      | Zeitreihen effizient gespeichert                                        | Optimierte Speicherung/Aggregationen offen                                                                                                                                       |
 | NFA-PRIV-001     | ✔      | Lokale Speicherung, keine Weitergabe                                    | Keine externe Weitergabe                                                                                                                                                         |
-| NFA-ATT-001      | ✔      | Max. Dateigröße (Default 10 MB)                                         | Implementiert: `AttachmentUploadOptions.MaxSizeBytes` (Default 10 MB) + Prüfung im `AttachmentsController`                                                                      |
-| NFA-ATT-002      | ✔      | MIME-Typ-Whitelist                                                      | Implementiert: `AttachmentUploadOptions.AllowedMimeTypes` + Prüfung im `AttachmentsController`                                                                                   |
-| NFA-ATT-003      | ✔      | Speicherung zunächst in DB (BLOB)                                       | BLOB in `Attachments.Content` umgesetzt                                                                                                                                          |
-| NFA-ATT-004      | ✔      | SHA-256 Hash für Duplikatprüfung                                        | Hash-Berechnung beim Upload (`AttachmentService`); (Index vorhanden oder geplant je nach Migration)                                                                              |
-| NFA-ATT-005      | ✔      | Zugriffsschutz (Ownership)                                              | OwnerUserId-Prüfung/Filterung in Service/Controller konsequent                                                                                                                  |
-| NFA-ATT-006      | ✔      | Lokalisierte Fehlermeldungen                                            |  UI mappt Serverfehler auf lokalisierte Texte (de/en) im `AttachmentsPanel`;                                                                                                     |
-| NFA-ATT-007      | ✖      | Virenscan-Hook (Platzhalter)                                            | Geplant: Hook/Interface, Implementierung später                                                                                                                                  |
+| NFA-ATT-001     | ✔       | Max. Dateigröße (Default 10 MB)                                         | Implementiert: `AttachmentUploadOptions.MaxSizeBytes` (Default 10 MB) + Prüfung im `AttachmentsController`                                                                      |
+| NFA-ATT-002     | ✔       | MIME-Typ-Whitelist                                                      | Implementiert: `AttachmentUploadOptions.AllowedMimeTypes` + Prüfung im `AttachmentsController`                                                                                   |
+| NFA-ATT-003     | ✔       | Speicherung zunächst in DB (BLOB)                                       | BLOB in `Attachments.Content` umgesetzt                                                                                                                                          |
+| NFA-ATT-004     | ✔       | SHA-256 Hash für Duplikatprüfung                                        | Hash-Berechnung beim Upload (`AttachmentService`); (Index vorhanden oder geplant je nach Migration)                                                                              |
+| NFA-ATT-005     | ✔       | Zugriffsschutz (Ownership)                                              | OwnerUserId-Prüfung/Filterung in Service/Controller konsequent                                                                                                                  |
+| NFA-ATT-006     | ✔       | Lokalisierte Fehlermeldungen                                            |  UI mappt Serverfehler auf lokalisierte Texte (de/en) im `AttachmentsPanel`;                                                                                                     |
+| NFA-ATT-007     | ✖       | Virenscan-Hook (Platzhalter)                                            | Geplant: Hook/Interface, Implementierung später                                                                                                                                  |
 | NFA-NOT-001     | ✖       | Eventgetriebene Benachrichtigungen                                      | Optional (später): Hinweise bei Events (Fristen, System, Benutzeraktionen); Schnittstelle/Bus vorbereiten.                                                                      |
 | NFA-NOT-002     | ✖       | Modulare Benachrichtigungsarchitektur                                   | Optional (später): Erweiterbare Architektur/Registry für neue Benachrichtigungstypen und Targets.                                                                               |
 
@@ -234,6 +238,11 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
+
+Änderungen (04.10.2025) – Ergänzung 44:
+- AlphaVantage‑Schlüsselverwaltung umgesetzt: FA‑WERT‑010 (Benutzer‑Key im Profil), FA‑WERT‑011 (Admin‑Freigabe), FA‑WERT‑012 (Priorisierung Benutzer‑Key vor freigegebenem Admin‑Key) → alle ✔.
+- Technische Umsetzung: Domain `User` um `AlphaVantageApiKey`/`ShareAlphaVantageApiKey` erweitert; API `UserProfileSettingsController` GET/PUT; UI `SetupProfileTab` inkl. neue resx‑Texte; Resolver `IAlphaVantageKeyResolver`; `AlphaVantagePriceProvider` nutzt `ICurrentUserService` (Benutzer‑Key bevorzugt); `SecurityPriceWorker` löst Provider pro Scope auf.
+- NFA‑SEC‑009 ergänzt (Secret‑Handling): Speicherung nicht mehr in appsettings; Installations‑Doku ist anzupassen (Derzeit noch Hinweis auf `AlphaVantage:ApiKey`).
 
 Änderungen (04.10.2025) – Ergänzung 43:
 - Export Postenlisten umgesetzt: FA‑REP‑007 auf ✔; Unterpunkte aktualisiert (✔ für 01, 02, 03, 04, 05, 06, 07, 08, 09, 12; ✖ für 10, 11).
@@ -249,49 +258,18 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 - Teilbuchung Fix: Einzelne Entry‑Buchung committet den Draft nicht mehr automatisch; Draft wird erst bei letzten verbleibenden Einträgen committed. Anhänge‑Reassign bleibt beim Vollcommit erhalten.
 
 Änderungen (03.10.2025) – Ergänzung 40:
-- FA‑ATT‑003 umgesetzt: Postings‑Seiten (Account/Contact/Security) mit Ribbon‑Aktion „Anhänge“ → Overlay `AttachmentsPanel` (`ParentKind = Posting`). StatementEntry‑Ansicht entfällt.
-- FA‑ATT‑004 abgeschlossen: `ContactDetail` integriert Attachment‑Overlay (`ParentKind = Contact`) inkl. Upload, Kategoriefilter und Download.
-- FA‑ATT‑001 abgeschlossen: Einziger Anhang pro Kontoauszug wird beim Upload gespeichert (Draft‑Ebene).
-- Ressourcen de/en ergänzt für Postings‑Seiten und ContactDetail (Attachments‑Titel/Buttons).
+- FA‑ATT‑003 umgesetzt: Postings‑Seiten (Account/Contact/Security) mit Ribbon‑Aktion „Anhänge“ → Overlay `AttachmentsPanel` (`ParentKind = Posting`). FA‑ATT‑004 abgeschlossen (ContactDetail). FA‑ATT‑001 abgeschlossen (Original beim Upload gespeichert). Ressourcen de/en ergänzt.
 
 Änderungen (02.10.2025) – Ergänzung 39:
-- Paging-Envelope für Anhänge: `PageResult<T>` eingeführt; `GET /api/attachments/{entityKind}/{entityId}` liefert `Items/HasMore/Total`.
-- UI `AttachmentsPanel` auf Envelope umgestellt (Infinite Scroll mit `HasMore`).
-- Unit Tests angepasst (`AttachmentsControllerTests`).
-- Status aktualisiert: FA‑ATT‑012 auf ✔; FA‑ATT‑010 auf ✔.
+- Paging-Envelope für Anhänge: `PageResult<T>` eingeführt; `GET /api/attachments/{entityKind}/{entityId}` liefert `Items/HasMore/Total`. UI `AttachmentsPanel` auf Envelope umgestellt (Infinite Scroll). Tests angepasst. FA‑ATT‑012/010 auf ✔.
 
 Änderungen (02.10.2025) – Ergänzung 38:
-- Anhänge‑Cleanup bei Löschung: Löschen von Konten entfernt deren Anhänge; wird dadurch der letzte zugehörige Bankkontakt gelöscht, werden auch dessen Anhänge entfernt. Löschen von Kontakten löscht deren Anhänge. Löschen archivierter Sparpläne/Wertpapiere löscht die zugehörigen Anhänge. Abgedeckt in AccountService/ContactService/SavingsPlanService/SecurityService.
-- Anhänge im Buchungsprozess: Reassign/Referenzierung umgesetzt. FA‑ATT‑002 und FA‑ATT‑011 auf ✔ gesetzt.
+- Anhänge‑Cleanup bei Löschung und Reassign/Referenzierung im Buchungsprozess umgesetzt. FA‑ATT‑002/011 auf ✔.
 
 Änderungen (02.10.2025) – Ergänzung 37:
-- Validierung Anhänge: Größenlimit + MIME-Whitelist serverseitig umgesetzt (`AttachmentUploadOptions`, `AttachmentsController`).
-- UI: Fehlermeldungen im `AttachmentsPanel` lokalisiert (Mapping Server-Errors → de/en).
-- Status aktualisiert: FA‑ATT‑009 auf ✔; NFA‑ATT‑001/002 auf ✔; NFA‑ATT‑006 auf ~.
+- Validierung Anhänge (Größe/MIME) serverseitig; UI Fehler lokalisiert. FA‑ATT‑009, NFA‑ATT‑001/002 auf ✔; NFA‑ATT‑006 auf ~.
 
 Änderungen (02.10.2025) – Ergänzung 36:
-- Anhangkategorien: Umbenennen nun unterstützt (UI Inline‑Rename in `SetupAttachmentCategoriesTab`, API `PUT /api/attachments/categories/{id}`).
-- Löschen gesperrt für System- oder genutzte Kategorien; Umbenennung auch bei genutzten Kategorien möglich.
-- Lokalisierung ergänzt: `Th_Name` in Ressourcen de/en.
-- Status aktualisiert: FA‑ATT‑005 auf ✔.
+- Anhangkategorien: Umbenennen; Löschen gesperrt für System/genutzte Kategorien; Lokalisierung ergänzt. FA‑ATT‑005 auf ✔.
 
-Änderungen (01.10.2025) – Ergänzung 35:
-- Anhänge-Panel verbessert: Drag&Drop stabilisiert (idempotente Registrierung per WeakMap), doppelte Uploads verhindert (unregister vor Re-Init, Dispose integriert).
-- Kategorie-Neuanlage direkt im Panel: Plus-Button öffnet Prompt, erstellt Kategorie via API, lädt Liste neu und selektiert sie. Resx-Texte de/en ergänzt.
-- API Fix: `POST /api/attachments/categories` nutzt `Created("/api/attachments/categories", dto)` statt `CreatedAtAction` (Routing-Fehler behoben).
-- Status aktualisiert: FA‑ATT‑006, FA‑ATT‑013..015 auf ✔; FA‑ATT‑005 auf ~; NFA‑ATT‑003/004/005 auf ✔.
-
-Änderungen (01.10.2025) – Ergänzung 34:
-- Neues Attachment‑Overlay auf Kontodetailseite: Ribbon‑Aktion „Anhänge“ öffnet Overlay mit Liste und Kategoriefilter. Umsetzung über wiederverwendbare Komponente `AttachmentsPanel` (Blazor).
-- Download‑Button in `AttachmentsPanel` nutzt `/api/attachments/{id}/download`.
-- Sprite um Symbol `attachment` ergänzt; Ressourcen de/en für `AccountDetail` und `AttachmentsPanel` hinzugefügt.
-- Status aktualisiert: FA‑ATT‑007 auf ✔, FA‑ATT‑008 auf ✔. Andere FA‑ATT bleiben offen (Upload, Reassign, Kontakte, Paging etc.).
-
-Änderungen (01.10.2025) – Ergänzung 33:
-- Neue Sammelanforderung „Allgemeines Datei‑Anhangssystem“ aufgenommen. Phase 1 (Kontoauszugeinträge → Postings) und Phase 2 (Kontakte + Kategorien) geplant. Alle FA‑ATT/NFA‑ATT aktuell ✖ (noch nicht implementiert). Branch-Vorschlag: `feature/attachments-phase1`.
-
-Änderungen (01.10.2025) – Ergänzung 32:
-- Manuelle Kontierung wieder ermöglicht: Duplikat‑Reset für bereits als „bereits gebucht“ markierte Einträge. UI-Hinweis/Buttons lokalisiert (de/en). Nach Reset ist der Eintrag wieder editierbar (Read‑Only wird aufgehoben).
-
-
-(Frühere Änderungsnotizen siehe vorherige Versionen.)
+Änderungen (01.10.2025) – Ergänzung 35/34/33/32: siehe vorherige Versionen.

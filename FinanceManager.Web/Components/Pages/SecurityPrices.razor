@@ -5,12 +5,49 @@
 @inject IJSRuntime JS
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
+@using FinanceManager.Shared.Dtos
+@using System.Net.Http.Json
 @inject IStringLocalizer<Components.Pages.SecurityPrices> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SecurityPrices.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 <h3>@Localizer["Title"]</h3>
+
+@if (_enqueueOk)
+{
+    <div class="alert info" role="status">@Localizer["Backfill_Started"]</div>
+}
+
+<BackgroundTaskStatusPanel AllowedTypes="new[]{ BackgroundTaskType.SecurityPricesBackfill }" />
+
+@if (_showBackfillDialog)
+{
+    <div class="modal-overlay" @onclick="(()=> _showBackfillDialog = false)">
+        <div class="modal" @onclick:stopPropagation="true">
+            <h3 style="margin-top:0;">@Localizer["Dlg_Backfill_Title"]</h3>
+            <div class="row">
+                <label>@Localizer["Dlg_From"]</label>
+                <input type="date"
+                       @bind-value="_fromDate"
+                       @bind-value:event="onchange" />
+            </div>
+            <div class="row" style="margin-top:.5rem;">
+                <label>@Localizer["Dlg_To"]</label>
+                <input type="date" @bind-value="_toDate" @bind-value:event="onchange" />
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_dlgError))
+            {
+                <div style="color:#e66; font-size:.8rem; margin-top:.5rem;">@_dlgError</div>
+            }
+            <div class="dialog-actions">
+                <button class="btn" disabled="@_submitting" @onclick="ConfirmBackfillAsync">@(_submitting ? Localizer["Dlg_Starting"] : Localizer["Dlg_Start"])</button>
+                <button class="btn secondary" disabled="@_submitting" @onclick="(()=> _showBackfillDialog = false)">@Localizer["Dialog_Cancel"]</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if(_loading && _items.Count==0)
 {
     <p>@Localizer["Loading"]</p>
@@ -57,8 +94,18 @@ else
 @code {
     [Parameter] public Guid SecurityId { get; set; }
     private const int PageSize = 100;
-    private bool _loading; private bool _canLoadMore = true; private int _skip;
+    private bool _loading;
+    private bool _canLoadMore = true;
+    private int _skip;
     private List<PriceDto> _items = new();
+
+    // Backfill dialog state
+    private bool _showBackfillDialog;
+    private DateTime? _fromDate;
+    private DateTime? _toDate;
+    private bool _submitting;
+    private string? _dlgError;
+    private bool _enqueueOk;
 
     private ElementReference _sentinel;
     private DotNetObjectReference<SecurityPrices>? _selfRef;
@@ -96,10 +143,37 @@ else
                 }
             }
         };
+        var actions = new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Actions"],
+            Items = new()
+            {
+                new Ribbon<TabId>.RibbonItem
+                {
+                    Label = Localizer["Ribbon_Backfill"],
+                    IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
+                    Size = Ribbon<TabId>.RibbonItemSize.Large,
+                    Disabled = _loading,
+                    Callback = () => { OpenBackfillDialog(); return Task.CompletedTask; }
+                }
+            }
+        };
         _tabs = new()
         {
-            new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Prices, Title = Localizer["Ribbon_Tab_Prices"], Groups = new(){ nav } }
+            new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Prices, Title = Localizer["Ribbon_Tab_Prices"], Groups = new(){ nav, actions } }
         };
+        StateHasChanged();
+    }
+
+    private void OpenBackfillDialog()
+    {
+        // Defaults: last 2 years until yesterday
+        var end = DateTime.UtcNow.Date.AddDays(-1);
+        var start = end.AddYears(-2);
+        _fromDate = start;
+        _toDate = end;
+        _dlgError = null; _submitting = false; _enqueueOk = false;
+        _showBackfillDialog = true;
         StateHasChanged();
     }
 
@@ -158,5 +232,65 @@ else
         finally { _loading=false; StateHasChanged(); }
     }
 
+    private async Task ConfirmBackfillAsync()
+    {
+        if (_submitting) { return; }
+        _dlgError = null;
+        if (!_fromDate.HasValue || !_toDate.HasValue)
+        {
+            _dlgError = Localizer["Dlg_InvalidDates"];
+            StateHasChanged();
+            return;
+        }
+        var from = _fromDate.Value.Date;
+        var to = _toDate.Value.Date;
+        if (from > to)
+        {
+            _dlgError = Localizer["Dlg_FromAfterTo"];
+            StateHasChanged();
+            return;
+        }
+        if (to > DateTime.UtcNow.Date)
+        {
+            _dlgError = Localizer["Dlg_ToInFuture"];
+            StateHasChanged();
+            return;
+        }
+        _submitting = true;
+        try
+        {
+            var payload = new { SecurityId = (Guid?)SecurityId, FromDateUtc = (DateTime?)from, ToDateUtc = (DateTime?)to };
+            var resp = await Http.PostAsJsonAsync("/api/securities/backfill", payload);
+            if (!resp.IsSuccessStatusCode)
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                _dlgError = string.IsNullOrWhiteSpace(err) ? Localizer["Dlg_EnqueueFailed"] : err;
+                return;
+            }
+            _showBackfillDialog = false;
+            _enqueueOk = true;
+        }
+        catch
+        {
+            _dlgError = Localizer["Dlg_EnqueueFailed"];
+        }
+        finally
+        {
+            _submitting = false;
+            StateHasChanged();
+        }
+    }
+
     private void Back() => Nav.NavigateTo($"/securities/{SecurityId}");
 }
+
+<style>
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.modal { background:#141a20; border:1px solid #2a323a; border-radius:8px; padding:1rem; box-shadow:0 10px 30px rgba(0,0,0,.6); width:min(520px, 90vw); max-width:90vw; overflow:auto; }
+.row { display:flex; flex-direction:column; gap:.25rem; }
+.modal input[type="date"] { width:100%; max-width:100%; box-sizing:border-box; }
+.dialog-actions { display:flex; gap:.5rem; justify-content:flex-end; margin-top:.75rem; }
+.btn { background:#2d6cdf; color:#fff; border:0; border-radius:6px; padding:.4rem .75rem; cursor:pointer; }
+.btn.secondary { background:transparent; border:1px solid #2a323a; color:#cbd5e1; }
+.alert.info { border:1px solid #29425f; background:#0f1419; color:#9ec1ff; border-radius:6px; padding:.5rem .75rem; margin:.5rem 0; font-size:.85rem; }
+</style>

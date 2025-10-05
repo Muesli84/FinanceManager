@@ -3,6 +3,7 @@ using System;
 using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FinanceManager.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251004185146_AddAlphaVantageSettings")]
+    partial class AddAlphaVantageSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0-rc.1.24451.1");
@@ -668,9 +671,6 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("HasPriceError")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Identifier")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -685,12 +685,6 @@ namespace FinanceManager.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("OwnerUserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PriceErrorMessage")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("PriceErrorSinceUtc")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

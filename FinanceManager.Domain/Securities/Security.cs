@@ -16,6 +16,11 @@ public sealed class Security
     public bool IsActive { get; private set; }
     public DateTime? ArchivedUtc { get; private set; }
 
+    // NEW: Price fetch error state
+    public bool HasPriceError { get; private set; }
+    public string? PriceErrorMessage { get; private set; }
+    public DateTime? PriceErrorSinceUtc { get; private set; }
+
     private Security() { }
 
     public Security(Guid ownerUserId, string name, string identifier, string? description, string? alphaVantageCode, string currencyCode, Guid? categoryId)
@@ -46,5 +51,20 @@ public sealed class Security
         if (!IsActive) { return; }
         IsActive = false;
         ArchivedUtc = DateTime.UtcNow;
+    }
+
+    // NEW: mark/unmark price error
+    public void SetPriceError(string message)
+    {
+        HasPriceError = true;
+        PriceErrorMessage = string.IsNullOrWhiteSpace(message) ? "Unknown error" : message;
+        PriceErrorSinceUtc = DateTime.UtcNow;
+    }
+
+    public void ClearPriceError()
+    {
+        HasPriceError = false;
+        PriceErrorMessage = null;
+        PriceErrorSinceUtc = null;
     }
 }
