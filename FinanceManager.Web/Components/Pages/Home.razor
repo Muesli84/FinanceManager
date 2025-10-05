@@ -393,7 +393,7 @@
         var i = 0;
         if (k.Kind == HomeKpiKind.Predefined)
         {
-            // Map by SortOrder title fallback to keep deterministic
+            // unverändert ...
             var predefined = k.PredefinedType ?? (HomeKpiPredefined)(k.SortOrder % 3);
             var titleDefault = predefined switch
             {
@@ -487,52 +487,93 @@
         {
             if (k.DisplayMode == HomeKpiDisplayMode.TotalOnly)
             {
-                builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "kpi-amount"); builder.AddContent(i++, data.Amount.ToString("N2")); builder.CloseElement();
+                // Nur die Summe mittig, kein Graph
+                builder.OpenElement(i++, "div");
+                builder.AddAttribute(i++, "class", "kpi-amount center");
+                builder.AddContent(i++, data.Amount.ToString("N2"));
+                builder.CloseElement();
             }
             else if (k.DisplayMode == HomeKpiDisplayMode.TotalWithComparisons)
             {
-                // Show only 1-3 bars: current, (optional) previous, (optional) year-ago depending on favorite settings
-                builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "mini-chart");
-                var values = new List<(string Label, decimal Amount, bool Positive)>();
-                if (data.Year.HasValue)
-                {
-                    values.Add((Label: "Year", Amount: data.Year.Value, Positive: data.Year.Value >= 0));
-                }
-                if (data.Prev.HasValue)
-                {
-                    values.Add((Label: "Prev", Amount: data.Prev.Value, Positive: data.Prev.Value >= 0));
-                }
-                values.Add((Label: "Now", Amount: data.Amount, Positive: data.Amount >= 0));
-                var max = values.Select(v => Math.Abs(v.Amount)).DefaultIfEmpty(0m).Max();
-                var scale = max == 0 ? 0 : 70m / max;
-                builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bars");
+                // Balken für nur die aktiv gewählten Vergleiche
+                var values = new List<(string Label, decimal Amount)>();
+                if (data.Year.HasValue) { values.Add(("Year", data.Year.Value)); }
+                if (data.Prev.HasValue) { values.Add(("Prev", data.Prev.Value)); }
+                values.Add(("Now", data.Amount));
+
+                var maxAbs = values.Select(v => Math.Abs(v.Amount)).DefaultIfEmpty(0m).Max();
+                var scale = maxAbs == 0 ? 0 : 40m / maxAbs; // halbe Höhe je Seite
+
+                builder.OpenElement(i++, "div");
+                builder.AddAttribute(i++, "class", "mini-chart split");
+                builder.OpenElement(i++, "div");
+                builder.AddAttribute(i++, "class", "bars split");
                 foreach (var v in values)
                 {
-                    var h = v.Amount >= 0 ? (int)Math.Round((double)(v.Amount * scale)) : (int)Math.Round((double)(-v.Amount * scale));
-                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-wrap"); builder.AddAttribute(i++, "title", $"{v.Label}: {v.Amount}");
-                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", $"bar-inner {(v.Amount >= 0 ? "pos" : "neg")}"); builder.AddAttribute(i++, "style", $"height:{h}px"); builder.CloseElement();
-                    builder.CloseElement();
+                    var posH = v.Amount > 0 ? (int)Math.Round((double)(v.Amount * scale)) : 0;
+                    var negH = v.Amount < 0 ? (int)Math.Round((double)(-v.Amount * scale)) : 0;
+
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "bar-wrap split");
+                    builder.AddAttribute(i++, "title", $"{v.Label}: {v.Amount:N2}");
+
+                    // Oberer Bereich (positiv)
+                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-top");
+                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-inner pos");
+                    builder.AddAttribute(i++, "style", $"height:{posH}px");
+                    builder.CloseElement(); // bar-inner pos
+                    builder.CloseElement(); // bar-top
+
+                    // Unterer Bereich (negativ)
+                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-bottom");
+                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-inner neg");
+                    builder.AddAttribute(i++, "style", $"height:{negH}px");
+                    builder.CloseElement(); // bar-inner neg
+                    builder.CloseElement(); // bar-bottom
+
+                    builder.CloseElement(); // bar-wrap split
                 }
-                builder.CloseElement();
-                builder.CloseElement();
+                builder.CloseElement(); // bars split
+                builder.CloseElement(); // mini-chart split
             }
             else
             {
-                // ReportGraph: reuse the same mini chart based on series
-                builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "mini-chart");
+                // Berichtsgrafik (Serien) mit Baseline
                 var byPeriod = data.Series.OrderBy(x => x.Date).ToList();
-                var max = byPeriod.Select(x => Math.Abs(x.Amount)).DefaultIfEmpty(0m).Max();
-                var scale = max == 0 ? 0 : 70m / max;
-                builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bars");
+                var maxAbs = byPeriod.Select(x => Math.Abs(x.Amount)).DefaultIfEmpty(0m).Max();
+                var scale = maxAbs == 0 ? 0 : 40m / maxAbs;
+
+                builder.OpenElement(i++, "div");
+                builder.AddAttribute(i++, "class", "mini-chart split");
+                builder.OpenElement(i++, "div");
+                builder.AddAttribute(i++, "class", "bars split");
                 foreach (var bp in byPeriod)
                 {
-                    var h = bp.Amount >= 0 ? (int)Math.Round((double)(bp.Amount * scale)) : (int)Math.Round((double)(-bp.Amount * scale));
-                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-wrap"); builder.AddAttribute(i++, "title", $"{bp.Date:yyyy-MM-dd} {bp.Amount}");
-                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", $"bar-inner {(bp.Amount >= 0 ? "pos" : "neg")}"); builder.AddAttribute(i++, "style", $"height:{h}px"); builder.CloseElement();
+                    var posH = bp.Amount > 0 ? (int)Math.Round((double)(bp.Amount * scale)) : 0;
+                    var negH = bp.Amount < 0 ? (int)Math.Round((double)(-bp.Amount * scale)) : 0;
+
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "bar-wrap split"); // FIX: split-Klasse ergänzt
+                    builder.AddAttribute(i++, "title", $"{bp.Date:yyyy-MM-dd} {bp.Amount:N2}");
+
+                    // Oberer Bereich (positiv)
+                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-top");
+                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-inner pos");
+                    builder.AddAttribute(i++, "style", $"height:{posH}px");
                     builder.CloseElement();
+                    builder.CloseElement();
+
+                    // Unterer Bereich (negativ)
+                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-bottom");
+                    builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "bar-inner neg");
+                    builder.AddAttribute(i++, "style", $"height:{negH}px");
+                    builder.CloseElement();
+                    builder.CloseElement();
+
+                    builder.CloseElement(); // bar-wrap split
                 }
-                builder.CloseElement();
-                builder.CloseElement();
+                builder.CloseElement(); // bars split
+                builder.CloseElement(); // mini-chart split
             }
         }
         else
@@ -661,45 +702,31 @@
 .kpi-amount { font-size:1.1rem; font-weight:700; margin-top:.25rem; }
 .small-loading { font-size:.65rem; opacity:.7; }
 
-/* Upload progress */
-.upload-progress { margin-top:.75rem; max-width:740px; border:1px solid #2a323a; background:#141a20; border-radius:8px; padding:.6rem .75rem; }
-.upload-progress .hdr { display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin-bottom:.4rem; }
-.upload-progress .title { font-weight:600; font-size:.85rem; }
-.upload-progress .cnt { font-size:.8rem; opacity:.8; }
-.upload-progress .bar { width:100%; height:8px; background:#0f1419; border:1px solid #2a323a; border-radius:6px; overflow:hidden; }
-.upload-progress .bar-inner { height:100%; background:#2d6cdf; width:0; transition:width .2s ease; }
-.upload-progress .file { margin-top:.35rem; font-size:.7rem; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kpi-amount.center { flex:1; display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:700; }
 
-/* Reuse mini-chart styles */
+/* Mini-Chart mit Baseline in der Mitte (positive oben, negative unten) */
 .mini-chart { border:1px solid var(--border); padding:.4rem .5rem; border-radius:.4rem; background:#141618; }
-.mini-chart .bars { display:flex; align-items:flex-end; gap:.25rem; height:90px; }
-.mini-chart .bar-wrap { flex:1 1 0; display:flex; align-items:flex-end; justify-content:center; }
-.mini-chart .bar-inner { width:8px; border-radius:2px; background:#2d6cdf; }
+.mini-chart.split .bars.split { position:relative; display:flex; align-items:stretch; gap:.35rem; height:110px; }
+/* FIX: Baseline am Bars-Container, exakt in der Mitte */
+.mini-chart.split .bars.split::after {
+    content:"";
+    position:absolute;
+    left:0; right:0;
+    top:50%;
+    height:1px;
+    background:rgba(200,200,200,.15);
+}
+
+.mini-chart .bar-wrap.split { flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:stretch; }
+.mini-chart .bar-top,
+.mini-chart .bar-bottom { height:50%; width:100%; display:flex; align-items:flex-end; justify-content:center; }
+.mini-chart .bar-bottom { align-items:flex-start; }
+.mini-chart .bar-inner { width:10px; border-radius:2px; background:#2d6cdf; }
+.mini-chart .bar-inner.pos { background:#2d6cdf; }
 .mini-chart .bar-inner.neg { background:#c94; }
 
-/* KPI ordering controls */
-.kpi-order { display:flex; gap:.2rem; position:absolute; top:.2rem; left:.25rem; }
-.kpi-tile { position:relative; }
-.kpi-move { background:transparent; border:0; cursor:pointer; padding:.1rem; }
-.kpi-move .ico { width:14px; height:14px; fill:#8fb0ff; }
-
-/* Modal & dialog for Add KPI */
-.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
-.modal { background:#141a20; border:1px solid #2a323a; border-radius:8px; padding:1rem; box-shadow:0 10px 30px rgba(0,0,0,.6); max-width:90vw; max-height:90vh; overflow:auto; }
-.tabs-bar { display:flex; gap:.25rem; margin:.25rem 0 .6rem 0; }
-.tab-btn { background:transparent; border:1px solid #2a323a; padding:.35rem .6rem; border-radius:6px; color:#cbd5e1; cursor:pointer; }
-.tab-btn.active { background:#1b2430; border-color:#39506a; }
-.option-list { display:flex; flex-direction:column; gap:.25rem; margin-bottom:.5rem; }
-.mk-item { display:flex; align-items:center; gap:.5rem; }
-.mk-item.line { padding:.3rem .2rem; border-bottom:1px dashed #2a323a; }
-.mk-item.line input { width:unset;}
-.scroll-box { max-height:280px; overflow:auto; border:1px solid #2a323a; border-radius:6px; padding:.25rem; }
-.row { display:flex; flex-direction:column; gap:.3rem; margin-top:.5rem; }
-.group-title { font-size:.8rem; opacity:.8; margin-bottom:.25rem; }
-.dialog-actions { display:flex; gap:.5rem; justify-content:flex-end; margin-top:.75rem; }
-.btn { background:#2d6cdf; color:#fff; border:0; border-radius:6px; padding:.4rem .75rem; cursor:pointer; }
-.btn.secondary { background:transparent; border:1px solid #2a323a; color:#cbd5e1; }
-.small-empty { opacity:.7; font-size:.8rem; padding:.25rem .35rem; }
+/* Entfernt: frühere Baseline am Container (war durch Padding versetzt) */
+/* .mini-chart.split::after { ... } */
 </style>
 
 @if (_showAddKpiDialog)
