@@ -1,0 +1,103 @@
+@using FinanceManager.Domain.Reports
+@using FinanceManager.Application.Reports
+@using FinanceManager.Shared.Dtos
+
+<div class="report-kpi @(Clickable ? "clickable" : null)" @onclick="HandleClick">
+    @if (DisplayMode == HomeKpiDisplayMode.TotalOnly)
+    {
+        <div class="kpi-amount center">@Amount.ToString("N2")</div>
+    }
+    else if (DisplayMode == HomeKpiDisplayMode.TotalWithComparisons)
+    {
+            var values = new List<(string Label, decimal Amount)>();
+            if (Year.HasValue) { values.Add(("Year", Year.Value)); }
+            if (Prev.HasValue) { values.Add(("Prev", Prev.Value)); }
+            values.Add(("Now", Amount));
+            var maxAbs = values.Select(v => Math.Abs(v.Amount)).DefaultIfEmpty(0m).Max();
+            var scale = maxAbs == 0 ? 0 : 40m / maxAbs;
+        <div class="mini-legend">
+            @for (var idx = 0; idx < values.Count; idx++)
+            {
+                var v = values[idx];
+                <span class="legend-item">@v.Label: @v.Amount.ToString("N2")</span>
+                @if (idx < values.Count - 1) { <span class="legend-sep">•</span> }
+            }
+        </div>
+        <div class="mini-chart split">
+            <div class="bars split">
+                @foreach (var v in values)
+                {
+                    var posH = v.Amount > 0 ? (int)Math.Round((double)(v.Amount * scale)) : 0;
+                    var negH = v.Amount < 0 ? (int)Math.Round((double)(-v.Amount * scale)) : 0;
+                    <div class="bar-wrap split" title="@($"{v.Label}: {v.Amount:N2}")">
+                        <div class="bar-top"><div class="bar-inner pos" style=@($"height:{posH}px")></div></div>
+                        <div class="bar-bottom"><div class="bar-inner neg" style=@($"height:{negH}px")></div></div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+            var ordered = (Series ?? Array.Empty<Point>()).OrderBy(x => x.Date).ToList();
+            var maxAbs = ordered.Select(x => Math.Abs(x.Amount)).DefaultIfEmpty(0m).Max();
+            var scale = maxAbs == 0 ? 0 : 40m / maxAbs;
+        <div class="mini-chart split">
+            <div class="bars split">
+                @foreach (var p in ordered)
+                {
+                    var posH = p.Amount > 0 ? (int)Math.Round((double)(p.Amount * scale)) : 0;
+                    var negH = p.Amount < 0 ? (int)Math.Round((double)(-p.Amount * scale)) : 0;
+                    <div class="bar-wrap split" title="@($"{p.Date:yyyy-MM-dd} {p.Amount:N2}")">
+                        <div class="bar-top"><div class="bar-inner pos" style=@($"height:{posH}px")></div></div>
+                        <div class="bar-bottom"><div class="bar-inner neg" style=@($"height:{negH}px")></div></div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public HomeKpiDisplayMode DisplayMode { get; set; }
+    [Parameter] public decimal Amount { get; set; }
+    [Parameter] public decimal? Prev { get; set; }
+    [Parameter] public decimal? Year { get; set; }
+    [Parameter] public IReadOnlyList<Point>? Series { get; set; }
+    [Parameter] public bool Clickable { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    public sealed record Point(DateTime Date, decimal Amount);
+
+    private async Task HandleClick()
+    {
+        if (Clickable && OnClick.HasDelegate)
+        {
+            await OnClick.InvokeAsync();
+        }
+    }
+}
+
+<style>
+.report-kpi { display:flex; flex:1; flex-direction:column; }
+.report-kpi.clickable { cursor:pointer; }
+
+/* Wert mittig */
+.kpi-amount.center { flex:1; display:flex; align-items:center; justify-content:center; font-size:1.25rem; font-weight:700; }
+
+/* Legende */
+.mini-legend { display:flex; flex-wrap:wrap; gap:.35rem; align-items:center; font-size:.7rem; opacity:.8; margin:.15rem 0 .25rem; }
+.legend-item { white-space:nowrap; }
+.legend-sep { opacity:.6; }
+
+/* Mini-Chart mit Baseline in der Mitte */
+.mini-chart { border:1px solid var(--border); padding:.4rem .5rem; border-radius:.4rem; background:#141618; }
+.mini-chart.split .bars.split { position:relative; display:flex; align-items:stretch; gap:.35rem; height:110px; }
+.mini-chart.split .bars.split::after { content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(200,200,200,.15); }
+.bar-wrap.split { flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:stretch; }
+.bar-top, .bar-bottom { height:50%; width:100%; display:flex; align-items:flex-end; justify-content:center; }
+.bar-bottom { align-items:flex-start; }
+.bar-inner { width:10px; border-radius:2px; background:#2d6cdf; }
+.bar-inner.pos { background:#2d6cdf; }
+.bar-inner.neg { background:#c94; }
+</style>
