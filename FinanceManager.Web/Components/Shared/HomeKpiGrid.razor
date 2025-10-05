@@ -1,0 +1,517 @@
+@using System.Net.Http.Json
+@using FinanceManager.Domain.Reports
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using FinanceManager.Application.Reports
+@using FinanceManager.Web.Components.Shared
+
+@inject HttpClient Http
+@inject IStringLocalizer<FinanceManager.Web.Components.Pages.Home> Localizer
+@inject NavigationManager Nav
+
+<div class="kpi-grid">
+    @foreach (var k in _kpis.OrderBy(x => x.SortOrder).ThenBy(x => x.CreatedUtc))
+    {
+        <div class="kpi-tile">
+            @if (EditMode)
+            {
+                <button type="button" class="kpi-delete" title="@Localizer["Delete"]" @onclick="(()=> DeleteKpiAsync(k.Id))">
+                    <svg class="ico"><use href="/icons/sprite.svg#close" /></svg>
+                </button>
+                <div class="kpi-order">
+                    <button type="button" class="kpi-move" title="@Localizer["MoveLeft"]" disabled="@_kpiMoving.Contains(k.Id)" @onclick="(()=> MoveKpiAsync(k, -1))">
+                        <svg class="ico"><use href="/icons/sprite.svg#arrow-left" /></svg>
+                    </button>
+                    <button type="button" class="kpi-move" title="@Localizer["MoveRight"]" disabled="@_kpiMoving.Contains(k.Id)" @onclick="(()=> MoveKpiAsync(k, 1))">
+                        <svg class="ico"><use href="/icons/sprite.svg#arrow-right" /></svg>
+                    </button>
+                </div>
+            }
+
+            @RenderKpiTile(k)
+        </div>
+    }
+
+    @if (EditMode)
+    {
+        <button type="button" class="kpi-tile add-tile" @onclick="OpenAddKpiDialog" title="@Localizer["AddKpi"]">
+            <svg class="add-ico"><use href="/icons/sprite.svg#plus"/></svg>
+        </button>
+    }
+</div>
+
+@if (_showAddKpiDialog)
+{
+    <div class="modal-overlay" @onclick="(()=> _showAddKpiDialog = false)">
+        <div class="modal" style="min-width:420px;" @onclick:stopPropagation="true">
+            <h3>@Localizer["AddKpi_Title"]</h3>
+            <div class="tabs-bar" role="tablist">
+                <button type="button" class="@( !_addTabFavorites ? "tab-btn active" : "tab-btn")" role="tab" aria-selected="@(!_addTabFavorites)" @onclick="(()=> { _addTabFavorites = false; StateHasChanged(); })">@Localizer["Kpi_Tab_Predefined"]</button>
+                <button type="button" class="@( _addTabFavorites ? "tab-btn active" : "tab-btn")" role="tab" aria-selected="@_addTabFavorites" @onclick="(()=> { _addTabFavorites = true; StateHasChanged(); })">@Localizer["Kpi_Tab_Favorites"]</button>
+            </div>
+            @if(!_addTabFavorites)
+            {
+                <div class="option-list">
+                    @foreach (var p in Enum.GetValues<HomeKpiPredefined>())
+                    {
+                        var label = p switch
+                        {
+                            HomeKpiPredefined.AccountsAggregates => Localizer["Chart_Title_AllAccounts"],
+                            HomeKpiPredefined.SavingsPlanAggregates => Localizer["Chart_Title_MonthlySaving"],
+                            HomeKpiPredefined.SecuritiesDividends => Localizer["Chart_Title_DividendsQuarterly"],
+                            _ => Localizer["KPI"]
+                        };
+                        <label class="mk-item line"><input type="radio" name="predef" checked="@(_selPredefined==p)" @onchange="_=> _selPredefined = p" /> @label</label>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="scroll-box option-list">
+                    @if (_favorites.Count == 0)
+                    {
+                        <div class="small-empty">@Localizer["NoData"]</div>
+                    }
+                    else
+                    {
+                        @foreach (var f in _favorites)
+                        {
+                            <label class="mk-item line"><input type="radio" name="fav" checked="@(_selFavoriteId==f.Id)" @onchange="_=> _selFavoriteId = f.Id" /> @f.Name</label>
+                        }
+                    }
+                </div>
+            }
+            @if(_addTabFavorites)
+            {
+                <div class="row">
+                    <div class="group-title">@Localizer["Kpi_Display"]</div>
+                    <label class="mk-item line"><input type="radio" name="disp" checked="@(_selDisplay==HomeKpiDisplayMode.TotalOnly)" @onchange="_=> _selDisplay = HomeKpiDisplayMode.TotalOnly" /> @Localizer["Kpi_Display_TotalOnly"]</label>
+                    <label class="mk-item line"><input type="radio" name="disp" checked="@(_selDisplay==HomeKpiDisplayMode.TotalWithComparisons)" @onchange="_=> _selDisplay = HomeKpiDisplayMode.TotalWithComparisons" /> @Localizer["Kpi_Display_TotalWithComparisons"]</label>
+                    <label class="mk-item line"><input type="radio" name="disp" checked="@(_selDisplay==HomeKpiDisplayMode.ReportGraph)" @onchange="_=> _selDisplay = HomeKpiDisplayMode.ReportGraph" /> @Localizer["Kpi_Display_ReportGraph"]</label>
+                </div>
+            }
+            <div class="dialog-actions">
+                <button class="btn" @onclick="AddKpiAsync" disabled="@(_addTabFavorites && !_selFavoriteId.HasValue)">@Localizer["Dialog_Add"]</button>
+                <button class="btn secondary" @onclick="(()=> _showAddKpiDialog=false)">@Localizer["Dialog_Cancel"]</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code
+{
+    [Parameter] public bool EditMode { get; set; }
+
+    // State
+    private List<HomeKpiDto> _kpis = new();
+    private Dictionary<Guid, FavKpiData> _favData = new();
+    private HashSet<Guid> _favLoading = new();
+    private HashSet<Guid> _kpiMoving = new();
+
+    private bool _showAddKpiDialog;
+    private bool _addTabFavorites; // false = predefined
+    private HomeKpiPredefined _selPredefined = HomeKpiPredefined.AccountsAggregates;
+    private HomeKpiDisplayMode _selDisplay = HomeKpiDisplayMode.TotalOnly;
+    private Guid? _selFavoriteId;
+    private List<ReportFavoriteLite> _favorites = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadKpisAsync();
+    }
+
+    private async Task LoadKpisAsync()
+    {
+        try
+        {
+            var list = await Http.GetFromJsonAsync<List<HomeKpiDto>>("/api/home-kpis");
+            _kpis = list ?? new();
+        }
+        catch { }
+        StateHasChanged();
+    }
+
+    private void OpenAddKpiDialog()
+    {
+        _addTabFavorites = false;
+        _selPredefined = HomeKpiPredefined.AccountsAggregates;
+        _selDisplay = HomeKpiDisplayMode.TotalOnly;
+        _selFavoriteId = null;
+        _showAddKpiDialog = true;
+        _ = EnsureFavoritesLoadedAsync();
+    }
+
+    private async Task EnsureFavoritesLoadedAsync()
+    {
+        try
+        {
+            var list = await Http.GetFromJsonAsync<List<ReportFavoriteLite>>("/api/report-favorites");
+            _favorites = (list ?? new()).OrderBy(f => f.Name).ToList();
+        }
+        catch { }
+        StateHasChanged();
+    }
+
+    private async Task AddKpiAsync()
+    {
+        var sort = _kpis.Count == 0 ? 0 : _kpis.Max(k => k.SortOrder) + 1;
+        var kind = _addTabFavorites ? HomeKpiKind.ReportFavorite : HomeKpiKind.Predefined;
+        var payload = new HomeKpiCreateRequest(kind, _addTabFavorites ? _selFavoriteId : null, _addTabFavorites ? null : _selPredefined, null, _selDisplay, sort);
+        try
+        {
+            var resp = await Http.PostAsJsonAsync("/api/home-kpis", payload);
+            if (resp.IsSuccessStatusCode)
+            {
+                var dto = await resp.Content.ReadFromJsonAsync<HomeKpiDto>();
+                if (dto != null) { _kpis.Add(dto); }
+            }
+        }
+        catch { }
+        finally
+        {
+            _showAddKpiDialog = false; StateHasChanged();
+        }
+    }
+
+    private async Task DeleteKpiAsync(Guid id)
+    {
+        try
+        {
+            var resp = await Http.DeleteAsync($"/api/home-kpis/{id}");
+            if (resp.IsSuccessStatusCode)
+            {
+                _kpis.RemoveAll(k => k.Id == id);
+                _favData.Remove(id);
+            }
+        }
+        catch { }
+        StateHasChanged();
+    }
+
+    private async Task MoveKpiAsync(HomeKpiDto kpi, int delta)
+    {
+        try
+        {
+            var ordered = _kpis.OrderBy(x => x.SortOrder).ThenBy(x => x.CreatedUtc).ToList();
+            var idx = ordered.FindIndex(x => x.Id == kpi.Id);
+            if (idx < 0) { return; }
+            var targetIdx = idx + delta;
+            if (targetIdx < 0 || targetIdx >= ordered.Count) { return; }
+            var other = ordered[targetIdx];
+
+            // swap
+            var aNew = other.SortOrder;
+            var bNew = kpi.SortOrder;
+
+            _kpiMoving.Add(kpi.Id); _kpiMoving.Add(other.Id);
+
+            var iKpi = _kpis.FindIndex(x => x.Id == kpi.Id);
+            var iOther = _kpis.FindIndex(x => x.Id == other.Id);
+            if (iKpi >= 0) { _kpis[iKpi] = kpi with { SortOrder = aNew }; }
+            if (iOther >= 0) { _kpis[iOther] = other with { SortOrder = bNew }; }
+            StateHasChanged();
+
+            var reqA = new HomeKpiUpdateRequest(kpi.Kind, kpi.ReportFavoriteId, kpi.PredefinedType, kpi.Title, kpi.DisplayMode, aNew);
+            var reqB = new HomeKpiUpdateRequest(other.Kind, other.ReportFavoriteId, other.PredefinedType, other.Title, other.DisplayMode, bNew);
+
+            var respA = await Http.PutAsJsonAsync($"/api/home-kpis/{kpi.Id}", reqA);
+            var respB = await Http.PutAsJsonAsync($"/api/home-kpis/{other.Id}", reqB);
+
+            if (respA.IsSuccessStatusCode && respB.IsSuccessStatusCode)
+            {
+                var dtoA = await respA.Content.ReadFromJsonAsync<HomeKpiDto>();
+                var dtoB = await respB.Content.ReadFromJsonAsync<HomeKpiDto>();
+                if (dtoA != null)
+                {
+                    var iA = _kpis.FindIndex(x => x.Id == dtoA.Id);
+                    if (iA >= 0) { _kpis[iA] = dtoA; }
+                }
+                if (dtoB != null)
+                {
+                    var iB = _kpis.FindIndex(x => x.Id == dtoB.Id);
+                    if (iB >= 0) { _kpis[iB] = dtoB; }
+                }
+            }
+            else
+            {
+                // revert on failure
+                if (iKpi >= 0) { _kpis[iKpi] = kpi; }
+                if (iOther >= 0) { _kpis[iOther] = other; }
+            }
+        }
+        catch { }
+        finally
+        {
+            _kpiMoving.Clear();
+            StateHasChanged();
+        }
+    }
+
+    private RenderFragment RenderKpiTile(HomeKpiDto k) => builder =>
+    {
+        var i = 0;
+
+        // Predefined
+        if (k.Kind == HomeKpiKind.Predefined)
+        {
+            var predefined = k.PredefinedType ?? (HomeKpiPredefined)(k.SortOrder % 3);
+            var titleDefault = predefined switch
+            {
+                HomeKpiPredefined.AccountsAggregates => Localizer["Chart_Title_AllAccounts"],
+                HomeKpiPredefined.SavingsPlanAggregates => Localizer["Chart_Title_MonthlySaving"],
+                HomeKpiPredefined.SecuritiesDividends => Localizer["Chart_Title_DividendsQuarterly"],
+                _ => Localizer["KPI"]
+            };
+            var title = string.IsNullOrWhiteSpace(k.Title) ? titleDefault : k.Title;
+
+            builder.OpenElement(i++, "div");
+            builder.OpenElement(i++, "h4");
+            if (EditMode)
+            {
+                builder.OpenElement(i++, "input");
+                builder.AddAttribute(i++, "class", "kpi-title-input");
+                builder.AddAttribute(i++, "value", title);
+                builder.AddAttribute(i++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, (ChangeEventArgs e) => OnTitleChangedAsync(k, e?.Value?.ToString())));
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.AddContent(i++, title);
+            }
+            builder.CloseElement();
+
+            switch (predefined)
+            {
+                case HomeKpiPredefined.AccountsAggregates:
+                    builder.OpenComponent<AggregateBarChart>(i++);
+                    builder.AddAttribute(i++, "Endpoint", "/api/accounts/aggregates");
+                    builder.AddAttribute(i++, "Title", (object?)null);
+                    builder.AddAttribute(i++, "Take", 7);
+                    builder.AddAttribute(i++, "HideIntervalSelector", true);
+                    builder.AddAttribute(i++, "InitialPeriod", "Month");
+                    builder.CloseComponent();
+                    break;
+                case HomeKpiPredefined.SavingsPlanAggregates:
+                    builder.OpenComponent<AggregateBarChart>(i++);
+                    builder.AddAttribute(i++, "Endpoint", "/api/savings-plans/aggregates");
+                    builder.AddAttribute(i++, "Title", (object?)null);
+                    builder.AddAttribute(i++, "Take", 7);
+                    builder.AddAttribute(i++, "HideIntervalSelector", true);
+                    builder.AddAttribute(i++, "InitialPeriod", "Month");
+                    builder.AddAttribute(i++, "PositiveColor", "#2d9d4f");
+                    builder.AddAttribute(i++, "NegativeColor", "#b55");
+                    builder.CloseComponent();
+                    break;
+                case HomeKpiPredefined.SecuritiesDividends:
+                    builder.OpenComponent<AggregateBarChart>(i++);
+                    builder.AddAttribute(i++, "Endpoint", "/api/securities/dividends");
+                    builder.AddAttribute(i++, "Title", (object?)null);
+                    builder.AddAttribute(i++, "HideIntervalSelector", true);
+                    builder.AddAttribute(i++, "InitialPeriod", "Quarter");
+                    builder.AddAttribute(i++, "PositiveColor", "#d4a72c");
+                    builder.AddAttribute(i++, "NegativeColor", "#b55");
+                    builder.CloseComponent();
+                    break;
+            }
+            builder.CloseElement();
+            return;
+        }
+
+        // Report Favorite
+        var name = string.IsNullOrWhiteSpace(k.Title) ? (k.ReportFavoriteName ?? Localizer["Favorite"]) : k.Title;
+
+        builder.OpenElement(i++, "div");
+        builder.AddAttribute(i++, "class", "fav-kpi");
+
+        builder.OpenElement(i++, "h4");
+        if (EditMode)
+        {
+            builder.OpenElement(i++, "input");
+            builder.AddAttribute(i++, "class", "kpi-title-input");
+            builder.AddAttribute(i++, "value", name);
+            builder.AddAttribute(i++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, (ChangeEventArgs e) => OnTitleChangedAsync(k, e?.Value?.ToString())));
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.AddAttribute(i++, "class", "clickable");
+            builder.AddAttribute(i++, "title", Localizer["OpenReport"]);
+            builder.AddAttribute(i++, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, () => OnOpenFavorite(k)));
+            builder.AddContent(i++, name);
+        }
+        builder.CloseElement();
+
+        if (!_favData.ContainsKey(k.Id) && !_favLoading.Contains(k.Id))
+        {
+            _favLoading.Add(k.Id);
+            _ = LoadFavoriteKpiDataAsync(k);
+        }
+
+        if (_favData.TryGetValue(k.Id, out var data))
+        {
+            var series = data.Series?.Select(p => new ReportKpiTile.Point(p.Date, p.Amount)).ToList()
+                        ?? new List<ReportKpiTile.Point>();
+
+            builder.OpenComponent<ReportKpiTile>(i++);
+            builder.AddAttribute(i++, "DisplayMode", k.DisplayMode);
+            builder.AddAttribute(i++, "Amount", data.Amount);
+            builder.AddAttribute(i++, "Prev", data.Prev);
+            builder.AddAttribute(i++, "Year", data.Year);
+            builder.AddAttribute(i++, "Series", series);
+            builder.AddAttribute(i++, "Clickable", !EditMode);
+            builder.AddAttribute(i++, "OnClick", EventCallback.Factory.Create(this, () => OnOpenFavorite(k)));
+            builder.CloseComponent();
+        }
+        else
+        {
+            builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "small-loading"); builder.AddContent(i++, Localizer["Loading"]); builder.CloseElement();
+        }
+
+        builder.CloseElement(); // fav-kpi
+    };
+
+    private void OnOpenFavorite(HomeKpiDto k)
+    {
+        if (k.Kind == HomeKpiKind.ReportFavorite && k.ReportFavoriteId.HasValue)
+        {
+            Nav.NavigateTo($"/reports/dashboard?favoriteId={k.ReportFavoriteId.Value}&edit=false");
+        }
+    }
+
+    private async Task OnTitleChangedAsync(HomeKpiDto k, string? newTitle)
+    {
+        try
+        {
+            var req = new HomeKpiUpdateRequest(k.Kind, k.ReportFavoriteId, k.PredefinedType, newTitle, k.DisplayMode, k.SortOrder);
+            var resp = await Http.PutAsJsonAsync($"/api/home-kpis/{k.Id}", req);
+            if (resp.IsSuccessStatusCode)
+            {
+                var updated = await resp.Content.ReadFromJsonAsync<HomeKpiDto>();
+                if (updated != null)
+                {
+                    var idx = _kpis.FindIndex(x => x.Id == k.Id);
+                    if (idx >= 0) { _kpis[idx] = updated; }
+                }
+            }
+        }
+        catch { }
+        StateHasChanged();
+    }
+
+    private async Task LoadFavoriteKpiDataAsync(HomeKpiDto k)
+    {
+        try
+        {
+            if (!k.ReportFavoriteId.HasValue) { return; }
+            var fav = await Http.GetFromJsonAsync<ReportFavoriteFull>($"/api/report-favorites/{k.ReportFavoriteId.Value}");
+            if (fav == null) { return; }
+            var disablePrev = fav.Interval == ReportInterval.Ytd || fav.Interval == ReportInterval.Year;
+            var req = new QueryRequest(
+                fav.PostingKind,
+                fav.Interval,
+                fav.Take,
+                fav.IncludeCategory,
+                disablePrev ? false : fav.ComparePrevious,
+                fav.CompareYear,
+                fav.PostingKinds?.Count > 0 ? fav.PostingKinds : null,
+                null,
+                fav.Filters == null ? null : new FiltersRequest(
+                    fav.Filters.AccountIds, fav.Filters.ContactIds, fav.Filters.SavingsPlanIds, fav.Filters.SecurityIds,
+                    fav.Filters.ContactCategoryIds, fav.Filters.SavingsPlanCategoryIds, fav.Filters.SecurityCategoryIds)
+            );
+            var resp = await Http.PostAsJsonAsync("/api/report-aggregates", req);
+            if (!resp.IsSuccessStatusCode) { return; }
+            var agg = await resp.Content.ReadFromJsonAsync<AggregationResponse>();
+            if (agg == null) { return; }
+            var points = (agg.Points ?? new()).OrderBy(p => p.GroupKey).ThenBy(p => p.PeriodStart).ToList();
+            var series = points.Where(p => p.ParentGroupKey == null || p.GroupKey.StartsWith("Type:"))
+                               .GroupBy(p => p.PeriodStart)
+                               .Select(g => new SeriesPoint(g.Key, g.Where(x => x.ParentGroupKey == null || x.GroupKey.StartsWith("Type:")).Sum(x => x.Amount)))
+                               .OrderBy(x => x.Date).ToList();
+            var last = series.LastOrDefault();
+            decimal amount = last?.Amount ?? 0m;
+            decimal? prev = null; decimal? year = null;
+            if (fav.ComparePrevious && !disablePrev)
+            {
+                prev = points.Where(p => p.ParentGroupKey == null || p.GroupKey.StartsWith("Type:"))
+                              .Where(p => p.PreviousAmount.HasValue)
+                              .GroupBy(p => p.PeriodStart)
+                              .OrderBy(g => g.Key).LastOrDefault()?
+                              .Where(p => p.PreviousAmount.HasValue).Sum(p => p.PreviousAmount!.Value);
+            }
+            if (fav.CompareYear)
+            {
+                year = points.Where(p => p.ParentGroupKey == null || p.GroupKey.StartsWith("Type:"))
+                              .Where(p => p.YearAgoAmount.HasValue)
+                              .GroupBy(p => p.PeriodStart)
+                              .OrderBy(g => g.Key).LastOrDefault()?
+                              .Where(p => p.YearAgoAmount.HasValue).Sum(p => p.YearAgoAmount!.Value);
+            }
+            _favData[k.Id] = new FavKpiData(amount, prev, year, series);
+        }
+        catch { }
+        finally
+        {
+            _favLoading.Remove(k.Id);
+            StateHasChanged();
+        }
+    }
+
+    // --- Inline DTOs used by this component (keine externen Abhängigkeiten nötig) ---
+    private sealed record HomeKpiDto(Guid Id, HomeKpiKind Kind, Guid? ReportFavoriteId, string? ReportFavoriteName, HomeKpiPredefined? PredefinedType, string? Title, HomeKpiDisplayMode DisplayMode, int SortOrder, DateTime CreatedUtc);
+    private sealed record HomeKpiCreateRequest(HomeKpiKind Kind, Guid? ReportFavoriteId, HomeKpiPredefined? PredefinedType, string? Title, HomeKpiDisplayMode DisplayMode, int SortOrder);
+    private sealed record HomeKpiUpdateRequest(HomeKpiKind Kind, Guid? ReportFavoriteId, HomeKpiPredefined? PredefinedType, string? Title, HomeKpiDisplayMode DisplayMode, int SortOrder);
+
+    private sealed record ReportFavoriteLite(Guid Id, string Name);
+    private sealed record ReportFavoriteFull(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, int Take, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds, FavFiltersDto? Filters);
+    private sealed record FavFiltersDto(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds);
+
+    private sealed record QueryRequest(int PostingKind, ReportInterval Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate, FiltersRequest? Filters);
+    private sealed record FiltersRequest(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds);
+    private sealed record AggregationResponse(ReportInterval Interval, List<PointDto> Points, bool ComparedPrevious, bool ComparedYear);
+    private sealed record PointDto(DateTime PeriodStart, string GroupKey, string GroupName, string? CategoryName, decimal Amount, string? ParentGroupKey, decimal? PreviousAmount, decimal? YearAgoAmount);
+
+    private sealed record FavKpiData(decimal Amount, decimal? Prev, decimal? Year, List<SeriesPoint> Series);
+    private sealed record SeriesPoint(DateTime Date, decimal Amount);
+}
+
+<style>
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.75rem; margin-top:1.5rem; }
+.kpi-tile { background:#141a20; border:1px solid #2a323a; border-radius:8px; padding:.5rem; aspect-ratio:1/1; display:flex; flex-direction:column; justify-content:flex-start; position:relative; }
+.kpi-tile h4 { font-size:.7rem; margin:.1rem 0 .25rem 0; }
+
+/* add tile */
+.kpi-tile.add-tile { display:flex; align-items:center; justify-content:center; cursor:pointer; background:#10161c; color:#88a; border:1px dashed #2a323a; }
+.add-ico { width:28px; height:28px; fill:#8fb0ff; }
+
+/* per-tile controls */
+.kpi-delete { align-self:flex-end; background:transparent; border:0; cursor:pointer; padding:.1rem; margin:-.25rem -.25rem .1rem auto; }
+.kpi-delete .ico { width:14px; height:14px; fill:#a66; }
+
+.kpi-order { display:flex; gap:.2rem; position:absolute; top:.2rem; left:.25rem; }
+.kpi-move { background:transparent; border:0; cursor:pointer; padding:.1rem; }
+.kpi-move .ico { width:14px; height:14px; fill:#8fb0ff; }
+
+/* content */
+.fav-kpi { display:flex; flex-direction:column; gap:.25rem; }
+.fav-kpi .clickable { cursor:pointer; }
+.small-loading { font-size:.65rem; opacity:.7; }
+
+/* dialog styles (reuse from Home) */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.modal { background:#141a20; border:1px solid #2a323a; border-radius:8px; padding:1rem; box-shadow:0 10px 30px rgba(0,0,0,.6); max-width:90vw; max-height:90vh; overflow:auto; }
+.tabs-bar { display:flex; gap:.25rem; margin:.25rem 0 .6rem 0; }
+.tab-btn { background:transparent; border:1px solid #2a323a; padding:.35rem .6rem; border-radius:6px; color:#cbd5e1; cursor:pointer; }
+.tab-btn.active { background:#1b2430; border-color:#39506a; }
+.option-list { display:flex; flex-direction:column; gap:.25rem; margin-bottom:.5rem; }
+.mk-item { display:flex; align-items:center; gap:.5rem; }
+.mk-item.line { padding:.3rem .2rem; border-bottom:1px dashed #2a323a; }
+.mk-item.line input { width:unset; }
+.scroll-box { max-height:280px; overflow:auto; border:1px solid #2a323a; border-radius:6px; padding:.25rem; }
+.row { display:flex; flex-direction:column; gap:.3rem; margin-top:.5rem; }
+.group-title { font-size:.8rem; opacity:.8; margin-bottom:.25rem; }
+.dialog-actions { display:flex; gap:.5rem; justify-content:flex-end; margin-top:.75rem; }
+.btn { background:#2d6cdf; color:#fff; border:0; border-radius:6px; padding:.4rem .75rem; cursor:pointer; }
+.btn.secondary { background:transparent; border:1px solid #2a323a; color:#cbd5e1; }
+.small-empty { opacity:.7; font-size:.8rem; padding:.25rem .35rem; }
+</style>
