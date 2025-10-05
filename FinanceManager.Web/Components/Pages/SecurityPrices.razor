@@ -3,10 +3,13 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@using FinanceManager.Shared.Dtos
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
-@using FinanceManager.Shared.Dtos
 @using System.Net.Http.Json
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
+@inject IServiceProvider Services
 @inject IStringLocalizer<Components.Pages.SecurityPrices> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -14,41 +17,38 @@
 
 <h3>@Localizer["Title"]</h3>
 
-@if (_enqueueOk)
-{
-    <div class="alert info" role="status">@Localizer["Backfill_Started"]</div>
-}
-
 <BackgroundTaskStatusPanel AllowedTypes="new[]{ BackgroundTaskType.SecurityPricesBackfill }" />
 
-@if (_showBackfillDialog)
+@if (_vm?.ShowBackfillDialog == true)
 {
-    <div class="modal-overlay" @onclick="(()=> _showBackfillDialog = false)">
+    <div class="modal-overlay" @onclick="(()=> _vm!.ShowBackfillDialog = false)">
         <div class="modal" @onclick:stopPropagation="true">
             <h3 style="margin-top:0;">@Localizer["Dlg_Backfill_Title"]</h3>
             <div class="row">
                 <label>@Localizer["Dlg_From"]</label>
                 <input type="date"
-                       @bind-value="_fromDate"
+                       @bind-value="_vm!.FromDate"
                        @bind-value:event="onchange" />
             </div>
             <div class="row" style="margin-top:.5rem;">
                 <label>@Localizer["Dlg_To"]</label>
-                <input type="date" @bind-value="_toDate" @bind-value:event="onchange" />
+                <input type="date" @bind-value="_vm!.ToDate" @bind-value:event="onchange" />
             </div>
-            @if (!string.IsNullOrWhiteSpace(_dlgError))
+            @if (!string.IsNullOrWhiteSpace(_vm?.DialogErrorKey))
             {
-                <div style="color:#e66; font-size:.8rem; margin-top:.5rem;">@_dlgError</div>
+                <div style="color:#e66; font-size:.8rem; margin-top:.5rem;">@Localizer[_vm.DialogErrorKey!]</div>
             }
             <div class="dialog-actions">
-                <button class="btn" disabled="@_submitting" @onclick="ConfirmBackfillAsync">@(_submitting ? Localizer["Dlg_Starting"] : Localizer["Dlg_Start"])</button>
-                <button class="btn secondary" disabled="@_submitting" @onclick="(()=> _showBackfillDialog = false)">@Localizer["Dialog_Cancel"]</button>
+                <button class="btn" disabled="@(_vm?.Submitting ?? false)" @onclick="async () => await _vm!.ConfirmBackfillAsync()">
+                    @((_vm?.Submitting ?? false) ? Localizer["Dlg_Starting"] : Localizer["Dlg_Start"])
+                </button>
+                <button class="btn secondary" disabled="@(_vm?.Submitting ?? false)" @onclick="(()=> _vm!.CloseBackfillDialog())">@Localizer["Dialog_Cancel"]</button>
             </div>
         </div>
     </div>
 }
 
-@if(_loading && _items.Count==0)
+@if((_vm?.Loading ?? true) && (_vm?.Items.Count ?? 0) == 0)
 {
     <p>@Localizer["Loading"]</p>
 }
@@ -62,29 +62,32 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach(var p in _items)
+            @if(_vm is not null)
             {
-                <tr>
-                    <td>@p.Date.ToShortDateString()</td>
-                    <td style="text-align:right;">@p.Close</td>
-                </tr>
+                @foreach(var p in _vm.Items)
+                {
+                    <tr>
+                        <td>@p.Date.ToShortDateString()</td>
+                        <td style="text-align:right;">@p.Close</td>
+                    </tr>
+                }
             }
-            @if(_loading)
+            @if(_vm?.Loading == true)
             {
                 <tr><td colspan="2" style="opacity:.6;">@Localizer["Loading"]</td></tr>
             }
         </tbody>
     </table>
     <div style="margin-top:.5rem;">
-        @if(_canLoadMore)
+        @if(_vm?.CanLoadMore == true)
         {
             <div @ref="_sentinel" class="infinite-sentinel" aria-hidden="true"></div>
         }
-        else if(_items.Count==0 && !_loading)
+        else if((_vm?.Items.Count ?? 0)==0 && _vm?.Loading == false)
         {
             <span style="opacity:.6;font-size:.75rem;">@Localizer["NoEntries"]</span>
         }
-        else if(!_canLoadMore)
+        else if(_vm?.CanLoadMore == false)
         {
             <div class="end-of-list" style="opacity:.6;font-size:.65rem;">@Localizer["EndOfList"]</div>
         }
@@ -93,93 +96,106 @@ else
 
 @code {
     [Parameter] public Guid SecurityId { get; set; }
-    private const int PageSize = 100;
-    private bool _loading;
-    private bool _canLoadMore = true;
-    private int _skip;
-    private List<PriceDto> _items = new();
 
-    // Backfill dialog state
-    private bool _showBackfillDialog;
-    private DateTime? _fromDate;
-    private DateTime? _toDate;
-    private bool _submitting;
-    private string? _dlgError;
-    private bool _enqueueOk;
-
+    // Infinite scroll
     private ElementReference _sentinel;
     private DotNetObjectReference<SecurityPrices>? _selfRef;
     private bool _observerAttached;
 
+    // Ribbon
     private enum TabId { Prices }
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
     private TabId _activeTab = TabId.Prices;
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-    private sealed record PriceDto(DateTime Date, decimal Close);
+    // ViewModel
+    private SecurityPricesViewModel? _vm;
 
     protected override async Task OnParametersSetAsync()
     {
-        if(_items.Count==0)
+        if (_vm == null || _vm.SecurityId != SecurityId)
         {
-            await LoadMoreAsync();
+            if (_vm is not null)
+            {
+                _vm.StateChanged -= VmOnStateChanged;
+                await _vm.DisposeAsync();
+            }
+            _vm = ActivatorUtilities.CreateInstance<SecurityPricesViewModel>(Services);
+            _vm.StateChanged += VmOnStateChanged;
+            _vm.ForSecurity(SecurityId);
+            await _vm.InitializeAsync();
+            RebuildRibbon();
         }
-        BuildRibbon();
     }
 
-    private void BuildRibbon()
+    private void VmOnStateChanged(object? sender, EventArgs e)
     {
-        var nav = new Ribbon<TabId>.RibbonGroup
+        RebuildRibbon();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Title = Localizer["Ribbon_Group_Navigation"],
-            Items = new()
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                new Ribbon<TabId>.RibbonItem
+                var size = it.Size == UiRibbonItemSize.Large
+                    ? Ribbon<TabId>.RibbonItemSize.Large
+                    : Ribbon<TabId>.RibbonItemSize.Small;
+
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    Label = Localizer["Ribbon_Back"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { Back(); return Task.CompletedTask; }
-                }
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
             }
-        };
-        var actions = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Actions"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Backfill"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Disabled = _loading,
-                    Callback = () => { OpenBackfillDialog(); return Task.CompletedTask; }
-                }
-            }
-        };
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
+
         _tabs = new()
         {
-            new Ribbon<TabId>.RibbonTab<TabId>{ Id = TabId.Prices, Title = Localizer["Ribbon_Tab_Prices"], Groups = new(){ nav, actions } }
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Prices,
+                Title = Localizer["Ribbon_Tab_Prices"],
+                Groups = groups
+            }
         };
         StateHasChanged();
     }
 
-    private void OpenBackfillDialog()
+    private void HandleRibbonAction(string action)
     {
-        // Defaults: last 2 years until yesterday
-        var end = DateTime.UtcNow.Date.AddDays(-1);
-        var start = end.AddYears(-2);
-        _fromDate = start;
-        _toDate = end;
-        _dlgError = null; _submitting = false; _enqueueOk = false;
-        _showBackfillDialog = true;
-        StateHasChanged();
+        switch (action)
+        {
+            case "Back":
+                Nav.NavigateTo($"/securities/{SecurityId}");
+                break;
+            case "Backfill":
+                _vm?.OpenBackfillDialogDefaultPeriod();
+                break;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_vm is not null)
+        {
+            _vm.StateChanged -= VmOnStateChanged;
+            await _vm.DisposeAsync();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_observerAttached || !_canLoadMore || _loading)
+        if (_observerAttached || !(_vm?.CanLoadMore ?? false) || (_vm?.Loading ?? true))
         {
             return;
         }
@@ -203,8 +219,9 @@ else
     [JSInvokable]
     public async Task LoadMoreFromJs()
     {
-        await LoadMoreAsync();
-        if (_canLoadMore)
+        if (_vm is null) { return; }
+        await _vm.LoadMoreAsync();
+        if (_vm.CanLoadMore)
         {
             await JS.InvokeVoidAsync("fmInfinite.refresh");
         }
@@ -213,75 +230,6 @@ else
             StateHasChanged();
         }
     }
-
-    private async Task LoadMoreAsync()
-    {
-        if(_loading || !_canLoadMore) return;
-        _loading = true;
-        try
-        {
-            var resp = await Http.GetAsync($"/api/securities/{SecurityId}/prices?skip={_skip}&take={PageSize}");
-            if(resp.IsSuccessStatusCode)
-            {
-                var chunk = await resp.Content.ReadFromJsonAsync<List<PriceDto>>() ?? new();
-                _items.AddRange(chunk);
-                _skip += chunk.Count;
-                if(chunk.Count < PageSize) _canLoadMore = false;
-            }
-        }
-        finally { _loading=false; StateHasChanged(); }
-    }
-
-    private async Task ConfirmBackfillAsync()
-    {
-        if (_submitting) { return; }
-        _dlgError = null;
-        if (!_fromDate.HasValue || !_toDate.HasValue)
-        {
-            _dlgError = Localizer["Dlg_InvalidDates"];
-            StateHasChanged();
-            return;
-        }
-        var from = _fromDate.Value.Date;
-        var to = _toDate.Value.Date;
-        if (from > to)
-        {
-            _dlgError = Localizer["Dlg_FromAfterTo"];
-            StateHasChanged();
-            return;
-        }
-        if (to > DateTime.UtcNow.Date)
-        {
-            _dlgError = Localizer["Dlg_ToInFuture"];
-            StateHasChanged();
-            return;
-        }
-        _submitting = true;
-        try
-        {
-            var payload = new { SecurityId = (Guid?)SecurityId, FromDateUtc = (DateTime?)from, ToDateUtc = (DateTime?)to };
-            var resp = await Http.PostAsJsonAsync("/api/securities/backfill", payload);
-            if (!resp.IsSuccessStatusCode)
-            {
-                var err = await resp.Content.ReadAsStringAsync();
-                _dlgError = string.IsNullOrWhiteSpace(err) ? Localizer["Dlg_EnqueueFailed"] : err;
-                return;
-            }
-            _showBackfillDialog = false;
-            _enqueueOk = true;
-        }
-        catch
-        {
-            _dlgError = Localizer["Dlg_EnqueueFailed"];
-        }
-        finally
-        {
-            _submitting = false;
-            StateHasChanged();
-        }
-    }
-
-    private void Back() => Nav.NavigateTo($"/securities/{SecurityId}");
 }
 
 <style>
