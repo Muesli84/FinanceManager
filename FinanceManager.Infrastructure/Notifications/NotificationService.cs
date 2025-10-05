@@ -38,6 +38,21 @@ public sealed class NotificationService : INotificationService
         }
         entity.IsDismissed = true;
         entity.ModifiedUtc = DateTime.UtcNow;
+
+        // NEW: Wenn die Notification einen Security-Error bestätigt, den Block aufheben
+        if (!string.IsNullOrWhiteSpace(entity.TriggerEventKey) && entity.TriggerEventKey.StartsWith("security:error:", StringComparison.OrdinalIgnoreCase))
+        {
+            var idStr = entity.TriggerEventKey["security:error:".Length..];
+            if (Guid.TryParse(idStr, out var securityId))
+            {
+                var sec = await _db.Securities.FirstOrDefaultAsync(s => s.Id == securityId && s.OwnerUserId == ownerUserId, ct);
+                if (sec != null)
+                {
+                    sec.ClearPriceError();
+                }
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
         return true;
     }

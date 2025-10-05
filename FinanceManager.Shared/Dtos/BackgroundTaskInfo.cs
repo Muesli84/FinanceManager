@@ -6,7 +6,8 @@ namespace FinanceManager.Shared.Dtos
     {
         ClassifyAllDrafts,
         BookAllDrafts,
-        BackupRestore
+        BackupRestore,
+        SecurityPricesBackfill // NEW
     }
 
     public enum BackgroundTaskStatus

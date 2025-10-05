@@ -14,4 +14,16 @@
   <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
   <data name="Ribbon_Back" xml:space="preserve"><value>Back</value></data>
   <data name="Ribbon_Tab_Prices" xml:space="preserve"><value>Prices</value></data>
+  <!-- NEW: Actions group and backfill dialog -->
+  <data name="Ribbon_Group_Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Ribbon_Backfill" xml:space="preserve"><value>Fetch historical prices</value></data>
+  <data name="Dlg_Backfill_Title" xml:space="preserve"><value>Fetch historical prices</value></data>
+  <data name="Dlg_From" xml:space="preserve"><value>From</value></data>
+  <data name="Dlg_To" xml:space="preserve"><value>To</value></data>
+  <data name="Dlg_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Dialog_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Dlg_InvalidDates" xml:space="preserve"><value>Invalid dates.</value></data>
+  <data name="Dlg_FromAfterTo" xml:space="preserve"><value>From date must not be after To date.</value></data>
+  <data name="Dlg_ToInFuture" xml:space="preserve"><value>To date must not be in the future.</value></data>
+  <data name="Dlg_EnqueueFailed" xml:space="preserve"><value>Failed to start task.</value></data>
 </root>

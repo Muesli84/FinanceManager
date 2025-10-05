@@ -14,4 +14,16 @@
   <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
   <data name="Ribbon_Back" xml:space="preserve"><value>Zurück</value></data>
   <data name="Ribbon_Tab_Prices" xml:space="preserve"><value>Kurse</value></data>
+  <!-- NEW: Actions group and backfill dialog -->
+  <data name="Ribbon_Group_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Ribbon_Backfill" xml:space="preserve"><value>Historische Kurse nachladen</value></data>
+  <data name="Dlg_Backfill_Title" xml:space="preserve"><value>Historische Kurse nachladen</value></data>
+  <data name="Dlg_From" xml:space="preserve"><value>Von</value></data>
+  <data name="Dlg_To" xml:space="preserve"><value>Bis</value></data>
+  <data name="Dlg_Start" xml:space="preserve"><value>Starten</value></data>
+  <data name="Dialog_Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="Dlg_InvalidDates" xml:space="preserve"><value>Ungültige Datumsangaben.</value></data>
+  <data name="Dlg_FromAfterTo" xml:space="preserve"><value>Das Von-Datum darf nicht nach dem Bis-Datum liegen.</value></data>
+  <data name="Dlg_ToInFuture" xml:space="preserve"><value>Das Bis-Datum darf nicht in der Zukunft liegen.</value></data>
+  <data name="Dlg_EnqueueFailed" xml:space="preserve"><value>Auftrag konnte nicht gestartet werden.</value></data>
 </root>

@@ -83,7 +83,7 @@
 
     private Task NavigateToEventAsync(string key)
     {
-        // convention: setup:ip-blocks?focus=1.2.3.4 -> /setup and select tab ip-blocks; optional query used by tab to preselect
+        // setup:<section>[?q=...]
         if (key.StartsWith("setup:", StringComparison.OrdinalIgnoreCase))
         {
             var rest = key["setup:".Length..];
@@ -91,8 +91,21 @@
             var section = sep > 0 ? rest[..sep] : rest;
             var query = sep > 0 ? rest[sep..] : string.Empty;
             Nav.NavigateTo($"/setup{query}");
-            // Optionally store target section in localStorage and let Setup.razor read and activate it
+            return Task.CompletedTask;
         }
+
+        // security:error:<securityId> -> öffnet die Wertpapier-Detailseite
+        if (key.StartsWith("security:error:", StringComparison.OrdinalIgnoreCase))
+        {
+            var idPart = key["security:error:".Length..];
+            if (Guid.TryParse(idPart, out var securityId))
+            {
+                var back = Uri.EscapeDataString(Nav.Uri);
+                Nav.NavigateTo($"/securities/{securityId}?back={back}");
+            }
+            return Task.CompletedTask;
+        }
+
         return Task.CompletedTask;
     }
 }
