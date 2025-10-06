@@ -1,7 +1,9 @@
 ﻿@using System.Net.Http.Json
-@inject HttpClient Http
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.SetupIpBlockTab> L
+@inject IServiceProvider Services
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
 
 @if (!CurrentUser.IsAuthenticated || !CurrentUser.IsAdmin)
 {
@@ -12,17 +14,17 @@ else
     <h4 style="margin-top:0;">@L["Heading_IpBlocks"]</h4>
 
     <div class="create-ip-form" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.5rem 0 1rem 0;">
-        <input placeholder="@L["Ip_Placeholder"]" @bind="_ip" style="min-width:14rem;" />
-        <input placeholder="@L["Reason_Placeholder"]" @bind="_reason" style="min-width:18rem;" />
+        <input placeholder="@L["Ip_Placeholder"]" @bind="_vm!.Ip" style="min-width:14rem;" />
+        <input placeholder="@L["Reason_Placeholder"]" @bind="_vm!.Reason" style="min-width:18rem;" />
         <label style="display:inline-flex;align-items:center;gap:.4rem;">
-            <input type="checkbox" @bind="_blockOnCreate" /> @L["BlockOnCreate"]
+            <input type="checkbox" @bind="_vm!.BlockOnCreate" /> @L["BlockOnCreate"]
         </label>
-        <button @onclick="CreateAsync" disabled="@_busy">@L["Add"]</button>
+        <button @onclick="(()=> _vm!.CreateAsync())" disabled="@_vm!.Busy">@L["Add"]</button>
     </div>
 
-    @if (!string.IsNullOrEmpty(_error))
+    @if (!string.IsNullOrEmpty(_vm?.Error))
     {
-        <div class="error">@_error</div>
+        <div class="error">@_vm!.Error</div>
     }
 
     <div class="table-responsive">
@@ -39,7 +41,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var b in _items)
+                @foreach (var b in _vm!.Items)
                 {
                     <tr>
                         <td>@b.IpAddress</td>
@@ -51,14 +53,14 @@ else
                         <td style="white-space:nowrap;">
                             @if (!b.IsBlocked)
                             {
-                                <button @onclick="(()=>BlockAsync(b.Id))">@L["Action_Block"]</button>
+                                <button @onclick="(()=>_vm!.BlockAsync(b.Id))">@L["Action_Block"]</button>
                             }
                             else
                             {
-                                <button @onclick="(()=>UnblockAsync(b.Id))">@L["Action_Unblock"]</button>
+                                <button @onclick="(()=>_vm!.UnblockAsync(b.Id))">@L["Action_Unblock"]</button>
                             }
-                            <button @onclick="(()=>ResetCountersAsync(b.Id))">@L["Action_Reset"]</button>
-                            <button class="danger" @onclick="(()=>DeleteAsync(b.Id))">@L["Action_Delete"]</button>
+                            <button @onclick="(()=>_vm!.ResetCountersAsync(b.Id))">@L["Action_Reset"]</button>
+                            <button class="danger" @onclick="(()=>_vm!.DeleteAsync(b.Id))">@L["Action_Delete"]</button>
                         </td>
                     </tr>
                 }
@@ -68,87 +70,12 @@ else
 }
 
 @code {
-    private sealed class IpBlockVm
-    {
-        public Guid Id { get; set; }
-        public string IpAddress { get; set; } = string.Empty;
-        public bool IsBlocked { get; set; }
-        public DateTime? BlockedAtUtc { get; set; }
-        public string? BlockReason { get; set; }
-        public int UnknownUserFailedAttempts { get; set; }
-        public DateTime? UnknownUserLastFailedUtc { get; set; }
-        public DateTime CreatedUtc { get; set; }
-        public DateTime? ModifiedUtc { get; set; }
-    }
-
-    private List<IpBlockVm> _items = new();
-    private bool _busy;
-    private string _ip = string.Empty;
-    private string? _reason;
-    private bool _blockOnCreate = true;
-    private string? _error;
+    private SetupIpBlocksViewModel? _vm;
 
     protected override async Task OnInitializedAsync()
     {
-        if (CurrentUser.IsAuthenticated && CurrentUser.IsAdmin)
-        {
-            await ReloadAsync();
-        }
-    }
-
-    private async Task ReloadAsync()
-    {
-        try
-        {
-            _error = null;
-            var list = await Http.GetFromJsonAsync<List<IpBlockVm>>("/api/admin/ip-blocks");
-            _items = list ?? new();
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-    }
-
-    private async Task CreateAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_ip)) { _error = L["Error_IpRequired"]; return; }
-        _busy = true;
-        try
-        {
-            var req = new { IpAddress = _ip.Trim(), Reason = _reason, IsBlocked = _blockOnCreate };
-            var resp = await Http.PostAsJsonAsync("/api/admin/ip-blocks", req);
-            if (resp.IsSuccessStatusCode)
-            {
-                _ip = string.Empty; _reason = null; _blockOnCreate = true;
-                await ReloadAsync();
-            }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        _busy = false;
-    }
-
-    private async Task BlockAsync(Guid id)
-    {
-        try { await Http.PostAsJsonAsync($"/api/admin/ip-blocks/{id}/block", new { Reason = (string?)null }); await ReloadAsync(); } catch { }
-    }
-    private async Task UnblockAsync(Guid id)
-    {
-        try { await Http.PostAsync($"/api/admin/ip-blocks/{id}/unblock", null); await ReloadAsync(); } catch { }
-    }
-    private async Task ResetCountersAsync(Guid id)
-    {
-        try { await Http.PostAsync($"/api/admin/ip-blocks/{id}/reset-counters", null); await ReloadAsync(); } catch { }
-    }
-    private async Task DeleteAsync(Guid id)
-    {
-        try { await Http.DeleteAsync($"/api/admin/ip-blocks/{id}"); await ReloadAsync(); } catch { }
+        _vm = ActivatorUtilities.CreateInstance<SetupIpBlocksViewModel>(Services);
+        _vm.StateChanged += (_, __) => { _ = InvokeAsync(StateHasChanged); };
+        await _vm.InitializeAsync();
     }
 }

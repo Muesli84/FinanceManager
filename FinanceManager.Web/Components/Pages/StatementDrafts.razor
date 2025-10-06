@@ -3,9 +3,11 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject IServiceProvider Services
 @using FinanceManager.Application.Statements
 @using FinanceManager.Shared.Dtos
 @using FinanceManager.Web.Components.Shared
+@using FinanceManager.Web.ViewModels
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.StatementDrafts> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -30,18 +32,18 @@
     </div>
 }
 
-@if (_bookingIssues?.Count > 0 && !_isBooking)
+@if ((_vm?.BookingIssues?.Count ?? 0) > 0 && !(_vm?.IsBooking ?? false))
 {
-    var errorCount = _bookingIssues.Count(i => i.code != null && i.code.StartsWith("SECURITY_") || i.code == "NO_ACCOUNT" || i.code == "ENTRY_NO_CONTACT" || i.code == "INTERMEDIARY_NO_SPLIT" || i.code == "SPLIT_AMOUNT_MISMATCH");
-    var warnCount = _bookingIssues.Count(i => i.code != null && i.code.Contains("SAVINGSPLAN_", StringComparison.OrdinalIgnoreCase) && !i.code.EndsWith("_ARCHIVE_MISMATCH", StringComparison.OrdinalIgnoreCase));
+    var errorCount = _vm!.BookingIssues.Count(i => i.code != null && i.code.StartsWith("SECURITY_") || i.code == "NO_ACCOUNT" || i.code == "ENTRY_NO_CONTACT" || i.code == "INTERMEDIARY_NO_SPLIT" || i.code == "SPLIT_AMOUNT_MISMATCH");
+    var warnCount = _vm!.BookingIssues.Count(i => i.code != null && i.code.Contains("SAVINGSPLAN_", StringComparison.OrdinalIgnoreCase) && !i.code.EndsWith("_ARCHIVE_MISMATCH", StringComparison.OrdinalIgnoreCase));
     <div class="alert" style="margin-top:1rem;border:1px solid #444;background:#181818;padding:.6rem .8rem;">
         <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;font-size:.8rem;">
             <strong>@Localizer["Booking_ResultTitle"]</strong>
-            <span style="color:#e66;">@Localizer["Errors"]: @_bookingErrors</span>
-            <span style="color:#cc6;">@Localizer["Warnings"]: @_bookingWarnings</span>
+            <span style="color:#e66;">@Localizer["Errors"]: @_vm!.BookingErrors</span>
+            <span style="color:#cc6;">@Localizer["Warnings"]: @_vm!.BookingWarnings</span>
         </div>
         <ul style="margin:.5rem 0 0 1rem;font-size:.7rem;">
-            @foreach (var issue in _bookingIssues)
+            @foreach (var issue in _vm!.BookingIssues)
             {
                 var c = issue.code != null && (issue.code.Contains("ERROR", StringComparison.OrdinalIgnoreCase) || issue.code is "NO_ACCOUNT" or "ENTRY_NO_CONTACT" or "INTERMEDIARY_NO_SPLIT" or "SPLIT_AMOUNT_MISMATCH") ? "#e66" : "#cc6";
                 <li style="margin:.2rem 0;color:@c;">@Localizer["IssueForDraft"] @issue.draftId: @issue.message</li>
@@ -52,7 +54,7 @@
 
 @if (_showBookDialog)
 {
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000;" role="dialog" aria-modal="true">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index=1000;" role="dialog" aria-modal="true">
         <div style="background:#111;color:#eee;border:1px solid var(--border);padding:1rem;border-radius:.4rem;min-width:22rem;max-width:90vw;box-shadow:0 8px 24px rgba(0,0,0,.5);">
             <h4 style="margin-top:0;color:#fff;">@Localizer["Dialog_MassBook_Title"]</h4>
             <div style="display:flex;flex-direction:column;gap:.5rem;align-items:flex-start;text-align:left;">
@@ -77,11 +79,11 @@
     </div>
 }
 
-@if(_drafts == null)
+@if(_vm is null)
 {
-    <!-- initial empty render for fast page load -->
+    <p>@Localizer["Loading"]</p>
 }
-else if(_drafts.Count == 0)
+else if(_vm.Items.Count == 0)
 {
     <p>@Localizer["Nav_StatementDrafts_NoDrafts"]</p>
 }
@@ -99,19 +101,19 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach(var d in _drafts)
+                @foreach(var d in _vm!.Items)
                 {
-                    <tr style="cursor:pointer;" @onclick="() => OpenDetail(d.DraftId)">
+                    <tr style="cursor:pointer;" @onclick="() => OpenDetail(d.Id)">
                         <td></td>
-                        <td>@d.OriginalFileName</td>
+                        <td>@d.FileName</td>
                         <td>@d.Description</td>
                         <td>@d.Status</td>
-                        <td>@d.Entries.Count(e => e.Status != Domain.Statements.StatementDraftEntryStatus.AlreadyBooked)</td>
+                        <td>@d.PendingEntries</td>
                     </tr>
                 }
             </tbody>
         </table>
-        @if(_canLoadMore)
+        @if(_vm!.CanLoadMore)
         {
             <div class="infinite-sentinel" @ref="_sentinel" aria-hidden="true">@Localizer["Nav_StatementDrafts_Loading"]</div>
         }
@@ -126,70 +128,28 @@ else
 
     private void BuildRibbon()
     {
-        var managementGroup = new Ribbon<TabId>.RibbonGroup
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Title = Localizer["Ribbon_Group_Management"],
-            Items = new()
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                new Ribbon<TabId>.RibbonItem
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    Label = Localizer["Ribbon_DeleteAll"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { OpenDeleteAllDialog(); return Task.CompletedTask; }
-                }
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
             }
-        };
-        var classificationGroup = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Classification"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Reclassify"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { _ = ClassifyAsync(); return Task.CompletedTask; }
-                }
-            }
-        };
-        var bookingGroup = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Booking"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_MassBooking"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { OpenBookAllDialog(); return Task.CompletedTask; }
-                }
-            }
-        };
-        var importGroup = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Import"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Import"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#upload'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { _ = TriggerFileInputAsync(); return Task.CompletedTask; }
-                }
-            }
-        };
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
         _tabs = new()
         {
-            new Ribbon<TabId>.RibbonTab<TabId>
-            {
-                Id = TabId.Statements,
-                Title = Localizer["Ribbon_Tab_Statements"],
-                Groups = new() { managementGroup, classificationGroup, bookingGroup, importGroup }
-            }
+            new Ribbon<TabId>.RibbonTab<TabId> { Id = TabId.Statements, Title = Localizer["Ribbon_Tab_Statements"], Groups = groups }
         };
     }
 
@@ -214,20 +174,11 @@ else
 
     private async Task OnHiddenFileChanged(InputFileChangeEventArgs e) => await OnFileChanged(e);
 
-    private List<StatementDraftDto>? _drafts;
-    private int _skip;
-    private const int PageSize = 3;
-    private bool _canLoadMore = true;
-    private bool _loading;
-    private bool _cancelLoading;
+    private StatementDraftsViewModel? _vm;
     private ElementReference _sentinel;
     private DotNetObjectReference<StatementDrafts>? _selfRef;
     private bool _observerAttached;
 
-    private bool _isClassifying;
-    private int _processed;
-    private int _total;
-    private string? _classifyMessage;
     private CancellationTokenSource? _classifyCts;
 
     // Booking UI-State
@@ -235,18 +186,8 @@ else
     private bool _bookIgnoreWarnings;
     private bool _bookAbortOnFirst;
     private bool _bookEntriesIndividually;
-    private bool _isBooking;
-    private int _bookingProcessed;
-    private int _bookingTotal;
-    private int _bookingFailed;
-    private string? _bookingMessage;
     private CancellationTokenSource? _bookingCts;
 
-    private int _bookingErrors;
-    private int _bookingWarnings;
-    private List<BookIssue>? _bookingIssues;
-
-    // Delete all dialog
     private bool _showDeleteAllDialog;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -259,14 +200,15 @@ else
             {
                 try
                 {
+                    await _vm!.InitializeAsync();
                     await RefreshClassifyStatusAsync(false);
                     await RefreshBookStatusAsync(false);
-                    await LoadAsync();
+                    await InvokeAsync(BuildRibbon);
                 }
                 catch { }
             });
         }
-        if (_observerAttached || _drafts == null || !_canLoadMore)
+        if (_observerAttached || _vm is null || !_vm.CanLoadMore)
         {
             return;
         }
@@ -288,7 +230,12 @@ else
         }
     }
 
-    protected override Task OnInitializedAsync() => Task.CompletedTask;
+    protected override Task OnInitializedAsync()
+    {
+        _vm = ActivatorUtilities.CreateInstance<StatementDraftsViewModel>(Services);
+        _vm.StateChanged += (_, __) => { BuildRibbon(); _ = InvokeAsync(StateHasChanged); };
+        return Task.CompletedTask;
+    }
 
     private void OpenDeleteAllDialog() { _showDeleteAllDialog = true; StateHasChanged(); }
     private void CancelDeleteAllDialog() { _showDeleteAllDialog = false; StateHasChanged(); }
@@ -297,62 +244,23 @@ else
         _showDeleteAllDialog = false;
         try
         {
-            var resp = await Http.DeleteAsync("api/statement-drafts/all");
-            if (resp.IsSuccessStatusCode)
+            if (_vm != null)
             {
-                Clear();
-                await LoadAsync();
+                var ok = await _vm.DeleteAllAsync();
+                if (ok)
+                {
+                    _observerAttached = false;
+                    await LoadAsync();
+                }
             }
         }
         catch { }
         StateHasChanged();
     }
 
-    private void Clear()
-    {
-        _drafts = new List<StatementDraftDto>();
-        _skip = 0;
-        _canLoadMore = true;
-        _observerAttached = false;
-    }
-
-    private async Task Reload()
-    {
-        Clear();
-        await LoadAsync();
-    }
-
-    private async Task LoadAsync()
-    {
-        if(_loading || !_canLoadMore) { return; }
-        _loading = true;
-        try
-        {
-            var url = $"api/statement-drafts?skip={_skip}&take={PageSize}";
-            var batch = await Http.GetFromJsonAsync<List<StatementDraftDto>>(url) ?? new();
-            if (_cancelLoading)
-            {
-                _cancelLoading = false;
-                _canLoadMore = false;
-                return;
-            }
-            if(batch.Count < PageSize)
-            {
-                _canLoadMore = false;
-            }
-            if (_drafts == null)
-            {
-                _drafts = new List<StatementDraftDto>();
-            }
-            _drafts.AddRange(batch);
-            _skip += batch.Count;
-            await InvokeAsync(StateHasChanged);
-        }
-        finally
-        {
-            _loading = false;
-        }
-    }
+    private void Clear() { if (_vm != null) { _vm.Items.Clear(); _observerAttached = false; } }
+    private async Task Reload() { if (_vm != null) { _vm.Items.Clear(); _observerAttached = false; await _vm.LoadMoreAsync(); } }
+    private async Task LoadAsync() { if (_vm != null) { await _vm.LoadMoreAsync(); await InvokeAsync(StateHasChanged); } }
 
     private void OpenDetail(Guid id) => Nav.NavigateTo($"/statement-drafts/{id}");
 
@@ -360,21 +268,15 @@ else
     {
         var file = e.File;
         if (file == null) { return; }
-        using var content = new MultipartFormDataContent();
         await using var stream = file.OpenReadStream(25_000_000);
-        content.Add(new StreamContent(stream), "file", file.Name);
-        var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
-        if (resp.IsSuccessStatusCode)
+        var firstId = await _vm!.UploadAsync(stream, file.Name);
+        if (firstId.HasValue)
         {
-            var uploadResult = await resp.Content.ReadFromJsonAsync<UploadResultDto>();
-            if (uploadResult?.FirstDraft != null)
-            {
-                Nav.NavigateTo($"/statement-drafts/{uploadResult.FirstDraft.DraftId}");
-                return;
-            }
+            Nav.NavigateTo($"/statement-drafts/{firstId.Value}");
+            return;
         }
-        _drafts = new List<StatementDraftDto>();
-        _skip = 0; _canLoadMore = true; _observerAttached = false;
+        _vm?.Reset();
+        _observerAttached = false;
         await LoadAsync();
         StateHasChanged();
     }
@@ -384,62 +286,14 @@ else
         _classifyCts ??= new CancellationTokenSource();
         try
         {
-            var resp = await Http.PostAsync("api/statement-drafts/classify", null, _classifyCts.Token);
-            if (resp.StatusCode == System.Net.HttpStatusCode.Accepted)
-            {
-                _isClassifying = true;
-                var payload = await resp.Content.ReadFromJsonAsync<TempStatus>(_classifyCts.Token);
-                UpdateClassifyUi(payload);
-                _ = PollUntilFinishedAsync();
-            }
-            else if (resp.IsSuccessStatusCode)
-            {
-                _isClassifying = false;
-                _classifyMessage = null;
-                await Reload();
-            }
-            else
-            {
-                var msg = await resp.Content.ReadAsStringAsync(_classifyCts.Token);
-                _classifyMessage = msg;
-            }
+            await _vm!.StartClassifyAsync();
         }
         catch (OperationCanceledException) { }
     }
 
-    private async Task PollUntilFinishedAsync()
-    {
-        while (_isClassifying)
-        {
-            await Task.Delay(1000);
-            await RefreshClassifyStatusAsync();
-        }
-    }
-
     private async Task RefreshClassifyStatusAsync(bool reloadOnFinish = true)
     {
-        var s = await Http.GetFromJsonAsync<TempStatus>("api/statement-drafts/classify/status");
-        if (s != null)
-        {
-            var isStarted = _isClassifying;
-            await InvokeAsync(() => UpdateClassifyUi(s));
-            if (!isStarted && _isClassifying)
-                _ = PollUntilFinishedAsync();
-            if (!s.running && s.total > 0 && reloadOnFinish)
-            {
-                await Reload();
-            }
-        }
-    }
-
-    private void UpdateClassifyUi(TempStatus? s)
-    {
-        if (s == null) { return; }
-        _isClassifying = s.running;
-        _processed = s.processed;
-        _total = s.total;
-        _classifyMessage = s.message ?? (_isClassifying ? "Working..." : null);
-        StateHasChanged();
+        await _vm!.RefreshClassifyStatusAsync(reloadOnFinish);
     }
 
     // Booking
@@ -449,80 +303,21 @@ else
     private async Task ConfirmBookAllAsync()
     {
         _showBookDialog = false;
-        _bookingCts ??= new CancellationTokenSource();
-        var payload = new { ignoreWarnings = _bookIgnoreWarnings, abortOnFirstIssue = _bookAbortOnFirst, bookEntriesIndividually = _bookEntriesIndividually };
-        try
-        {
-            var resp = await Http.PostAsJsonAsync("api/statement-drafts/book-all", payload, _bookingCts.Token);
-            if (resp.StatusCode == System.Net.HttpStatusCode.Accepted)
-            {
-                _isBooking = true;
-                var s = await resp.Content.ReadFromJsonAsync<BookStatus>(_bookingCts.Token);
-                UpdateBookingUi(s);
-                _ = PollBookingUntilFinishedAsync();
-            }
-            else if (resp.IsSuccessStatusCode)
-            {
-                _isBooking = false; _bookingMessage = null; await Reload(); await RefreshBookStatusAsync();
-            }
-            else
-            {
-                var msg = await resp.Content.ReadAsStringAsync(_bookingCts.Token);
-                _bookingMessage = msg;
-            }
-        }
-        catch (OperationCanceledException) { }
-    }
-
-    private async Task PollBookingUntilFinishedAsync()
-    {
-        while (_isBooking)
-        {
-            await Task.Delay(1000);
-            await RefreshBookStatusAsync();
-        }
+        await _vm!.StartBookAllAsync(_bookIgnoreWarnings, _bookAbortOnFirst, _bookEntriesIndividually);
     }
 
     private async Task RefreshBookStatusAsync(bool reloadOnFinish = true)
     {
-        var s = await Http.GetFromJsonAsync<BookStatus>("api/statement-drafts/book-all/status");
-        if (s != null)
-        {
-            var isStarted = _isBooking;
-            await InvokeAsync(() => UpdateBookingUi(s));
-            if (!isStarted && _isBooking)
-                _ = PollBookingUntilFinishedAsync();
-            if (!s.running && s.total > 0 && reloadOnFinish)
-            {
-                await Reload();
-            }
-        }
+        await _vm!.RefreshBookStatusAsync(reloadOnFinish);
     }
 
-    private async Task CancelMassBooking()
-    {
-        try { await Http.PostAsync("api/statement-drafts/book-all/cancel", null); } catch { }
-    }
-
-    private void UpdateBookingUi(BookStatus? s)
-    {
-        if (s == null) { return; }
-        _isBooking = s.running;
-        _bookingProcessed = s.processed;
-        _bookingFailed = s.failed;
-        _bookingTotal = s.total;
-        _bookingMessage = s.message ?? (_isBooking ? "Working..." : null);
-        _bookingErrors = s.errors;
-        _bookingWarnings = s.warnings;
-        _bookingIssues = s.issues ?? new();
-        StateHasChanged();
-    }
+    private async Task CancelMassBooking() { await _vm!.CancelBookingAsync(); }
 
     [JSInvokable]
     public async Task LoadMoreFromJs()
     {
         await LoadAsync();
-        if (_canLoadMore)
+        if (_vm!.CanLoadMore)
         {
             await JS.InvokeVoidAsync("fmInfinite.refresh");
         }
@@ -538,10 +333,32 @@ else
     private sealed class BookStatus { public bool running { get; set; } public int processed { get; set; } public int failed { get; set; } public int total { get; set; } public int warnings { get; set; } public int errors { get; set; } public string? message { get; set; } public List<BookIssue>? issues { get; set; } }
     private sealed class StatementDraftDto { public Guid DraftId { get; set; } public string OriginalFileName { get; set; } = string.Empty; public string? Description { get; set; } public FinanceManager.Domain.StatementDraftStatus Status { get; set; } public List<StatementDraftEntryDto> Entries { get; set; } = new(); }
     private sealed class StatementDraftEntryDto { public Guid Id { get; set; } public FinanceManager.Domain.Statements.StatementDraftEntryStatus Status { get; set; } }
-    private sealed record UploadResultDto(StatementDraftDto? FirstDraft, object? SplitInfo);
-}
+    
+     private sealed record UploadResultDto(StatementDraftDto? FirstDraft, object? SplitInfo);
+ }
 
 @if(_fileInputRendered)
 {
     <InputFile id="draft-upload-input" OnChange="OnHiddenFileChanged" style="display:none;" />
+}
+
+@code {
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "DeleteAll":
+                OpenDeleteAllDialog();
+                break;
+            case "Reclassify":
+                _ = ClassifyAsync();
+                break;
+            case "MassBooking":
+                OpenBookAllDialog();
+                break;
+            case "Import":
+                _ = TriggerFileInputAsync();
+                break;
+        }
+    }
 }

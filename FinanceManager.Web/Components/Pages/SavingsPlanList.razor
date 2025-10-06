@@ -1,10 +1,11 @@
 @page "/savings-plans"
-@inject IHttpClientFactory ClientFactory
-@inject NavigationManager Navigation
+@inject NavigationManager Nav
+@inject IServiceProvider Services
 @rendermode InteractiveServer
 @using FinanceManager.Shared.Dtos
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
+@using FinanceManager.Web.ViewModels
 @inject IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanList> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -12,7 +13,15 @@
 
 <h3>@Localizer["TitleList"]</h3>
 
-@if(Plans.Count==0)
+@if(!(_vm?.Loaded ?? false))
+{
+    <p>@Localizer["Loading"]</p>
+}
+else if(!_vm!.IsAuthenticated)
+{
+    <p>@Localizer["PleaseLogin"]</p>
+}
+else if(_vm!.Plans.Count==0)
 {
     <p style="opacity:.65;font-size:.75rem;">@Localizer["StatusArchived"]</p>
 }
@@ -28,9 +37,9 @@
         </tr>
     </thead>
     <tbody>
-        @foreach (var plan in Plans)
+        @foreach (var plan in _vm!.Plans)
         {
-            var state = GetState(plan);
+            var status = _vm!.GetStatusFlags(plan);
             <tr style="cursor:pointer;" @onclick="() => OpenDetail(plan.Id)">
                 <td>@plan.Name</td>
                 <td>@Localizer[$"Type_{plan.Type}"]</td>
@@ -38,17 +47,17 @@
                 <td>@(plan.TargetDate?.ToShortDateString() ?? "-")</td>
                 <td>@(plan.Interval.HasValue ? Localizer[$"Interval_{plan.Interval}"] : "-")</td>
                 <td>
-                    @if(state == PlanState.Done)
+                    @if(status.Reachable)
                     {
                         <span title="Ziel erreichbar" style="color:#6c6;display:inline-flex;align-items:center;gap:.25rem;"><svg class="icon" style="width:16px;height:16px;"><use href="/icons/sprite.svg#check" /></svg></span>
                     }
-                    else if(state == PlanState.Unreachable)
+                    else if(status.Unreachable)
                     {
                         <span title="Ziel nicht erreichbar" style="color:#cc6;display:inline-flex;align-items:center;gap:.25rem;"><svg class="icon" style="width:16px;height:16px;"><use href="/icons/sprite.svg#warning" /></svg></span>
                     }
                     else
                     {
-                        @Localizer[plan.IsActive ? "StatusActive" : "StatusArchived"]
+                        @_vm!.GetStatusLabel(Localizer, plan)
                     }
                 </td>
             </tr>
@@ -63,110 +72,65 @@
     private TabId _activeTab = TabId.SavingsPlans;
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-    private void BuildRibbon()
+    private SavingsPlansViewModel? _vm;
+
+    protected override async Task OnInitializedAsync()
     {
-        var actions = new Ribbon<TabId>.RibbonGroup
+        _vm = ActivatorUtilities.CreateInstance<SavingsPlansViewModel>(Services);
+        _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
+        await _vm.InitializeAsync();
+        RebuildRibbon();
+    }
+
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Title = Localizer["Ribbon_Group_Actions"],
-            Items = new()
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                new Ribbon<TabId>.RibbonItem
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    Label = Localizer["BtnNew"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#plus'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { NewPlan(); return Task.CompletedTask; }
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Categories"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#groups'/></svg>",
-                    Callback = () => { Navigation.NavigateTo("/savings-plan-categories"); return Task.CompletedTask; }
-                }
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
             }
-        };
-        var filterItems = new List<Ribbon<TabId>.RibbonItem>
-        {
-            new Ribbon<TabId>.RibbonItem
-            {
-                Label = ShowActiveOnly ? Localizer["OnlyActive"] : Localizer["StatusArchived"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
-                Callback = () => { ShowActiveOnly = !ShowActiveOnly; _ = LoadPlansAsync(); return Task.CompletedTask; }
-            }
-        };
-        var filter = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Filter"], Items = filterItems };
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
             {
                 Id = TabId.SavingsPlans,
                 Title = Localizer["PageTitle"],
-                Groups = new(){ actions, filter }
+                Groups = groups
             }
         };
         StateHasChanged();
     }
 
-    private List<SavingsPlanDto> Plans = new();
-    private bool ShowActiveOnly = true;
-
-    private enum PlanState { Normal, Done, Unreachable }
-    private readonly Dictionary<Guid, SavingsPlanAnalysisDto> _analysisByPlan = new();
-
-    protected override async Task OnParametersSetAsync()
+    private void HandleRibbonAction(string action)
     {
-        await LoadPlansAsync();
-        BuildRibbon();
-    }
-
-    private async Task LoadPlansAsync()
-    {
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.GetAsync($"/api/savings-plans?onlyActive={ShowActiveOnly}");
-        if (resp.IsSuccessStatusCode)
+        switch (action)
         {
-            Plans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new();
-            await LoadAnalysesAsync();
+            case "New":
+                NewPlan();
+                break;
+            case "Categories":
+                Nav.NavigateTo("/savings-plan-categories");
+                break;
+            case "ToggleActive":
+                _vm!.ToggleActiveOnly();
+                break;
         }
-        else
-        {
-            Plans.Clear();
-            _analysisByPlan.Clear();
-        }
-        BuildRibbon();
     }
 
-    private async Task LoadAnalysesAsync()
-    {
-        _analysisByPlan.Clear();
-        if (Plans.Count == 0) { return; }
-        var http = ClientFactory.CreateClient("Api");
-        var tasks = Plans.Select(async p =>
-        {
-            try
-            {
-                var r = await http.GetAsync($"/api/savings-plans/{p.Id}/analysis");
-                if (r.IsSuccessStatusCode)
-                {
-                    var dto = await r.Content.ReadFromJsonAsync<SavingsPlanAnalysisDto>();
-                    if (dto != null) { _analysisByPlan[p.Id] = dto; }
-                }
-            }
-            catch { }
-        });
-        await Task.WhenAll(tasks);
-        StateHasChanged();
-    }
-
-    private PlanState GetState(SavingsPlanDto plan)
-    {
-        if (!_analysisByPlan.TryGetValue(plan.Id, out var a) || a.TargetAmount is null || a.TargetDate is null)
-        {
-            return PlanState.Normal;
-        }
-        return a.TargetReachable ? PlanState.Done : PlanState.Unreachable;
-    }
-
-    private void NewPlan() => Navigation.NavigateTo("/savings-plans/new");
-    private void OpenDetail(Guid id) => Navigation.NavigateTo($"/savings-plans/{id}");
+    private void NewPlan() => Nav.NavigateTo("/savings-plans/new");
+    private void OpenDetail(Guid id) => Nav.NavigateTo($"/savings-plans/{id}");
 }

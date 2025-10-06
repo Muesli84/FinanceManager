@@ -1,7 +1,9 @@
 @page "/securities"
 @rendermode InteractiveServer
-@inject HttpClient Http
 @inject NavigationManager Nav
+@inject IServiceProvider Services
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
 @using FinanceManager.Shared.Dtos
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
@@ -11,33 +13,44 @@
 <Ribbon TTabEnum="SecuritiesList.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 <h3>@Localizer["Title"]</h3>
-<table class="fm-table wide">
-    <thead>
-        <tr>
-            <th>@Localizer["Th_Name"]</th>
-            <th>@Localizer["Th_Identifier"]</th>
-            <th>@Localizer["Th_AlphaVantage"]</th>
-            <th>@Localizer["Th_Category"]</th>
-            <th>@Localizer["Th_Status"]</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var s in _items)
-        {
-            <tr style="cursor:pointer;" @onclick="(()=>OpenDetail(s.Id))">
-                <td>@s.Name</td>
-                <td>@s.Identifier</td>
-                <td>@(string.IsNullOrWhiteSpace(s.AlphaVantageCode)?"-":s.AlphaVantageCode)</td>
-                <td>@(string.IsNullOrWhiteSpace(s.CategoryName)?"-":s.CategoryName)</td>
-                <td>@(s.IsActive?Localizer["StatusActive"]:Localizer["StatusArchived"])</td>
+@if (!(_vm?.Loaded ?? false))
+{
+    <p>@Localizer["Loading"]</p>
+}
+else if (!_vm!.IsAuthenticated)
+{
+    <p>@Localizer["PleaseLogin"]</p>
+}
+else
+{
+    <table class="fm-table wide">
+        <thead>
+            <tr>
+                <th>@Localizer["Th_Name"]</th>
+                <th>@Localizer["Th_Identifier"]</th>
+                <th>@Localizer["Th_AlphaVantage"]</th>
+                <th>@Localizer["Th_Category"]</th>
+                <th>@Localizer["Th_Status"]</th>
             </tr>
-        }
-        @if(_items.Count==0)
-        {
-            <tr><td colspan="5" style="opacity:.6;">@Localizer["NoEntries"]</td></tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var s in _vm!.Items)
+            {
+                <tr style="cursor:pointer;" @onclick="(()=>OpenDetail(s.Id))">
+                    <td>@s.Name</td>
+                    <td>@s.Identifier</td>
+                    <td>@(string.IsNullOrWhiteSpace(s.AlphaVantageCode)?"-":s.AlphaVantageCode)</td>
+                    <td>@(string.IsNullOrWhiteSpace(s.CategoryName)?"-":s.CategoryName)</td>
+                    <td>@(s.IsActive?Localizer["StatusActive"]:Localizer["StatusArchived"])</td>
+                </tr>
+            }
+            @if(_vm!.Items.Count==0)
+            {
+                <tr><td colspan="5" style="opacity:.6;">@Localizer["NoEntries"]</td></tr>
+            }
+        </tbody>
+    </table>
+}
 
 @code {
     private enum TabId { Securities }
@@ -45,71 +58,63 @@
     private TabId _activeTab = TabId.Securities;
     private Task OnActiveTabChanged(TabId id) { _activeTab = id; return Task.CompletedTask; }
 
-    private List<SecurityDto> _items = new();
-    private bool _onlyActive = true;
+    private SecuritiesListViewModel? _vm;
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
-        await LoadAsync();
-        BuildRibbon();
+        _vm = ActivatorUtilities.CreateInstance<SecuritiesListViewModel>(Services);
+        _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
+        await _vm.InitializeAsync();
+        RebuildRibbon();
     }
 
-    private void BuildRibbon()
+    private void RebuildRibbon()
     {
-        var actions = new Ribbon<TabId>.RibbonGroup
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Title = Localizer["Ribbon_Group_Actions"],
-            Items = new()
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                new Ribbon<TabId>.RibbonItem
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    Label = Localizer["Ribbon_New"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#plus'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { NewSecurity(); return Task.CompletedTask; }
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Categories"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#groups'/></svg>",
-                    Callback = () => { OpenCategories(); return Task.CompletedTask; }
-                }
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
             }
-        };
-        var filter = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Filter"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_ToggleActive"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#check'/></svg>",
-                    Disabled = false,
-                    Callback = () => { _onlyActive = !_onlyActive; _ = LoadAsync(); return Task.CompletedTask; }
-                }
-            }
-        };
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
             {
                 Id = TabId.Securities,
                 Title = Localizer["Ribbon_Tab_Securities"],
-                Groups = new(){ actions, filter }
+                Groups = groups
             }
         };
         StateHasChanged();
     }
 
-    private async Task LoadAsync()
+    private void HandleRibbonAction(string action)
     {
-        var resp = await Http.GetAsync($"/api/securities?onlyActive={_onlyActive}");
-        if (resp.IsSuccessStatusCode)
+        switch (action)
         {
-            _items = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>() ?? new();
+            case "New":
+                NewSecurity();
+                break;
+            case "Categories":
+                OpenCategories();
+                break;
+            case "ToggleActive":
+                _vm!.ToggleActive();
+                break;
         }
-        BuildRibbon();
     }
 
     private void NewSecurity() => Nav.NavigateTo("/securities/new");

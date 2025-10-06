@@ -1,38 +1,38 @@
 @page "/security-categories/new"
 @page "/security-categories/{Id:guid}"
 @rendermode InteractiveServer
-@inject HttpClient Http
 @inject NavigationManager Nav
+@inject IServiceProvider Services
 @using FinanceManager.Shared.Dtos
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
 @inject IStringLocalizer<Components.Pages.SecurityCategoryEdit> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SecurityCategoryEdit.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
-<h3>@(IsEdit ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
+<h3>@((_vm?.IsEdit ?? false) ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
 
-<EditForm Model="_model" OnValidSubmit="SaveAsync">
+<EditForm Model="_vm!.Model" OnValidSubmit="SaveAsync">
     <DataAnnotationsValidator />
     <ValidationSummary />
     <div style="max-width:400px;">
         <label>@Localizer["Label_Name"]</label>
-        <InputText @bind-Value="_model.Name" @bind-Value:after="(()=>BuildRibbon())" />
-        <ValidationMessage For="()=>_model.Name" />
+        <InputText @bind-Value="_vm!.Model.Name" @bind-Value:after="(()=>RebuildRibbon())" />
+        <ValidationMessage For="()=>_vm!.Model.Name" />
     </div>
-    @if(!string.IsNullOrEmpty(_error))
+    @if(!string.IsNullOrEmpty(_vm?.Error))
     {
-        <div style="margin-top:.5rem;color:#e66;font-size:.8rem;">@_error</div>
+        <div style="margin-top:.5rem;color:#e66;font-size:.8rem;">@_vm!.Error</div>
     }
 </EditForm>
 
 @code {
     [Parameter] public Guid? Id { get; set; }
-    private bool IsEdit => Id.HasValue;
-    private CategoryEditModel _model = new();
-    private string? _error;
+    private SecurityCategoryDetailViewModel? _vm;
 
     // Ribbon state
     private enum TabId { Category }
@@ -40,51 +40,34 @@
     private TabId _activeTab = TabId.Category;
     private Task OnActiveTabChanged(TabId id) { _activeTab = id; return Task.CompletedTask; }
 
-    private void BuildRibbon()
+    private void RebuildRibbon()
     {
-        var nav = new Ribbon<TabId>.RibbonGroup
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Title = Localizer["Ribbon_Group_Navigation"],
-            Items = new()
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                new Ribbon<TabId>.RibbonItem
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    Label = Localizer["Ribbon_Back"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { Back(); return Task.CompletedTask; }
-                }
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
             }
-        };
-        var editItems = new List<Ribbon<TabId>.RibbonItem>
-        {
-            new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Save"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
-                Size = Ribbon<TabId>.RibbonItemSize.Large,
-                Disabled = string.IsNullOrWhiteSpace(_model.Name) || _model.Name.Trim().Length < 2,
-                Callback = () => { _ = SaveAsync(); return Task.CompletedTask; }
-            }
-        };
-        if (IsEdit)
-        {
-            editItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Delete"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
-                Callback = () => { _ = DeleteAsync(); return Task.CompletedTask; }
-            });
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
         }
-        var edit = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Edit"], Items = editItems };
-
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
             {
                 Id = TabId.Category,
                 Title = Localizer["Ribbon_Tab_Category"],
-                Groups = new(){ nav, edit }
+                Groups = groups
             }
         };
         StateHasChanged();
@@ -92,75 +75,50 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsEdit)
+        if (_vm is null)
         {
-            var resp = await Http.GetAsync($"/api/security-categories/{Id}");
-            if (resp.IsSuccessStatusCode)
-            {
-                var dto = await resp.Content.ReadFromJsonAsync<SecurityCategoryDto>();
-                if (dto != null)
-                {
-                    _model.Name = dto.Name;
-                }
-            }
-            else
-            {
-                _error = Localizer["Err_NotFound"];
-            }
+            _vm = ActivatorUtilities.CreateInstance<SecurityCategoryDetailViewModel>(Services);
+            _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
         }
-        BuildRibbon();
+        await _vm.InitializeAsync(Id);
+        RebuildRibbon();
     }
 
     private async Task SaveAsync()
     {
-        _error = null;
-        if (IsEdit)
+        var ok = await _vm!.SaveAsync();
+        if (ok)
         {
-            var resp = await Http.PutAsJsonAsync($"/api/security-categories/{Id}", _model);
-            if (resp.IsSuccessStatusCode)
-            {
-                Nav.NavigateTo("/security-categories", true);
-            }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
+            Nav.NavigateTo("/security-categories", true);
         }
-        else
-        {
-            var resp = await Http.PostAsJsonAsync("/api/security-categories", _model);
-            if (resp.IsSuccessStatusCode)
-            {
-                Nav.NavigateTo("/security-categories", true);
-            }
-            else
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        BuildRibbon();
+        RebuildRibbon();
     }
 
     private async Task DeleteAsync()
     {
-        if (!IsEdit || Id == null) { return; }
-        var resp = await Http.DeleteAsync($"/api/security-categories/{Id}");
-        if (resp.IsSuccessStatusCode)
+        var ok = await _vm!.DeleteAsync();
+        if (ok)
         {
             Nav.NavigateTo("/security-categories", true);
         }
-        else
-        {
-            _error = await resp.Content.ReadAsStringAsync();
-        }
-        BuildRibbon();
+        RebuildRibbon();
     }
 
     private void Back() => Nav.NavigateTo("/security-categories");
 
-    private sealed class CategoryEditModel
+    private void HandleRibbonAction(string action)
     {
-        [Required, MinLength(2)]
-        public string Name { get; set; } = string.Empty;
+        switch (action)
+        {
+            case "Back":
+                Back();
+                break;
+            case "Save":
+                _ = SaveAsync();
+                break;
+            case "Delete":
+                _ = DeleteAsync();
+                break;
+        }
     }
 }

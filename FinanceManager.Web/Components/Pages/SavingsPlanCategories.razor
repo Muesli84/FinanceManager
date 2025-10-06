@@ -1,34 +1,46 @@
 @page "/savings-plan-categories"
 @rendermode InteractiveServer
 @using FinanceManager.Shared.Dtos
-@inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
+@inject IServiceProvider Services
 @using FinanceManager.Web.Components.Shared
+@using FinanceManager.Web.ViewModels
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanCategories> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SavingsPlanCategories.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 <h3>@Localizer["Title"]</h3>
-<table class="fm-table">
-    <thead>
-        <tr>
-            <th>@Localizer["Col_Name"]</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var cat in _categories)
-        {
-            <tr style="cursor:pointer;" @onclick="() => EditCategory(cat.Id)">
-                <td>@cat.Name</td>
+@if (!(_vm?.Loaded ?? false))
+{
+    <p>@Localizer["Loading"]</p>
+}
+else if (!_vm!.IsAuthenticated)
+{
+    <p>@Localizer["PleaseLogin"]</p>
+}
+else
+{
+    <table class="fm-table">
+        <thead>
+            <tr>
+                <th>@Localizer["Col_Name"]</th>
             </tr>
-        }
-        @if(_categories.Count==0)
-        {
-            <tr><td style="opacity:.6;">@Localizer["Empty"]</td></tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var cat in _vm!.Categories)
+            {
+                <tr style="cursor:pointer;" @onclick="() => EditCategory(cat.Id)">
+                    <td>@cat.Name</td>
+                </tr>
+            }
+            @if(_vm!.Categories.Count==0)
+            {
+                <tr><td style="opacity:.6;">@Localizer["Empty"]</td></tr>
+            }
+        </tbody>
+    </table>
+}
 
 @code {
     // Ribbon state
@@ -37,59 +49,61 @@
     private TabId _activeTab = TabId.SavingsPlanCategories;
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-    private void BuildRibbon()
+    private SavingsPlanCategoriesViewModel? _vm;
+
+    protected override async Task OnInitializedAsync()
     {
-        var actions = new Ribbon<TabId>.RibbonGroup
+        _vm = ActivatorUtilities.CreateInstance<SavingsPlanCategoriesViewModel>(Services);
+        _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
+        await _vm.InitializeAsync();
+        RebuildRibbon();
+    }
+
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Title = Localizer["Ribbon_Group_Actions"],
-            Items = new()
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                new Ribbon<TabId>.RibbonItem
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    Label = Localizer["Ribbon_New"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#plus'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { NewCategory(); return Task.CompletedTask; }
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Back"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
-                    Callback = () => { Back(); return Task.CompletedTask; }
-                }
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
             }
-        };
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
             {
                 Id = TabId.SavingsPlanCategories,
                 Title = Localizer["PageTitle"],
-                Groups = new(){ actions }
+                Groups = groups
             }
         };
         StateHasChanged();
     }
 
-    private List<SavingsPlanCategoryDto> _categories = new();
-
-    protected override async Task OnInitializedAsync()
+    private void HandleRibbonAction(string action)
     {
-        await LoadAsync();
-        BuildRibbon();
-    }
-
-    private async Task LoadAsync()
-    {
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.GetAsync("/api/savings-plan-categories");
-        if (resp.IsSuccessStatusCode)
+        switch (action)
         {
-            _categories = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>() ?? new();
+            case "New":
+                Navigation.NavigateTo("/savings-plan-categories/new");
+                break;
+            case "Back":
+                Navigation.NavigateTo("/savings-plans");
+                break;
         }
     }
-
-    private void NewCategory() => Navigation.NavigateTo("/savings-plan-categories/new");
+    
     private void EditCategory(Guid id) => Navigation.NavigateTo($"/savings-plan-categories/{id}");
-    private void Back() => Navigation.NavigateTo("/savings-plans");
 }
