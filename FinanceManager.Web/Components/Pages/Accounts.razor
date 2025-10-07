@@ -6,25 +6,27 @@
 @using FinanceManager.Domain
 @using FinanceManager.Web.Components.Shared
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Accounts> Localizer
+@using FinanceManager.Web.ViewModels
+@inject IServiceProvider Services
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="Accounts.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 <h1>@Localizer["Title"]</h1>
 
-@if (!_loaded)
+@if (!(_vm?.Loaded ?? false))
 {
     <p>@Localizer["Loading"]</p>
 }
-else if (!CurrentUser.IsAuthenticated)
+else if (!_vm!.IsAuthenticated)
 {
     <p>@Localizer["PleaseLogin"]</p>
 }
 else
 {
-    @if (_filterContactId != null)
+    @if (_vm.FilterBankContactId != null)
     {
-        <p style="opacity:.75;">@Localizer["FilteredByBankContact"] @_filterContactId</p>
+        <p style="opacity:.75;">@Localizer["FilteredByBankContact"] @_vm.FilterBankContactId</p>
     }
     <div class="table-responsive">
         <table class="fm-table">
@@ -37,7 +39,7 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var a in _accounts)
+                @foreach (var a in _vm.Accounts)
                 {
                     <tr style="cursor:pointer;" @onclick="() => OpenDetail(a.Id)">
                         <td>@a.Name</td>
@@ -46,7 +48,7 @@ else
                         <td style="text-align:right;">@a.CurrentBalance</td>
                     </tr>
                 }
-                @if (_accounts.Count == 0)
+                @if (_vm.Accounts.Count == 0)
                 {
                     <tr><td colspan="4" style="opacity:.6;">@Localizer["NoAccounts"]</td></tr>
                 }
@@ -61,84 +63,88 @@ else
     private TabId _activeTab = TabId.Accounts;
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-    private bool _loaded;
-    private List<AccountVm> _accounts = new();
-    private Guid? _filterContactId;
+    private AccountsViewModel? _vm;
 
     protected override async Task OnInitializedAsync()
     {
-        if (CurrentUser.IsAuthenticated)
+        if (_vm is not null)
         {
-            var uri = new Uri(Nav.Uri);
-            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-            if (Guid.TryParse(query.Get("bankContactId"), out var contactId))
-            {
-                _filterContactId = contactId;
-            }
-            await LoadAsync();
+            _vm.StateChanged -= VmOnStateChanged;
+            _vm.AuthenticationRequired -= VmOnAuthenticationRequired;
+            await _vm.DisposeAsync();
         }
-        _loaded = true;
-        BuildRibbon();
+        _vm = ActivatorUtilities.CreateInstance<AccountsViewModel>(Services);
+        _vm.StateChanged += VmOnStateChanged;
+        _vm.AuthenticationRequired += VmOnAuthenticationRequired;
+
+        // filter from URL if present
+        var uri = new Uri(Nav.Uri);
+        var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+        if (Guid.TryParse(query.Get("bankContactId"), out var contactId))
+        {
+            _vm.SetFilter(contactId);
+        }
+
+        await _vm.InitializeAsync();
+        RebuildRibbon();
     }
 
-    private void BuildRibbon()
+    private void VmOnAuthenticationRequired(object? sender, string? returnUrl)
     {
-        if (!_loaded || !CurrentUser.IsAuthenticated)
-        {
-            _tabs = new(); return;
-        }
-        var actionItems = new List<Ribbon<TabId>.RibbonItem>
-        {
-            new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_New"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#plus'/></svg>",
-                Size = Ribbon<TabId>.RibbonItemSize.Large,
-                Callback = () => { CreateNew(); return Task.CompletedTask; }
-            }
-        };
-        if (_filterContactId != null)
-        {
-            actionItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_ClearFilter"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#clear'/></svg>",
-                Callback = () => { ClearFilter(); return Task.CompletedTask; }
-            });
-        }
-        var actions = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Actions"], Items = actionItems };
+        var back = Nav.ToBaseRelativePath(Nav.Uri);
+        var url = string.IsNullOrWhiteSpace(back) ? "/login" : $"/login?returnUrl={Uri.EscapeDataString(back)}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
 
+    private void VmOnStateChanged(object? sender, EventArgs e)
+    {
+        RebuildRibbon();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
+        {
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
+            {
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
+                {
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
+            }
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
             {
                 Id = TabId.Accounts,
                 Title = Localizer["Ribbon_Tab_Accounts"],
-                Groups = new(){ actions }
+                Groups = groups
             }
         };
         StateHasChanged();
     }
 
-    private async Task LoadAsync()
+    private void HandleRibbonAction(string action)
     {
-        var url = "/api/accounts";
-        if (_filterContactId != null)
+        switch (action)
         {
-            url += $"?bankContactId={_filterContactId}";
-        }
-        var resp = await Http.GetAsync(url);
-        if (resp.IsSuccessStatusCode)
-        {
-            var list = await resp.Content.ReadFromJsonAsync<List<AccountDto>>() ?? new();
-            _accounts = list.Select(d => new AccountVm
-            {
-                Id = d.Id,
-                Name = d.Name,
-                Type = d.Type.ToString(),
-                Iban = d.Iban,
-                CurrentBalance = d.CurrentBalance
-            }).ToList();
+            case "New":
+                CreateNew();
+                break;
+            case "ClearFilter":
+                ClearFilter();
+                break;
         }
     }
 
@@ -146,18 +152,7 @@ else
     private void OpenDetail(Guid id) => Nav.NavigateTo($"/accounts/{id}");
     private void ClearFilter()
     {
-        _filterContactId = null;
+        _vm?.SetFilter(null);
         Nav.NavigateTo("/accounts", forceLoad: true);
     }
-
-    private sealed class AccountVm
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public string? Iban { get; set; }
-        public decimal CurrentBalance { get; set; }
-    }
-
-    private sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
 }

@@ -3,46 +3,49 @@
 @rendermode InteractiveServer
 @inject IHttpClientFactory ClientFactory
 @inject NavigationManager Nav
+@inject IServiceProvider Services
 @using FinanceManager.Shared.Dtos
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Domain.Attachments
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
 @inject IStringLocalizer<Components.Pages.SecurityEdit> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SecurityEdit.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
-<h3>@(IsEdit? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
+<h3>@((_vm?.IsEdit ?? false)? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
 
-<EditForm Model="_edit" OnValidSubmit="SaveAsync">
+<EditForm Model="_vm!.Model" OnValidSubmit="SaveAsync">
     <DataAnnotationsValidator />
     <ValidationSummary />
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;max-width:860px;">
         <div>
             <label>@Localizer["LabelName"]</label>
-            <InputText @bind-Value="_edit.Name" @bind-Value:after="(()=>BuildRibbon())" />
-            <ValidationMessage For="()=>_edit.Name" />
+            <InputText @bind-Value="_vm!.Model.Name" @bind-Value:after="(()=>RebuildRibbon())" />
+            <ValidationMessage For="()=>_vm!.Model.Name" />
         </div>
         <div>
             <label>@Localizer["LabelIdentifier"]</label>
-            <InputText @bind-Value="_edit.Identifier" @bind-Value:after="(()=>BuildRibbon())" />
-            <ValidationMessage For="()=>_edit.Identifier" />
+            <InputText @bind-Value="_vm!.Model.Identifier" @bind-Value:after="(()=>RebuildRibbon())" />
+            <ValidationMessage For="()=>_vm!.Model.Identifier" />
         </div>
         <div>
             <label>@Localizer["LabelCurrencyCode"]</label>
-            <InputText @bind-Value="_edit.CurrencyCode" />
-            <ValidationMessage For="() => _edit.CurrencyCode" />
+            <InputText @bind-Value="_vm!.Model.CurrencyCode" />
+            <ValidationMessage For="() => _vm!.Model.CurrencyCode" />
         </div>
         <div>
             <label>@Localizer["LabelAlphaVantage"]</label>
-            <InputText @bind-Value="_edit.AlphaVantageCode" />
+            <InputText @bind-Value="_vm!.Model.AlphaVantageCode" />
         </div>
         <div>
             <label>@Localizer["LabelCategory"]</label>
-            <InputSelect @bind-Value="_edit.CategoryId">
+            <InputSelect @bind-Value="_vm!.Model.CategoryId">
                 <option value="">--</option>
-                @foreach(var c in _categories)
+                @foreach(var c in _vm!.Categories)
                 {
                     <option value="@c.Id">@c.Name</option>
                 }
@@ -50,26 +53,26 @@
         </div>
         <div style="grid-column:1/-1;">
             <label>@Localizer["LabelDescription"]</label>
-            <textarea rows="4" style="width:100%;" @bind="_edit.Description"></textarea>
+            <textarea rows="4" style="width:100%;" @bind="_vm!.Model.Description"></textarea>
         </div>
         <div style="grid-column:1/-1;font-size:.8rem;opacity:.6;">
-            @Localizer["LabelStatus"]: @(_model.IsActive? Localizer["StatusActive"] : Localizer["StatusArchived"]) 
+            @Localizer["LabelStatus"]: @((_vm?.Display.IsActive ?? false)? Localizer["StatusActive"] : Localizer["StatusArchived"]) 
         </div>
-        @if(!string.IsNullOrEmpty(_error))
+        @if(!string.IsNullOrEmpty(_vm?.Error))
         {
-            <div style="grid-column:1/-1;color:#e66;font-size:.8rem;">@_error</div>
+            <div style="grid-column:1/-1;color:#e66;font-size:.8rem;">@_vm!.Error</div>
         }
     </div>
 </EditForm>
 
-@if (IsEdit)
+@if (_vm?.IsEdit == true)
 {
     <div style="margin-top:1.2rem;">
-        <AggregateBarChart Endpoint="@($"/api/securities/{Id}/aggregates")" Title="@Localizer["Chart_Title_Security"]" />
+        <AggregateBarChart Endpoint="@($"/api/securities/{_vm!.Id}/aggregates")" Title="@Localizer["Chart_Title_Security"]" />
     </div>
 }
 
-@if (_showAttachments && Id != null)
+@if (_showAttachments && _vm?.Id != null)
 {
     <div class="split-center" @onclick="(()=> _showAttachments = false)">
         <div class="split-dialog" style="max-width:90vH;" @onclick:stopPropagation="true">
@@ -77,7 +80,7 @@
                 <h3 style="margin:0;font-size:1rem;">@Localizer["Attachments_Title"]</h3>
                 <button class="icon-btn" title='@Localizer["Btn_Close"]' @onclick="(()=> _showAttachments=false)"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
             </div>
-            <AttachmentsPanel ParentKind="@AttachmentEntityKind.Security" ParentId="@Id!.Value" />
+            <AttachmentsPanel ParentKind="@AttachmentEntityKind.Security" ParentId="@_vm!.Id!.Value" />
         </div>
     </div>
 }
@@ -85,12 +88,11 @@
 @code {
     [Parameter] public Guid? Id { get; set; }
     [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
-    private bool IsEdit => Id.HasValue;
-    private SecurityVm _model = new();
-    private SecurityEditModel _edit = new();
-    private string? _error; private bool _loaded;
-    private List<SecurityCategoryDto> _categories = new();
-    private Guid? _prefillDraftId; private Guid? _prefillEntryId; private string? _pendingPrefillName;
+    [SupplyParameterFromQuery(Name="draftId")] public Guid? DraftId { get; set; }
+    [SupplyParameterFromQuery(Name="entryId")] public Guid? EntryId { get; set; }
+    [SupplyParameterFromQuery(Name="prefillName")] public string? PrefillName { get; set; }
+    private SecurityEditViewModel? _vm;
+    private bool _showAttachments;
 
     // Ribbon state
     private enum TabId { Security }
@@ -98,88 +100,27 @@
     private TabId _activeTab = TabId.Security;
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-    private void BuildRibbon()
+    private void RebuildRibbon()
     {
-        var navGroup = new Ribbon<TabId>.RibbonGroup
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Title = Localizer["Ribbon_Group_Navigation"],
-            Items = new()
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                new Ribbon<TabId>.RibbonItem
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    Label = Localizer["Ribbon_Back"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { Back(); return Task.CompletedTask; }
-                }
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
             }
-        };
-        var editItems = new List<Ribbon<TabId>.RibbonItem>
-        {
-            new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Save"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#save'/></svg>",
-                Size = Ribbon<TabId>.RibbonItemSize.Large,
-                Disabled = string.IsNullOrWhiteSpace(_edit.Name) || _edit.Name.Trim().Length < 2 || string.IsNullOrWhiteSpace(_edit.Identifier) || _edit.Identifier.Trim().Length < 3,
-                Callback = () => { _ = SaveAsync(); return Task.CompletedTask; }
-            }
-        };
-        if (IsEdit)
-        {
-            editItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Archive"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#archive'/></svg>",
-                Disabled = !_loaded || !_model.IsActive,
-                Callback = () => { _ = ArchiveAsync(); return Task.CompletedTask; }
-            });
-            editItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Delete"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#delete'/></svg>",
-                Disabled = !_loaded || _model.IsActive,
-                Callback = () => { _ = DeleteAsync(); return Task.CompletedTask; }
-            });
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
         }
-        var editGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Edit"], Items = editItems };
-
-        Ribbon<TabId>.RibbonGroup? relatedGroup = null;
-        if (IsEdit)
-        {
-            relatedGroup = new Ribbon<TabId>.RibbonGroup
-            {
-                Title = Localizer["Ribbon_Group_Related"],
-                Items = new()
-                {
-                    new Ribbon<TabId>.RibbonItem
-                    {
-                        Label = Localizer["Ribbon_Postings"],
-                        IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
-                        Disabled = !_loaded,
-                        Callback = () => { OpenPostings(); return Task.CompletedTask; }
-                    },
-                    new Ribbon<TabId>.RibbonItem
-                    {
-                        Label = Localizer["Ribbon_Prices"],
-                        IconSvg = "<svg><use href='/icons/sprite.svg#postings'/></svg>",
-                        Disabled = !_loaded,
-                        Callback = () => { OpenPrices(); return Task.CompletedTask; }
-                    },
-                    new Ribbon<TabId>.RibbonItem
-                    {
-                        Label = Localizer["Ribbon_Attachments"],
-                        IconSvg = "<svg><use href='/icons/sprite.svg#attachment'/></svg>",
-                        Disabled = !_loaded,
-                        Callback = () => { OpenAttachments(); return Task.CompletedTask; }
-                    }
-                }
-            };
-        }
-
-        var groups = new List<Ribbon<TabId>.RibbonGroup>{ navGroup, editGroup };
-        if (relatedGroup != null) groups.Add(relatedGroup);
-
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
@@ -194,56 +135,140 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        ParseQueryParams();
-        await LoadCategoriesAsync();
-        if (IsEdit)
+        if (_vm is null)
         {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.GetAsync($"/api/securities/{Id}");
-            if (resp.IsSuccessStatusCode)
-            {
-                var dto = await resp.Content.ReadFromJsonAsync<SecurityDto>();
-                if (dto != null)
-                {
-                    _model = new SecurityVm(dto);
-                    _edit.Name = dto.Name; _edit.Identifier = dto.Identifier; _edit.Description = dto.Description; _edit.AlphaVantageCode = dto.AlphaVantageCode; _edit.CurrencyCode = dto.CurrencyCode; _edit.CategoryId = dto.CategoryId;
-                    _loaded = true;
-                }
-            }
-            else
-            {
-                _error = Localizer["ErrorNotFound"]; _loaded = false;
-            }
+            _vm = ActivatorUtilities.CreateInstance<SecurityEditViewModel>(Services);
+            _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
+        }
+        await _vm.InitializeAsync(Id, BackNav, DraftId, EntryId, PrefillName);
+        RebuildRibbon();
+    }
+
+    private async Task SaveAsync()
+    {
+        var dto = await _vm!.SaveAsync();
+        if (dto is null)
+        {
+            RebuildRibbon();
+            return;
+        }
+        if (_vm!.IsEdit)
+        {
+            Reload();
         }
         else
         {
-            _model = new SecurityVm(); _loaded = true;
-            if (!string.IsNullOrWhiteSpace(_pendingPrefillName)) { _edit.Name = _pendingPrefillName!; }
+            await AssignToDraftEntryIfRequestedAsync(dto.Id);
+            if (!(_vm!.ReturnDraftId.HasValue && _vm!.ReturnEntryId.HasValue))
+            {
+                var q = BuildQuery(("back", BackNav));
+                Nav.NavigateTo($"/securities/{dto.Id}{q}", true);
+            }
         }
-        BuildRibbon();
+        RebuildRibbon();
     }
 
-    private void ParseQueryParams()
+    private async Task AssignToDraftEntryIfRequestedAsync(Guid securityId)
     {
-        var uri = Nav.ToAbsoluteUri(Nav.Uri);
-        if (!string.IsNullOrEmpty(uri.Query))
+        if (_vm!.ReturnDraftId.HasValue && _vm.ReturnEntryId.HasValue)
         {
-            var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-            if (Guid.TryParse(query.Get("draftId"), out var did)) { _prefillDraftId = did; }
-            if (Guid.TryParse(query.Get("entryId"), out var eid)) { _prefillEntryId = eid; }
-            var prefillName = query.Get("prefillName");
-            if (!string.IsNullOrWhiteSpace(prefillName)) { _pendingPrefillName = prefillName; }
-            BackNav = query.Get("back");
+            try
+            {
+                var http = ClientFactory.CreateClient("Api");
+                var payload = new { SecurityId = (Guid?)securityId, TransactionType = (string?)null, Quantity = (decimal?)null, FeeAmount = (decimal?)null, TaxAmount = (decimal?)null };
+                await http.PostAsJsonAsync($"/api/statement-drafts/{_vm!.ReturnDraftId}/entries/{_vm!.ReturnEntryId}/security", payload);
+            }
+            catch { }
+            Back();
+        }
+        else
+        {
+            Nav.NavigateTo("/securities", true);
         }
     }
 
-    private async Task LoadCategoriesAsync()
+    private async Task ArchiveAsync()
     {
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.GetAsync("/api/security-categories");
-        if (resp.IsSuccessStatusCode)
+        var ok = await _vm!.ArchiveAsync();
+        if (ok) { Reload(); }
+        RebuildRibbon();
+    }
+
+    private async Task DeleteAsync()
+    {
+        var ok = await _vm!.DeleteAsync();
+        if (ok) { Nav.NavigateTo("/securities", true); }
+        RebuildRibbon();
+    }
+
+    private void Back()
+    {
+        if (!string.IsNullOrWhiteSpace(BackNav))
         {
-            _categories = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>() ?? new();
+            Nav.NavigateTo(Uri.UnescapeDataString(BackNav!), forceLoad: true);
+            return;
+        }
+        if (_vm!.ReturnDraftId.HasValue && _vm.ReturnEntryId.HasValue)
+            Nav.NavigateTo($"/statement-drafts/{_vm.ReturnDraftId}/entries/{_vm.ReturnEntryId}", forceLoad: true);
+        else
+            Nav.NavigateTo("/securities", true);
+    }
+
+    private void Reload()
+    {
+        var q = BuildQuery(
+            ("draftId", _vm!.ReturnDraftId?.ToString()),
+            ("entryId", _vm!.ReturnEntryId?.ToString()),
+            ("back", BackNav)
+        );
+        Nav.NavigateTo($"/securities/{_vm!.Id}{q}", true);
+    }
+
+    private void OpenPostings()
+    {
+        if (_vm!.Id.HasValue)
+        {
+            var q = BuildQuery(("back", BackNav));
+            Nav.NavigateTo($"/postings/security/{_vm!.Id}{q}");
+        }
+    }
+
+    private void OpenPrices()
+    {
+        if (_vm!.Id.HasValue)
+        {
+            var q = BuildQuery(("back", BackNav));
+            Nav.NavigateTo($"/securities/{_vm!.Id}/prices{q}");
+        }
+    }
+
+    private void OpenAttachments(){ if (_vm!.Id.HasValue){ _showAttachments = true; StateHasChanged(); } }
+
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "Back":
+                Back();
+                break;
+            case "Save":
+                _ = SaveAsync();
+                break;
+            case "Archive":
+                _ = ArchiveAsync();
+                break;
+            case "Delete":
+                _ = DeleteAsync();
+                break;
+            case "Postings":
+                OpenPostings();
+                break;
+            case "Prices":
+                OpenPrices();
+                break;
+            case "Attachments":
+                OpenAttachments();
+                break;
         }
     }
 
@@ -259,160 +284,4 @@
         }
         return qs.Count > 0 ? "?" + string.Join("&", qs) : string.Empty;
     }
-
-    private async Task SaveAsync()
-    {
-        _error = null; var http = ClientFactory.CreateClient("Api");
-        if (IsEdit)
-        {
-            var resp = await http.PutAsJsonAsync($"/api/securities/{Id}", _edit);
-            if (!resp.IsSuccessStatusCode)
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
-            else
-            {
-                Reload();
-            }
-        }
-        else
-        {
-            var resp = await http.PostAsJsonAsync("/api/securities", _edit);
-            if (!resp.IsSuccessStatusCode)
-            {
-                _error = await resp.Content.ReadAsStringAsync();
-            }
-            else
-            {
-                var created = await resp.Content.ReadFromJsonAsync<SecurityDto>();
-                if (created != null)
-                {
-                    await AssignToDraftEntryIfRequestedAsync(created.Id);
-                    if (!_prefillDraftId.HasValue || !_prefillEntryId.HasValue)
-                    {
-                        var q = BuildQuery(("back", BackNav));
-                        Nav.NavigateTo($"/securities/{created.Id}{q}", true);
-                    }
-                }
-                else
-                {
-                    Nav.NavigateTo("/securities", true);
-                }
-            }
-        }
-        BuildRibbon();
-    }
-
-    private async Task AssignToDraftEntryIfRequestedAsync(Guid securityId)
-    {
-        if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
-        {
-            try
-            {
-                var http = ClientFactory.CreateClient("Api");
-                var payload = new { SecurityId = (Guid?)securityId, TransactionType = (string?)null, Quantity = (decimal?)null, FeeAmount = (decimal?)null, TaxAmount = (decimal?)null };
-                await http.PostAsJsonAsync($"/api/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}/security", payload);
-            }
-            catch { }
-            Back();
-        }
-        else
-        {
-            Nav.NavigateTo("/securities", true);
-        }
-    }
-
-    private async Task ArchiveAsync()
-    {
-        if (!IsEdit || !_model.IsActive || Id==null) { return; }
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.PostAsync($"/api/securities/{Id}/archive", null);
-        if (resp.IsSuccessStatusCode) { Reload(); }
-        else { _error = await resp.Content.ReadAsStringAsync(); }
-        BuildRibbon();
-    }
-
-    private async Task DeleteAsync()
-    {
-        if (!IsEdit || _model.IsActive || Id==null) { return; }
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.DeleteAsync($"/api/securities/{Id}");
-        if (resp.IsSuccessStatusCode) { Nav.NavigateTo("/securities", true); }
-        else { _error = await resp.Content.ReadAsStringAsync(); }
-        BuildRibbon();
-    }
-
-    private void Back()
-    {
-        if (!string.IsNullOrWhiteSpace(BackNav))
-        {
-            Nav.NavigateTo(Uri.UnescapeDataString(BackNav!), forceLoad: true);
-            return;
-        }
-        if (_prefillDraftId.HasValue && _prefillEntryId.HasValue)
-            Nav.NavigateTo($"/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}", forceLoad: true);
-        else
-            Nav.NavigateTo("/securities", true);
-    }
-
-    private void Reload()
-    {
-        var q = BuildQuery(
-            ("draftId", _prefillDraftId?.ToString()),
-            ("entryId", _prefillEntryId?.ToString()),
-            ("back", BackNav)
-        );
-        Nav.NavigateTo($"/securities/{Id}{q}", true);
-    }
-
-    private void OpenPostings()
-    {
-        if (Id.HasValue)
-        {
-            var q = BuildQuery(("back", BackNav));
-            Nav.NavigateTo($"/postings/security/{Id}{q}");
-        }
-    }
-
-    private void OpenPrices()
-    {
-        if (Id.HasValue)
-        {
-            var q = BuildQuery(("back", BackNav));
-            Nav.NavigateTo($"/securities/{Id}/prices{q}");
-        }
-    }
-
-    private void OpenAttachments(){ if (Id.HasValue){ _showAttachments = true; StateHasChanged(); } }
-
-    private sealed class SecurityEditModel
-    {
-        [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
-        [Required, MinLength(3)] public string Identifier { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public string? AlphaVantageCode { get; set; }
-        public string CurrencyCode { get; set; } = "EUR";
-        public Guid? CategoryId { get; set; }
-    }
-    private sealed class SecurityVm
-    {
-        public SecurityVm() { }
-        public SecurityVm(SecurityDto dto)
-        {
-            Id = dto.Id; Name = dto.Name; Description = dto.Description; Identifier = dto.Identifier;
-            AlphaVantageCode = dto.AlphaVantageCode; IsActive = dto.IsActive; CurrencyCode = dto.CurrencyCode;
-            CategoryId = dto.CategoryId; CategoryName = dto.CategoryName;
-        }
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public string Identifier { get; set; } = string.Empty;
-        public string? AlphaVantageCode { get; set; }
-        public string CurrencyCode { get; set; } = "EUR";
-        public bool IsActive { get; set; } = true;
-        public Guid? CategoryId { get; set; }
-        public string? CategoryName { get; set; }
-    }
-
-    private bool _showAttachments;
 }

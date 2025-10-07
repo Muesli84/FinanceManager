@@ -1,11 +1,14 @@
 @using System.Net.Http.Json
 @inject IHttpClientFactory ClientFactory
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Setup> Localizer
+@inject IServiceProvider Services
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
 
 <div>
     <h4 style="margin-top:0;">@Localizer["Section_Backup"]</h4>
     <div style="margin-bottom:1rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-        <button class="icon-btn" @onclick="CreateBackupAsync" disabled="@_busy" title="@Localizer["Btn_CreateBackup"]">
+        <button class="icon-btn" @onclick="(()=> _vm!.CreateAsync())" disabled="@_vm!.Busy" title="@Localizer["Btn_CreateBackup"]">
             <svg class="icon"><use href="icons/sprite.svg#save" /></svg>
         </button>
         <label class="icon-btn" title="@Localizer["Btn_UploadBackup"]" style="padding:.3rem .6rem;cursor:pointer;">
@@ -14,9 +17,9 @@
         </label>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(_backupError))
+    @if (!string.IsNullOrWhiteSpace(_vm?.Error))
     {
-        <div class="error" style="margin-top:.5rem;">@_backupError</div>
+        <div class="error" style="margin-top:.5rem;">@_vm!.Error</div>
     }
 
     <div class="table-responsive" style="margin-top:.75rem;">
@@ -31,17 +34,17 @@
                 </tr>
             </thead>
             <tbody>
-            @if (_backups == null)
+            @if (_vm!.Backups == null)
             {
                 <tr><td colspan="5">@Localizer["Msg_Loading"]</td></tr>
             }
-            else if (_backups.Count == 0)
+            else if (_vm!.Backups.Count == 0)
             {
                 <tr><td colspan="5">@Localizer["Msg_NoBackups"]</td></tr>
             }
             else
             {
-                @foreach (var b in _backups)
+                @foreach (var b in _vm!.Backups)
                 {
                     <tr @onclick="() => SelectBackup(b.Id)" class="@(_selectedBackupId==b.Id?"selected-row":null)">
                         <td>@b.CreatedUtc.ToLocalTime().ToString("g")</td>
@@ -49,13 +52,13 @@
                         <td>@FormatSize(b.SizeBytes)</td>
                         <td>@b.Source</td>
                         <td style="white-space:nowrap;display:flex;gap:.25rem;">
-                            <button class="icon-btn" title="@Localizer["Btn_Restore"]" disabled="@(_busy || _hasActiveRestore)" @onclick:stopPropagation @onclick="() => StartApplyBackgroundAsync(b.Id)">
+                            <button class="icon-btn" title="@Localizer["Btn_Restore"]" disabled="@(_vm!.Busy || _vm!.HasActiveRestore)" @onclick:stopPropagation @onclick="() => StartApplyBackgroundAsync(b.Id)">
                                 <svg class="icon"><use href="icons/sprite.svg#restore" /></svg>
                             </button>
                             <a class="icon-btn" title="@Localizer["Btn_Download"]" href="@($"/api/setup/backups/{b.Id}/download")" download @onclick:stopPropagation>
                                 <svg class="icon"><use href="icons/sprite.svg#download" /></svg>
                             </a>
-                            <button class="icon-btn danger" title="@Localizer["Btn_Delete"]" @onclick:stopPropagation @onclick="() => DeleteBackupAsync(b.Id)" disabled="@_busy">
+                            <button class="icon-btn danger" title="@Localizer["Btn_Delete"]" @onclick:stopPropagation @onclick="() => DeleteBackupAsync(b.Id)" disabled="@_vm!.Busy">
                                 <svg class="icon"><use href="icons/sprite.svg#delete" /></svg>
                             </button>
                         </td>
@@ -68,31 +71,15 @@
 </div>
 
 @code {
-    private List<BackupVm>? _backups;
-    private string? _backupError;
+    private SetupBackupsViewModel? _vm;
     private Guid? _selectedBackupId;
-    private bool _busy;
-    private bool _hasActiveRestore; // optional external binding later
     private IBrowserFile? _uploadFile;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadBackupsAsync();
-    }
-
-    private async Task LoadBackupsAsync()
-    {
-        try
-        {
-            _backupError = null;
-            var http = ClientFactory.CreateClient("Api");
-            _backups = await http.GetFromJsonAsync<List<BackupVm>>("/api/setup/backups") ?? new();
-        }
-        catch (Exception ex)
-        {
-            _backupError = ex.Message;
-            _backups = new();
-        }
+        _vm = ActivatorUtilities.CreateInstance<SetupBackupsViewModel>(Services);
+        _vm.StateChanged += (_, __) => { _ = InvokeAsync(StateHasChanged); };
+        await _vm.InitializeAsync();
     }
 
     private void SelectBackup(Guid id)
@@ -100,29 +87,16 @@
         _selectedBackupId = _selectedBackupId == id ? (Guid?)null : id;
     }
 
-    private async Task CreateBackupAsync()
+    private async Task StartApplyBackgroundAsync(Guid id)
     {
-        _busy = true; _backupError = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.PostAsync("/api/setup/backups", null);
-            if (resp.IsSuccessStatusCode)
-            {
-                var created = await resp.Content.ReadFromJsonAsync<BackupVm>();
-                _backups ??= new();
-                if (created != null) { _backups.Insert(0, created); }
-            }
-            else
-            {
-                _backupError = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _backupError = ex.Message;
-        }
-        _busy = false;
+        if (id == Guid.Empty) { return; }
+        await _vm!.StartApplyAsync(id);
+    }
+
+    private async Task DeleteBackupAsync(Guid id)
+    {
+        await _vm!.DeleteAsync(id);
+        if (_selectedBackupId == id) { _selectedBackupId = null; }
     }
 
     private void OnBackupUploadSelected(InputFileChangeEventArgs e)
@@ -134,85 +108,12 @@
     private async Task UploadBackupAsync()
     {
         if (_uploadFile == null) { return; }
-        _busy = true; _backupError = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            using var content = new MultipartFormDataContent();
-            await using var stream = _uploadFile.OpenReadStream(1024L * 1024L * 1024L);
-            content.Add(new StreamContent(stream), "file", _uploadFile.Name);
-            var resp = await http.PostAsync("/api/setup/backups/upload", content);
-            if (resp.IsSuccessStatusCode)
-            {
-                var created = await resp.Content.ReadFromJsonAsync<BackupVm>();
-                _backups ??= new();
-                if (created != null) { _backups.Insert(0, created); }
-            }
-            else
-            {
-                _backupError = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _backupError = ex.Message;
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
-    private async Task StartApplyBackgroundAsync(Guid id)
-    {
-        if (id == Guid.Empty) { return; }
-        var http = ClientFactory.CreateClient("Api");
-        var resp = await http.PostAsync($"/api/setup/backups/{id}/apply/start", null);
-        if (!resp.IsSuccessStatusCode)
-        {
-            _backupError = await resp.Content.ReadAsStringAsync();
-        }
-        else
-        {
-            _hasActiveRestore = true; // local flag; could be improved with callback
-        }
-    }
-
-    private async Task DeleteBackupAsync(Guid id)
-    {
-        _busy = true; _backupError = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.DeleteAsync($"/api/setup/backups/{id}");
-            if (resp.IsSuccessStatusCode)
-            {
-                _backups?.RemoveAll(x => x.Id == id);
-                if (_selectedBackupId == id) { _selectedBackupId = null; }
-            }
-            else
-            {
-                _backupError = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _backupError = ex.Message;
-        }
-        _busy = false;
+        await using var stream = _uploadFile.OpenReadStream(1024L * 1024L * 1024L);
+        await _vm!.UploadAsync(stream, _uploadFile.Name);
     }
 
     private static string FormatSize(long bytes)
     {
         string[] units = ["B", "KB", "MB", "GB"]; double size = bytes; int unit = 0; while (size >= 1024 && unit < units.Length - 1) { size /= 1024; unit++; } return $"{size:N1} {units[unit]}";
-    }
-
-    private sealed class BackupVm
-    {
-        public Guid Id { get; set; }
-        public DateTime CreatedUtc { get; set; }
-        public string FileName { get; set; } = string.Empty;
-        public long SizeBytes { get; set; }
-        public string Source { get; set; } = string.Empty;
     }
 }

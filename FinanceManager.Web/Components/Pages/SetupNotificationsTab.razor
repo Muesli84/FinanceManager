@@ -2,18 +2,21 @@
 @using FinanceManager.Shared.Dtos
 @inject IHttpClientFactory ClientFactory
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.SetupNotificationsTab> Localizer
+@inject IServiceProvider Services
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
 
 <div>
   <h4 style="margin-top:0;">@Localizer["Notifications_TabTitle"]</h4>
 
-  @if (_loading)
+  @if (_vm!.Loading)
   {
       <div>@Localizer["Msg_Loading"]</div>
   }
-  else if (!string.IsNullOrWhiteSpace(_error))
+  else if (!string.IsNullOrWhiteSpace(_vm!.Error))
   {
-      <div class="error">@_error</div>
-      <button class="icon-btn" @onclick="LoadAsync" title="@Localizer["Btn_Retry"]">
+      <div class="error">@_vm!.Error</div>
+      <button class="icon-btn" @onclick="(()=> _vm!.LoadAsync())" title="@Localizer["Btn_Retry"]">
           <svg class="icon"><use href="icons/sprite.svg#refresh" /></svg>
       </button>
   }
@@ -22,12 +25,12 @@
       <div class="form-grid">
           <div class="form-row">
               <label for="notif-monthly">@Localizer["Notifications_MonthlyReminder"]</label>
-              <input id="notif-monthly" type="checkbox" @bind="_model.MonthlyReminderEnabled" @bind:after="OnChanged" />
+              <input id="notif-monthly" type="checkbox" @bind="_vm!.Model.MonthlyReminderEnabled" @bind:after="(()=> _vm!.OnChanged())" />
               <label for="notif-monthly" style="opacity:.8;">@Localizer["Notifications_MonthlyReminder_Help"]</label>
           </div>
           <div class="form-row" style="align-items:center;gap:.4rem;">
               <label>@Localizer["Notifications_Holidays_Provider"]</label>
-              <select @bind="_model.HolidayProvider" @bind:after="OnProviderChanged" style="width:12rem;">
+              <select @bind="_vm!.Model.HolidayProvider" @bind:after="(()=> _vm!.OnProviderChanged())" style="width:12rem;">
                 <option value="Memory">Memory</option>
                 <option value="NagerDate">Nager.Date</option>
               </select>
@@ -35,21 +38,21 @@
           </div>
           <div class="form-row" style="align-items:center;gap:.4rem;">
               <label>@Localizer["Notifications_MonthlyReminder_Time"]</label>
-              <input type="number" min="0" max="23" style="width:5rem;" @bind="_hour" @bind:after="OnTimeChanged" />
+              <input type="number" min="0" max="23" style="width:5rem;" @bind="_vm!.Hour" @bind:after="(()=> _vm!.OnTimeChanged())" />
               :
-              <input type="number" min="0" max="59" style="width:5rem;" @bind="_minute" @bind:after="OnTimeChanged" />
+              <input type="number" min="0" max="59" style="width:5rem;" @bind="_vm!.Minute" @bind:after="(()=> _vm!.OnTimeChanged())" />
               <span style="opacity:.7;">@Localizer["Notifications_MonthlyReminder_Time_Help"]</span>
           </div>
           <div class="form-row" style="align-items:center;gap:.4rem;">
               <label>@Localizer["Notifications_Holidays_Region"]</label>
-              <input placeholder="DE" style="width:6rem;" @bind="_model.HolidayCountryCode" @bind:after="OnCountryChanged" />
-              @if (_model.HolidayProvider != "Memory")
+              <input placeholder="DE" style="width:6rem;" @bind="_vm!.Model.HolidayCountryCode" @bind:after="(()=> _vm!.OnCountryChanged())" />
+              @if (_vm!.Model.HolidayProvider != "Memory")
               {
-                  <select style="width:10rem;" @bind="_model.HolidaySubdivisionCode" @bind:after="OnChanged">
+                  <select style="width:10rem;" @bind="_vm!.Model.HolidaySubdivisionCode" @bind:after="(()=> _vm!.OnChanged())">
                       <option value="">--</option>
-                      @if (_subdivisions is not null)
+                      @if (_vm!.Subdivisions is not null)
                       {
-                          @foreach (var s in _subdivisions)
+                          @foreach (var s in _vm!.Subdivisions)
                           {
                               <option value="@s">@s</option>
                           }
@@ -61,165 +64,35 @@
       </div>
 
       <div style="margin-top:1rem;display:flex;gap:.5rem;">
-          <button type="button" class="icon-btn" disabled="@(!_dirty || _saving)" @onclick="SaveAsync" title="@Localizer["Btn_Save"]">
+          <button type="button" class="icon-btn" disabled="@(!_vm!.Dirty || _vm!.Saving)" @onclick="SaveAsync" title="@Localizer["Btn_Save"]">
               <svg class="icon"><use href="icons/sprite.svg#save" /></svg>
           </button>
-          <button type="button" class="icon-btn" disabled="@(!_dirty || _saving)" title="@Localizer["Btn_Reset"]" @onclick="Reset">
+          <button type="button" class="icon-btn" disabled="@(!_vm!.Dirty || _vm!.Saving)" title="@Localizer["Btn_Reset"]" @onclick="Reset">
               <svg class="icon"><use href="icons/sprite.svg#undo" /></svg>
           </button>
       </div>
 
-      @if (_savedOk)
+      @if (_vm!.SavedOk)
       {
           <div class="success" style="margin-top:.5rem;">@Localizer["Notifications_SaveSuccess"]</div>
       }
-      else if (!string.IsNullOrWhiteSpace(_saveError))
+      else if (!string.IsNullOrWhiteSpace(_vm!.SaveError))
       {
-          <div class="error" style="margin-top:.5rem;">@_saveError</div>
+          <div class="error" style="margin-top:.5rem;">@_vm!.SaveError</div>
       }
   }
 </div>
 
 @code {
-    private NotificationSettingsDto _model = new();
-    private NotificationSettingsDto _original = new();
-    private bool _loading;
-    private bool _saving;
-    private bool _savedOk;
-    private string? _error;
-    private string? _saveError;
-    private bool _dirty;
+    private SetupNotificationsViewModel? _vm;
 
-    private int? _hour;
-    private int? _minute;
-
-    private string[]? _subdivisions;
-
-    protected override Task OnInitializedAsync() => LoadAsync();
-
-    private async Task LoadAsync()
+    protected override async Task OnInitializedAsync()
     {
-        _loading = true; _error = null; _saveError = null; _savedOk = false;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var dto = await http.GetFromJsonAsync<NotificationSettingsDto>("/api/user/notification-settings");
-            _model = dto ?? new();
-            if (string.IsNullOrEmpty(_model.HolidayProvider)) _model.HolidayProvider = "Memory";
-            _original = Clone(_model);
-            _hour = _model.MonthlyReminderHour ?? 9;
-            _minute = _model.MonthlyReminderMinute ?? 0;
-            await LoadSubdivisionsAsync();
-            RecomputeDirty();
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        finally { _loading = false; }
+        _vm = ActivatorUtilities.CreateInstance<SetupNotificationsViewModel>(Services);
+        _vm.StateChanged += (_, __) => { _ = InvokeAsync(StateHasChanged); };
+        await _vm.InitializeAsync();
     }
 
-    private async Task LoadSubdivisionsAsync()
-    {
-        _subdivisions = null;
-        if (_model.HolidayProvider == "NagerDate" && !string.IsNullOrWhiteSpace(_model.HolidayCountryCode))
-        {
-            try
-            {
-                var http = ClientFactory.CreateClient("Api");
-                var list = await http.GetFromJsonAsync<string[]>($"/api/meta/holiday-subdivisions?provider={_model.HolidayProvider}&country={_model.HolidayCountryCode}");
-                _subdivisions = list ?? Array.Empty<string>();
-            }
-            catch { _subdivisions = Array.Empty<string>(); }
-        }
-        StateHasChanged();
-    }
-
-    private async Task SaveAsync()
-    {
-        _saving = true; _savedOk = false; _saveError = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var payload = new { _model.MonthlyReminderEnabled, MonthlyReminderHour = _hour, MonthlyReminderMinute = _minute, _model.HolidayProvider, _model.HolidayCountryCode, _model.HolidaySubdivisionCode };
-            using var resp = await http.PutAsJsonAsync("/api/user/notification-settings", payload);
-            if (resp.IsSuccessStatusCode)
-            {
-                _model.MonthlyReminderEnabled = payload.MonthlyReminderEnabled;
-                _model.MonthlyReminderHour = payload.MonthlyReminderHour;
-                _model.MonthlyReminderMinute = payload.MonthlyReminderMinute;
-                _original = Clone(_model);
-                _savedOk = true;
-                RecomputeDirty();
-            }
-            else
-            {
-                _saveError = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _saveError = ex.Message;
-        }
-        finally { _saving = false; }
-    }
-
-    private void Reset()
-    {
-        _model = Clone(_original);
-        _hour = _original.MonthlyReminderHour ?? 9;
-        _minute = _original.MonthlyReminderMinute ?? 0;
-        _savedOk = false; _saveError = null;
-        RecomputeDirty();
-    }
-
-    private async void OnCountryChanged()
-    {
-        await LoadSubdivisionsAsync();
-        OnChanged();
-    }
-
-    private void OnChanged()
-    {
-        _savedOk = false;
-        _saveError = null;
-        RecomputeDirty();
-    }
-
-    private async void OnProviderChanged()
-    {
-        if (_model.HolidayProvider == "Memory")
-        {
-            _model.HolidaySubdivisionCode = null; // hide and clear
-        }
-        await LoadSubdivisionsAsync();
-        OnChanged();
-    }
-
-    private void OnTimeChanged()
-    {
-        if (_hour is < 0 or > 23) _hour = 9;
-        if (_minute is < 0 or > 59) _minute = 0;
-        _savedOk = false;
-        _saveError = null;
-        RecomputeDirty();
-    }
-
-    private void RecomputeDirty() =>
-        _dirty = _model.MonthlyReminderEnabled != _original.MonthlyReminderEnabled
-              || (_hour ?? 9) != (_original.MonthlyReminderHour ?? 9)
-              || (_minute ?? 0) != (_original.MonthlyReminderMinute ?? 0)
-              || _model.HolidayProvider != _original.HolidayProvider
-              || _model.HolidayCountryCode != _original.HolidayCountryCode
-              || _model.HolidaySubdivisionCode != _original.HolidaySubdivisionCode;
-
-    private static NotificationSettingsDto Clone(NotificationSettingsDto src) => new()
-    {
-        MonthlyReminderEnabled = src.MonthlyReminderEnabled,
-        MonthlyReminderHour = src.MonthlyReminderHour,
-        MonthlyReminderMinute = src.MonthlyReminderMinute,
-        HolidayProvider = src.HolidayProvider,
-        HolidayCountryCode = src.HolidayCountryCode,
-        HolidaySubdivisionCode = src.HolidaySubdivisionCode
-    };
+    private Task SaveAsync() => _vm!.SaveAsync();
+    private void Reset() => _vm!.Reset();
 }

@@ -61,9 +61,20 @@ public sealed class ContactService : IContactService
         }
 
         // Delete attachments for this contact
-        await _db.Attachments
-            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == contact.Id)
-            .ExecuteDeleteAsync(ct);
+        var attQuery = _db.Attachments
+            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == contact.Id);
+        if (_db.Database.IsRelational())
+        {
+            await attQuery.ExecuteDeleteAsync(ct);
+        }
+        else
+        {
+            var atts = await attQuery.ToListAsync(ct);
+            if (atts.Count > 0)
+            {
+                _db.Attachments.RemoveRange(atts);
+            }
+        }
 
         _db.Contacts.Remove(contact);
         await _db.SaveChangesAsync(ct);
@@ -107,10 +118,27 @@ public sealed class ContactService : IContactService
         var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == contactId && c.OwnerUserId == ownerUserId, ct);
         if (contact == null) throw new ArgumentException("Contact not found.");
         if (string.IsNullOrWhiteSpace(pattern)) throw new ArgumentException("Pattern must not be empty.");
+        var trimmed = pattern.Trim();
 
-        var alias = new AliasName(contactId, pattern.Trim());
+        // prevent duplicates (case-insensitive)
+        var exists = await _db.AliasNames
+            .AnyAsync(a => a.ContactId == contactId && a.Pattern.ToLower() == trimmed.ToLower(), ct);
+        if (exists)
+        {
+            throw new ArgumentException("Alias already exists.");
+        }
+
+        var alias = new AliasName(contactId, trimmed);
         _db.AliasNames.Add(alias);
-        await _db.SaveChangesAsync(ct);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // race condition fallback
+            throw new ArgumentException("Alias already exists.");
+        }
     }
 
     public async Task DeleteAliasAsync(Guid contactId, Guid ownerUserId, Guid aliasId, CancellationToken ct)
@@ -171,10 +199,14 @@ public sealed class ContactService : IContactService
             .Select(a => a.Pattern.ToLower())
             .ToListAsync(ct);
 
+        // ensure target name is included in checks
+        var targetNameLower = target.Name.ToLower();
+
         if (!string.Equals(source.Name, target.Name, StringComparison.OrdinalIgnoreCase)
             && !targetAliasPatterns.Contains(source.Name.ToLower()))
         {
             _db.AliasNames.Add(new AliasName(target.Id, source.Name));
+            targetAliasPatterns.Add(source.Name.ToLower());
         }
 
         var sourceAliases = await _db.AliasNames
@@ -182,36 +214,102 @@ public sealed class ContactService : IContactService
             .ToListAsync(ct);
         foreach (var alias in sourceAliases)
         {
-            if (targetAliasPatterns.Contains(alias.Pattern.ToLower()) ||
-                string.Equals(alias.Pattern, target.Name, StringComparison.OrdinalIgnoreCase))
+            var aliasLower = alias.Pattern.ToLower();
+            if (targetAliasPatterns.Contains(aliasLower) || aliasLower == targetNameLower)
             {
                 _db.AliasNames.Remove(alias);
             }
             else
             {
                 alias.ReassignTo(target.Id);
+                targetAliasPatterns.Add(aliasLower);
             }
         }
 
-        await _db.StatementDraftEntries
-            .Where(e => e.ContactId == source.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.ContactId, target.Id), ct);
+        // Reassign draft entries (domain method exists)
+        var draftEntries = await _db.StatementDraftEntries.Where(e => e.ContactId == source.Id).ToListAsync(ct);
+        foreach (var e in draftEntries) { e.AssignContactWithoutAccounting(target.Id); }
 
-        await _db.StatementEntries
-            .Where(e => e.ContactId == source.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.ContactId, target.Id), ct);
+        // Statement entries: use provider capabilities
+        if (_db.Database.IsRelational())
+        {
+            await _db.StatementEntries
+                .Where(e => e.ContactId == source.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(e => e.ContactId, target.Id), ct);
+        }
+        else
+        {
+            var entries = await _db.StatementEntries.Where(e => e.ContactId == source.Id).ToListAsync(ct);
+            foreach (var e in entries)
+            {
+                // private setter -> set via EF entry
+                _db.Entry(e).Property<Guid?>("ContactId").CurrentValue = target.Id;
+            }
+        }
+
+        // Postings: reassign contact
+        if (_db.Database.IsRelational())
+        {
+            await _db.Postings
+                .Where(p => p.ContactId == source.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(p => p.ContactId, target.Id), ct);
+        }
+        else
+        {
+            var postings = await _db.Postings.Where(p => p.ContactId == source.Id).ToListAsync(ct);
+            foreach (var p in postings)
+            {
+                _db.Entry(p).Property<Guid?>("ContactId").CurrentValue = target.Id;
+            }
+        }
+
+        // Posting aggregates: merge to avoid duplicates (unique index)
+        var srcAggs = await _db.PostingAggregates.Where(a => a.ContactId == source.Id).ToListAsync(ct);
+        foreach (var sa in srcAggs)
+        {
+            var existing = await _db.PostingAggregates.FirstOrDefaultAsync(pa =>
+                pa.Kind == sa.Kind && pa.AccountId == sa.AccountId && pa.ContactId == target.Id && pa.SavingsPlanId == sa.SavingsPlanId && pa.SecurityId == sa.SecurityId && pa.Period == sa.Period && pa.PeriodStart == sa.PeriodStart, ct);
+            if (existing != null)
+            {
+                existing.Add(sa.Amount);
+                _db.PostingAggregates.Remove(sa);
+            }
+            else
+            {
+                // private setter -> set via EF entry
+                _db.Entry(sa).Property<Guid?>("ContactId").CurrentValue = target.Id;
+            }
+        }
 
         if (bankInvolved)
         {
-            await _db.Accounts
-                .Where(a => a.BankContactId == source.Id)
-                .ExecuteUpdateAsync(s => s.SetProperty(a => a.BankContactId, target.Id), ct);
+            if (_db.Database.IsRelational())
+            {
+                await _db.Accounts
+                    .Where(a => a.BankContactId == source.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(a => a.BankContactId, target.Id), ct);
+            }
+            else
+            {
+                var accounts = await _db.Accounts.Where(a => a.BankContactId == source.Id).ToListAsync(ct);
+                foreach (var a in accounts) { a.SetBankContact(target.Id); }
+            }
         }
 
         // Reassign attachments from source contact to target contact
-        await _db.Attachments
-            .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == source.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(a => a.EntityId, target.Id), ct);
+        if (_db.Database.IsRelational())
+        {
+            await _db.Attachments
+                .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == source.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.EntityId, target.Id), ct);
+        }
+        else
+        {
+            var atts = await _db.Attachments
+                .Where(a => a.OwnerUserId == ownerUserId && a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == source.Id)
+                .ToListAsync(ct);
+            foreach (var a in atts) { a.Reassign(AttachmentEntityKind.Contact, target.Id); }
+        }
 
         _db.Contacts.Remove(source);
 

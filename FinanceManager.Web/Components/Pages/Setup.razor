@@ -5,6 +5,9 @@
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Setup> Localizer
 @using FinanceManager.Web.Components.Shared
 @using Microsoft.AspNetCore.WebUtilities
+@inject IServiceProvider Services
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
 
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -15,38 +18,34 @@
 <BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="1500" AllowedTypes="new[]{ BackgroundTaskType.BackupRestore }" />
 
 <div class="fm-tabs">
-    <button class="fm-tab @(IsActiveSection(TabBackup)?"active":null)" @onclick="() => Activate(TabBackup)">@Localizer["Tab_Backup"]</button>
-    <button class="fm-tab @(IsActiveSection(TabImportSplit)?"active":null)" @onclick="() => Activate(TabImportSplit)">@Localizer["ImportSplit_TabTitle"]</button>
-    <button class="fm-tab @(IsActiveSection(TabNotifications)?"active":null)" @onclick="() => Activate(TabNotifications)">@Localizer["Notifications_TabTitle"]</button>
-    <button class="fm-tab @(IsActiveSection(TabProfile)?"active":null)" @onclick="() => Activate(TabProfile)">@Localizer["Tab_Profile"]</button>
-    <button class="fm-tab @(IsActiveSection(TabIpBlocks)?"active":null)" @onclick="() => Activate(TabIpBlocks)">@Localizer["Tab_IpBlocks"]</button>
-    <button class="fm-tab @(IsActiveSection(TabAttachmentCategories)?"active":null)" @onclick="() => Activate(TabAttachmentCategories)">@Localizer["Tab_AttachmentCategories"]</button>
-    <button class="fm-tab @(IsActiveSection(TabLegacy)?"active":null)" @onclick="() => Activate(TabLegacy)">@Localizer["Tab_LegacyImport"]</button>
+    <button class="fm-tab @(_vm!.IsActiveSection(SetupViewModel.TabBackup)?"active":null)" @onclick="() => Activate(SetupViewModel.TabBackup)">@Localizer["Tab_Backup"]</button>
+    <button class="fm-tab @(_vm!.IsActiveSection(SetupViewModel.TabImportSplit)?"active":null)" @onclick="() => Activate(SetupViewModel.TabImportSplit)">@Localizer["ImportSplit_TabTitle"]</button>
+    <button class="fm-tab @(_vm!.IsActiveSection(SetupViewModel.TabNotifications)?"active":null)" @onclick="() => Activate(SetupViewModel.TabNotifications)">@Localizer["Notifications_TabTitle"]</button>
+    <button class="fm-tab @(_vm!.IsActiveSection(SetupViewModel.TabProfile)?"active":null)" @onclick="() => Activate(SetupViewModel.TabProfile)">@Localizer["Tab_Profile"]</button>
+    <button class="fm-tab @(_vm!.IsActiveSection(SetupViewModel.TabIpBlocks)?"active":null)" @onclick="() => Activate(SetupViewModel.TabIpBlocks)">@Localizer["Tab_IpBlocks"]</button>
+    <button class="fm-tab @(_vm!.IsActiveSection(SetupViewModel.TabAttachmentCategories)?"active":null)" @onclick="() => Activate(SetupViewModel.TabAttachmentCategories)">@Localizer["Tab_AttachmentCategories"]</button>
 </div>
 
 <div class="fm-tab-panel">
-    @switch(_activeSection)
+    @switch(_vm!.ActiveSection)
     {
-        case TabBackup:
+        case SetupViewModel.TabBackup:
             <SetupBackupTab />
             break;
-        case TabImportSplit:
+        case SetupViewModel.TabImportSplit:
             <SetupImportSplitTab />
             break;
-        case TabNotifications:
+        case SetupViewModel.TabNotifications:
             <SetupNotificationsTab />
             break;
-        case TabProfile:
+        case SetupViewModel.TabProfile:
             <SetupProfileTab />
             break;
-        case TabIpBlocks:
+        case SetupViewModel.TabIpBlocks:
             <SetupIpBlockTab />
             break;
-        case TabAttachmentCategories:
+        case SetupViewModel.TabAttachmentCategories:
             <SetupAttachmentCategoriesTab />
-            break;
-        case TabLegacy:
-            <SetupLegacyImportTab />
             break;
     }
 </div>
@@ -65,63 +64,21 @@
     private TabId _activeTab = TabId.Setup;
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-    // Internal section tabs (string based)
-    private const string TabBackup = "backup";
-    private const string TabImportSplit = "import-split";
-    private const string TabNotifications = "notifications";
-    private const string TabProfile = "profile";
-    private const string TabIpBlocks = "ip-blocks";
-    private const string TabAttachmentCategories = "attachment-categories";
-    private const string TabLegacy = "legacy";
-    private string _activeSection = TabBackup;
+    private SetupViewModel? _vm;
 
     protected override void OnInitialized()
     {
-        ApplyQueryParameters();
+        _vm = ActivatorUtilities.CreateInstance<SetupViewModel>(Services);
+        _vm.StateChanged += (_, __) => { _ = InvokeAsync(StateHasChanged); };
+        _vm.ApplyQueryFromUri(Navigation.Uri);
         BuildRibbon();
     }
 
     protected override void OnParametersSet()
     {
         // React to navigation with different query parameters
-        ApplyQueryParameters();
+        _vm!.ApplyQueryFromUri(Navigation.Uri);
     }
-
-    private void ApplyQueryParameters()
-    {
-        try
-        {
-            var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-            var query = QueryHelpers.ParseQuery(uri.Query);
-            if (query.TryGetValue("section", out var sectionVals))
-            {
-                var section = sectionVals.ToString();
-                if (IsValidSection(section))
-                {
-                    _activeSection = section;
-                    return;
-                }
-            }
-            // If a focus query exists (e.g., focus=<ip>) but no explicit section, open IP blocks
-            if (query.ContainsKey("focus"))
-            {
-                _activeSection = TabIpBlocks;
-            }
-        }
-        catch
-        {
-            // ignore malformed query
-        }
-    }
-
-    private static bool IsValidSection(string section)
-        => section == TabBackup
-        || section == TabImportSplit
-        || section == TabNotifications
-        || section == TabProfile
-        || section == TabIpBlocks
-        || section == TabAttachmentCategories
-        || section == TabLegacy;
 
     private void BuildRibbon()
     {
@@ -154,11 +111,8 @@
 
     private void Activate(string section)
     {
-        if (_activeSection != section)
-        {
-            _activeSection = section;
-        }
+        _vm!.Activate(section);
     }
-    private bool IsActiveSection(string section) => _activeSection == section;
+    private bool IsActiveSection(string section) => _vm!.IsActiveSection(section);
     private void Back() => Navigation.NavigateTo("/");
 }

@@ -19,8 +19,10 @@ public sealed class UserAuthService : IUserAuthService
     private readonly IDateTimeProvider _clock;
     private readonly ILogger<UserAuthService> _logger;
     private readonly IIpBlockService _ipBlocks;
-    private const int ThresholdAttempts = 3; // Sperre ab 3
-    private static readonly TimeSpan ResetWindow = TimeSpan.FromMinutes(5);
+    private const int ThresholdAttempts = 3; // lock starting at 3rd failed attempt
+    private static readonly TimeSpan ResetWindow = TimeSpan.FromDays(1); // keep escalation across typical lock durations
+    private static readonly TimeSpan InitialLockDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan MaxLockDuration = TimeSpan.FromHours(8);
 
     // Backwards-compatible ctor for existing tests/usages
     public UserAuthService(AppDbContext db, IPasswordHasher passwordHasher, IJwtTokenService jwt, IDateTimeProvider clock, ILogger<UserAuthService> logger)
@@ -112,6 +114,16 @@ public sealed class UserAuthService : IUserAuthService
             var failed = user.RegisterFailedLogin(_clock.UtcNow, ResetWindow);
             if (failed >= ThresholdAttempts)
             {
+                // Escalating lock: 3rd -> 5m, 4th -> 10m, 5th -> 20m, ... capped at 8h
+                var exponent = failed - ThresholdAttempts; // 0 for 3rd
+                double minutes = InitialLockDuration.TotalMinutes * Math.Pow(2, Math.Max(0, exponent));
+                var lockDuration = TimeSpan.FromMinutes(minutes);
+                if (lockDuration > MaxLockDuration)
+                {
+                    lockDuration = MaxLockDuration;
+                }
+                user.SetLockedUntil(_clock.UtcNow.Add(lockDuration));
+
                 if (!string.IsNullOrWhiteSpace(command.IpAddress))
                 {
                     await _ipBlocks.BlockByAddressAsync(command.IpAddress!, "User failed login threshold reached", ct);

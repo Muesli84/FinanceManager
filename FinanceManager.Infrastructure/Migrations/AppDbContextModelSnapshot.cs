@@ -246,6 +246,10 @@ namespace FinanceManager.Infrastructure.Migrations
 
                     b.HasIndex("OwnerUserId", "Name");
 
+                    b.HasIndex("OwnerUserId", "Type")
+                        .IsUnique()
+                        .HasFilter("[Type] = 0");
+
                     b.ToTable("Contacts");
                 });
 

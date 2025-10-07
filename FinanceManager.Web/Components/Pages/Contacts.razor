@@ -1,134 +1,83 @@
 @page "/contacts"
-@using FinanceManager.Application.Contacts
-@using FinanceManager.Shared.Dtos
 @rendermode InteractiveServer
-@inject NavigationManager Navigation
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject IJSRuntime JS
-@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Contacts> Localizer
 @using FinanceManager.Web.Components.Shared
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Contacts> Localizer
+@using FinanceManager.Web.ViewModels
+@inject IServiceProvider Services
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="Contacts.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
-<div class="page-contacts-full">
-    <h1>@Localizer["Title"]</h1>
+<h1>@Localizer["Title"]</h1>
 
-    @if (!_loaded)
-    {
-        <p>@Localizer["Loading"]</p>
-    }
-    else if (!CurrentUser.IsAuthenticated)
-    {
-        <p>@Localizer["PleaseLogin"]</p>
-    }
-    else
-    {
-        <div style="margin-bottom:.65rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
-            <input class="filter-input"
-                   placeholder='@Localizer["FilterPlaceholder"]'
-                   @bind="_filter"
-                   @bind:after="OnFilterAfterChanged"
-                   style="min-width:260px;" />
-        </div>
+@if (!(_vm?.Loaded ?? false))
+{
+    <p>@Localizer["Loading"]</p>
+}
+else if (!_vm!.IsAuthenticated)
+{
+    <p>@Localizer["PleaseLogin"]</p>
+}
+else
+{
+    <div style="margin-bottom:.65rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+        <input class="filter-input"
+               placeholder='@Localizer["FilterPlaceholder"]'
+               @bind="_filter"
+               @bind:after="OnFilterAfterChanged"
+               style="min-width:260px;" />
+    </div>
 
-        <table class="fm-table contacts-table">
-            <thead>
-            <tr>
-                <th>@Localizer["Th_Name"]</th>
-                <th>@Localizer["Th_Group"]</th>
-                <th>@Localizer["Th_Type"]</th>
+    <table class="fm-table contacts-table">
+        <thead>
+        <tr>
+            <th>@Localizer["Th_Name"]</th>
+            <th>@Localizer["Th_Group"]</th>
+            <th>@Localizer["Th_Type"]</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var c in _vm.Contacts)
+        {
+            <tr style="cursor:pointer;" @onclick="() => OpenDetail(c.Id)">
+                <td>@c.Name</td>
+                <td>@(string.IsNullOrEmpty(c.CategoryName) ? "-" : c.CategoryName)</td>
+                <td>@c.Type</td>
             </tr>
-            </thead>
-            <tbody>
-            @foreach (var c in _contacts)
-            {
-                <tr style="cursor:pointer;" @onclick="() => OpenDetail(c.Id)">
-                    <td>@c.Name</td>
-                    <td>@(string.IsNullOrEmpty(c.CategoryName) ? "-" : c.CategoryName)</td>
-                    <td>@c.Type</td>
-                </tr>
-            }
-            @if (_contacts.Count == 0 && !_loadingMore)
-            {
-                <tr><td colspan="3" style="opacity:.6;">@Localizer["NoContacts"]</td></tr>
-            }
-            </tbody>
-        </table>
+        }
+        @if (_vm.Contacts.Count == 0 && !_vm.IsLoading)
+        {
+            <tr><td colspan="3" style="opacity:.6;">@Localizer["NoContacts"]</td></tr>
+        }
+        </tbody>
+    </table>
 
-        @if (_loadingMore)
-        {
-            <div style="opacity:.6; font-size:.8rem; margin-top:.5rem;">@Localizer["Loading"]</div>
-        }
-
-        @if (!_allLoaded)
-        {
-            <div @ref="_sentinel" class="infinite-sentinel" aria-hidden="true"></div>
-        }
-        else if (_contacts.Count > 0)
-        {
-            <div class="end-of-list">@Localizer["EndOfList"]</div>
-        }
+    @if (_vm.IsLoading)
+    {
+        <div style="opacity:.6; font-size:.8rem; margin-top:.5rem;">@Localizer["Loading"]</div>
     }
-</div>
+
+    @if (!_vm.AllLoaded)
+    {
+        <div @ref="_sentinel" class="infinite-sentinel" aria-hidden="true"></div>
+    }
+    else if (_vm.Contacts.Count > 0)
+    {
+        <div class="end-of-list">@Localizer["EndOfList"]</div>
+    }
+}
 
 @code {
-    // Ribbon state
     private enum TabId { Contacts }
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
     private TabId _activeTab = TabId.Contacts;
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-    private void BuildRibbon()
-    {
-        if (!CurrentUser.IsAuthenticated) { _tabs = new(); return; }
-        var actions = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Actions"],
-            Items = new()
-            {
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_New"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#plus'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { CreateNew(); return Task.CompletedTask; }
-                },
-                new Ribbon<TabId>.RibbonItem
-                {
-                    Label = Localizer["Ribbon_Reload"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
-                    Callback = () => { _ = ResetAndReloadAsync(); return Task.CompletedTask; }
-                }
-            }
-        };
-        var filterItems = new List<Ribbon<TabId>.RibbonItem>();
-        filterItems.Add(new Ribbon<TabId>.RibbonItem
-        {
-            Label = Localizer["Ribbon_ClearFilter"],
-            IconSvg = "<svg><use href='/icons/sprite.svg#clear'/></svg>",
-            Disabled = string.IsNullOrWhiteSpace(_filter),
-            Callback = () => { _filter = string.Empty; _ = ResetAndReloadAsync(); BuildRibbon(); return Task.CompletedTask; }
-        });
-        var filter = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Filter"], Items = filterItems };
-        _tabs = new()
-        {
-            new Ribbon<TabId>.RibbonTab<TabId>
-            {
-                Id = TabId.Contacts,
-                Title = Localizer["Ribbon_Tab_Contacts"],
-                Groups = new(){ actions, filter }
-            }
-        };
-        StateHasChanged();
-    }
-
-    private List<ContactVm> _contacts = new();
-    private bool _loaded;
-    private bool _loadingMore;
-    private bool _allLoaded;
-    private const int PageSize = 50;
+    private ContactsViewModel? _vm;
 
     private ElementReference _sentinel;
     private DotNetObjectReference<Contacts>? _selfRef;
@@ -137,33 +86,25 @@
     private string _filter = string.Empty;
     private CancellationTokenSource? _filterCts;
 
-    // Kategorien
-    private Dictionary<Guid, string> _categoryNames = new();
-
     protected override async Task OnInitializedAsync()
     {
-        if (CurrentUser.IsAuthenticated)
+        if (_vm is not null)
         {
-            await LoadCategoriesAsync();
-            await LoadMoreAsync();
+            _vm.StateChanged -= VmOnStateChanged;
+            _vm.AuthenticationRequired -= VmOnAuthenticationRequired;
+            await _vm.DisposeAsync();
         }
-        _loaded = true;
-        BuildRibbon();
-    }
+        _vm = ActivatorUtilities.CreateInstance<ContactsViewModel>(Services);
+        _vm.StateChanged += VmOnStateChanged;
+        _vm.AuthenticationRequired += VmOnAuthenticationRequired;
 
-    private async Task LoadCategoriesAsync()
-    {
-        var resp = await Http.GetAsync("/api/contact-categories");
-        if (resp.IsSuccessStatusCode)
-        {
-            var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new();
-            _categoryNames = list.ToDictionary(c => c.Id, c => c.Name);
-        }
+        await _vm.InitializeAsync();
+        BuildRibbon();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_observerAttached || !_loaded || !CurrentUser.IsAuthenticated || _allLoaded)
+        if (_observerAttached || !(_vm?.Loaded ?? false) || !_vm!.IsAuthenticated || _vm.AllLoaded)
         {
             return;
         }
@@ -187,8 +128,9 @@
     [JSInvokable]
     public async Task LoadMoreFromJs()
     {
-        await LoadMoreAsync();
-        if (_allLoaded)
+        if (_vm is null) { return; }
+        await _vm.LoadMoreAsync();
+        if (_vm.AllLoaded)
         {
             StateHasChanged();
         }
@@ -198,44 +140,67 @@
         }
     }
 
-    private async Task LoadMoreAsync()
+    private void VmOnAuthenticationRequired(object? sender, string? returnUrl)
     {
-        if (_loadingMore || _allLoaded)
+        var back = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var url = string.IsNullOrWhiteSpace(back) ? "/login" : $"/login?returnUrl={Uri.EscapeDataString(back)}";
+        Navigation.NavigateTo(url, forceLoad: true);
+    }
+
+    private void VmOnStateChanged(object? sender, EventArgs e)
+    {
+        BuildRibbon();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void BuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            return;
-        }
-
-        _loadingMore = true;
-
-        var filterPart = string.IsNullOrWhiteSpace(_filter)
-            ? string.Empty
-            : $"&q={Uri.EscapeDataString(_filter)}";
-
-        var resp = await Http.GetAsync($"/api/contacts?skip={_contacts.Count}&take={PageSize}{filterPart}");
-        if (resp.IsSuccessStatusCode)
-        {
-            var more = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
-            if (more.Count < PageSize)
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                _allLoaded = true;
-            }
-
-            foreach (var dto in more)
-            {
-                _contacts.Add(new ContactVm
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    Id = dto.Id,
-                    Name = dto.Name,
-                    Type = dto.Type.ToString(),
-                    CategoryName = dto.CategoryId != null && _categoryNames.TryGetValue(dto.CategoryId.Value, out var catName)
-                        ? catName
-                        : string.Empty
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
                 });
             }
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
         }
-
-        _loadingMore = false;
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Contacts,
+                Title = Localizer["Ribbon_Tab_Contacts"],
+                Groups = groups
+            }
+        };
         StateHasChanged();
+    }
+
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "New":
+                CreateNew();
+                break;
+            case "Reload":
+                _ = _vm?.ResetAndReloadAsync();
+                break;
+            case "ClearFilter":
+                _filter = string.Empty;
+                _ = _vm?.SetFilterAsync(_filter);
+                break;
+        }
     }
 
     private void CreateNew() => OpenDetail(null);
@@ -253,36 +218,13 @@
         _filterCts = cts;
         try
         {
-            await Task.Delay(300, cts.Token); // debounce
+            await Task.Delay(300, cts.Token);
         }
         catch (TaskCanceledException)
         {
             return;
         }
-        await ResetAndReloadAsync();
+        await (_vm?.SetFilterAsync(_filter) ?? Task.CompletedTask);
         BuildRibbon();
-    }
-
-    private async Task ResetAndReloadAsync()
-    {
-        _loadingMore = false;
-        _allLoaded = false;
-        _contacts.Clear();
-        _observerAttached = false;
-        await LoadMoreAsync();
-    }
-
-    private sealed class ContactVm
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public string CategoryName { get; set; } = string.Empty;
-    }
-
-    private sealed class ContactCategoryDto
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
     }
 }

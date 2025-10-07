@@ -103,27 +103,31 @@ public sealed partial class StatementDraftService
             .OrderBy(s => s.Name)
             .ToListAsync(ct);
 
-        // Duplicate detection: look into Bank postings for the detected account from the oldest entry date of this draft
+        // Duplicate detection: consider existing Bank postings and historical StatementEntries
         List<(DateTime BookingDate, decimal Amount, string Subject)> existing = new();
-        if (draft.DetectedAccountId != null)
-        {
-            // Oldest booking date across ALL entries of this statement draft
-            var oldest = await _db.StatementDraftEntries.AsNoTracking()
+        DateTime? oldest = await _db.StatementDraftEntries.AsNoTracking()
                 .Where(e => e.DraftId == draft.Id)
                 .MinAsync(e => (DateTime?)e.BookingDate, ct);
-            if (oldest.HasValue)
+        if (oldest.HasValue)
+        {
+            var since = oldest.Value.Date;
+            if (draft.DetectedAccountId != null)
             {
-                var since = oldest.Value.Date;
                 var bankPosts = await _db.Postings.AsNoTracking()
                     .Where(p => p.Kind == PostingKind.Bank)
                     .Where(p => p.AccountId == draft.DetectedAccountId)
                     .Where(p => p.BookingDate >= since)
                     .Select(p => new { p.BookingDate, p.Amount, p.Subject })
                     .ToListAsync(ct);
-                existing = bankPosts
-                    .Select(x => (x.BookingDate.Date, x.Amount, x.Subject))
-                    .ToList();
+                existing.AddRange(bankPosts.Select(x => (x.BookingDate.Date, x.Amount, x.Subject)));
             }
+
+            // Also check StatementEntries (regardless of account), as they represent already imported statements
+            var histEntries = await _db.StatementEntries.AsNoTracking()
+                .Where(se => se.BookingDate >= since)
+                .Select(se => new { se.BookingDate, se.Amount, se.Subject })
+                .ToListAsync(ct);
+            existing.AddRange(histEntries.Select(x => (x.BookingDate.Date, x.Amount, x.Subject)));
         }
 
         Guid? bankContactId = null;

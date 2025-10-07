@@ -3,18 +3,21 @@
 @inject IHttpClientFactory ClientFactory
 @inject IJSRuntime JS
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.SetupProfileTab> Localizer
+@inject IServiceProvider Services
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
 
 <div>
   <h4 style="margin-top:0;">@Localizer["TabTitle"]</h4>
 
-  @if (_loading)
+  @if (_vm!.Loading)
   {
       <div>@Localizer["Msg_Loading"]</div>
   }
-  else if (!string.IsNullOrWhiteSpace(_error))
+  else if (!string.IsNullOrWhiteSpace(_vm!.Error))
   {
-      <div class="error">@_error</div>
-      <button class="icon-btn" @onclick="LoadAsync" title="@Localizer["Btn_Retry"]">
+      <div class="error">@_vm!.Error</div>
+      <button class="icon-btn" @onclick="(()=> _vm!.LoadAsync())" title="@Localizer["Btn_Retry"]">
           <svg class="icon"><use href="icons/sprite.svg#refresh" /></svg>
       </button>
   }
@@ -23,7 +26,7 @@
       <div class="form-grid">
           <div class="form-row">
               <label for="lang">@Localizer["Label_Language"]</label>
-              <select id="lang" @bind="_model.PreferredLanguage" @bind:after="OnChanged">
+              <select id="lang" @bind="_vm!.Model.PreferredLanguage" @bind:after="(()=> _vm!.OnChanged())">
                   <option value="">@Localizer["Language_Auto"]</option>
                   <option value="de">Deutsch (de)</option>
                   <option value="en">English (en)</option>
@@ -32,7 +35,7 @@
           </div>
           <div class="form-row">
               <label for="tz">@Localizer["Label_TimeZone"]</label>
-              <input id="tz" type="text" @bind="_model.TimeZoneId" @bind:after="OnChanged" placeholder="Europe/Berlin" />
+              <input id="tz" type="text" @bind="_vm!.Model.TimeZoneId" @bind:after="(()=> _vm!.OnChanged())" placeholder="Europe/Berlin" />
               <div style="display:flex;gap:.5rem;align-items:center;">
                   <small style="opacity:.8;">@Localizer["Help_TimeZone"]</small>
                   <button type="button" class="icon-btn" @onclick="DetectFromBrowserAsync" title="@Localizer["Btn_Detect"]">
@@ -44,9 +47,9 @@
           <div class="form-row">
               <label>@Localizer["Label_AlphaVantageKey"]</label>
               <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-                  <input type="password" placeholder="@Localizer["Placeholder_AlphaVantageKey"]" @bind="_keyInput" @bind:after="OnChanged" style="min-width:280px;" />
-                  <small style="opacity:.8;">@(_hasKey ? Localizer["Msg_KeyPresent"] : Localizer["Msg_KeyMissing"])</small>
-                  <button type="button" class="icon-btn" @onclick="ClearKey" title="@Localizer["Btn_ClearKey"]">
+                  <input type="password" placeholder="@Localizer["Placeholder_AlphaVantageKey"]" @bind="_vm!.KeyInput" @bind:after="(()=> _vm!.OnChanged())" style="min-width:280px;" />
+                  <small style="opacity:.8;">@(_vm!.HasKey ? Localizer["Msg_KeyPresent"] : Localizer["Msg_KeyMissing"])</small>
+                  <button type="button" class="icon-btn" @onclick="(()=> _vm!.ClearKey())" title="@Localizer["Btn_ClearKey"]">
                       <svg class="icon"><use href="icons/sprite.svg#clear" /></svg>
                   </button>
               </div>
@@ -54,50 +57,42 @@
           <div class="form-row">
               <label>@Localizer["Label_ShareKey"]</label>
               <div style="display:flex;gap:.5rem;align-items:center;">
-                  <input id="share-key" type="checkbox" @bind="_shareKey" @bind:after="OnChanged" />
+                  <input id="share-key" type="checkbox" @bind="_vm!.ShareKey" @bind:after="(()=> _vm!.OnChanged())" />
                   <label for="share-key" style="opacity:.8;">@Localizer["Help_ShareKey"]</label>
               </div>
           </div>
       </div>
 
       <div style="margin-top:1rem;display:flex;gap:.5rem;">
-          <button type="button" class="icon-btn" disabled="@(!_dirty || _saving)" @onclick="SaveAsync" title="@Localizer["Btn_Save"]">
+          <button type="button" class="icon-btn" disabled="@(!_vm!.Dirty || _vm!.Saving)" @onclick="SaveAsync" title="@Localizer["Btn_Save"]">
               <svg class="icon"><use href="icons/sprite.svg#save" /></svg>
           </button>
-          <button type="button" class="icon-btn" disabled="@(!_dirty || _saving)" title="@Localizer["Btn_Reset"]" @onclick="Reset">
+          <button type="button" class="icon-btn" disabled="@(!_vm!.Dirty || _vm!.Saving)" title="@Localizer["Btn_Reset"]" @onclick="Reset">
               <svg class="icon"><use href="icons/sprite.svg#undo" /></svg>
           </button>
       </div>
 
-      @if (_savedOk)
+      @if (_vm!.SavedOk)
       {
           <div class="success" style="margin-top:.5rem;">@Localizer["SaveSuccess"]</div>
       }
-      else if (!string.IsNullOrWhiteSpace(_saveError))
+      else if (!string.IsNullOrWhiteSpace(_vm!.SaveError))
       {
-          <div class="error" style="margin-top:.5rem;">@_saveError</div>
+          <div class="error" style="margin-top:.5rem;">@_vm!.SaveError</div>
       }
   }
 </div>
 
 @code {
-    private UserProfileSettingsDto _model = new();
-    private UserProfileSettingsDto _original = new();
-    private bool _loading;
-    private bool _saving;
-    private bool _savedOk;
-    private string? _error;
-    private string? _saveError;
-    private bool _dirty;
+    private SetupProfileViewModel? _vm;
     private IJSObjectReference? _module;
 
-    // AlphaVantage key local state
-    private bool _hasKey;
-    private bool _shareKey;
-    private string _keyInput = string.Empty;
-    private bool _clearRequested;
-
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _vm = ActivatorUtilities.CreateInstance<SetupProfileViewModel>(Services);
+        _vm.StateChanged += (_, __) => { _ = InvokeAsync(StateHasChanged); };
+        await _vm.InitializeAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -105,30 +100,6 @@
         {
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "/js/profile.js");
         }
-    }
-
-    private async Task LoadAsync()
-    {
-        _loading = true; _error = null; _saveError = null; _savedOk = false;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var dto = await http.GetFromJsonAsync<UserProfileSettingsDto>("/api/user/profile-settings");
-            _model = dto ?? new();
-            _original = Clone(_model);
-
-            _hasKey = dto?.HasAlphaVantageApiKey ?? false;
-            _shareKey = dto?.ShareAlphaVantageApiKey ?? false;
-            _keyInput = string.Empty;
-            _clearRequested = false;
-
-            RecomputeDirty();
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        finally { _loading = false; }
     }
 
     private async Task DetectFromBrowserAsync()
@@ -139,92 +110,15 @@
             {
                 var lang = await _module.InvokeAsync<string>("getLocale");
                 var tz = await _module.InvokeAsync<string>("getTimeZone");
-                if (!string.IsNullOrWhiteSpace(lang)) { _model.PreferredLanguage = lang[..Math.Min(lang.Length, 10)]; }
-                if (!string.IsNullOrWhiteSpace(tz)) { _model.TimeZoneId = tz[..Math.Min(tz.Length, 100)]; }
-                OnChanged();
-            }
-        }
-        catch { }
-    }
+                _vm!.SetDetected(lang, tz);
+             }
+         }
+         catch { }
+     }
 
-    private async Task SaveAsync()
-    {
-        _saving = true; _savedOk = false; _saveError = null;
-        try
-        {
-            var http = ClientFactory.CreateClient("Api");
-            var payload = new Dictionary<string, object?> {
-                ["PreferredLanguage"] = _model.PreferredLanguage,
-                ["TimeZoneId"] = _model.TimeZoneId,
-                ["ShareAlphaVantageApiKey"] = _shareKey
-            };
-            if (!string.IsNullOrWhiteSpace(_keyInput))
-            {
-                payload["AlphaVantageApiKey"] = _keyInput.Trim();
-            }
-            if (_clearRequested)
-            {
-                payload["ClearAlphaVantageApiKey"] = true;
-            }
+    private Task SaveAsync() => _vm!.SaveAsync();
 
-            using var resp = await http.PutAsJsonAsync("/api/user/profile-settings", payload);
-            if (resp.IsSuccessStatusCode)
-            {
-                _original = Clone(_model);
-                _hasKey = !_clearRequested && (_hasKey || !string.IsNullOrWhiteSpace(_keyInput));
-                _keyInput = string.Empty;
-                _clearRequested = false;
-                _savedOk = true;
-                RecomputeDirty();
-            }
-            else
-            {
-                _saveError = await resp.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            _saveError = ex.Message;
-        }
-        finally { _saving = false; }
-    }
+    private void ClearKey() => _vm!.ClearKey();
 
-    private void ClearKey()
-    {
-        _keyInput = string.Empty;
-        _clearRequested = true;
-        OnChanged();
-    }
-
-    private void Reset()
-    {
-        _model = Clone(_original);
-        _savedOk = false; _saveError = null;
-        _keyInput = string.Empty;
-        _clearRequested = false;
-        _shareKey = _original.ShareAlphaVantageApiKey;
-        RecomputeDirty();
-    }
-
-    private void OnChanged()
-    {
-        _savedOk = false;
-        _saveError = null;
-        RecomputeDirty();
-    }
-
-    private void RecomputeDirty()
-    {
-        var baseDirty = _model.PreferredLanguage != _original.PreferredLanguage || _model.TimeZoneId != _original.TimeZoneId;
-        var keyDirty = !string.IsNullOrWhiteSpace(_keyInput) || _clearRequested || _shareKey != _original.ShareAlphaVantageApiKey;
-        _dirty = baseDirty || keyDirty;
-    }
-
-    private static UserProfileSettingsDto Clone(UserProfileSettingsDto src) => new()
-    {
-        PreferredLanguage = src.PreferredLanguage,
-        TimeZoneId = src.TimeZoneId,
-        HasAlphaVantageApiKey = src.HasAlphaVantageApiKey,
-        ShareAlphaVantageApiKey = src.ShareAlphaVantageApiKey
-    };
+    private void Reset() => _vm!.Reset();
 }
