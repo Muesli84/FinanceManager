@@ -1,0 +1,44 @@
+@using Microsoft.AspNetCore.Components
+
+<div class="num-kpi" role="status" aria-live="polite">
+    @if (_loading)
+    {
+        <span class="loading">…</span>
+    }
+    else
+    {
+        <span class="value">@_value</span>
+    }
+</div>
+
+@code {
+    [Parameter] public Func<Task<int>>? Load { get; set; }
+
+    private int _value;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    public async Task ReloadAsync()
+    {
+        try
+        {
+            _loading = true;
+            if (Load != null)
+            {
+                _value = await Load.Invoke();
+            }
+        }
+        catch { _value = 0; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+}
+
+<style>
+.num-kpi { display:inline-block; }
+.num-kpi .loading { opacity:.6; }
+.num-kpi .value { font-size:2.2rem; font-weight:700; }
+</style>

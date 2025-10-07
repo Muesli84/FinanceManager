@@ -213,4 +213,19 @@ public sealed class ContactsController : ControllerBase
             return Problem("Unexpected error", statusCode: 500);
         }
     }
+
+    [HttpGet("count")]
+    public async Task<IActionResult> CountAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var count = await _contacts.CountAsync(_current.UserId, ct);
+            return Ok(new { count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Count contacts failed");
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
 }

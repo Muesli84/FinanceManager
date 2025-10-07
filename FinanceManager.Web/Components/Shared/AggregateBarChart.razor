@@ -3,7 +3,7 @@
 @inject HttpClient Http
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.AggregateBarChart> Localizer
 
-<div class="aggregate-chart-wrapper" aria-busy="@_loading">
+<div class="@($"aggregate-chart-wrapper{(Compact? " compact" : string.Empty)}")" aria-busy="@_loading">
     @if (!string.IsNullOrWhiteSpace(Title))
     {
         <h4 style="margin:0 0 .5rem 0;">@Title</h4>
@@ -24,7 +24,7 @@
     <div class="chart">
         @if (_loading && _data.Count == 0)
         {
-            <div class="chart-skeleton" role="status" aria-live="polite">
+            <div class="chart-skeleton" role="status" aria-live="polite" style="height:@(BarsHeightPx ?? (Compact?100:180))px;">
                 @for (int i=0;i<10;i++)
                 {
                     <div class="skeleton-bar" style="animation-delay:@(i*0.06)s"></div>
@@ -45,10 +45,11 @@
         else
         {
             var maxAbs = _data.Select(p => Math.Abs(p.Amount)).DefaultIfEmpty(0m).Max();
-            var halfHeight = 90m;
+            var barsHeight = BarsHeightPx ?? (Compact ? 100 : 180);
+            var halfHeight = (decimal)barsHeight / 2m;
             var scale = maxAbs == 0 ? 0 : halfHeight / maxAbs;
 
-            <div class="bars-wrapper">
+            <div class="bars-wrapper" style="height:@(barsHeight)px;">
                 <div class="bar-row pos">
                     @foreach (var p in _data)
                     {
@@ -106,6 +107,8 @@
     [Parameter] public string? InitialPeriod { get; set; }
     [Parameter] public bool AutoFit { get; set; } = true;
     [Parameter] public int MaxVisibleLabels { get; set; } = 18;
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public int? BarsHeightPx { get; set; }
 
     private string _period = "Month";
     private bool _loading;
@@ -235,6 +238,9 @@
     flex-direction:column;
     overflow:hidden;
 }
+
+.aggregate-chart-wrapper.compact .chart{ min-height:0; padding:.35rem .5rem; }
+.aggregate-chart-wrapper.compact .labels-row{ font-size:.55rem; margin-top:.15rem; }
 
 .bars-wrapper { flex:1 1 auto; display:flex; flex-direction:column; height:180px; border-top:1px solid var(--axis); border-bottom:1px solid var(--axis); gap:0; min-width:0; }
 .bar-row { flex:1 1 0; display:flex; align-items:flex-end; gap:.35rem; min-width:0; }

@@ -38,6 +38,10 @@ public sealed class SavingsPlansController : ControllerBase
         return Ok(list);
     }
 
+    [HttpGet("count")]
+    public async Task<IActionResult> CountAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
+        => Ok(new { count = await _service.CountAsync(_current.UserId, onlyActive, ct) });
+
     [HttpGet("{id:guid}", Name = "GetSavingsPlans")]
     public async Task<IActionResult> GetAsync(Guid id, CancellationToken ct)
     {

@@ -10,4 +10,5 @@ public interface ISecurityService
     Task<SecurityDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, string identifier, string? description, string? alphaVantageCode, string currencyCode, Guid? categoryId, CancellationToken ct);
     Task<bool> ArchiveAsync(Guid id, Guid ownerUserId, CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct);
+    Task<int> CountAsync(Guid ownerUserId, bool onlyActive, CancellationToken ct);
 }

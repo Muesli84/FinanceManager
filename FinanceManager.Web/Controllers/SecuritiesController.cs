@@ -33,6 +33,10 @@ public sealed class SecuritiesController : ControllerBase
     public async Task<IActionResult> ListAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
         => Ok(await _service.ListAsync(_current.UserId, onlyActive, ct));
 
+    [HttpGet("count")]
+    public async Task<IActionResult> CountAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
+        => Ok(new { count = await _service.CountAsync(_current.UserId, onlyActive, ct) });
+
     [HttpGet("{id:guid}", Name = "GetSecurityAsync")]
     public async Task<IActionResult> GetAsync(Guid id, CancellationToken ct = default)
     {

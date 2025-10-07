@@ -16,4 +16,5 @@ public interface ISavingsPlanService
     Task<bool> ArchiveAsync(Guid id, Guid ownerUserId, CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct);
     Task<SavingsPlanAnalysisDto> AnalyzeAsync(Guid id, Guid ownerUserId, CancellationToken ct);
+    Task<int> CountAsync(Guid ownerUserId, bool onlyActive, CancellationToken ct);
 }

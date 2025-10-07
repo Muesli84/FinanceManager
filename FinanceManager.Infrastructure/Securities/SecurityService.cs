@@ -158,4 +158,11 @@ public sealed class SecurityService : ISecurityService
         await _db.SaveChangesAsync(ct);
         return true;
     }
+
+    public Task<int> CountAsync(Guid ownerUserId, bool onlyActive, CancellationToken ct)
+    {
+        var q = _db.Securities.AsNoTracking().Where(s => s.OwnerUserId == ownerUserId);
+        if (onlyActive) { q = q.Where(s => s.IsActive); }
+        return q.CountAsync(ct);
+    }
 }

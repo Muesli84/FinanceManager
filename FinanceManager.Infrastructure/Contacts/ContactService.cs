@@ -318,4 +318,9 @@ public sealed class ContactService : IContactService
 
         return new ContactDto(target.Id, target.Name, target.Type, target.CategoryId, target.Description, target.IsPaymentIntermediary);
     }
+
+    public Task<int> CountAsync(Guid ownerUserId, CancellationToken ct)
+    {
+        return _db.Contacts.AsNoTracking().Where(c => c.OwnerUserId == ownerUserId).CountAsync(ct);
+    }
 }

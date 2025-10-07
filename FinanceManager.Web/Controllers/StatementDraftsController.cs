@@ -60,6 +60,13 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(drafts);
     }
 
+    [HttpGet("count")]
+    public async Task<IActionResult> GetOpenCountAsync(CancellationToken ct)
+    {
+        var count = await _drafts.GetOpenDraftsCountAsync(_current.UserId, ct);
+        return Ok(new { count });
+    }
+
     // NEW: delete all open drafts
     [HttpDelete("all")]
     public async Task<IActionResult> DeleteAllAsync(CancellationToken ct)
