@@ -8,6 +8,9 @@
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Users> Localizer
 @inject NavigationManager Nav
+@inject IServiceProvider Services
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="Users.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -27,23 +30,23 @@ else if (!CurrentUser.IsAdmin)
 else
 {
     <h1>@Localizer["Heading_Users"]</h1>
-    <EditForm Model="_create" OnValidSubmit="CreateAsync" class="create-user-form">
+    <EditForm Model="_vm!.Create" OnValidSubmit="CreateAsync" class="create-user-form">
         <DataAnnotationsValidator />
         <div class="create-user-grid">
             <label for="cu-username">@Localizer["Create_Label_Username"]</label>
-            <InputText id="cu-username" @bind-Value="_create.Username" />
+            <InputText id="cu-username" @bind-Value="_vm!.Create.Username" />
 
             <label for="cu-password">@Localizer["Create_Label_Password"]</label>
-            <InputText id="cu-password" @bind-Value="_create.Password" Type="password" />
+            <InputText id="cu-password" @bind-Value="_vm!.Create.Password" Type="password" />
 
             <label>@Localizer["Create_Label_Role"]</label>
             <div class="inline-checkbox">
-                <input id="cu-admin" type="checkbox" @bind="_create.IsAdmin" />
+                <input id="cu-admin" type="checkbox" @bind="_vm!.Create.IsAdmin" />
                 <label for="cu-admin" class="chk-label">@Localizer["Create_Label_Role_Admin"]</label>
             </div>
 
             <div class="full-row form-actions">
-                <button type="submit" disabled="@_busyCreate">@(_busyCreate ? Localizer["Create_Button_Submit_Busy"] : Localizer["Create_Button_Submit"])</button>
+                <button type="submit" disabled="@(_vm?.BusyCreate ?? false)">@((_vm?.BusyCreate ?? false) ? Localizer["Create_Button_Submit_Busy"] : Localizer["Create_Button_Submit"])</button>
             </div>
             <div class="full-row">
                 <ValidationSummary />
@@ -51,17 +54,17 @@ else
         </div>
     </EditForm>
 
-    @if (!string.IsNullOrEmpty(_error))
+    @if (!string.IsNullOrEmpty(_vm?.Error))
     {
-        <div class="error" style="margin-top:.75rem;">@_error</div>
+        <div class="error" style="margin-top:.75rem;">@_vm!.Error</div>
     }
 
-    @if (_lastResetUserId != Guid.Empty && !string.IsNullOrEmpty(_lastResetPassword))
+    @if ((_vm?.LastResetUserId != Guid.Empty) == true && !string.IsNullOrEmpty(_vm?.LastResetPassword))
     {
-        var userName = _users.FirstOrDefault(u => u.Id == _lastResetUserId)?.Username;
+        var userName = _vm!.Users.FirstOrDefault(u => u.Id == _vm!.LastResetUserId)?.Username;
         <div class="pw-reset-hint" style="margin-top:1rem;padding:.75rem 1rem;border:1px solid #444;background:#25252d;border-radius:6px;max-width:620px;">
-            <strong>@Localizer["PasswordReset_Title"]</strong> @Localizer["PasswordReset_For"] <span style="opacity:.85">@userName</span>: <code>@_lastResetPassword</code>
-            <button style="margin-left:.75rem;" @onclick="ClearLastPassword">@Localizer["PasswordReset_Hide"]</button>
+            <strong>@Localizer["PasswordReset_Title"]</strong> @Localizer["PasswordReset_For"] <span style="opacity:.85">@userName</span>: <code>@_vm!.LastResetPassword</code>
+            <button style="margin-left:.75rem;" @onclick="(()=> _vm!.ClearLastPassword())">@Localizer["PasswordReset_Hide"]</button>
         </div>
     }
 
@@ -77,37 +80,37 @@ else
             </tr>
         </thead>
         <tbody>
-        @foreach (var u in _users)
+        @foreach (var u in _vm!.Users)
         {
-            var editing = _edit?.Id == u.Id;
+            var editing = _vm!.Edit?.Id == u.Id;
             bool locked = u.LockedUntilUtc != null && u.LockedUntilUtc > DateTime.UtcNow;
             <tr class="@(locked?"locked-row":"")">
                 <td>
-                    @if (editing) { <InputText @bind-Value="_editUsername" /> } else { @u.Username }
+                    @if (editing) { <InputText @bind-Value="_vm!.EditUsername" /> } else { @u.Username }
                 </td>
                 <td style="text-align:center;">
-                    @if (editing) { <input type="checkbox" @bind="_editIsAdmin" /> } else { @((MarkupString)(u.IsAdmin ? "&#10003;" : string.Empty)) }
+                    @if (editing) { <input type="checkbox" @bind="_vm!.EditIsAdmin" /> } else { @((MarkupString)(u.IsAdmin ? "&#10003;" : string.Empty)) }
                 </td>
                 <td style="text-align:center;">
-                    @if (editing) { <input type="checkbox" @bind="_editActive" /> } else { @((MarkupString)(u.Active ? "&#10003;" : "&#10007;")) }
+                    @if (editing) { <input type="checkbox" @bind="_vm!.EditActive" /> } else { @((MarkupString)(u.Active ? "&#10003;" : "&#10007;")) }
                 </td>
                 <td style="text-align:center;">@(u.LockedUntilUtc?.ToString("u") ?? "-")</td>
                 <td style="text-align:center;">@((u.LastLoginUtc==default)?"-":u.LastLoginUtc.ToString("u"))</td>
                 <td style="white-space:nowrap;">
                     @if (editing)
                     {
-                        <button @onclick="(()=>SaveEditAsync(u.Id))" disabled="@_busyRow">@Localizer["Action_Save"]</button>
-                        <button @onclick="CancelEdit" disabled="@_busyRow">@Localizer["Action_Cancel"]</button>
+                        <button @onclick="(()=>_vm!.SaveEditAsync(u.Id))" disabled="@(_vm?.BusyRow ?? false)">@Localizer["Action_Save"]</button>
+                        <button @onclick="(()=>_vm!.CancelEdit())" disabled="@(_vm?.BusyRow ?? false)">@Localizer["Action_Cancel"]</button>
                     }
                     else
                     {
-                        <button @onclick="(()=>BeginEdit(u))" disabled="@_busyRow">@Localizer["Action_Edit"]</button>
-                        <button @onclick="(()=>ResetPasswordAsync(u.Id))" disabled="@_busyRow">@Localizer["Action_ResetPassword"]</button>
+                        <button @onclick="(()=>_vm!.BeginEdit(u))" disabled="@(_vm?.BusyRow ?? false)">@Localizer["Action_Edit"]</button>
+                        <button @onclick="(()=>_vm!.ResetPasswordAsync(u.Id))" disabled="@(_vm?.BusyRow ?? false)">@Localizer["Action_ResetPassword"]</button>
                         @if (locked)
                         {
-                            <button @onclick="(()=>UnlockAsync(u.Id))" disabled="@_busyRow">@Localizer["Action_Unlock"]</button>
+                            <button @onclick="(()=>_vm!.UnlockAsync(u.Id))" disabled="@(_vm?.BusyRow ?? false)">@Localizer["Action_Unlock"]</button>
                         }
-                        <button @onclick="(()=>DeleteAsync(u.Id))" disabled="@_busyRow">@Localizer["Action_Delete"]</button>
+                        <button @onclick="(()=>_vm!.DeleteAsync(u.Id))" disabled="@(_vm?.BusyRow ?? false)">@Localizer["Action_Delete"]</button>
                     }
                 </td>
             </tr>
@@ -141,208 +144,62 @@ else
     private void BuildRibbon()
     {
         if (!CurrentUser.IsAuthenticated || !CurrentUser.IsAdmin) { _tabs = new(); return; }
-        var nav = new Ribbon<TabId>.RibbonGroup
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
         {
-            Title = Localizer["Ribbon_Group_Navigation"],
-            Items = new()
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
             {
-                new Ribbon<TabId>.RibbonItem
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
                 {
-                    Label = Localizer["Ribbon_Back"],
-                    IconSvg = "<svg><use href='/icons/sprite.svg#back'/></svg>",
-                    Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { Back(); return Task.CompletedTask; }
-                }
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
             }
-        };
-        var actionsItems = new List<Ribbon<TabId>.RibbonItem>
-        {
-            new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_Reload"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#refresh'/></svg>",
-                Callback = () => { _ = ReloadAsync(); return Task.CompletedTask; }
-            }
-        };
-        if (_edit != null)
-        {
-            actionsItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_CancelEdit"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#clear'/></svg>",
-                Callback = () => { CancelEdit(); BuildRibbon(); return Task.CompletedTask; }
-            });
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
         }
-        if (_lastResetUserId != Guid.Empty && !string.IsNullOrEmpty(_lastResetPassword))
-        {
-            actionsItems.Add(new Ribbon<TabId>.RibbonItem
-            {
-                Label = Localizer["Ribbon_HidePassword"],
-                IconSvg = "<svg><use href='/icons/sprite.svg#clear'/></svg>",
-                Callback = () => { ClearLastPassword(); BuildRibbon(); return Task.CompletedTask; }
-            });
-        }
-        var actions = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Actions"], Items = actionsItems };
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
             {
                 Id = TabId.Users,
                 Title = Localizer["Ribbon_Tab_Users"],
-                Groups = new(){ nav, actions }
+                Groups = groups
             }
         };
         StateHasChanged();
     }
 
     private void Back() => Nav.NavigateTo("/");
-    private async Task ReloadAsync(){ await LoadAsync(); BuildRibbon(); }
+
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "Back": Back(); break;
+            case "Reload": _ = _vm!.LoadAsync(); break;
+            case "CancelEdit": _vm!.CancelEdit(); break;
+            case "HidePassword": _vm!.ClearLastPassword(); break;
+        }
+    }
 
     private bool _loaded;
-    private string? _error;
-    private List<UserVm> _users = new();
-
-    private CreateVm _create = new();
-    private bool _busyCreate;
-    private bool _busyRow;
-
-    private UserVm? _edit;
-    private string _editUsername = string.Empty;
-    private bool _editIsAdmin;
-    private bool _editActive;
-
-    private Guid _lastResetUserId;
-    private string? _lastResetPassword;
+    private UsersViewModel? _vm;
 
     protected override async Task OnInitializedAsync()
     {
-        if (CurrentUser.IsAuthenticated)
-        {
-            await LoadAsync();
-        }
+        if (!CurrentUser.IsAuthenticated) { BuildRibbon(); return; }
+        _vm = ActivatorUtilities.CreateInstance<UsersViewModel>(Services);
+        _vm.StateChanged += (_, __) => { BuildRibbon(); _ = InvokeAsync(StateHasChanged); };
+        await _vm.InitializeAsync();
         _loaded = true;
         BuildRibbon();
     }
 
-    private async Task LoadAsync()
-    {
-        try
-        {
-            _error = null;
-            var data = await Http.GetFromJsonAsync<List<UserVm>>("/api/admin/users");
-            _users = data ?? new();
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-    }
-
-    private void BeginEdit(UserVm u)
-    {
-        _edit = u;
-        _editUsername = u.Username;
-        _editIsAdmin = u.IsAdmin;
-        _editActive = u.Active;
-        BuildRibbon();
-    }
-
-    private void CancelEdit(){ _edit = null; BuildRibbon(); }
-
-    private async Task SaveEditAsync(Guid id)
-    {
-        if (_edit == null) { return; }
-        _busyRow = true;
-        _error = null;
-        try
-        {
-            var req = new UpdateUserRequest { Username = _editUsername, IsAdmin = _editIsAdmin, Active = _editActive };
-            var resp = await Http.PutAsJsonAsync($"/api/admin/users/{id}", req);
-            if (resp.IsSuccessStatusCode)
-            {
-                var updated = await resp.Content.ReadFromJsonAsync<UserVm>();
-                var idx = _users.FindIndex(x => x.Id == id);
-                if (idx >= 0 && updated != null) { _users[idx] = updated; }
-                _edit = null;
-            }
-            else { _error = await resp.Content.ReadAsStringAsync(); }
-        }
-        catch (Exception ex) { _error = ex.Message; }
-        _busyRow = false; BuildRibbon();
-    }
-
-    private async Task CreateAsync()
-    {
-        _busyCreate = true; _error = null;
-        try
-        {
-            var req = new CreateUserRequest { Username = _create.Username.Trim(), Password = _create.Password, IsAdmin = _create.IsAdmin };
-            var resp = await Http.PostAsJsonAsync("/api/admin/users", req);
-            if (resp.IsSuccessStatusCode)
-            {
-                var created = await resp.Content.ReadFromJsonAsync<UserVm>();
-                if (created != null) { _users.Add(created); }
-                _create = new();
-            }
-            else { _error = await resp.Content.ReadAsStringAsync(); }
-        }
-        catch (Exception ex) { _error = ex.Message; }
-        _busyCreate = false; BuildRibbon();
-    }
-
-    private async Task DeleteAsync(Guid id)
-    {
-        if (_users.Count == 1)
-        {
-            _error = Localizer["Error_DeleteLastUser"]; return;
-        }
-        _busyRow = true;
-        try
-        {
-            var resp = await Http.DeleteAsync($"/api/admin/users/{id}");
-            if (resp.IsSuccessStatusCode) { _users.RemoveAll(u => u.Id == id); }
-            else { _error = await resp.Content.ReadAsStringAsync(); }
-        }
-        catch (Exception ex) { _error = ex.Message; }
-        _busyRow = false; BuildRibbon();
-    }
-
-    private async Task ResetPasswordAsync(Guid id)
-    {
-        var newPw = Guid.NewGuid().ToString("N")[..12];
-        _busyRow = true;
-        try
-        {
-            var resp = await Http.PostAsJsonAsync($"/api/admin/users/{id}/reset-password", new ResetPasswordRequest { NewPassword = newPw });
-            if (resp.IsSuccessStatusCode) { _lastResetUserId = id; _lastResetPassword = newPw; }
-            else { _error = await resp.Content.ReadAsStringAsync(); }
-        }
-        catch (Exception ex) { _error = ex.Message; }
-        _busyRow = false; BuildRibbon();
-    }
-
-    private async Task UnlockAsync(Guid id)
-    {
-        _busyRow = true;
-        try
-        {
-            var resp = await Http.PostAsync($"/api/admin/users/{id}/unlock", null);
-            if (resp.IsSuccessStatusCode)
-            {
-                var found = _users.FirstOrDefault(x => x.Id == id);
-                if (found != null) { found.LockedUntilUtc = null; }
-            }
-            else { _error = await resp.Content.ReadAsStringAsync(); }
-        }
-        catch (Exception ex) { _error = ex.Message; }
-        _busyRow = false; BuildRibbon();
-    }
-
-    private void ClearLastPassword(){ _lastResetUserId = Guid.Empty; _lastResetPassword = null; BuildRibbon(); }
-
-    private sealed class CreateVm { [Required, MinLength(3)] public string Username { get; set; } = string.Empty; [Required, MinLength(6)] public string Password { get; set; } = string.Empty; public bool IsAdmin { get; set; } }
-    private sealed class CreateUserRequest { public string Username { get; set; } = string.Empty; public string Password { get; set; } = string.Empty; public bool IsAdmin { get; set; } }
-    private sealed class UpdateUserRequest { public string? Username { get; set; } public bool? IsAdmin { get; set; } public bool? Active { get; set; } }
-    private sealed class ResetPasswordRequest { public string NewPassword { get; set; } = string.Empty; }
-    private sealed class UserVm { public Guid Id { get; set; } public string Username { get; set; } = string.Empty; public bool IsAdmin { get; set; } public bool Active { get; set; } public DateTime? LockedUntilUtc { get; set; } public DateTime LastLoginUtc { get; set; } public string? PreferredLanguage { get; set; } }
+    private Task CreateAsync() => _vm!.CreateAsync();
 }
