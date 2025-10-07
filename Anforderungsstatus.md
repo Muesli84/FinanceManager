@@ -184,7 +184,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-AUTH-006      | ✖      | Schreibrechte konfigurierbar                                            | Offen                                                                                                                                                                            |
 | FA-AUTH-007      | ✖      | Entzug von Freigaben                                                    | Offen                                                                                                                                                                            |
 | FA-AUTH-008      | ✔      | Passworthashing                                                         | PBKDF2 (Ziel Argon2id/bcrypt)                                                                                                                                                    |
-| FA-AUTH-009      | ✔      | Admin-Oberfläche Benutzerverwaltung                                     | AdminUsersController + `Users.razor`                                                                                                                                             |
+| FA-AUTH-009      | ✔      | Admin-Oberfläche Benutzerverwaltung                                     | AdminUsersController + `Users.razor` (UsersViewModel) + Unit-Tests                                                                                                              |
 | FA-AUTH-010      | ✔      | Erster Benutzer = Admin                                                 | Automatisches Merkmal bei Registrierung                                                                                                                                          |
 | FA-AUTH-011      | ✔      | Admin kann Benutzer bearbeiten/löschen                                  | Update/Delete Endpoints + UI                                                                                                                                                     |
 | FA-AUTH-012      | ✖      | Löschen entfernt private Daten                                          | Offen                                                                                                                                                                            |
@@ -238,6 +238,11 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ✖ = offen / noch nicht implementiert  
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
+
+Änderungen (07.10.2025) – Ergänzung 45:
+Benutzerverwaltung auf ViewModel umgestellt: `UsersViewModel` eingeführt, `Users.razor` bindet Aktionen/Status über VM. Ribbon-Aufbau vereinheitlicht.
+Unit-Tests für Benutzerverwaltung ergänzt: `UsersViewModelTests` (Laden, Erstellen, Bearbeiten, Löschen, Passwort-Reset, Unlock, Ribbon-Zusammenstellung).
+Kontoauszüge-Übersicht verfeinert: Weitere UI-Logik ins ViewModel verlagert, Upload via VM, NRE beim Initialrender behoben, Ribbon aktualisiert sich auf VM-Statusänderungen.
 
 Änderungen (04.10.2025) – Ergänzung 44:
 - AlphaVantage‑Schlüsselverwaltung umgesetzt: FA‑WERT‑010 (Benutzer‑Key im Profil), FA‑WERT‑011 (Admin‑Freigabe), FA‑WERT‑012 (Priorisierung Benutzer‑Key vor freigegebenem Admin‑Key) → alle ✔.
