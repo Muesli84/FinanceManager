@@ -26,9 +26,11 @@ public sealed class ReportAggregationService : IReportAggregationService
             ReportInterval.HalfYear => AggregatePeriod.HalfYear,
             ReportInterval.Year => AggregatePeriod.Year,
             ReportInterval.Ytd => AggregatePeriod.Month,
+            ReportInterval.AllHistory => AggregatePeriod.Month,
             _ => AggregatePeriod.Month
         };
         var ytdMode = query.Interval == ReportInterval.Ytd;
+        var allHistoryMode = query.Interval == ReportInterval.AllHistory;
 
         // Normalize analysis date to month start if provided, else use UTC now month start
         var analysis = (query.AnalysisDate?.Date) ?? DateTime.UtcNow.Date;
@@ -384,6 +386,21 @@ public sealed class ReportAggregationService : IReportAggregationService
             points = ytd.OrderBy(p => p.PeriodStart).ThenBy(p => p.GroupKey).ToList();
         }
 
+        // AllHistory transform: collapse to a single row per group with cumulative sum across all available data
+        if (allHistoryMode && points.Count > 0)
+        {
+            var hist = new List<ReportAggregatePointDto>();
+            foreach (var grp in points.GroupBy(p => p.GroupKey))
+            {
+                var sum = grp.Sum(x => x.Amount);
+                var sample = grp.OrderBy(x => x.PeriodStart).First();
+                // Use a constant period start (e.g., DateTime.MinValue.Date truncated to year) to anchor display
+                var anchor = new DateTime(2000, 1, 1);
+                hist.Add(new ReportAggregatePointDto(anchor, sample.GroupKey, sample.GroupName, sample.CategoryName, sum, sample.ParentGroupKey, null, null));
+            }
+            points = hist.OrderBy(p => p.GroupKey).ToList();
+        }
+
         // Helper to compute the latest anchoring period based on interval --------
         DateTime ComputeLatestPeriod()
         {
@@ -407,7 +424,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Ensure latest period row based on analysis month ------------------------
-        if ((query.ComparePrevious || query.CompareYear) && points.Count > 0)
+        if (!allHistoryMode && (query.ComparePrevious || query.CompareYear) && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod();
             var groups2 = points.GroupBy(p => p.GroupKey).Select(g => new { Key = g.Key, Latest = g.OrderBy(x => x.PeriodStart).Last() }).ToList();
@@ -421,7 +438,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Previous comparison ----------------------------------------------------
-        if (query.ComparePrevious)
+        if (!allHistoryMode && query.ComparePrevious)
         {
             foreach (var grp in points.GroupBy(p => p.GroupKey))
             {
@@ -439,7 +456,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Year comparison --------------------------------------------------------
-        if (query.CompareYear)
+        if (!allHistoryMode && query.CompareYear)
         {
             var index = points.ToDictionary(p => (p.GroupKey, p.PeriodStart), p => p);
             foreach (var p in points.ToList())
@@ -454,7 +471,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Period Take trimming relative to analysis period -----------------------
-        if (query.Take > 0)
+        if (!allHistoryMode && query.Take > 0)
         {
             var distinctPeriods = points.Select(p => p.PeriodStart).Distinct().OrderBy(d => d).ToList();
             var latestPeriod = ComputeLatestPeriod();
@@ -467,7 +484,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Remove empty latest groups relative to analysis period -----------------
-        if ((query.ComparePrevious || query.CompareYear) && points.Count > 0)
+        if (!allHistoryMode && (query.ComparePrevious || query.CompareYear) && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod();
 

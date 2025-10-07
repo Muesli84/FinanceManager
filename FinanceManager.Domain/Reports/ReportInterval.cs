@@ -9,5 +9,6 @@ public enum ReportInterval
     Quarter = 1,
     HalfYear = 2,
     Year = 3,
-    Ytd = 4
+    Ytd = 4,
+    AllHistory = 5
 }

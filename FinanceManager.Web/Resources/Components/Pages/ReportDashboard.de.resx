@@ -255,6 +255,9 @@
   <data name="Interval_Ytd" xml:space="preserve">
     <value>YTD</value>
   </data>
+  <data name="Interval_AllHistory" xml:space="preserve">
+    <value>Gesamte Historie</value>
+  </data>
   <data name="Category_Uncategorized" xml:space="preserve">
     <value>Ohne Kategorie</value>
   </data>

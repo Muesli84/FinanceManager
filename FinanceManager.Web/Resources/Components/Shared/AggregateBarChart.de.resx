@@ -9,6 +9,7 @@
   <data name="Interval_Quarter" xml:space="preserve"><value>Quartal</value></data>
   <data name="Interval_HalfYear" xml:space="preserve"><value>Halbjahr</value></data>
   <data name="Interval_Year" xml:space="preserve"><value>Jahr</value></data>
+  <data name="Interval_AllHistory" xml:space="preserve"><value>Gesamte Historie</value></data>
   <data name="Loading" xml:space="preserve"><value>Lade...</value></data>
   <data name="NoData" xml:space="preserve"><value>Keine Daten</value></data>
   <data name="AriaBar" xml:space="preserve"><value>Periode {0}: Betrag {1}</value></data>
