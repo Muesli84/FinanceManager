@@ -169,6 +169,18 @@
   <data name="Ribbon_Group_Kpi" xml:space="preserve">
     <value>Page</value>
   </data>
+  <data name="Kpi_ActiveSavingsPlansCount" xml:space="preserve">
+    <value>Active savings plans</value>
+  </data>
+  <data name="Kpi_ContactsCount" xml:space="preserve">
+    <value>Contacts</value>
+  </data>
+  <data name="Kpi_SecuritiesCount" xml:space="preserve">
+    <value>Securities</value>
+  </data>
+  <data name="Kpi_OpenStatementDraftsCount" xml:space="preserve">
+    <value>Open drafts</value>
+  </data>
   <data name="Ribbon_Kpi_Edit" xml:space="preserve">
     <value>Edit</value>
   </data>

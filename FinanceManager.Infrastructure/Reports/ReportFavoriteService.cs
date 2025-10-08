@@ -32,22 +32,22 @@ public sealed class ReportFavoriteService : IReportFavoriteService
 
     private static ReportFavoriteFiltersDto? ToDtoFilters(ReportFavorite e)
     {
-        var (acc, con, sp, sec, ccat, scat, secat) = e.GetFilters();
-        if (acc == null && con == null && sp == null && sec == null && ccat == null && scat == null && secat == null)
+        var (acc, con, sp, sec, ccat, scat, secat, secTypes) = e.GetFilters();
+        if (acc == null && con == null && sp == null && sec == null && ccat == null && scat == null && secat == null && secTypes == null)
         {
             return null;
         }
-        return new ReportFavoriteFiltersDto(acc, con, sp, sec, ccat, scat, secat);
+        return new ReportFavoriteFiltersDto(acc, con, sp, sec, ccat, scat, secat, secTypes);
     }
 
     private static void ApplyFilters(ReportFavorite e, ReportFavoriteFiltersDto? f)
     {
         if (f == null)
         {
-            e.SetFilters(null, null, null, null, null, null, null);
+            e.SetFilters(null, null, null, null, null, null, null, null);
             return;
         }
-        e.SetFilters(f.AccountIds, f.ContactIds, f.SavingsPlanIds, f.SecurityIds, f.ContactCategoryIds, f.SavingsPlanCategoryIds, f.SecurityCategoryIds);
+        e.SetFilters(f.AccountIds, f.ContactIds, f.SavingsPlanIds, f.SecurityIds, f.ContactCategoryIds, f.SavingsPlanCategoryIds, f.SecurityCategoryIds, f.SecuritySubTypes);
     }
 
     public async Task<IReadOnlyList<ReportFavoriteDto>> ListAsync(Guid ownerUserId, CancellationToken ct)
@@ -77,7 +77,8 @@ public sealed class ReportFavoriteService : IReportFavoriteService
                 r.SecurityIdsCsv,
                 r.ContactCategoryIdsCsv,
                 r.SavingsPlanCategoryIdsCsv,
-                r.SecurityCategoryIdsCsv
+                r.SecurityCategoryIdsCsv,
+                r.SecuritySubTypesCsv
             })
             .ToListAsync(ct);
 
@@ -86,7 +87,7 @@ public sealed class ReportFavoriteService : IReportFavoriteService
             var entity = new ReportFavorite(ownerUserId, r.Name, r.PostingKind, r.IncludeCategory, r.Interval, r.ComparePrevious, r.CompareYear, r.ShowChart, r.Expandable, r.Take);
             if (!string.IsNullOrWhiteSpace(r.PostingKindsCsv)) { entity.SetPostingKinds(ParseKinds(r.PostingKindsCsv, r.PostingKind)); }
             // apply filter csv to entity temp for mapping
-            entity.SetFilters(ParseCsv(r.AccountIdsCsv), ParseCsv(r.ContactIdsCsv), ParseCsv(r.SavingsPlanIdsCsv), ParseCsv(r.SecurityIdsCsv), ParseCsv(r.ContactCategoryIdsCsv), ParseCsv(r.SavingsPlanCategoryIdsCsv), ParseCsv(r.SecurityCategoryIdsCsv));
+            entity.SetFilters(ParseCsv(r.AccountIdsCsv), ParseCsv(r.ContactIdsCsv), ParseCsv(r.SavingsPlanIdsCsv), ParseCsv(r.SecurityIdsCsv), ParseCsv(r.ContactCategoryIdsCsv), ParseCsv(r.SavingsPlanCategoryIdsCsv), ParseCsv(r.SecurityCategoryIdsCsv), ParseCsvInt(r.SecuritySubTypesCsv));
             return new ReportFavoriteDto(
                 r.Id,
                 r.Name,
@@ -131,13 +132,14 @@ public sealed class ReportFavoriteService : IReportFavoriteService
                 r.SecurityIdsCsv,
                 r.ContactCategoryIdsCsv,
                 r.SavingsPlanCategoryIdsCsv,
-                r.SecurityCategoryIdsCsv
+                r.SecurityCategoryIdsCsv,
+                r.SecuritySubTypesCsv
             })
             .FirstOrDefaultAsync(ct);
         if (r == null) { return null; }
         var entity = new ReportFavorite(ownerUserId, r.Name, r.PostingKind, r.IncludeCategory, r.Interval, r.ComparePrevious, r.CompareYear, r.ShowChart, r.Expandable, r.Take);
         if (!string.IsNullOrWhiteSpace(r.PostingKindsCsv)) { entity.SetPostingKinds(ParseKinds(r.PostingKindsCsv, r.PostingKind)); }
-        entity.SetFilters(ParseCsv(r.AccountIdsCsv), ParseCsv(r.ContactIdsCsv), ParseCsv(r.SavingsPlanIdsCsv), ParseCsv(r.SecurityIdsCsv), ParseCsv(r.ContactCategoryIdsCsv), ParseCsv(r.SavingsPlanCategoryIdsCsv), ParseCsv(r.SecurityCategoryIdsCsv));
+        entity.SetFilters(ParseCsv(r.AccountIdsCsv), ParseCsv(r.ContactIdsCsv), ParseCsv(r.SavingsPlanIdsCsv), ParseCsv(r.SecurityIdsCsv), ParseCsv(r.ContactCategoryIdsCsv), ParseCsv(r.SavingsPlanCategoryIdsCsv), ParseCsv(r.SecurityCategoryIdsCsv), ParseCsvInt(r.SecuritySubTypesCsv));
         return new ReportFavoriteDto(
             r.Id,
             r.Name,
@@ -229,4 +231,7 @@ public sealed class ReportFavoriteService : IReportFavoriteService
 
     private static IReadOnlyCollection<Guid>? ParseCsv(string? csv)
         => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Guid.Parse).ToArray();
+
+    private static IReadOnlyCollection<int>? ParseCsvInt(string? csv)
+        => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse).ToArray();
 }

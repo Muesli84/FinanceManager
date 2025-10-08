@@ -66,7 +66,7 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-REP-008-03    | ✔      | Sekundäre Gruppierung Kategorie                                         | IncludeCategory + Category Totals + Child Rows                                                                                                                                  |
 | FA-REP-008-04    | ✔      | Expandierbare Entitätszeilen                                            | Kategorie-Drilldown (Toggle, aria-expanded)                                                                                                                                     |
 | FA-REP-008-05    | ✔      | Periodenwahl inkl. YTD                                                  | Interval Select (Month/Quarter/HalfYear/Year/Ytd)                                                                                                                               |
-| FA-REP-008-06    | ✔      | Vergleich Vorperiode optional                                           | ComparePrevious → PreviousAmount                                                                                                                                                 |
+| FA-REP-008-06    | ✔      | Vergleich Vorperiode optional                                           | ComparePrevious → PreviousAmount; exakte Vorperiode je Intervall (Monat/Quartal/Halbjahr/Jahr). Kein Carry‑over aus weiter zurückliegenden Perioden. Tests ergänzt (`ReportAggregationServiceTests`). |
 | FA-REP-008-07    | ✔      | Vergleich Vorjahreszeitraum optional                                    | CompareYear → YearAgoAmount                                                                                                                                                     |
 | FA-REP-008-08    | ✔      | Optionales Balkendiagramm                                               | Mini-Chart (ShowChart)                                                                                                                                                          |
 | FA-REP-008-09    | ✔      | YTD Balkendarstellung (Vorjahre)                                        | YTD Transform + YearAgo                                                                                                                                                         |
@@ -77,8 +77,8 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 | FA-REP-008-14    | ✔      | Entitätswertfilter: UI (Single‑Kind Basis)                              | ReportDashboard: Multi‑Select für Top‑Level Filter (entweder Kategorie‑IDs oder Entitäts‑IDs je nach Modus); Dialog + Anwendung im Report                                      |
 | FA-REP-008-15    | ✔      | Entitätswertfilter: Aggregation + API                                   | Implementiert: `ReportAggregatesController` akzeptiert Filter, `ReportAggregationQuery`/DTOs erweitert, `ReportAggregationService` filtert Top‑Level (Kategorie/Entität) vor Aggregation. Tests vorhanden. |
 | FA-REP-008-16    | ✔      | Entitätswertfilter: Multi‑Kind Support                                  | Implementiert: Separate Allow‑Listen pro `PostingKind`, Kombination mit `IncludeCategory` berücksichtigt (Bank ohne Kategorien), Kantenfälle behandelt. UI Tabs/Scroll, Service aggregiert `Type:` + Kinder. Tests vorhanden. |
-| FA-REP-008-17    | ✔      | Entitätswertfilter in Favoriten speichern                               | `ReportFavorite` + Service/Controller um Filter‑Felder erweitert; UI sendet `Filters` bei Save/Update; Persistenz in DB (CSV‑Felder)                                            |
-| FA-REP-008-18    | ✔      | Entitätswertfilter aus Favoriten anwenden                               | `ApplyFavorite` setzt `_selectedFilterIds` anhand gespeicherter Filter; UI/Query aktualisiert                                                                                   |
+| FA-REP-008-17    | ✔      | Entitätswertfilter in Favoriten speichern                               | `ReportFavorite` + Service/Controller um Filter‑Felder erweitert; UI sendet `Filters` bei Save/Update; Persistenz in DB (CSV‑Felder). Inkl. SecuritySubTypes (Wertpapier‑Untertypen) gespeichert in `ReportFavorites.SecuritySubTypesCsv`. |
+| FA-REP-008-18    | ✔      | Entitätswertfilter aus Favoriten anwenden                               | `ApplyFavorite` setzt `_selectedFilterIds` anhand gespeicherter Filter (inkl. SecuritySubTypes); UI/Query aktualisiert                                                          |
 | FA-REP-008-19    | ✖      | UX: Aktive‑Filter‑Badges + Schnell‑Löschen                              | Anzeige aktive Filter (Chips) oberhalb Ergebnis; Clear‑All / Einzeln entfernen; i18n + A11y                                                                                    |
 | NFA-REP-008-01   | ✖      | Performance (Serveraggregation, Paging/Virtualization)                  | Kein Paging / Virtual Scroll                                                                                                                                                    |
 | NFA-REP-008-02   | ✖      | Caching                                                                 | Kein Cache Layer                                                                                                                                                                |
@@ -239,10 +239,20 @@ Dieses Dokument zeigt, wie die Anforderungen aus dem Anforderungskatalog im aktu
 ~ = teilweise umgesetzt / in Arbeit  
 (∑) = Sammelanforderung (Gesamtstatus aus Unterpunkten)
 
+Änderungen (08.10.2025) – Ergänzung 46:
+- Favoriten: Security‑Untertypen (Buy/Sell/Dividend/Fee/Tax) werden nun als Teil der Filter gespeichert und geladen.
+  - API: `ReportFavoritesController.FiltersDto.SecuritySubTypes` ergänzt.
+  - Application: `ReportFavoriteFiltersDto` erweitert.
+  - Domain: `ReportFavorite.SecuritySubTypesCsv` + `SetFilters`/`GetFilters` angepasst.
+  - Infrastruktur: `ReportFavoriteService` Mapping + CSV‑Parsing; Migration `AddSecuritySubTypesToReportFavorites` ergänzt; Import berücksichtigt optionales Feld.
+  - UI: `ReportDashboard.razor` / ViewModel übernehmen SecuritySubTypes bei Favoriten (Speichern/Laden).
+- Vergleich Vorperiode korrigiert: Es wird ausschließlich die exakte Vorperiode (z. B. Vormonat) verglichen; ältere Werte werden nicht mehr als Vorperiode angezeigt. Tests ergänzt.
+- Filter‑Dialog (Wertpapier‑Untertypen): Darstellung analog zum ersten Filter (vertikale, scrollbare Liste); Ressourcen de/en ergänzt.
+
 Änderungen (07.10.2025) – Ergänzung 45:
-Benutzerverwaltung auf ViewModel umgestellt: `UsersViewModel` eingeführt, `Users.razor` bindet Aktionen/Status über VM. Ribbon-Aufbau vereinheitlicht.
-Unit-Tests für Benutzerverwaltung ergänzt: `UsersViewModelTests` (Laden, Erstellen, Bearbeiten, Löschen, Passwort-Reset, Unlock, Ribbon-Zusammenstellung).
-Kontoauszüge-Übersicht verfeinert: Weitere UI-Logik ins ViewModel verlagert, Upload via VM, NRE beim Initialrender behoben, Ribbon aktualisiert sich auf VM-Statusänderungen.
+ Benutzerverwaltung auf ViewModel umgestellt: `UsersViewModel` eingeführt, `Users.razor` bindet Aktionen/Status über VM. Ribbon-Aufbau vereinheitlicht.
+ Unit-Tests für Benutzerverwaltung ergänzt: `UsersViewModelTests` (Laden, Erstellen, Bearbeiten, Löschen, Passwort-Reset, Unlock, Ribbon-Zusammenstellung).
+ Kontoauszüge-Übersicht verfeinert: Weitere UI-Logik ins ViewModel verlagert, Upload via VM, NRE beim Initialrender behoben, Ribbon aktualisiert sich auf VM-Statusänderungen.
 
 Änderungen (04.10.2025) – Ergänzung 44:
 - AlphaVantage‑Schlüsselverwaltung umgesetzt: FA‑WERT‑010 (Benutzer‑Key im Profil), FA‑WERT‑011 (Admin‑Freigabe), FA‑WERT‑012 (Priorisierung Benutzer‑Key vor freigegebenem Admin‑Key) → alle ✔.

@@ -26,9 +26,11 @@ public sealed class ReportAggregationService : IReportAggregationService
             ReportInterval.HalfYear => AggregatePeriod.HalfYear,
             ReportInterval.Year => AggregatePeriod.Year,
             ReportInterval.Ytd => AggregatePeriod.Month,
+            ReportInterval.AllHistory => AggregatePeriod.Month,
             _ => AggregatePeriod.Month
         };
         var ytdMode = query.Interval == ReportInterval.Ytd;
+        var allHistoryMode = query.Interval == ReportInterval.AllHistory;
 
         // Normalize analysis date to month start if provided, else use UTC now month start
         var analysis = (query.AnalysisDate?.Date) ?? DateTime.UtcNow.Date;
@@ -158,12 +160,30 @@ public sealed class ReportAggregationService : IReportAggregationService
             var allowedContactCats = ToSet(f.ContactCategoryIds);
             var allowedSavingsCats = ToSet(f.SavingsPlanCategoryIds);
             var allowedSecurityCats = ToSet(f.SecurityCategoryIds);
+            var allowedSecSubTypes = f.SecuritySubTypes is { Count: > 0 } ? f.SecuritySubTypes.ToHashSet() : null; // new
 
             bool hasAnyEntityFilter = allowedAccounts != null || allowedContacts != null || allowedSavings != null || allowedSecurities != null;
             bool hasAnyCategoryFilter = allowedContactCats != null || allowedSavingsCats != null || allowedSecurityCats != null;
+            bool hasAnySecSubTypeFilter = allowedSecSubTypes != null;
 
-            if (hasAnyEntityFilter || (query.IncludeCategory && hasAnyCategoryFilter))
+            if (hasAnyEntityFilter || (query.IncludeCategory && hasAnyCategoryFilter) || hasAnySecSubTypeFilter)
             {
+                // Preload mapping SecurityId -> SubType from postings when needed
+                Dictionary<Guid, int>? securityIdToSubType = null;
+                if (hasAnySecSubTypeFilter && kinds.Contains(PostingKind.Security))
+                {
+                    var secIds = raw.Where(r => r.SecurityId.HasValue).Select(r => r.SecurityId!.Value).Distinct().ToList();
+                    if (secIds.Count > 0)
+                    {
+                        // Look at latest posting per security to infer typical subtype fallback (best effort)
+                        securityIdToSubType = await _db.Postings.AsNoTracking()
+                            .Where(p => p.Kind == PostingKind.Security && p.SecurityId != null && secIds.Contains(p.SecurityId.Value) && p.SecuritySubType != null)
+                            .GroupBy(p => p.SecurityId!.Value)
+                            .Select(g => new { SecurityId = g.Key, SubType = (int)g.OrderByDescending(x => x.BookingDate).ThenByDescending(x => x.Id).Select(x => x.SecuritySubType!.Value).First() })
+                            .ToDictionaryAsync(x => x.SecurityId, x => x.SubType, ct);
+                    }
+                }
+
                 raw = raw.Where(r =>
                 {
                     switch (r.Kind)
@@ -190,14 +210,36 @@ public sealed class ReportAggregationService : IReportAggregationService
                             if (allowedSavings == null) { return true; }
                             return r.SavingsPlanId.HasValue && allowedSavings.Contains(r.SavingsPlanId.Value);
                         case PostingKind.Security:
+                            // apply category/entity filter first
+                            bool entityOk;
                             if (query.IncludeCategory && allowedSecurityCats != null)
                             {
                                 if (!r.SecurityId.HasValue) { return false; }
                                 if (!securityCategoryMap.TryGetValue(r.SecurityId.Value, out var secid)) { return false; }
-                                return secid.HasValue && allowedSecurityCats.Contains(secid.Value);
+                                entityOk = secid.HasValue && allowedSecurityCats.Contains(secid.Value);
                             }
-                            if (allowedSecurities == null) { return true; }
-                            return r.SecurityId.HasValue && allowedSecurities.Contains(r.SecurityId.Value);
+                            else if (allowedSecurities != null)
+                            {
+                                entityOk = r.SecurityId.HasValue && allowedSecurities.Contains(r.SecurityId.Value);
+                            }
+                            else
+                            {
+                                entityOk = true;
+                            }
+
+                            if (!entityOk) { return false; }
+
+                            // then optional sub type filter (best effort on aggregate level)
+                            if (allowedSecSubTypes != null && r.SecurityId.HasValue)
+                            {
+                                if (securityIdToSubType == null || !securityIdToSubType.TryGetValue(r.SecurityId.Value, out var st))
+                                {
+                                    // If subtype unknown, conservatively include (can't decide at aggregate level)
+                                    return true;
+                                }
+                                return allowedSecSubTypes.Contains(st);
+                            }
+                            return true;
                         default:
                             return true;
                     }
@@ -384,6 +426,21 @@ public sealed class ReportAggregationService : IReportAggregationService
             points = ytd.OrderBy(p => p.PeriodStart).ThenBy(p => p.GroupKey).ToList();
         }
 
+        // AllHistory transform: collapse to a single row per group with cumulative sum across all available data
+        if (allHistoryMode && points.Count > 0)
+        {
+            var hist = new List<ReportAggregatePointDto>();
+            foreach (var grp in points.GroupBy(p => p.GroupKey))
+            {
+                var sum = grp.Sum(x => x.Amount);
+                var sample = grp.OrderBy(x => x.PeriodStart).First();
+                // Use a constant period start (e.g., DateTime.MinValue.Date truncated to year) to anchor display
+                var anchor = new DateTime(2000, 1, 1);
+                hist.Add(new ReportAggregatePointDto(anchor, sample.GroupKey, sample.GroupName, sample.CategoryName, sum, sample.ParentGroupKey, null, null));
+            }
+            points = hist.OrderBy(p => p.GroupKey).ToList();
+        }
+
         // Helper to compute the latest anchoring period based on interval --------
         DateTime ComputeLatestPeriod()
         {
@@ -407,7 +464,9 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Ensure latest period row based on analysis month ------------------------
-        if ((query.ComparePrevious || query.CompareYear) && points.Count > 0)
+        // Always ensure a row exists for the current analysis period so the dashboard reflects the selected month,
+        // even if there are no postings in that month. This avoids showing the previous month as the "latest".
+        if (!allHistoryMode && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod();
             var groups2 = points.GroupBy(p => p.GroupKey).Select(g => new { Key = g.Key, Latest = g.OrderBy(x => x.PeriodStart).Last() }).ToList();
@@ -421,25 +480,55 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Previous comparison ----------------------------------------------------
-        if (query.ComparePrevious)
+        if (!allHistoryMode && query.ComparePrevious)
         {
-            foreach (var grp in points.GroupBy(p => p.GroupKey))
+            // Build lookup for amounts per (group, period)
+            var byGroup = points
+                .GroupBy(p => p.GroupKey)
+                .ToDictionary(g => g.Key, g => g.ToDictionary(x => x.PeriodStart, x => x.Amount));
+
+            static DateTime AlignToQuarterStart(DateTime d)
             {
-                ReportAggregatePointDto? prev = null;
-                foreach (var p in grp.OrderBy(x => x.PeriodStart))
+                var qIndex = (d.Month - 1) / 3; // 0..3
+                return new DateTime(d.Year, qIndex * 3 + 1, 1);
+            }
+            static DateTime AlignToHalfYearStart(DateTime d)
+            {
+                var hIndex = (d.Month - 1) / 6; // 0..1
+                return new DateTime(d.Year, hIndex * 6 + 1, 1);
+            }
+
+            DateTime PrevPeriod(DateTime d)
+            {
+                return query.Interval switch
                 {
-                    if (prev != null)
-                    {
-                        var idx = points.FindIndex(x => x.GroupKey == p.GroupKey && x.PeriodStart == p.PeriodStart);
-                        points[idx] = points[idx] with { PreviousAmount = prev.Amount };
-                    }
-                    prev = p;
+                    ReportInterval.Month => d.AddMonths(-1),
+                    ReportInterval.Quarter => AlignToQuarterStart(d).AddMonths(-3),
+                    ReportInterval.HalfYear => AlignToHalfYearStart(d).AddMonths(-6),
+                    ReportInterval.Year => new DateTime(d.Year - 1, 1, 1),
+                    ReportInterval.Ytd => new DateTime(d.Year - 1, 1, 1),
+                    _ => d.AddMonths(-1)
+                };
+            }
+
+            // Assign PreviousAmount only when an exact previous period exists in the dataset
+            for (int i = 0; i < points.Count; i++)
+            {
+                var p = points[i];
+                var prevDate = PrevPeriod(p.PeriodStart);
+                if (byGroup.TryGetValue(p.GroupKey, out var map) && map.TryGetValue(prevDate, out var prevAmount))
+                {
+                    points[i] = p with { PreviousAmount = prevAmount };
+                }
+                else
+                {
+                    // leave PreviousAmount null when the immediate previous period is missing
                 }
             }
         }
 
         // Year comparison --------------------------------------------------------
-        if (query.CompareYear)
+        if (!allHistoryMode && query.CompareYear)
         {
             var index = points.ToDictionary(p => (p.GroupKey, p.PeriodStart), p => p);
             foreach (var p in points.ToList())
@@ -454,7 +543,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Period Take trimming relative to analysis period -----------------------
-        if (query.Take > 0)
+        if (!allHistoryMode && query.Take > 0)
         {
             var distinctPeriods = points.Select(p => p.PeriodStart).Distinct().OrderBy(d => d).ToList();
             var latestPeriod = ComputeLatestPeriod();
@@ -467,7 +556,9 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Remove empty latest groups relative to analysis period -----------------
-        if ((query.ComparePrevious || query.CompareYear) && points.Count > 0)
+        // Only remove empty current rows when comparisons are requested and there is no data to compare;
+        // otherwise keep 0 rows so the selected month is visible.
+        if (!allHistoryMode && (query.ComparePrevious || query.CompareYear) && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod();
 

@@ -15,4 +15,5 @@ public interface IContactService
     Task DeleteAliasAsync(Guid contactId, Guid ownerUserId, Guid aliasId, CancellationToken ct);
     Task<IReadOnlyList<AliasNameDto>> ListAliases(Guid id, Guid userId, CancellationToken ct);
     Task<ContactDto> MergeAsync(Guid ownerUserId, Guid sourceContactId, Guid targetContactId, CancellationToken ct);
+    Task<int> CountAsync(Guid ownerUserId, CancellationToken ct);
 }

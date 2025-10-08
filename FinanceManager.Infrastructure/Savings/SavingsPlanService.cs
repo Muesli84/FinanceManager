@@ -151,4 +151,11 @@ public sealed class SavingsPlanService : ISavingsPlanService
 
         return new SavingsPlanAnalysisDto(id, reachable, target, endDate, accumulated, requiredMonthly, monthsRemaining);
     }
+
+    public Task<int> CountAsync(Guid ownerUserId, bool onlyActive, CancellationToken ct)
+    {
+        var q = _db.SavingsPlans.AsNoTracking().Where(p => p.OwnerUserId == ownerUserId);
+        if (onlyActive) { q = q.Where(p => p.IsActive); }
+        return q.CountAsync(ct);
+    }
 }

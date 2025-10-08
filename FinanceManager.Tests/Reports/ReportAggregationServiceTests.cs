@@ -14,6 +14,7 @@ using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using FinanceManager.Domain.Securities; // added
 
 namespace FinanceManager.Tests.Reports;
 
@@ -329,5 +330,204 @@ public sealed class ReportAggregationServiceTests
         var typeContactM2 = rowsM2.Single(p => p.GroupKey == "Type:Contact");
         typeBankM2.Amount.Should().Be(110m + 210m);
         typeContactM2.Amount.Should().Be(20m + 30m);
+    }
+
+    [Fact]
+    public async Task QueryAsync_SecurityDividendCategory_ShouldInjectCurrentMonthZero_AndCarryPrevious_WhenCurrentHasNoData()
+    {
+        using var db = CreateDb();
+        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        // Setup security category and one security owned by user
+        var secCat = new SecurityCategory(user.Id, "Aktien");
+        db.SecurityCategories.Add(secCat);
+        await db.SaveChangesAsync();
+        var security = new FinanceManager.Domain.Securities.Security(user.Id, "ACME", "ACME-ISIN", null, null, "EUR", secCat.Id);
+        db.Securities.Add(security);
+        await db.SaveChangesAsync();
+
+        // Define analysis month (current) and previous month
+        var analysis = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var prev = analysis.AddMonths(-1);
+
+        // Only previous month has a dividend aggregate (1.4€); current month has no data
+        var aggPrev = new PostingAggregate(PostingKind.Security, null, null, null, security.Id, prev, AggregatePeriod.Month);
+        aggPrev.Add(1.4m);
+        db.PostingAggregates.Add(aggPrev);
+        await db.SaveChangesAsync();
+
+        var sut = new ReportAggregationService(db);
+
+        // Build query: Security, monthly, category grouping, compare previous enabled, filter Dividend subtype
+        var filters = new ReportAggregationFilters(
+            AccountIds: null,
+            ContactIds: null,
+            SavingsPlanIds: null,
+            SecurityIds: null,
+            ContactCategoryIds: null,
+            SavingsPlanCategoryIds: null,
+            SecurityCategoryIds: new[] { secCat.Id },
+            SecuritySubTypes: new[] { 2 } // Dividend
+        );
+        var query = new ReportAggregationQuery(
+            OwnerUserId: user.Id,
+            PostingKind: (int)PostingKind.Security,
+            Interval: ReportInterval.Month,
+            Take: 12,
+            IncludeCategory: true,
+            ComparePrevious: true,
+            CompareYear: false,
+            PostingKinds: null,
+            AnalysisDate: analysis,
+            Filters: filters);
+
+        var result = await sut.QueryAsync(query, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.Interval.Should().Be(ReportInterval.Month);
+        result.ComparedPrevious.Should().BeTrue();
+
+        string CatKey(SecurityCategory cat) => $"Category:{PostingKind.Security}:{cat.Id}";
+        var groupKey = CatKey(secCat);
+
+        // Expect both rows: prev (1.4) and analysis (0) with PreviousAmount=1.4
+        var prevRow = result.Points.Single(p => p.GroupKey == groupKey && p.PeriodStart == prev);
+        prevRow.Amount.Should().Be(1.4m);
+        prevRow.PreviousAmount.Should().BeNull(); // no data two months back
+
+        var currRow = result.Points.Single(p => p.GroupKey == groupKey && p.PeriodStart == analysis);
+        currRow.Amount.Should().Be(0m);
+        currRow.PreviousAmount.Should().Be(1.4m);
+    }
+
+    [Fact]
+    public async Task QueryAsync_SecurityDividendCategory_ShouldNotInjectCurrentMonth_WhenNoComparisons()
+    {
+        using var db = CreateDb();
+        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var secCat = new SecurityCategory(user.Id, "Aktien");
+        db.SecurityCategories.Add(secCat);
+        await db.SaveChangesAsync();
+        var security = new FinanceManager.Domain.Securities.Security(user.Id, "ACME", "ACME-ISIN", null, null, "EUR", secCat.Id);
+        db.Securities.Add(security);
+        await db.SaveChangesAsync();
+
+        var analysis = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var prev = analysis.AddMonths(-1);
+
+        var aggPrev = new PostingAggregate(PostingKind.Security, null, null, null, security.Id, prev, AggregatePeriod.Month);
+        aggPrev.Add(1.4m);
+        db.PostingAggregates.Add(aggPrev);
+        await db.SaveChangesAsync();
+
+        var sut = new ReportAggregationService(db);
+
+        var filters = new ReportAggregationFilters(
+            AccountIds: null,
+            ContactIds: null,
+            SavingsPlanIds: null,
+            SecurityIds: null,
+            ContactCategoryIds: null,
+            SavingsPlanCategoryIds: null,
+            SecurityCategoryIds: new[] { secCat.Id },
+            SecuritySubTypes: new[] { 2 }
+        );
+
+        var query = new ReportAggregationQuery(
+            OwnerUserId: user.Id,
+            PostingKind: (int)PostingKind.Security,
+            Interval: ReportInterval.Month,
+            Take: 12,
+            IncludeCategory: true,
+            ComparePrevious: false,
+            CompareYear: false,
+            PostingKinds: null,
+            AnalysisDate: analysis,
+            Filters: filters);
+
+        var result = await sut.QueryAsync(query, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.Interval.Should().Be(ReportInterval.Month);
+        result.ComparedPrevious.Should().BeFalse();
+        result.ComparedYear.Should().BeFalse();
+
+        string CatKey(SecurityCategory cat) => $"Category:{PostingKind.Security}:{cat.Id}";
+        var groupKey = CatKey(secCat);
+
+        // Only prev row should exist, current analysis month should not be injected without comparisons
+        var prevRow = result.Points.Single(p => p.GroupKey == groupKey && p.PeriodStart == prev);
+        prevRow.Amount.Should().Be(1.4m);
+        prevRow.PreviousAmount.Should().BeNull();
+        prevRow.YearAgoAmount.Should().BeNull();
+
+        var currRow = result.Points.Single(p => p.GroupKey == groupKey && p.PeriodStart == analysis);
+        currRow.Amount.Should().Be(0m);
+        currRow.PreviousAmount.Should().Be(null);
+    }
+
+    [Fact]
+    public async Task QueryAsync_SecurityDividendCategory_SixMonthsAgo_ShouldInjectCurrentZero_AndCarryPrev()
+    {
+        using var db = CreateDb();
+        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var secCat = new SecurityCategory(user.Id, "Aktien");
+        db.SecurityCategories.Add(secCat);
+        await db.SaveChangesAsync();
+        var security = new FinanceManager.Domain.Securities.Security(user.Id, "ACME", "ACME-ISIN", null, null, "EUR", secCat.Id);
+        db.Securities.Add(security);
+        await db.SaveChangesAsync();
+
+        var analysis = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var sixMonthsAgo = analysis.AddMonths(-6);
+
+        // Only six months ago has data
+        var agg = new PostingAggregate(PostingKind.Security, null, null, null, security.Id, sixMonthsAgo, AggregatePeriod.Month);
+        agg.Add(1.4m);
+        db.PostingAggregates.Add(agg);
+        await db.SaveChangesAsync();
+
+        var sut = new ReportAggregationService(db);
+        var filters = new ReportAggregationFilters(
+            AccountIds: null,
+            ContactIds: null,
+            SavingsPlanIds: null,
+            SecurityIds: null,
+            ContactCategoryIds: null,
+            SavingsPlanCategoryIds: null,
+            SecurityCategoryIds: new[] { secCat.Id },
+            SecuritySubTypes: new[] { 2 }
+        );
+
+        var query = new ReportAggregationQuery(
+            OwnerUserId: user.Id,
+            PostingKind: (int)PostingKind.Security,
+            Interval: ReportInterval.Month,
+            Take: 12,
+            IncludeCategory: true,
+            ComparePrevious: true,
+            CompareYear: false,
+            PostingKinds: null,
+            AnalysisDate: analysis,
+            Filters: filters);
+
+        var result = await sut.QueryAsync(query, CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result.ComparedPrevious.Should().BeTrue();
+        result.Interval.Should().Be(ReportInterval.Month);
+
+        string CatKey(SecurityCategory cat) => $"Category:{PostingKind.Security}:{cat.Id}";
+        var groupKey = CatKey(secCat);
+
+        result.Points.Count().Should().Be(0);
     }
 }

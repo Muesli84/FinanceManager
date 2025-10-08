@@ -59,6 +59,10 @@
                             HomeKpiPredefined.AccountsAggregates => Localizer["Chart_Title_AllAccounts"],
                             HomeKpiPredefined.SavingsPlanAggregates => Localizer["Chart_Title_MonthlySaving"],
                             HomeKpiPredefined.SecuritiesDividends => Localizer["Chart_Title_DividendsQuarterly"],
+                            HomeKpiPredefined.ActiveSavingsPlansCount => Localizer["Kpi_ActiveSavingsPlansCount"],
+                            HomeKpiPredefined.ContactsCount => Localizer["Kpi_ContactsCount"],
+                            HomeKpiPredefined.SecuritiesCount => Localizer["Kpi_SecuritiesCount"],
+                            HomeKpiPredefined.OpenStatementDraftsCount => Localizer["Kpi_OpenStatementDraftsCount"],
                             _ => Localizer["KPI"]
                         };
                         <label class="mk-item line"><input type="radio" name="predef" checked="@(_selPredefined==p)" @onchange="_=> _selPredefined = p" /> @label</label>
@@ -260,11 +264,16 @@
                 HomeKpiPredefined.AccountsAggregates => Localizer["Chart_Title_AllAccounts"],
                 HomeKpiPredefined.SavingsPlanAggregates => Localizer["Chart_Title_MonthlySaving"],
                 HomeKpiPredefined.SecuritiesDividends => Localizer["Chart_Title_DividendsQuarterly"],
+                HomeKpiPredefined.ActiveSavingsPlansCount => Localizer["Kpi_ActiveSavingsPlansCount"],
+                HomeKpiPredefined.ContactsCount => Localizer["Kpi_ContactsCount"],
+                HomeKpiPredefined.SecuritiesCount => Localizer["Kpi_SecuritiesCount"],
+                HomeKpiPredefined.OpenStatementDraftsCount => Localizer["Kpi_OpenStatementDraftsCount"],
                 _ => Localizer["KPI"]
             };
             var title = string.IsNullOrWhiteSpace(k.Title) ? titleDefault : k.Title;
 
             builder.OpenElement(i++, "div");
+            builder.AddAttribute(i++, "class", "kpi-content");
             builder.OpenElement(i++, "h4");
             if (EditMode)
             {
@@ -289,6 +298,8 @@
                     builder.AddAttribute(i++, "Take", 7);
                     builder.AddAttribute(i++, "HideIntervalSelector", true);
                     builder.AddAttribute(i++, "InitialPeriod", "Month");
+                    builder.AddAttribute(i++, "Compact", true);
+                    builder.AddAttribute(i++, "BarsHeightPx", 110);
                     builder.CloseComponent();
                     break;
                 case HomeKpiPredefined.SavingsPlanAggregates:
@@ -300,6 +311,8 @@
                     builder.AddAttribute(i++, "InitialPeriod", "Month");
                     builder.AddAttribute(i++, "PositiveColor", "#2d9d4f");
                     builder.AddAttribute(i++, "NegativeColor", "#b55");
+                    builder.AddAttribute(i++, "Compact", true);
+                    builder.AddAttribute(i++, "BarsHeightPx", 110);
                     builder.CloseComponent();
                     break;
                 case HomeKpiPredefined.SecuritiesDividends:
@@ -310,7 +323,94 @@
                     builder.AddAttribute(i++, "InitialPeriod", "Quarter");
                     builder.AddAttribute(i++, "PositiveColor", "#d4a72c");
                     builder.AddAttribute(i++, "NegativeColor", "#b55");
+                    builder.AddAttribute(i++, "Compact", true);
+                    builder.AddAttribute(i++, "BarsHeightPx", 110);
                     builder.CloseComponent();
+                    break;
+                case HomeKpiPredefined.ActiveSavingsPlansCount:
+                    // decorative background icon centered in full tile (positioned relative to .kpi-tile)
+                    builder.OpenElement(i++, "svg"); builder.AddAttribute(i++, "class", "kpi-bg-ico kpi-savings"); builder.AddMarkupContent(i++, "<use href='/icons/sprite.svg#save' />"); builder.CloseElement();
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "kpi-body");
+                    builder.OpenElement(i++, "a");
+                    builder.AddAttribute(i++, "href", "/savings-plans");
+                    builder.AddAttribute(i++, "class", "kpi-number-link kpi-savings");
+                    builder.AddAttribute(i++, "title", Localizer["Kpi_ActiveSavingsPlansCount"]);
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "kpi-number");
+                    builder.AddContent(i++, (RenderFragment)(builder2 =>
+                    {
+                        var j = 0;
+                        builder2.OpenComponent<NumericKpi>(j++);
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/savings-plans/count?onlyActive=true"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.CloseComponent();
+                    }));
+                    builder.CloseElement();
+                    builder.CloseElement(); // a
+                    builder.CloseElement(); // kpi-body
+                    break;
+                case HomeKpiPredefined.ContactsCount:
+                    builder.OpenElement(i++, "svg"); builder.AddAttribute(i++, "class", "kpi-bg-ico kpi-contacts"); builder.AddMarkupContent(i++, "<use href='/icons/sprite.svg#groups' />"); builder.CloseElement();
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "kpi-body");
+                    builder.OpenElement(i++, "a");
+                    builder.AddAttribute(i++, "href", "/contacts");
+                    builder.AddAttribute(i++, "class", "kpi-number-link kpi-contacts");
+                    builder.AddAttribute(i++, "title", Localizer["Kpi_ContactsCount"]);
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "kpi-number");
+                    builder.AddContent(i++, (RenderFragment)(builder2 =>
+                    {
+                        var j = 0;
+                        builder2.OpenComponent<NumericKpi>(j++);
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/contacts/count"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.CloseComponent();
+                    }));
+                    builder.CloseElement();
+                    builder.CloseElement(); // a
+                    builder.CloseElement(); // kpi-body
+                    break;
+                case HomeKpiPredefined.SecuritiesCount:
+                    builder.OpenElement(i++, "svg"); builder.AddAttribute(i++, "class", "kpi-bg-ico kpi-securities"); builder.AddMarkupContent(i++, "<use href='/icons/sprite.svg#postings' />"); builder.CloseElement();
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "kpi-body");
+                    builder.OpenElement(i++, "a");
+                    builder.AddAttribute(i++, "href", "/securities");
+                    builder.AddAttribute(i++, "class", "kpi-number-link kpi-securities");
+                    builder.AddAttribute(i++, "title", Localizer["Kpi_SecuritiesCount"]);
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "kpi-number");
+                    builder.AddContent(i++, (RenderFragment)(builder2 =>
+                    {
+                        var j = 0;
+                        builder2.OpenComponent<NumericKpi>(j++);
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/securities/count?onlyActive=true"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.CloseComponent();
+                    }));
+                    builder.CloseElement();
+                    builder.CloseElement(); // a
+                    builder.CloseElement(); // kpi-body
+                    break;
+                case HomeKpiPredefined.OpenStatementDraftsCount:
+                    builder.OpenElement(i++, "svg"); builder.AddAttribute(i++, "class", "kpi-bg-ico kpi-drafts"); builder.AddMarkupContent(i++, "<use href='/icons/sprite.svg#upload' />"); builder.CloseElement();
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "kpi-body");
+                    builder.OpenElement(i++, "a");
+                    builder.AddAttribute(i++, "href", "/statement-drafts");
+                    builder.AddAttribute(i++, "class", "kpi-number-link kpi-drafts");
+                    builder.AddAttribute(i++, "title", Localizer["Kpi_OpenStatementDraftsCount"]);
+                    builder.OpenElement(i++, "div");
+                    builder.AddAttribute(i++, "class", "kpi-number");
+                    builder.AddContent(i++, (RenderFragment)(builder2 =>
+                    {
+                        var j = 0;
+                        builder2.OpenComponent<NumericKpi>(j++);
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/statement-drafts/count"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.CloseComponent();
+                    }));
+                    builder.CloseElement();
+                    builder.CloseElement(); // a
+                    builder.CloseElement(); // kpi-body
                     break;
             }
             builder.CloseElement();
@@ -358,6 +458,7 @@
             builder.AddAttribute(i++, "Prev", data.Prev);
             builder.AddAttribute(i++, "Year", data.Year);
             builder.AddAttribute(i++, "Series", series);
+            builder.AddAttribute(i++, "PrimaryKind", data.Kind);
             builder.AddAttribute(i++, "Clickable", !EditMode);
             builder.AddAttribute(i++, "OnClick", EventCallback.Factory.Create(this, () => OnOpenFavorite(k)));
             builder.CloseComponent();
@@ -447,7 +548,7 @@
                               .OrderBy(g => g.Key).LastOrDefault()?
                               .Where(p => p.YearAgoAmount.HasValue).Sum(p => p.YearAgoAmount!.Value);
             }
-            _favData[k.Id] = new FavKpiData(amount, prev, year, series);
+            _favData[k.Id] = new FavKpiData(amount, prev, year, series, fav.PostingKind);
         }
         catch { }
         finally
@@ -471,13 +572,14 @@
     private sealed record AggregationResponse(ReportInterval Interval, List<PointDto> Points, bool ComparedPrevious, bool ComparedYear);
     private sealed record PointDto(DateTime PeriodStart, string GroupKey, string GroupName, string? CategoryName, decimal Amount, string? ParentGroupKey, decimal? PreviousAmount, decimal? YearAgoAmount);
 
-    private sealed record FavKpiData(decimal Amount, decimal? Prev, decimal? Year, List<SeriesPoint> Series);
+    private sealed record FavKpiData(decimal Amount, decimal? Prev, decimal? Year, List<SeriesPoint> Series, int Kind);
+    private sealed record CountResp(int count);
     private sealed record SeriesPoint(DateTime Date, decimal Amount);
 }
 
 <style>
-.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.75rem; margin-top:1.5rem; }
-.kpi-tile { background:#141a20; border:1px solid #2a323a; border-radius:8px; padding:.5rem; aspect-ratio:1/1; display:flex; flex-direction:column; justify-content:flex-start; position:relative; }
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.75rem; margin-top:1.5rem; }
+.kpi-tile { background:#141a20; border:1px solid #2a323a; border-radius:8px; padding:.5rem; aspect-ratio:1/1; display:flex; flex-direction:column; justify-content:flex-start; position:relative; overflow:hidden; }
 .kpi-tile h4 { font-size:.7rem; margin:.1rem 0 .25rem 0; }
 
 /* add tile */
@@ -493,7 +595,7 @@
 .kpi-move .ico { width:14px; height:14px; fill:#8fb0ff; }
 
 /* content */
-.fav-kpi { display:flex; flex-direction:column; gap:.25rem; }
+.fav-kpi { display:flex; flex-direction:column; gap:.25rem; height:100%; }
 .fav-kpi .clickable { cursor:pointer; }
 .small-loading { font-size:.65rem; opacity:.7; }
 
@@ -514,4 +616,15 @@
 .btn { background:#2d6cdf; color:#fff; border:0; border-radius:6px; padding:.4rem .75rem; cursor:pointer; }
 .btn.secondary { background:transparent; border:1px solid #2a323a; color:#cbd5e1; }
 .small-empty { opacity:.7; font-size:.8rem; padding:.25rem .35rem; }
+.kpi-content{ position:relative; display:flex; flex-direction:column; flex:1; min-height:0; }
+.kpi-number { font-size:2.2rem; font-weight:700; text-align:center; margin:0 0 .4rem 0; position:relative; z-index:1; }
+.kpi-body{ position:relative; flex:1; display:flex; }
+.kpi-number-link { color:inherit; text-decoration:none; display:flex; align-items:flex-end; justify-content:center; width:100%; height:100%; position:relative; }
+
+/* decorative background icons for numeric KPIs */
+.kpi-bg-ico{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:84px; height:84px; opacity:.09; pointer-events:none; z-index:0; fill:currentColor; stroke:currentColor; }
+.kpi-savings .kpi-bg-ico, .kpi-bg-ico.kpi-savings{ color:#2d9d4f; }
+.kpi-contacts .kpi-bg-ico, .kpi-bg-ico.kpi-contacts{ color:#8fb0ff; }
+.kpi-securities .kpi-bg-ico, .kpi-bg-ico.kpi-securities{ color:#d4a72c; }
+.kpi-drafts .kpi-bg-ico, .kpi-bg-ico.kpi-drafts{ color:#6aa84f; }
 </style>

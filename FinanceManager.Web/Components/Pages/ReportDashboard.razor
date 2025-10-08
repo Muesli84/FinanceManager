@@ -67,12 +67,12 @@ else
             </div>
             <div class="filter-group">
                 <div class="group-title">@Localizer["FilterGroup_Comparisons"]</div>
-                <div class="row chk"><label><input type="checkbox" @bind="_comparePrevious" /> @Localizer["Label_ComparePrev"]</label></div>
-                <div class="row chk"><label><input type="checkbox" @bind="_compareYear" /> @Localizer["Label_CompareYear"]</label></div>
+                <div class="row chk"><label><input type="checkbox" @bind="_comparePrevious" disabled="@(_interval == ReportInterval.AllHistory)" /> @Localizer["Label_ComparePrev"]</label></div>
+                <div class="row chk"><label><input type="checkbox" @bind="_compareYear" disabled="@(_interval == ReportInterval.AllHistory)" /> @Localizer["Label_CompareYear"]</label></div>
             </div>
             <div class="filter-group">
                 <div class="group-title">@Localizer["FilterGroup_Chart"]</div>
-                <div class="row chk"><label><input type="checkbox" @bind="_showChart" /> @Localizer["Label_ShowChart"]</label></div>
+                <div class="row chk"><label><input type="checkbox" @bind="_showChart" disabled="@(_interval == ReportInterval.AllHistory)" /> @Localizer["Label_ShowChart"]</label></div>
             </div>
         </div>
     }
@@ -88,7 +88,7 @@ else
         }
         else if((_vm?.Points.Count ?? 0) > 0)
         {
-            @if(_showChart)
+            @if(_showChart && _interval != ReportInterval.AllHistory)
             {
                 <div class="mini-chart" aria-label="@Localizer["Aria_Chart"]">
                     @{ var byPeriod = _vm!.GetChartByPeriod();
@@ -255,6 +255,19 @@ else
                         <div class="small-empty">@Localizer["NoData"]</div>
                     }
                 </div>
+                @if ((PostingKind)_vm!.GetActiveFilterTabKind() == PostingKind.Security)
+                {
+                    <div class="subtype-list" style="margin-top:.5rem;">
+                        <div class="group-title" style="margin-bottom:.25rem;">@Localizer["FilterGroup_SecurityTypes"]</div>
+                        <div class="scroll-box option-list">
+                            <label class="mk-item line"><input type="checkbox" checked="@_vm!.IsSecuritySubTypeSelectedTemp(0)" @onchange="e => _vm!.ToggleTempSecuritySubType(0, e.Value is bool b && b)" /> @Localizer["SecurityType_Buy"]</label>
+                            <label class="mk-item line"><input type="checkbox" checked="@_vm!.IsSecuritySubTypeSelectedTemp(1)" @onchange="e => _vm!.ToggleTempSecuritySubType(1, e.Value is bool b && b)" /> @Localizer["SecurityType_Sell"]</label>
+                            <label class="mk-item line"><input type="checkbox" checked="@_vm!.IsSecuritySubTypeSelectedTemp(2)" @onchange="e => _vm!.ToggleTempSecuritySubType(2, e.Value is bool b && b)" /> @Localizer["SecurityType_Dividend"]</label>
+                            <label class="mk-item line"><input type="checkbox" checked="@_vm!.IsSecuritySubTypeSelectedTemp(3)" @onchange="e => _vm!.ToggleTempSecuritySubType(3, e.Value is bool b && b)" /> @Localizer["SecurityType_Fee"]</label>
+                            <label class="mk-item line"><input type="checkbox" checked="@_vm!.IsSecuritySubTypeSelectedTemp(4)" @onchange="e => _vm!.ToggleTempSecuritySubType(4, e.Value is bool b && b)" /> @Localizer["SecurityType_Tax"]</label>
+                        </div>
+                    </div>
+                }
             }
             <div class="dialog-actions">
                 <button class="btn" @onclick="(()=> _vm!.ApplyTempAndReloadAsync(_analysisMonth))" disabled="@(_vm!.FilterOptionsLoading)">@Localizer["FilterDialog_Apply"]</button>
@@ -622,7 +635,8 @@ else
         _vm!.SelectedContactCategories.Clear(); foreach (var id in fav.Filters?.ContactCategoryIds ?? Array.Empty<Guid>()) { _vm.SelectedContactCategories.Add(id); }
         _vm!.SelectedSavingsCategories.Clear(); foreach (var id in fav.Filters?.SavingsPlanCategoryIds ?? Array.Empty<Guid>()) { _vm.SelectedSavingsCategories.Add(id); }
         _vm!.SelectedSecurityCategories.Clear(); foreach (var id in fav.Filters?.SecurityCategoryIds ?? Array.Empty<Guid>()) { _vm.SelectedSecurityCategories.Add(id); }
-        _ = _vm!.LoadFilterOptionsAsync();
+        _vm!.SelectedSecuritySubTypes.Clear(); foreach (var st in fav.Filters?.SecuritySubTypes ?? Array.Empty<int>()) { _vm.SelectedSecuritySubTypes.Add(st); }
+         _ = _vm!.LoadFilterOptionsAsync();
         RebuildRibbon();
         _ = LoadAsync();
     }
