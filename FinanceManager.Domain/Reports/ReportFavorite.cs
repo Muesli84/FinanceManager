@@ -58,6 +58,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     public string? ContactCategoryIdsCsv { get; private set; }
     public string? SavingsPlanCategoryIdsCsv { get; private set; }
     public string? SecurityCategoryIdsCsv { get; private set; }
+    public string? SecuritySubTypesCsv { get; private set; }
 
     public void Rename(string name)
     {
@@ -102,7 +103,8 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         IEnumerable<Guid>? securityIds,
         IEnumerable<Guid>? contactCategoryIds,
         IEnumerable<Guid>? savingsPlanCategoryIds,
-        IEnumerable<Guid>? securityCategoryIds)
+        IEnumerable<Guid>? securityCategoryIds,
+        IEnumerable<int>? securitySubTypes)
     {
         AccountIdsCsv = ToCsv(accountIds);
         ContactIdsCsv = ToCsv(contactIds);
@@ -111,6 +113,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         ContactCategoryIdsCsv = ToCsv(contactCategoryIds);
         SavingsPlanCategoryIdsCsv = ToCsv(savingsPlanCategoryIds);
         SecurityCategoryIdsCsv = ToCsv(securityCategoryIds);
+        SecuritySubTypesCsv = ToCsvInt(securitySubTypes);
         Touch();
     }
 
@@ -120,7 +123,8 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
             IReadOnlyCollection<Guid>? Securities,
             IReadOnlyCollection<Guid>? ContactCategories,
             IReadOnlyCollection<Guid>? SavingsPlanCategories,
-            IReadOnlyCollection<Guid>? SecurityCategories) GetFilters()
+            IReadOnlyCollection<Guid>? SecurityCategories,
+            IReadOnlyCollection<int>? SecuritySubTypes) GetFilters()
     {
         return (
             FromCsv(AccountIdsCsv),
@@ -129,11 +133,15 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
             FromCsv(SecurityIdsCsv),
             FromCsv(ContactCategoryIdsCsv),
             FromCsv(SavingsPlanCategoryIdsCsv),
-            FromCsv(SecurityCategoryIdsCsv)
+            FromCsv(SecurityCategoryIdsCsv),
+            FromCsvInt(SecuritySubTypesCsv)
         );
     }
 
     private static string? ToCsv(IEnumerable<Guid>? ids) => ids == null ? null : string.Join(",", ids.Distinct());
+    private static string? ToCsvInt(IEnumerable<int>? values) => values == null ? null : string.Join(",", values.Distinct());
     private static IReadOnlyCollection<Guid>? FromCsv(string? csv)
         => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Guid.Parse).ToArray();
+    private static IReadOnlyCollection<int>? FromCsvInt(string? csv)
+        => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse).ToArray();
 }

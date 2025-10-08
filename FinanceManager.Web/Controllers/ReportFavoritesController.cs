@@ -49,6 +49,7 @@ public sealed class ReportFavoritesController : ControllerBase
         public IReadOnlyCollection<Guid>? ContactCategoryIds { get; set; }
         public IReadOnlyCollection<Guid>? SavingsPlanCategoryIds { get; set; }
         public IReadOnlyCollection<Guid>? SecurityCategoryIds { get; set; }
+        public IReadOnlyCollection<int>? SecuritySubTypes { get; set; }
     }
 
     public sealed class CreateRequest
@@ -74,7 +75,7 @@ public sealed class ReportFavoritesController : ControllerBase
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
         {
-            var filters = req.Filters == null ? null : new ReportFavoriteFiltersDto(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds);
+            var filters = req.Filters == null ? null : new ReportFavoriteFiltersDto(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds, req.Filters.SecuritySubTypes);
             var dto = await _favorites.CreateAsync(
                 _current.UserId,
                 new ReportFavoriteCreateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters),
@@ -119,7 +120,7 @@ public sealed class ReportFavoritesController : ControllerBase
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
         {
-            var filters = req.Filters == null ? null : new ReportFavoriteFiltersDto(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds);
+            var filters = req.Filters == null ? null : new ReportFavoriteFiltersDto(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds, req.Filters.SecuritySubTypes);
             var dto = await _favorites.UpdateAsync(
                 id,
                 _current.UserId,

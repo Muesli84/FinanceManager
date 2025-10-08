@@ -21,7 +21,8 @@ public sealed record ReportFavoriteFiltersDto(
     IReadOnlyCollection<Guid>? SecurityIds,
     IReadOnlyCollection<Guid>? ContactCategoryIds,
     IReadOnlyCollection<Guid>? SavingsPlanCategoryIds,
-    IReadOnlyCollection<Guid>? SecurityCategoryIds
+    IReadOnlyCollection<Guid>? SecurityCategoryIds,
+    IReadOnlyCollection<int>? SecuritySubTypes
 );
 
 public sealed record ReportFavoriteDto(

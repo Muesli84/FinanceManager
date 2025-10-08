@@ -42,6 +42,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     public HashSet<Guid> SelectedContactCategories { get; private set; } = new();
     public HashSet<Guid> SelectedSavingsCategories { get; private set; } = new();
     public HashSet<Guid> SelectedSecurityCategories { get; private set; } = new();
+    // New: security posting subtype filter (by enum int values)
+    public HashSet<int> SelectedSecuritySubTypes { get; private set; } = new();
 
     public List<PointDto> Points { get; private set; } = new();
 
@@ -76,11 +78,14 @@ public sealed class ReportDashboardViewModel : ViewModelBase
 
     public FiltersPayload? BuildFiltersPayload()
     {
-        if (!IncludeCategory && SelectedAccounts.Count == 0 && SelectedContacts.Count == 0 && SelectedSavingsPlans.Count == 0 && SelectedSecurities.Count == 0)
+        var hasEntity = SelectedAccounts.Count > 0 || SelectedContacts.Count > 0 || SelectedSavingsPlans.Count > 0 || SelectedSecurities.Count > 0;
+        var hasCats = SelectedContactCategories.Count > 0 || SelectedSavingsCategories.Count > 0 || SelectedSecurityCategories.Count > 0 || SelectedAccounts.Count > 0;
+        var hasSecTypes = SelectedSecuritySubTypes.Count > 0;
+        if (!IncludeCategory && !hasEntity && !hasSecTypes)
         {
             return null;
         }
-        if (IncludeCategory && SelectedContactCategories.Count == 0 && SelectedSavingsCategories.Count == 0 && SelectedSecurityCategories.Count == 0 && SelectedAccounts.Count == 0)
+        if (IncludeCategory && !hasCats && !hasSecTypes)
         {
             return null;
         }
@@ -93,7 +98,9 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 null,
                 SelectedContactCategories.ToList(),
                 SelectedSavingsCategories.ToList(),
-                SelectedSecurityCategories.ToList());
+                SelectedSecurityCategories.ToList(),
+                SelectedSecuritySubTypes.ToList()
+            );
         }
         else
         {
@@ -104,7 +111,9 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 SelectedSecurities.ToList(),
                 null,
                 null,
-                null);
+                null,
+                SelectedSecuritySubTypes.ToList()
+            );
         }
     }
 
@@ -117,6 +126,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         SelectedContactCategories.Clear();
         SelectedSavingsCategories.Clear();
         SelectedSecurityCategories.Clear();
+        SelectedSecuritySubTypes.Clear();
     }
 
     public async Task ReloadAsync(DateTime? analysisDate, CancellationToken ct = default)
@@ -287,7 +297,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 SecurityIds = filters.SecurityIds,
                 ContactCategoryIds = filters.ContactCategoryIds,
                 SavingsPlanCategoryIds = filters.SavingsPlanCategoryIds,
-                SecurityCategoryIds = filters.SecurityCategoryIds
+                SecurityCategoryIds = filters.SecurityCategoryIds,
+                SecuritySubTypes = filters.SecuritySubTypes
             }
         };
         var resp = await _http.PostAsJsonAsync("/api/report-favorites", payload, ct);
@@ -317,7 +328,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 SecurityIds = filters.SecurityIds,
                 ContactCategoryIds = filters.ContactCategoryIds,
                 SavingsPlanCategoryIds = filters.SavingsPlanCategoryIds,
-                SecurityCategoryIds = filters.SecurityCategoryIds
+                SecurityCategoryIds = filters.SecurityCategoryIds,
+                SecuritySubTypes = filters.SecuritySubTypes
             }
         };
         var resp = await _http.PutAsJsonAsync($"/api/report-favorites/{id}", payload, ct);
@@ -403,7 +415,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         IReadOnlyCollection<Guid>? SecurityIds,
         IReadOnlyCollection<Guid>? ContactCategoryIds,
         IReadOnlyCollection<Guid>? SavingsPlanCategoryIds,
-        IReadOnlyCollection<Guid>? SecurityCategoryIds
+        IReadOnlyCollection<Guid>? SecurityCategoryIds,
+        IReadOnlyCollection<int>? SecuritySubTypes // new
     );
 
     public sealed record QueryRequest(int PostingKind, int Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate, FiltersPayload? Filters);
@@ -437,6 +450,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         public IReadOnlyCollection<Guid>? ContactCategoryIds { get; set; }
         public IReadOnlyCollection<Guid>? SavingsPlanCategoryIds { get; set; }
         public IReadOnlyCollection<Guid>? SecurityCategoryIds { get; set; }
+        public IReadOnlyCollection<int>? SecuritySubTypes { get; set; } // new
     }
 
     // Filter options (for dialog)
@@ -563,6 +577,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     public HashSet<Guid> TempContactCats { get; private set; } = new();
     public HashSet<Guid> TempSavingsCats { get; private set; } = new();
     public HashSet<Guid> TempSecurityCats { get; private set; } = new();
+    public HashSet<int> TempSecuritySubTypes { get; private set; } = new(); // new
 
     public void OpenFilterDialog()
     {
@@ -573,6 +588,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         TempContactCats = new HashSet<Guid>(SelectedContactCategories);
         TempSavingsCats = new HashSet<Guid>(SelectedSavingsCategories);
         TempSecurityCats = new HashSet<Guid>(SelectedSecurityCategories);
+        TempSecuritySubTypes = new HashSet<int>(SelectedSecuritySubTypes);
         ShowFilterDialog = true;
         ActiveFilterTabKind = SelectedKinds.FirstOrDefault();
         _ = LoadFilterOptionsAsync();
@@ -635,24 +651,28 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         {
             var entityCount = TempAccounts.Count + TempContacts.Count + TempSavings.Count + TempSecurities.Count;
             var catCount = TempContactCats.Count + TempSavingsCats.Count + TempSecurityCats.Count;
-            return IncludeCategory ? (catCount + TempAccounts.Count) : entityCount;
+            // Include subtype chips in count for visibility
+            var typeCount = TempSecuritySubTypes.Count;
+            return IncludeCategory ? (catCount + TempAccounts.Count + typeCount) : (entityCount + typeCount);
         }
         else
         {
             var kind = PrimaryKind;
+            var typeCount = TempSecuritySubTypes.Count;
             if (IncludeCategory && IsCategorySupported(PrimaryKind))
             {
-                return kind switch
+                var baseCount = kind switch
                 {
                     1 => TempContactCats.Count,
                     2 => TempSavingsCats.Count,
                     3 => TempSecurityCats.Count,
                     _ => 0
                 };
+                return baseCount + typeCount;
             }
             else
             {
-                return kind switch
+                var baseCount = kind switch
                 {
                     0 => TempAccounts.Count,
                     1 => TempContacts.Count,
@@ -660,6 +680,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                     3 => TempSecurities.Count,
                     _ => 0
                 };
+                return baseCount + typeCount;
             }
         }
     }
@@ -673,6 +694,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         TempContactCats.Clear();
         TempSavingsCats.Clear();
         TempSecurityCats.Clear();
+        TempSecuritySubTypes.Clear();
         RaiseStateChanged();
     }
 
@@ -685,8 +707,20 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         SelectedContactCategories.Clear(); foreach (var id in TempContactCats) { SelectedContactCategories.Add(id); }
         SelectedSavingsCategories.Clear(); foreach (var id in TempSavingsCats) { SelectedSavingsCategories.Add(id); }
         SelectedSecurityCategories.Clear(); foreach (var id in TempSecurityCats) { SelectedSecurityCategories.Add(id); }
+        SelectedSecuritySubTypes.Clear(); foreach (var t in TempSecuritySubTypes) { SelectedSecuritySubTypes.Add(t); }
         ShowFilterDialog = false;
         await ReloadAsync(analysisDate, ct);
+    }
+
+    // UI helpers for security subtypes in temp buffer
+    public bool IsSecuritySubTypeSelectedTemp(int subType)
+        => TempSecuritySubTypes.Contains(subType);
+
+    public void ToggleTempSecuritySubType(int subType, bool isChecked)
+    {
+        if (isChecked) { TempSecuritySubTypes.Add(subType); }
+        else { TempSecuritySubTypes.Remove(subType); }
+        RaiseStateChanged();
     }
 
     public int GetSelectedFiltersCount()
@@ -695,24 +729,27 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         {
             var entityCount = SelectedAccounts.Count + SelectedContacts.Count + SelectedSavingsPlans.Count + SelectedSecurities.Count;
             var catCount = SelectedContactCategories.Count + SelectedSavingsCategories.Count + SelectedSecurityCategories.Count;
-            return IncludeCategory ? (catCount + SelectedAccounts.Count) : entityCount;
+            var typeCount = SelectedSecuritySubTypes.Count;
+            return IncludeCategory ? (catCount + SelectedAccounts.Count + typeCount) : (entityCount + typeCount);
         }
         else
         {
             var kind = PrimaryKind;
+            var typeCount = SelectedSecuritySubTypes.Count;
             if (IncludeCategory && IsCategorySupported(PrimaryKind))
             {
-                return kind switch
+                var baseCount = kind switch
                 {
                     1 => SelectedContactCategories.Count,
                     2 => SelectedSavingsCategories.Count,
                     3 => SelectedSecurityCategories.Count,
                     _ => 0
                 };
+                return baseCount + typeCount;
             }
             else
             {
-                return kind switch
+                var baseCount = kind switch
                 {
                     0 => SelectedAccounts.Count,
                     1 => SelectedContacts.Count,
@@ -720,6 +757,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                     3 => SelectedSecurities.Count,
                     _ => 0
                 };
+                return baseCount + typeCount;
             }
         }
     }

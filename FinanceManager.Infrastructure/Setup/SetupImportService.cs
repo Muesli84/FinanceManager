@@ -616,21 +616,22 @@ public sealed class SetupImportService : ISetupImportService
                 static IReadOnlyCollection<Guid>? ToGuids(string? csv)
                     => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Guid.Parse).ToArray();
 
-                entity.SetFilters(ToGuids(accCsv), ToGuids(conCsv), ToGuids(savCsv), ToGuids(secCsv), ToGuids(ccatCsv), ToGuids(scatCsv), ToGuids(secatCsv));
+                entity.SetFilters(ToGuids(accCsv), ToGuids(conCsv), ToGuids(savCsv), ToGuids(secCsv), ToGuids(ccatCsv), ToGuids(scatCsv), ToGuids(secatCsv), null);
 
-                // Preserve Id when present to allow HomeKpi reference resolution
-                if (f.TryGetProperty("Id", out var idEl) && idEl.ValueKind == JsonValueKind.String && Guid.TryParse(idEl.GetString(), out var id))
+                // Optional: restore SecuritySubTypesCsv if present in backup v3
+                if (f.TryGetProperty("SecuritySubTypesCsv", out var stCsvEl))
                 {
-                    _db.Entry(entity).Property("Id").CurrentValue = id;
-                }
-                // Preserve Created/Modified if available
-                if (f.TryGetProperty("CreatedUtc", out var cuEl) && cuEl.ValueKind == JsonValueKind.String && DateTime.TryParse(cuEl.GetString(), out var cu))
-                {
-                    _db.Entry(entity).Property("CreatedUtc").CurrentValue = DateTime.SpecifyKind(cu, DateTimeKind.Utc);
-                }
-                if (f.TryGetProperty("ModifiedUtc", out var muEl) && muEl.ValueKind == JsonValueKind.String && DateTime.TryParse(muEl.GetString(), out var mu))
-                {
-                    _db.Entry(entity).Property("ModifiedUtc").CurrentValue = DateTime.SpecifyKind(mu, DateTimeKind.Utc);
+                    var stCsv = stCsvEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(stCsv))
+                    {
+                        var ints = stCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                            .Select(s => int.TryParse(s, out var v) ? v : (int?)null)
+                            .Where(v => v.HasValue).Select(v => v!.Value).ToArray();
+                        if (ints.Length > 0)
+                        {
+                            _db.Entry(entity).Property("SecuritySubTypesCsv").CurrentValue = string.Join(',', ints);
+                        }
+                    }
                 }
 
                 _db.ReportFavorites.Add(entity);

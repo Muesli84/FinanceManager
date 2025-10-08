@@ -318,4 +318,22 @@
   <data name="Ribbon_ClearFilters" xml:space="preserve">
     <value>Remove</value>
   </data>
+  <data name="FilterGroup_SecurityTypes" xml:space="preserve">
+    <value>Booking subtypes</value>
+  </data>
+  <data name="SecurityType_Buy" xml:space="preserve">
+    <value>Buy</value>
+  </data>
+  <data name="SecurityType_Sell" xml:space="preserve">
+    <value>Sell</value>
+  </data>
+  <data name="SecurityType_Dividend" xml:space="preserve">
+    <value>Dividend</value>
+  </data>
+  <data name="SecurityType_Fee" xml:space="preserve">
+    <value>Fee</value>
+  </data>
+  <data name="SecurityType_Tax" xml:space="preserve">
+    <value>Tax</value>
+  </data>
 </root>

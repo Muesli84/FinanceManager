@@ -22,7 +22,8 @@ public sealed record ReportAggregationFilters(
     IReadOnlyCollection<Guid>? SecurityIds = null,
     IReadOnlyCollection<Guid>? ContactCategoryIds = null,
     IReadOnlyCollection<Guid>? SavingsPlanCategoryIds = null,
-    IReadOnlyCollection<Guid>? SecurityCategoryIds = null
+    IReadOnlyCollection<Guid>? SecurityCategoryIds = null,
+    IReadOnlyCollection<int>? SecuritySubTypes = null // new: filter securities by posting sub types (Buy/Sell/Dividend/Fee/Tax)
 );
 
 public sealed record ReportAggregationQuery(

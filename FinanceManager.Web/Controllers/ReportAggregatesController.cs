@@ -27,7 +27,8 @@ public sealed class ReportAggregatesController : ControllerBase
         IReadOnlyCollection<Guid>? SecurityIds,
         IReadOnlyCollection<Guid>? ContactCategoryIds,
         IReadOnlyCollection<Guid>? SavingsPlanCategoryIds,
-        IReadOnlyCollection<Guid>? SecurityCategoryIds
+        IReadOnlyCollection<Guid>? SecurityCategoryIds,
+        IReadOnlyCollection<int>? SecuritySubTypes // new
     )
     {
         public ReportAggregationFilters ToModel() => new(
@@ -37,7 +38,8 @@ public sealed class ReportAggregatesController : ControllerBase
             SecurityIds,
             ContactCategoryIds,
             SavingsPlanCategoryIds,
-            SecurityCategoryIds
+            SecurityCategoryIds,
+            SecuritySubTypes
         );
     }
 
