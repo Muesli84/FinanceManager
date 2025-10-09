@@ -47,7 +47,8 @@ public sealed class ReportAggregationService : IReportAggregationService
                 a.AccountId,
                 a.ContactId,
                 a.SavingsPlanId,
-                a.SecurityId
+                a.SecurityId,
+                a.SecuritySubType
             }).ToListAsync(ct);
 
         if (raw.Count == 0)
@@ -160,7 +161,9 @@ public sealed class ReportAggregationService : IReportAggregationService
             var allowedContactCats = ToSet(f.ContactCategoryIds);
             var allowedSavingsCats = ToSet(f.SavingsPlanCategoryIds);
             var allowedSecurityCats = ToSet(f.SecurityCategoryIds);
-            var allowedSecSubTypes = f.SecuritySubTypes is { Count: > 0 } ? f.SecuritySubTypes.ToHashSet() : null; // new
+            // Only honor subtype filter when Security kind is actually part of the request
+            var includesSecurity = kinds.Contains(PostingKind.Security);
+            var allowedSecSubTypes = includesSecurity && f.SecuritySubTypes is { Count: > 0 } ? f.SecuritySubTypes.ToHashSet() : null; // new
 
             bool hasAnyEntityFilter = allowedAccounts != null || allowedContacts != null || allowedSavings != null || allowedSecurities != null;
             bool hasAnyCategoryFilter = allowedContactCats != null || allowedSavingsCats != null || allowedSecurityCats != null;
@@ -168,22 +171,6 @@ public sealed class ReportAggregationService : IReportAggregationService
 
             if (hasAnyEntityFilter || (query.IncludeCategory && hasAnyCategoryFilter) || hasAnySecSubTypeFilter)
             {
-                // Preload mapping SecurityId -> SubType from postings when needed
-                Dictionary<Guid, int>? securityIdToSubType = null;
-                if (hasAnySecSubTypeFilter && kinds.Contains(PostingKind.Security))
-                {
-                    var secIds = raw.Where(r => r.SecurityId.HasValue).Select(r => r.SecurityId!.Value).Distinct().ToList();
-                    if (secIds.Count > 0)
-                    {
-                        // Look at latest posting per security to infer typical subtype fallback (best effort)
-                        securityIdToSubType = await _db.Postings.AsNoTracking()
-                            .Where(p => p.Kind == PostingKind.Security && p.SecurityId != null && secIds.Contains(p.SecurityId.Value) && p.SecuritySubType != null)
-                            .GroupBy(p => p.SecurityId!.Value)
-                            .Select(g => new { SecurityId = g.Key, SubType = (int)g.OrderByDescending(x => x.BookingDate).ThenByDescending(x => x.Id).Select(x => x.SecuritySubType!.Value).First() })
-                            .ToDictionaryAsync(x => x.SecurityId, x => x.SubType, ct);
-                    }
-                }
-
                 raw = raw.Where(r =>
                 {
                     switch (r.Kind)
@@ -230,14 +217,11 @@ public sealed class ReportAggregationService : IReportAggregationService
                             if (!entityOk) { return false; }
 
                             // then optional sub type filter (best effort on aggregate level)
-                            if (allowedSecSubTypes != null && r.SecurityId.HasValue)
+                            if (allowedSecSubTypes != null)
                             {
-                                if (securityIdToSubType == null || !securityIdToSubType.TryGetValue(r.SecurityId.Value, out var st))
-                                {
-                                    // If subtype unknown, conservatively include (can't decide at aggregate level)
-                                    return true;
-                                }
-                                return allowedSecSubTypes.Contains(st);
+                                // Only keep when aggregate has a matching subtype; if null treat as non-match
+                                if (!r.SecuritySubType.HasValue) { return false; }
+                                return allowedSecSubTypes.Contains((int)r.SecuritySubType.Value);
                             }
                             return true;
                         default:
@@ -257,18 +241,18 @@ public sealed class ReportAggregationService : IReportAggregationService
 
         // 1) Aggregate entity (leaf) level per period
         var entityGroups = raw.GroupBy(r => new { r.Kind, r.PeriodStart, r.AccountId, r.ContactId, r.SavingsPlanId, r.SecurityId })
-            .Select(g => new
-            {
-                g.Key.Kind,
-                g.Key.PeriodStart,
-                Amount = g.Sum(x => x.Amount),
-                g.Key.AccountId,
-                g.Key.ContactId,
-                g.Key.SavingsPlanId,
-                g.Key.SecurityId
-            })
-            .OrderBy(g => g.PeriodStart)
-            .ToList();
+             .Select(g => new
+             {
+                 g.Key.Kind,
+                 g.Key.PeriodStart,
+                 Amount = g.Sum(x => x.Amount),
+                 g.Key.AccountId,
+                 g.Key.ContactId,
+                 g.Key.SavingsPlanId,
+                 g.Key.SecurityId
+             })
+             .OrderBy(g => g.PeriodStart)
+             .ToList();
 
         // 2) Build category & type aggregates (if needed)
         // Entity rows (with parent assignment if multi or category grouping active)

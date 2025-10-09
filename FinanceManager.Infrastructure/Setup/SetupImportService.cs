@@ -175,6 +175,7 @@ public sealed class SetupImportService : ISetupImportService
         var accountMap = new Dictionary<Guid, Guid>();
         var draftMap = new Dictionary<Guid, Guid>();
         var favoriteMap = new Dictionary<Guid, Guid>();
+        var reportMap = new Dictionary<Guid, Guid>();
 
         // ContactCategories
         ProgressChanged?.Invoke(this, progress.SetDescription("Contact Categories"));
@@ -214,7 +215,22 @@ public sealed class SetupImportService : ISetupImportService
                 var description = c.TryGetProperty("Description", out var desc) && desc.ValueKind == JsonValueKind.String ? desc.GetString() : null;
                 var isIntermediary = c.TryGetProperty("IsPaymentIntermediary", out var inter) && inter.ValueKind == JsonValueKind.True;
                 var entity = new Contact(userId, name, type, categoryId, description, isIntermediary);
-                _db.Contacts.Add(entity);
+                if (entity.Type == ContactType.Self)
+                {
+                    var existing = await _db.Contacts.FirstOrDefaultAsync(ec => ec.Type == ContactType.Self && ec.OwnerUserId == userId);
+                    if (existing is null)
+                        _db.Contacts.Add(entity);
+                    else
+                    {
+                        existing.SetCategory(entity.CategoryId);
+                        existing.Rename(entity.Name);
+                        existing.SetPaymentIntermediary(entity.IsPaymentIntermediary);
+                        existing.SetDescription(entity.Description);
+                        entity = existing;                        
+                    }
+                }
+                else
+                    _db.Contacts.Add(entity);
                 await _db.SaveChangesAsync(ct);
                 contactMap[id] = entity.Id;
                 ProgressChanged?.Invoke(this, progress.IncSub());
@@ -579,6 +595,7 @@ public sealed class SetupImportService : ISetupImportService
         {
             foreach (var f in favsEl.EnumerateArray())
             {
+                var id = f.GetProperty("Id").GetGuid();
                 var name = f.GetProperty("Name").GetString() ?? string.Empty;
                 var postingKind = f.GetProperty("PostingKind").GetInt32();
                 var includeCategory = f.GetProperty("IncludeCategory").GetBoolean();
@@ -635,6 +652,7 @@ public sealed class SetupImportService : ISetupImportService
                 }
 
                 _db.ReportFavorites.Add(entity);
+                reportMap[id] = entity.Id;
             }
             await _db.SaveChangesAsync(ct);
         }
@@ -651,7 +669,7 @@ public sealed class SetupImportService : ISetupImportService
                 Guid? favId = null;
                 if (k.TryGetProperty("ReportFavoriteId", out var rfEl) && rfEl.ValueKind == JsonValueKind.String && Guid.TryParse(rfEl.GetString(), out var rf))
                 {
-                    favId = rf;
+                    favId = reportMap[rf];                    
                 }
                 var entity = new HomeKpi(userId, kind, display, sortOrder, favId);
                 if (k.TryGetProperty("Title", out var tEl))

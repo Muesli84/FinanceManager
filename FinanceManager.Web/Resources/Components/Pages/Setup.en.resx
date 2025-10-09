@@ -306,4 +306,10 @@
   <data name="Btn_Add" xml:space="preserve">
     <value>Add</value>
   </data>
+  <data name="Button_RebuildAggregates" xml:space="preserve">
+    <value>Rebuild aggregates</value>
+  </data>
+  <data name="Hint_RebuildAggregates" xml:space="preserve">
+    <value>Recomputes all pre-aggregated sums from postings. May take a while depending on data size.</value>
+  </data>
 </root>
