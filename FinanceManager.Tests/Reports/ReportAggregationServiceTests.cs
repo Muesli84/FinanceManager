@@ -15,6 +15,9 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 using FinanceManager.Domain.Securities; // added
+using FinanceManager.Domain.Accounts;
+using FinanceManager.Domain.Savings;
+using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Tests.Reports;
 
@@ -353,7 +356,7 @@ public sealed class ReportAggregationServiceTests
         var prev = analysis.AddMonths(-1);
 
         // Only previous month has a dividend aggregate (1.4€); current month has no data
-        var aggPrev = new PostingAggregate(PostingKind.Security, null, null, null, security.Id, prev, AggregatePeriod.Month);
+        var aggPrev = new PostingAggregate(PostingKind.Security, null, null, null, security.Id, prev, AggregatePeriod.Month, SecurityPostingSubType.Dividend);
         aggPrev.Add(1.4m);
         db.PostingAggregates.Add(aggPrev);
         await db.SaveChangesAsync();
@@ -420,7 +423,7 @@ public sealed class ReportAggregationServiceTests
         var analysis = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
         var prev = analysis.AddMonths(-1);
 
-        var aggPrev = new PostingAggregate(PostingKind.Security, null, null, null, security.Id, prev, AggregatePeriod.Month);
+        var aggPrev = new PostingAggregate(PostingKind.Security, null, null, null, security.Id, prev, AggregatePeriod.Month, SecurityPostingSubType.Dividend);
         aggPrev.Add(1.4m);
         db.PostingAggregates.Add(aggPrev);
         await db.SaveChangesAsync();
@@ -490,7 +493,7 @@ public sealed class ReportAggregationServiceTests
         var sixMonthsAgo = analysis.AddMonths(-6);
 
         // Only six months ago has data
-        var agg = new PostingAggregate(PostingKind.Security, null, null, null, security.Id, sixMonthsAgo, AggregatePeriod.Month);
+        var agg = new PostingAggregate(PostingKind.Security, null, null, null, security.Id, sixMonthsAgo, AggregatePeriod.Month, SecurityPostingSubType.Dividend);
         agg.Add(1.4m);
         db.PostingAggregates.Add(agg);
         await db.SaveChangesAsync();
@@ -530,4 +533,367 @@ public sealed class ReportAggregationServiceTests
 
         result.Points.Count().Should().Be(0);
     }
+
+    private sealed record SeedEntities(
+        Account Acc1, Account Acc2,
+        FinanceManager.Domain.Contacts.Contact Con1, FinanceManager.Domain.Contacts.Contact Con2,
+        SavingsPlan Sav1, SavingsPlan Sav2,
+        FinanceManager.Domain.Securities.Security Sec1, FinanceManager.Domain.Securities.Security Sec2,
+        SecurityCategory SecCat);
+
+    private sealed class SeedResult
+    {
+        public required SeedEntities Entities { get; init; }
+        // key: (PostingKind, accountId, contactId, savingsPlanId, securityId, periodStart)
+        public Dictionary<(PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, DateTime Period), decimal> Sums { get; } = new();
+        public List<DateTime> Months { get; } = new();
+    }
+
+    /// <summary>
+    /// Seeds two accounts, two contacts, two savings plans, two securities and creates monthly aggregates for the last N months.
+    /// For each entity and month two postings are added (1st and 15th), with a global amount counter starting at 1.00€ and increasing by 0.01€ per posting to ensure uniqueness.
+    /// Returns the created entities, the list of months and a sum lookup for expected assertions.
+    /// </summary>
+    private static async Task<SeedResult> SeedAllKindsAsync(AppDbContext db, Guid ownerUserId, DateTime analysisMonth, int monthsBack)
+    {
+        var bank = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "Bank", FinanceManager.Shared.Dtos.ContactType.Bank, null, null);
+        db.Contacts.Add(bank);
+        var acc1 = new Account(ownerUserId, AccountType.Giro, "ACC1", null, bank.Id);
+        var acc2 = new Account(ownerUserId, AccountType.Giro, "ACC2", null, bank.Id);
+        db.Accounts.AddRange(acc1, acc2);
+
+        var con1 = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "CON1", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
+        var con2 = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "CON2", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
+        db.Contacts.AddRange(con1, con2);
+
+        var sav1 = new SavingsPlan(ownerUserId, "SAV1", SavingsPlanType.Open, null, null, null, null);
+        var sav2 = new SavingsPlan(ownerUserId, "SAV2", SavingsPlanType.Open, null, null, null, null);
+        db.SavingsPlans.AddRange(sav1, sav2);
+
+        var secCat = new SecurityCategory(ownerUserId, "SEC-CAT");
+        db.SecurityCategories.Add(secCat);
+        await db.SaveChangesAsync();
+        var sec1 = new FinanceManager.Domain.Securities.Security(ownerUserId, "SEC1", "ISIN-1", null, null, "EUR", secCat.Id);
+        var sec2 = new FinanceManager.Domain.Securities.Security(ownerUserId, "SEC2", "ISIN-2", null, null, "EUR", secCat.Id);
+        db.Securities.AddRange(sec1, sec2);
+        await db.SaveChangesAsync();
+
+        var res = new SeedResult
+        {
+            Entities = new SeedEntities(acc1, acc2, con1, con2, sav1, sav2, sec1, sec2, secCat)
+        };
+
+        // build months list ending at analysisMonth inclusive, going back monthsBack-1 months
+        var first = analysisMonth.AddMonths(-monthsBack + 1);
+        for (var d = first; d <= analysisMonth; d = d.AddMonths(1))
+        {
+            res.Months.Add(new DateTime(d.Year, d.Month, 1));
+        }
+
+        decimal amount = 1.00m;
+        void AddFor(Guid? accountId, Guid? contactId, Guid? savId, Guid? securityId, PostingKind kind)
+        {
+            foreach (var m in res.Months)
+            {
+                var agg = new PostingAggregate(kind, accountId, contactId, savId, securityId, m, AggregatePeriod.Month);
+                // two postings per month: 1st and 15th ? add two different amounts
+                agg.Add(amount); amount += 0.01m;
+                agg.Add(amount); amount += 0.01m;
+                var sum = agg.Amount;
+                res.Sums[(kind, accountId, contactId, savId, securityId, m)] = sum;
+                db.PostingAggregates.Add(agg);
+            }
+        }
+
+        AddFor(acc1.Id, null, null, null, PostingKind.Bank);
+        AddFor(acc2.Id, null, null, null, PostingKind.Bank);
+        AddFor(null, con1.Id, null, null, PostingKind.Contact);
+        AddFor(null, con2.Id, null, null, PostingKind.Contact);
+        AddFor(null, null, sav1.Id, null, PostingKind.SavingsPlan);
+        AddFor(null, null, sav2.Id, null, PostingKind.SavingsPlan);
+        AddFor(null, null, null, sec1.Id, PostingKind.Security);
+        AddFor(null, null, null, sec2.Id, PostingKind.Security);
+
+        await db.SaveChangesAsync();
+
+        // Build higher-level aggregates (Quarter, HalfYear, Year) for all seeded entities
+        static DateTime ToQuarterStart(DateTime d) => new DateTime(d.Year, ((d.Month - 1) / 3) * 3 + 1, 1);
+        static DateTime ToHalfYearStart(DateTime d) => new DateTime(d.Year, d.Month <= 6 ? 1 : 7, 1);
+        static DateTime ToYearStart(DateTime d) => new DateTime(d.Year, 1, 1);
+
+        var entities = new (PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId)[]
+        {
+            (PostingKind.Bank, acc1.Id, null, null, null),
+            (PostingKind.Bank, acc2.Id, null, null, null),
+            (PostingKind.Contact, null, con1.Id, null, null),
+            (PostingKind.Contact, null, con2.Id, null, null),
+            (PostingKind.SavingsPlan, null, null, sav1.Id, null),
+            (PostingKind.SavingsPlan, null, null, sav2.Id, null),
+            (PostingKind.Security, null, null, null, sec1.Id),
+            (PostingKind.Security, null, null, null, sec2.Id)
+        };
+
+        void BuildPeriodAggregates(AggregatePeriod period, Func<DateTime, DateTime> map)
+        {
+            foreach (var e in entities)
+            {
+                var grouped = res.Months
+                    .GroupBy(m => map(m))
+                    .Select(g => new
+                    {
+                        Start = g.Key,
+                        Sum = g.Sum(m => res.Sums[(e.Kind, e.AccountId, e.ContactId, e.SavingsPlanId, e.SecurityId, m)])
+                    });
+                foreach (var g in grouped)
+                {
+                    var agg = new PostingAggregate(e.Kind, e.AccountId, e.ContactId, e.SavingsPlanId, e.SecurityId, g.Start, period);
+                    agg.Add(g.Sum);
+                    db.PostingAggregates.Add(agg);
+                }
+            }
+        }
+
+        BuildPeriodAggregates(AggregatePeriod.Quarter, ToQuarterStart);
+        BuildPeriodAggregates(AggregatePeriod.HalfYear, ToHalfYearStart);
+        BuildPeriodAggregates(AggregatePeriod.Year, ToYearStart);
+        await db.SaveChangesAsync();
+        return res;
+    }
+
+    /// <summary>
+    /// Hilfsfunktion: Erwartete Monats?Summe je Entität und Vergleichswerte (Vormonat, Vorjahr) aus Seed?Lookup berechnen.
+    /// </summary>
+    private static (decimal current, decimal? prev, decimal? year)
+        GetMonthlyExpected(
+            SeedResult seed,
+            PostingKind kind,
+            Guid? accountId,
+            Guid? contactId,
+            Guid? savId,
+            Guid? secId,
+            DateTime analysis)
+    {
+        var cur = seed.Sums[(kind, accountId, contactId, savId, secId, analysis)];
+        var prevDate = analysis.AddMonths(-1);
+        var yearDate = analysis.AddYears(-1);
+        seed.Sums.TryGetValue((kind, accountId, contactId, savId, secId, prevDate), out var prev);
+        seed.Sums.TryGetValue((kind, accountId, contactId, savId, secId, yearDate), out var year);
+        return (cur, seed.Sums.ContainsKey((kind, accountId, contactId, savId, secId, prevDate)) ? prev : null,
+                     seed.Sums.ContainsKey((kind, accountId, contactId, savId, secId, yearDate)) ? year : null);
+    }
+
+    /// <summary>
+    /// Seeds 24 months for 2 accounts/contacts/savings/securities with unique amounts (1.00€ + 0.01€ per posting), two postings per month (1st/15th).
+    /// Builds a monthly report for Bank, Contact, SavingsPlan, Security with comparisons (prev + year) and verifies the latest month's balances for both entities.
+    /// Expected: Amount equals seeded monthly sum; Previous equals exact previous month; YearAgo equals same month last year.
+    /// </summary>
+    [Fact]
+    public async Task QueryAsync_Monthly_AllKinds_VerifyPrevAndYear_ForTwoEntities()
+    {
+        using var db = CreateDb();
+        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var analysis = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var seed = await SeedAllKindsAsync(db, user.Id, analysis, monthsBack: 24);
+        var sut = new ReportAggregationService(db);
+
+        async Task AssertForKindAsync(PostingKind kind, Guid? id1, Guid? id2)
+        {
+            var q = new ReportAggregationQuery(user.Id, (int)kind, ReportInterval.Month, 24, IncludeCategory: false, ComparePrevious: true, CompareYear: true, PostingKinds: null, AnalysisDate: analysis, Filters: null);
+            var result = await sut.QueryAsync(q, CancellationToken.None);
+            result.Interval.Should().Be(ReportInterval.Month);
+            result.ComparedPrevious.Should().BeTrue();
+            result.ComparedYear.Should().BeTrue();
+
+            (Guid? acc, Guid? con, Guid? sav, Guid? sec) Map(Guid? id) => kind switch
+            {
+                PostingKind.Bank => (id, null, null, null),
+                PostingKind.Contact => (null, id, null, null),
+                PostingKind.SavingsPlan => (null, null, id, null),
+                PostingKind.Security => (null, null, null, id),
+                _ => (null, null, null, null)
+            };
+
+            var m1 = Map(id1); var m2 = Map(id2);
+            var (c1, p1, y1) = GetMonthlyExpected(seed, kind, m1.acc, m1.con, m1.sav, m1.sec, analysis);
+            var (c2, p2, y2) = GetMonthlyExpected(seed, kind, m2.acc, m2.con, m2.sav, m2.sec, analysis);
+            string Key1 = kind switch { PostingKind.Bank => $"Account:{id1}", PostingKind.Contact => $"Contact:{id1}", PostingKind.SavingsPlan => $"SavingsPlan:{id1}", PostingKind.Security => $"Security:{id1}", _ => string.Empty };
+            string Key2 = kind switch { PostingKind.Bank => $"Account:{id2}", PostingKind.Contact => $"Contact:{id2}", PostingKind.SavingsPlan => $"SavingsPlan:{id2}", PostingKind.Security => $"Security:{id2}", _ => string.Empty };
+
+            var r1 = result.Points.Single(p => p.GroupKey == Key1 && p.PeriodStart == analysis);
+            var r2 = result.Points.Single(p => p.GroupKey == Key2 && p.PeriodStart == analysis);
+            r1.Amount.Should().Be(c1); r1.PreviousAmount.Should().Be(p1); r1.YearAgoAmount.Should().Be(y1);
+            r2.Amount.Should().Be(c2); r2.PreviousAmount.Should().Be(p2); r2.YearAgoAmount.Should().Be(y2);
+        }
+
+        await AssertForKindAsync(PostingKind.Bank, seed.Entities.Acc1.Id, seed.Entities.Acc2.Id);
+        await AssertForKindAsync(PostingKind.Contact, seed.Entities.Con1.Id, seed.Entities.Con2.Id);
+        await AssertForKindAsync(PostingKind.SavingsPlan, seed.Entities.Sav1.Id, seed.Entities.Sav2.Id);
+        await AssertForKindAsync(PostingKind.Security, seed.Entities.Sec1.Id, seed.Entities.Sec2.Id);
+    }
+
+    /// <summary>
+    /// With the same seeded postings, query with filters that select non-existing entities. Expect an empty result (no rows).
+    /// </summary>
+    [Fact]
+    public async Task QueryAsync_Monthly_SelectOtherEntities_ShouldBeEmpty()
+    {
+        using var db = CreateDb();
+        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var analysis = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        _ = await SeedAllKindsAsync(db, user.Id, analysis, monthsBack: 12);
+        var sut = new ReportAggregationService(db);
+
+        var filters = new ReportAggregationFilters(
+            AccountIds: new[] { Guid.NewGuid() },
+            ContactIds: null,
+            SavingsPlanIds: null,
+            SecurityIds: null,
+            ContactCategoryIds: null,
+            SavingsPlanCategoryIds: null,
+            SecurityCategoryIds: null);
+
+        var q = new ReportAggregationQuery(user.Id, (int)PostingKind.Bank, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: true, PostingKinds: null, AnalysisDate: analysis, Filters: filters);
+        var result = await sut.QueryAsync(q, CancellationToken.None);
+        result.Points.Should().BeEmpty();
+    }
+
+    /// <summary>
+    /// Quarterly/HalfYearly/Yearly/YTD/AllHistory: Verify that the aggregation sums match the seeded per-month sums grouped per interval for Bank postings.
+    /// Previous comparisons are checked for the exact previous interval when applicable, YearAgo for yearly.
+    /// For AllHistory, verify total across all returned periods equals the seeded total.
+    /// </summary>
+    [Theory]
+    [InlineData(ReportInterval.Quarter)]
+    [InlineData(ReportInterval.HalfYear)]
+    [InlineData(ReportInterval.Year)]
+    [InlineData(ReportInterval.Ytd)]
+    [InlineData(ReportInterval.AllHistory)]
+    public async Task QueryAsync_VariousIntervals_Bank_VerifySums(ReportInterval interval)
+    {
+        using var db = CreateDb();
+        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        db.Users.Add(user); await db.SaveChangesAsync();
+        var analysis = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var seed = await SeedAllKindsAsync(db, user.Id, analysis, monthsBack: 24);
+        var sut = new ReportAggregationService(db);
+
+        DateTime periodStart(DateTime d)
+             => interval switch
+             {
+                 ReportInterval.Quarter => new DateTime(d.Year, ((d.Month - 1) / 3) * 3 + 1, 1),
+                 ReportInterval.HalfYear => new DateTime(d.Year, d.Month <= 6 ? 1 : 7, 1),
+                 ReportInterval.Year => new DateTime(d.Year, 1, 1),
+                 ReportInterval.Ytd => new DateTime(d.Year, 1, 1),
+                 _ => d
+             };
+
+        IEnumerable<DateTime> monthsInPeriod(DateTime p)
+        {
+            if (interval == ReportInterval.Quarter)
+            {
+                var start = periodStart(p);
+                return Enumerable.Range(0, 3).Select(i => start.AddMonths(i));
+            }
+            if (interval == ReportInterval.HalfYear)
+            {
+                var start = periodStart(p);
+                return Enumerable.Range(0, 6).Select(i => start.AddMonths(i));
+            }
+            if (interval == ReportInterval.Year || interval == ReportInterval.Ytd)
+            {
+                var start = periodStart(p);
+                var endMonth = interval == ReportInterval.Year ? 12 : analysis.Month;
+                return Enumerable.Range(0, endMonth).Select(i => new DateTime(p.Year, 1, 1).AddMonths(i));
+            }
+            return new[] { p };
+        }
+
+        var q = new ReportAggregationQuery(
+            OwnerUserId: user.Id,
+            PostingKind: (int)PostingKind.Bank,
+            Interval: interval,
+            Take: 24,
+            IncludeCategory: false,
+            ComparePrevious: true,
+            CompareYear: true,
+            PostingKinds: null,
+            AnalysisDate: analysis,
+            Filters: null);
+        var result = await sut.QueryAsync(q, CancellationToken.None);
+
+        if (interval == ReportInterval.AllHistory)
+        {
+            var accountKeyAll = $"Account:{seed.Entities.Acc1.Id}";
+            var hasEntityRowsAll = result.Points.Any(p => p.GroupKey.StartsWith("Account:"));
+            decimal totalReturned;
+            decimal totalSeeded;
+            if (hasEntityRowsAll)
+            {
+                totalReturned = result.Points.Where(p => p.GroupKey == accountKeyAll).Sum(p => p.Amount);
+                totalSeeded = seed.Months.Sum(m => seed.Sums[(PostingKind.Bank, seed.Entities.Acc1.Id, null, null, null, m)]);
+            }
+            else
+            {
+                totalReturned = result.Points.Where(p => p.GroupKey == "Type:Bank").Sum(p => p.Amount);
+                totalSeeded = seed.Months.Sum(m =>
+                    seed.Sums[(PostingKind.Bank, seed.Entities.Acc1.Id, null, null, null, m)] +
+                    seed.Sums[(PostingKind.Bank, seed.Entities.Acc2.Id, null, null, null, m)]);
+            }
+            totalReturned.Should().Be(totalSeeded);
+            return;
+        }
+
+        DateTime ps = periodStart(analysis);
+        var accountKey = $"Account:{seed.Entities.Acc1.Id}";
+        var typeKey = "Type:Bank";
+
+        // Determine whether entity-level or type-level rows are present
+        var hasEntityRows = result.Points.Any(p => p.PeriodStart == ps && p.GroupKey.StartsWith("Account:"));
+        var groupKey = hasEntityRows ? accountKey : typeKey;
+
+        // Expected amount for the chosen group
+        decimal expected = 0m;
+        if (groupKey == accountKey)
+        {
+            expected = monthsInPeriod(ps)
+                .Where(m => seed.Months.Contains(m))
+                .Sum(m => seed.Sums[(PostingKind.Bank, seed.Entities.Acc1.Id, null, null, null, m)]);
+        }
+        else
+        {
+            expected = monthsInPeriod(ps)
+                .Where(m => seed.Months.Contains(m))
+                .Sum(m => seed.Sums[(PostingKind.Bank, seed.Entities.Acc1.Id, null, null, null, m)]
+                         + seed.Sums[(PostingKind.Bank, seed.Entities.Acc2.Id, null, null, null, m)]);
+        }
+
+        var rowPoint = result.Points.SingleOrDefault(p => p.GroupKey == groupKey && p.PeriodStart == ps);
+        rowPoint.Should().NotBeNull();
+        rowPoint!.Amount.Should().Be(expected);
+
+        // Previous for exact previous interval should exist when months available
+        DateTime prevStart = interval switch
+        {
+            ReportInterval.Quarter => ps.AddMonths(-3),
+            ReportInterval.HalfYear => ps.AddMonths(-6),
+            ReportInterval.Year => new DateTime(ps.Year - 1, 1, 1),
+            ReportInterval.Ytd => new DateTime(ps.Year - 1, 1, 1),
+            _ => ps.AddMonths(-1)
+        };
+        var prevRow = result.Points.SingleOrDefault(p => p.GroupKey == groupKey && p.PeriodStart == prevStart);
+        if (prevRow == null)
+        {
+            rowPoint.PreviousAmount.Should().BeNull();
+        }
+        else
+        {
+            rowPoint.PreviousAmount.Should().Be(prevRow.Amount);
+        }
+     }
 }

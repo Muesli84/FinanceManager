@@ -306,4 +306,10 @@
   <data name="Btn_Add" xml:space="preserve">
     <value>Hinzufügen</value>
   </data>
+  <data name="Button_RebuildAggregates" xml:space="preserve">
+    <value>Aggregate neu berechnen</value>
+  </data>
+  <data name="Hint_RebuildAggregates" xml:space="preserve">
+    <value>Berechnet alle Summen aus den Buchungen neu. Kann je nach Datenmenge dauern.</value>
+  </data>
 </root>

@@ -64,6 +64,7 @@ builder.Services.AddSingleton<IBackgroundTaskExecutor, ClassificationTaskExecuto
 builder.Services.AddSingleton<IBackgroundTaskExecutor, BookingTaskExecutor>();
 builder.Services.AddSingleton<IBackgroundTaskExecutor, BackupRestoreTaskExecutor>();
 builder.Services.AddSingleton<IBackgroundTaskExecutor, SecurityPricesBackfillExecutor>(); // NEW
+builder.Services.AddSingleton<IBackgroundTaskExecutor, RebuildAggregatesTaskExecutor>(); // NEW
 builder.Services.AddHostedService<BackgroundTaskRunner>();
 
 // Holidays
@@ -176,6 +177,10 @@ using (var scope = app.Services.CreateScope())
         db.Database.Migrate();
         var schemaLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SchemaPatcher");
         SchemaPatcher.EnsureUserImportSplitSettingsColumns(db, schemaLogger);
+        // Safety: ensure aggregates have SecuritySubType column and index in older SQLite DBs
+        SchemaPatcher.EnsurePostingAggregatesSecuritySubType(db, schemaLogger);
+        // Ensure new ReportFavorites columns
+        SchemaPatcher.EnsureReportFavoritesIncludeDividendRelated(db, schemaLogger);
     }
     catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
     {

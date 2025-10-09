@@ -7,7 +7,8 @@ namespace FinanceManager.Shared.Dtos
         ClassifyAllDrafts,
         BookAllDrafts,
         BackupRestore,
-        SecurityPricesBackfill // NEW
+        SecurityPricesBackfill, // NEW
+        RebuildAggregates // NEW: rebuild posting aggregates for current user
     }
 
     public enum BackgroundTaskStatus

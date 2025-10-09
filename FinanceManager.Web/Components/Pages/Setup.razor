@@ -15,7 +15,7 @@
 
 <h3>@Localizer["Heading"]</h3>
 
-<BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="1500" AllowedTypes="new[]{ BackgroundTaskType.BackupRestore }" />
+<BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="1500" AllowedTypes="new[]{ BackgroundTaskType.BackupRestore, BackgroundTaskType.RebuildAggregates }" />
 
 <div class="fm-tabs">
     <button class="fm-tab @(_vm!.IsActiveSection(SetupViewModel.TabBackup)?"active":null)" @onclick="() => Activate(SetupViewModel.TabBackup)">@Localizer["Tab_Backup"]</button>
@@ -27,6 +27,10 @@
 </div>
 
 <div class="fm-tab-panel">
+    <div style="margin-bottom:.6rem; display:flex; gap:.5rem; align-items:center;">
+        <button class="btn" @onclick="QueueRebuildAggregates">@Localizer["Button_RebuildAggregates"]</button>
+        <small style="opacity:.7;">@Localizer["Hint_RebuildAggregates"]</small>
+    </div>
     @switch(_vm!.ActiveSection)
     {
         case SetupViewModel.TabBackup:
@@ -115,4 +119,14 @@
     }
     private bool IsActiveSection(string section) => _vm!.IsActiveSection(section);
     private void Back() => Navigation.NavigateTo("/");
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+    private async Task QueueRebuildAggregates()
+    {
+        try
+        {
+            await Http.PostAsync("/api/aggregates/rebuild", content: null);
+        }
+        catch { }
+    }
 }

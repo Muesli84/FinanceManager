@@ -3,6 +3,9 @@ using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Reports;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
+using FinanceManager.Infrastructure; // DbContext
+using FinanceManager.Infrastructure.Setup; // SchemaPatcher
 
 namespace FinanceManager.Web.Controllers;
 
@@ -14,10 +17,12 @@ public sealed class ReportAggregatesController : ControllerBase
     private readonly IReportAggregationService _agg;
     private readonly ICurrentUserService _current;
     private readonly ILogger<ReportAggregatesController> _logger;
+    private readonly AppDbContext _db;
+    private readonly ILoggerFactory _loggerFactory;
 
-    public ReportAggregatesController(IReportAggregationService agg, ICurrentUserService current, ILogger<ReportAggregatesController> logger)
+    public ReportAggregatesController(IReportAggregationService agg, ICurrentUserService current, ILogger<ReportAggregatesController> logger, AppDbContext db, ILoggerFactory loggerFactory)
     {
-        _agg = agg; _current = current; _logger = logger;
+        _agg = agg; _current = current; _logger = logger; _db = db; _loggerFactory = loggerFactory;
     }
 
     public sealed record FiltersRequest(
@@ -28,7 +33,8 @@ public sealed class ReportAggregatesController : ControllerBase
         IReadOnlyCollection<Guid>? ContactCategoryIds,
         IReadOnlyCollection<Guid>? SavingsPlanCategoryIds,
         IReadOnlyCollection<Guid>? SecurityCategoryIds,
-        IReadOnlyCollection<int>? SecuritySubTypes // new
+        IReadOnlyCollection<int>? SecuritySubTypes, // new
+        bool? IncludeDividendRelated // new
     )
     {
         public ReportAggregationFilters ToModel() => new(
@@ -39,7 +45,8 @@ public sealed class ReportAggregatesController : ControllerBase
             ContactCategoryIds,
             SavingsPlanCategoryIds,
             SecurityCategoryIds,
-            SecuritySubTypes
+            SecuritySubTypes,
+            IncludeDividendRelated
         );
     }
 
@@ -115,8 +122,39 @@ public sealed class ReportAggregatesController : ControllerBase
                 analysisDate,
                 filters);
 
+            // Proaktiv Schema-Upgrade sicherstellen (SQLite Alt-Bestände)
+            var schemaLogger = _loggerFactory.CreateLogger("SchemaPatcher");
+            SchemaPatcher.EnsurePostingAggregatesSecuritySubType(_db, schemaLogger);
+
             var result = await _agg.QueryAsync(query, ct);
             return Ok(result);
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("SecuritySubType", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(ex, "Aggregation failed due to missing column. Attempting schema patch and retry.");
+            try
+            {
+                var schemaLogger = _loggerFactory.CreateLogger("SchemaPatcher");
+                SchemaPatcher.EnsurePostingAggregatesSecuritySubType(_db, schemaLogger);
+                var query = new ReportAggregationQuery(
+                    _current.UserId,
+                    req.PostingKind,
+                    req.Interval,
+                    req.Take,
+                    req.IncludeCategory,
+                    req.ComparePrevious,
+                    req.CompareYear,
+                    req.PostingKinds,
+                    req.AnalysisDate,
+                    req.Filters?.ToModel());
+                var result = await _agg.QueryAsync(query, ct);
+                return Ok(result);
+            }
+            catch (Exception ex2)
+            {
+                _logger.LogError(ex2, "Aggregation retry after schema patch failed");
+                return Problem("Unexpected error", statusCode: 500);
+            }
         }
         catch (Exception ex)
         {

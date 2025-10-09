@@ -60,6 +60,9 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     public string? SecurityCategoryIdsCsv { get; private set; }
     public string? SecuritySubTypesCsv { get; private set; }
 
+    // New: store dividend-related toggle
+    public bool? IncludeDividendRelated { get; private set; }
+
     public void Rename(string name)
     {
         Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
@@ -104,7 +107,8 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         IEnumerable<Guid>? contactCategoryIds,
         IEnumerable<Guid>? savingsPlanCategoryIds,
         IEnumerable<Guid>? securityCategoryIds,
-        IEnumerable<int>? securitySubTypes)
+        IEnumerable<int>? securitySubTypes,
+        bool? includeDividendRelated = null)
     {
         AccountIdsCsv = ToCsv(accountIds);
         ContactIdsCsv = ToCsv(contactIds);
@@ -114,6 +118,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         SavingsPlanCategoryIdsCsv = ToCsv(savingsPlanCategoryIds);
         SecurityCategoryIdsCsv = ToCsv(securityCategoryIds);
         SecuritySubTypesCsv = ToCsvInt(securitySubTypes);
+        IncludeDividendRelated = includeDividendRelated;
         Touch();
     }
 
@@ -124,7 +129,8 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
             IReadOnlyCollection<Guid>? ContactCategories,
             IReadOnlyCollection<Guid>? SavingsPlanCategories,
             IReadOnlyCollection<Guid>? SecurityCategories,
-            IReadOnlyCollection<int>? SecuritySubTypes) GetFilters()
+            IReadOnlyCollection<int>? SecuritySubTypes,
+            bool? IncludeDividendRelated) GetFilters()
     {
         return (
             FromCsv(AccountIdsCsv),
@@ -134,7 +140,8 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
             FromCsv(ContactCategoryIdsCsv),
             FromCsv(SavingsPlanCategoryIdsCsv),
             FromCsv(SecurityCategoryIdsCsv),
-            FromCsvInt(SecuritySubTypesCsv)
+            FromCsvInt(SecuritySubTypesCsv),
+            IncludeDividendRelated
         );
     }
 

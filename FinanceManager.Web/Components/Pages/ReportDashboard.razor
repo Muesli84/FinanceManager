@@ -266,6 +266,9 @@ else
                             <label class="mk-item line"><input type="checkbox" checked="@_vm!.IsSecuritySubTypeSelectedTemp(3)" @onchange="e => _vm!.ToggleTempSecuritySubType(3, e.Value is bool b && b)" /> @Localizer["SecurityType_Fee"]</label>
                             <label class="mk-item line"><input type="checkbox" checked="@_vm!.IsSecuritySubTypeSelectedTemp(4)" @onchange="e => _vm!.ToggleTempSecuritySubType(4, e.Value is bool b && b)" /> @Localizer["SecurityType_Tax"]</label>
                         </div>
+                        <div class="row chk" style="margin-top:.5rem;">
+                            <label><input type="checkbox" @bind="_includeDividendRelated" /> @Localizer["Label_IncludeDividendRelated"]</label>
+                        </div>
                     </div>
                 }
             }
@@ -300,6 +303,7 @@ else
     private bool _compareYear;
     private bool _showChart = true;
     private int _take = 24;
+    private bool _includeDividendRelated; // new
 
     private readonly PostingKind[] _postingKindValues = new[]{ PostingKind.Bank, PostingKind.Contact, PostingKind.SavingsPlan, PostingKind.Security };
 
@@ -503,6 +507,7 @@ else
             _vm.CompareYear = _compareYear;
             _vm.ShowChart = _showChart;
             _vm.Take = _take;
+            _vm.IncludeDividendRelated = _includeDividendRelated; // new
 
             await _vm.ReloadAsync(_analysisMonth, default);
 
@@ -623,6 +628,7 @@ else
         _vm!.FavoriteName = fav.Name;
         _selectedKinds = fav.PostingKinds?.Count > 0 ? fav.PostingKinds.Select(x=>x).ToList() : new List<int>{ fav.PostingKind };
         _includeCategory = fav.IncludeCategory;
+        _includeDividendRelated = fav.Filters?.IncludeDividendRelated ?? false;
         _interval = (ReportInterval)fav.Interval;
         _take = fav.Take;
         _comparePrevious = fav.ComparePrevious;
@@ -636,6 +642,7 @@ else
         _vm!.SelectedSavingsCategories.Clear(); foreach (var id in fav.Filters?.SavingsPlanCategoryIds ?? Array.Empty<Guid>()) { _vm.SelectedSavingsCategories.Add(id); }
         _vm!.SelectedSecurityCategories.Clear(); foreach (var id in fav.Filters?.SecurityCategoryIds ?? Array.Empty<Guid>()) { _vm.SelectedSecurityCategories.Add(id); }
         _vm!.SelectedSecuritySubTypes.Clear(); foreach (var st in fav.Filters?.SecuritySubTypes ?? Array.Empty<int>()) { _vm.SelectedSecuritySubTypes.Add(st); }
+        _vm!.IncludeDividendRelated = _includeDividendRelated;
          _ = _vm!.LoadFilterOptionsAsync();
         RebuildRibbon();
         _ = LoadAsync();
@@ -649,6 +656,13 @@ else
 
     private ReportDashboardViewModel.FiltersPayload? BuildFilters()
     {
-        return _vm!.BuildFiltersPayload();
+        var payload = _vm!.BuildFiltersPayload();
+        if (payload == null && !_includeDividendRelated)
+        {
+            return null;
+        }
+        return payload is null
+            ? new ReportDashboardViewModel.FiltersPayload(null, null, null, null, null, null, null, null, _includeDividendRelated)
+            : payload with { IncludeDividendRelated = _includeDividendRelated };
     }
 }

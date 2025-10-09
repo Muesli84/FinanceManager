@@ -207,8 +207,9 @@ public class AppDbContext : DbContext
         {
             b.HasKey(x => x.Id);
             b.Property(x => x.Amount).HasPrecision(18,2);
-            // broad unique index (may be NULL-sensitive depending on provider)
-            b.HasIndex(x => new { x.Kind, x.AccountId, x.ContactId, x.SavingsPlanId, x.SecurityId, x.Period, x.PeriodStart }).IsUnique();
+            b.Property(x => x.SecuritySubType);
+            // broad unique index including subtype (only matters for security)
+            b.HasIndex(x => new { x.Kind, x.AccountId, x.ContactId, x.SavingsPlanId, x.SecurityId, x.SecuritySubType, x.Period, x.PeriodStart }).IsUnique();
             b.HasIndex(x => new { x.Kind, x.AccountId, x.Period, x.PeriodStart })
                 .IsUnique()
                 .HasFilter("[AccountId] IS NOT NULL AND [ContactId] IS NULL AND [SavingsPlanId] IS NULL AND [SecurityId] IS NULL");
@@ -218,7 +219,7 @@ public class AppDbContext : DbContext
             b.HasIndex(x => new { x.Kind, x.SavingsPlanId, x.Period, x.PeriodStart })
                 .IsUnique()
                 .HasFilter("[SavingsPlanId] IS NOT NULL AND [AccountId] IS NULL AND [ContactId] IS NULL AND [SecurityId] IS NULL");
-            b.HasIndex(x => new { x.Kind, x.SecurityId, x.Period, x.PeriodStart })
+            b.HasIndex(x => new { x.Kind, x.SecurityId, x.SecuritySubType, x.Period, x.PeriodStart })
                 .IsUnique()
                 .HasFilter("[SecurityId] IS NOT NULL AND [AccountId] IS NULL AND [ContactId] IS NULL AND [SavingsPlanId] IS NULL");
         });
