@@ -27,6 +27,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     public bool ShowChart { get; set; } = true;
     public int Take { get; set; } = 24;
 
+    public bool IncludeDividendRelated { get; set; } // new
+
     public Guid? ActiveFavoriteId { get; set; }
     public string FavoriteName { get; set; } = string.Empty;
     public bool ShowFavoriteDialog { get; private set; }
@@ -81,11 +83,12 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         var hasEntity = SelectedAccounts.Count > 0 || SelectedContacts.Count > 0 || SelectedSavingsPlans.Count > 0 || SelectedSecurities.Count > 0;
         var hasCats = SelectedContactCategories.Count > 0 || SelectedSavingsCategories.Count > 0 || SelectedSecurityCategories.Count > 0 || SelectedAccounts.Count > 0;
         var hasSecTypes = SelectedSecuritySubTypes.Count > 0;
-        if (!IncludeCategory && !hasEntity && !hasSecTypes)
+        var includeDiv = IncludeDividendRelated;
+        if (!IncludeCategory && !hasEntity && !hasSecTypes && !includeDiv)
         {
             return null;
         }
-        if (IncludeCategory && !hasCats && !hasSecTypes)
+        if (IncludeCategory && !hasCats && !hasSecTypes && !includeDiv)
         {
             return null;
         }
@@ -99,7 +102,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 SelectedContactCategories.ToList(),
                 SelectedSavingsCategories.ToList(),
                 SelectedSecurityCategories.ToList(),
-                SelectedSecuritySubTypes.ToList()
+                SelectedSecuritySubTypes.ToList(),
+                includeDiv
             );
         }
         else
@@ -112,7 +116,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 null,
                 null,
                 null,
-                SelectedSecuritySubTypes.ToList()
+                SelectedSecuritySubTypes.ToList(),
+                includeDiv
             );
         }
     }
@@ -127,6 +132,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         SelectedSavingsCategories.Clear();
         SelectedSecurityCategories.Clear();
         SelectedSecuritySubTypes.Clear();
+        IncludeDividendRelated = false;
     }
 
     public async Task ReloadAsync(DateTime? analysisDate, CancellationToken ct = default)
@@ -298,7 +304,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 ContactCategoryIds = filters.ContactCategoryIds,
                 SavingsPlanCategoryIds = filters.SavingsPlanCategoryIds,
                 SecurityCategoryIds = filters.SecurityCategoryIds,
-                SecuritySubTypes = filters.SecuritySubTypes
+                SecuritySubTypes = filters.SecuritySubTypes,
+                IncludeDividendRelated = filters.IncludeDividendRelated
             }
         };
         var resp = await _http.PostAsJsonAsync("/api/report-favorites", payload, ct);
@@ -329,7 +336,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 ContactCategoryIds = filters.ContactCategoryIds,
                 SavingsPlanCategoryIds = filters.SavingsPlanCategoryIds,
                 SecurityCategoryIds = filters.SecurityCategoryIds,
-                SecuritySubTypes = filters.SecuritySubTypes
+                SecuritySubTypes = filters.SecuritySubTypes,
+                IncludeDividendRelated = filters.IncludeDividendRelated
             }
         };
         var resp = await _http.PutAsJsonAsync($"/api/report-favorites/{id}", payload, ct);
@@ -416,7 +424,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         IReadOnlyCollection<Guid>? ContactCategoryIds,
         IReadOnlyCollection<Guid>? SavingsPlanCategoryIds,
         IReadOnlyCollection<Guid>? SecurityCategoryIds,
-        IReadOnlyCollection<int>? SecuritySubTypes // new
+        IReadOnlyCollection<int>? SecuritySubTypes, // new
+        bool? IncludeDividendRelated // new
     );
 
     public sealed record QueryRequest(int PostingKind, int Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate, FiltersPayload? Filters);
@@ -451,6 +460,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         public IReadOnlyCollection<Guid>? SavingsPlanCategoryIds { get; set; }
         public IReadOnlyCollection<Guid>? SecurityCategoryIds { get; set; }
         public IReadOnlyCollection<int>? SecuritySubTypes { get; set; } // new
+        public bool? IncludeDividendRelated { get; set; } // new
     }
 
     // Filter options (for dialog)

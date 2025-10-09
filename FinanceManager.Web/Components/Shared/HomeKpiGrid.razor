@@ -518,7 +518,8 @@
                 null,
                 fav.Filters == null ? null : new FiltersRequest(
                     fav.Filters.AccountIds, fav.Filters.ContactIds, fav.Filters.SavingsPlanIds, fav.Filters.SecurityIds,
-                    fav.Filters.ContactCategoryIds, fav.Filters.SavingsPlanCategoryIds, fav.Filters.SecurityCategoryIds, fav.Filters.SecuritySubTypes)
+                    fav.Filters.ContactCategoryIds, fav.Filters.SavingsPlanCategoryIds, fav.Filters.SecurityCategoryIds, fav.Filters.SecuritySubTypes,
+                    fav.Filters.IncludeDividendRelated)
             );
             var resp = await Http.PostAsJsonAsync("/api/report-aggregates", req);
             if (!resp.IsSuccessStatusCode) { return; }
@@ -565,9 +566,9 @@
 
     private sealed record ReportFavoriteLite(Guid Id, string Name);
     private sealed record ReportFavoriteFull(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, int Take, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds, FavFiltersDto? Filters);
-    private sealed record FavFiltersDto(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds, IReadOnlyCollection<int>? SecuritySubTypes);
+    private sealed record FavFiltersDto(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds, IReadOnlyCollection<int>? SecuritySubTypes, bool? IncludeDividendRelated);
     private sealed record QueryRequest(int PostingKind, ReportInterval Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate, FiltersRequest? Filters);
-    private sealed record FiltersRequest(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds, IReadOnlyCollection<int>? SecuritySubTypes);
+    private sealed record FiltersRequest(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds, IReadOnlyCollection<int>? SecuritySubTypes, bool? IncludeDividendRelated);
     private sealed record AggregationResponse(ReportInterval Interval, List<PointDto> Points, bool ComparedPrevious, bool ComparedYear);
     private sealed record PointDto(DateTime PeriodStart, string GroupKey, string GroupName, string? CategoryName, decimal Amount, string? ParentGroupKey, decimal? PreviousAmount, decimal? YearAgoAmount);
 

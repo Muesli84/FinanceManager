@@ -128,4 +128,47 @@ public static class SchemaPatcher
             logger.LogError(ex, "SchemaPatcher: Failed to ensure PostingAggregates.SecuritySubType column/index.");
         }
     }
+
+    /// <summary>
+    /// Ensure new columns on ReportFavorites for older SQLite DBs, specifically IncludeDividendRelated.
+    /// </summary>
+    public static void EnsureReportFavoritesIncludeDividendRelated(AppDbContext db, ILogger logger)
+    {
+        var connection = db.Database.GetDbConnection();
+        if (connection is not SqliteConnection sqlite)
+        {
+            return;
+        }
+        try
+        {
+            if (sqlite.State != ConnectionState.Open)
+            {
+                sqlite.Open();
+            }
+
+            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var cmd = sqlite.CreateCommand())
+            {
+                cmd.CommandText = "PRAGMA table_info('ReportFavorites');";
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    var name = reader.GetString(1);
+                    columns.Add(name);
+                }
+            }
+
+            if (!columns.Contains("IncludeDividendRelated"))
+            {
+                using var alter = sqlite.CreateCommand();
+                alter.CommandText = "ALTER TABLE ReportFavorites ADD COLUMN IncludeDividendRelated INTEGER NULL";
+                alter.ExecuteNonQuery();
+                logger.LogInformation("SchemaPatcher: Added missing column IncludeDividendRelated to ReportFavorites table.");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "SchemaPatcher: Failed to ensure ReportFavorites.IncludeDividendRelated column.");
+        }
+    }
 }

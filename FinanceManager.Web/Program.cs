@@ -179,6 +179,8 @@ using (var scope = app.Services.CreateScope())
         SchemaPatcher.EnsureUserImportSplitSettingsColumns(db, schemaLogger);
         // Safety: ensure aggregates have SecuritySubType column and index in older SQLite DBs
         SchemaPatcher.EnsurePostingAggregatesSecuritySubType(db, schemaLogger);
+        // Ensure new ReportFavorites columns
+        SchemaPatcher.EnsureReportFavoritesIncludeDividendRelated(db, schemaLogger);
     }
     catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
     {

@@ -23,7 +23,8 @@ public sealed record ReportAggregationFilters(
     IReadOnlyCollection<Guid>? ContactCategoryIds = null,
     IReadOnlyCollection<Guid>? SavingsPlanCategoryIds = null,
     IReadOnlyCollection<Guid>? SecurityCategoryIds = null,
-    IReadOnlyCollection<int>? SecuritySubTypes = null // new: filter securities by posting sub types (Buy/Sell/Dividend/Fee/Tax)
+    IReadOnlyCollection<int>? SecuritySubTypes = null, // new: filter securities by posting sub types (Buy/Sell/Dividend/Fee/Tax)
+    bool? IncludeDividendRelated = null // new: for securities, include Fee/Tax from dividend groups (net dividend)
 );
 
 public sealed record ReportAggregationQuery(

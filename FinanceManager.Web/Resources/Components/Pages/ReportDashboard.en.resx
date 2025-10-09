@@ -150,6 +150,9 @@
   <data name="NoFavorites" xml:space="preserve">
     <value>No favorites</value>
   </data>
+  <data name="NoData" xml:space="preserve">
+    <value>No data</value>
+  </data>
   <data name="Th_Group" xml:space="preserve">
     <value>Group</value>
   </data>
@@ -335,5 +338,11 @@
   </data>
   <data name="SecurityType_Tax" xml:space="preserve">
     <value>Tax</value>
+  </data>
+  <data name="Label_IncludeDividendRelated" xml:space="preserve">
+    <value>Include dividend-related fees/taxes</value>
+  </data>
+  <data name="Ribbon_Tab" xml:space="preserve">
+    <value>Dashboard</value>
   </data>
 </root>
