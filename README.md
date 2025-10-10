@@ -9,6 +9,7 @@
 2. Kernfunktionen
 3. Architektur & Schichten
 4. Technologie-Stack
+   4.1 NuGet-Pakete (Abhängigkeiten)
 5. Roadmap (Wellen)
 6. Authentifizierung & Sicherheit (Kurz)
 7. Internationalisierung (i18n)
@@ -52,11 +53,51 @@ Querschnittsthemen: Logging, Auth (JWT), Internationalisierung, Caching, Validat
 - EF Core (relationale DB, Provider TBD)
 - AlphaVantage API (Wertpapierkurse; API-Key optional)
 - Auth: JWT (kurzlebig), Passwort-Hash Argon2id/bcrypt
-- Logging: ILogger Abstraktion (Serilog geplant)
+- Logging: ILogger Abstraktion (Serilog)
 - Validation: DataAnnotations / FluentValidation (geplant)
 - Internationalisierung: resx Ressourcen, CultureInfo
 - Build/Format: dotnet CLI, EditorConfig, Analyzers/StyleCop
 - Tests: xUnit, FluentAssertions (Projekt `FinanceManager.Tests`)
+
+### 4.1 NuGet-Pakete (Abhängigkeiten)
+Gruppiert; bei gemeinsamen Namespaces mit `*`.
+
+- Microsoft.EntityFrameworkCore*
+  - Microsoft.EntityFrameworkCore — https://www.nuget.org/packages/Microsoft.EntityFrameworkCore/
+  - Microsoft.EntityFrameworkCore.Sqlite — https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Sqlite/
+  - Microsoft.EntityFrameworkCore.Design — https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Design/
+  - Microsoft.EntityFrameworkCore.InMemory (Tests) — https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.InMemory/
+- Microsoft.Extensions*
+  - Microsoft.Extensions.Hosting.Abstractions — https://www.nuget.org/packages/Microsoft.Extensions.Hosting.Abstractions/
+  - Microsoft.Extensions.Http — https://www.nuget.org/packages/Microsoft.Extensions.Http/
+  - Microsoft.Extensions.Caching.Memory — https://www.nuget.org/packages/Microsoft.Extensions.Caching.Memory/
+- Microsoft.AspNetCore*
+  - Microsoft.AspNetCore.Authentication.JwtBearer — https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.JwtBearer/
+  - Microsoft.AspNetCore.Cryptography.KeyDerivation — https://www.nuget.org/packages/Microsoft.AspNetCore.Cryptography.KeyDerivation/
+  - Microsoft.AspNetCore.Mvc.Core (Tests) — https://www.nuget.org/packages/Microsoft.AspNetCore.Mvc.Core/
+- IdentityModel / JWT
+  - Microsoft.IdentityModel.Tokens — https://www.nuget.org/packages/Microsoft.IdentityModel.Tokens/
+  - System.IdentityModel.Tokens.Jwt — https://www.nuget.org/packages/System.IdentityModel.Tokens.Jwt/
+- Serilog*
+  - Serilog.AspNetCore — https://www.nuget.org/packages/Serilog.AspNetCore/
+  - Serilog.Enrichers.Environment — https://www.nuget.org/packages/Serilog.Enrichers.Environment/
+  - Serilog.Enrichers.Process — https://www.nuget.org/packages/Serilog.Enrichers.Process/
+  - Serilog.Enrichers.Thread — https://www.nuget.org/packages/Serilog.Enrichers.Thread/
+  - Serilog.Settings.Configuration — https://www.nuget.org/packages/Serilog.Settings.Configuration/
+  - Serilog.Sinks.Console — https://www.nuget.org/packages/Serilog.Sinks.Console/
+- Dokumente / Krypto
+  - DocumentFormat.OpenXml — https://www.nuget.org/packages/DocumentFormat.OpenXml/
+  - itext — https://www.nuget.org/packages/itext/
+  - itext.bouncy-castle-adapter — https://www.nuget.org/packages/itext.bouncy-castle-adapter/
+  - Portable.BouncyCastle — https://www.nuget.org/packages/Portable.BouncyCastle/
+- Test-Tooling
+  - FluentAssertions — https://www.nuget.org/packages/FluentAssertions/
+  - coverlet.collector — https://www.nuget.org/packages/coverlet.collector/
+  - Microsoft.NET.Test.Sdk — https://www.nuget.org/packages/Microsoft.NET.Test.Sdk/
+  - xunit — https://www.nuget.org/packages/xunit/
+  - xunit.runner.visualstudio — https://www.nuget.org/packages/xunit.runner.visualstudio/
+  - Moq — https://www.nuget.org/packages/Moq/
+  - bunit — https://www.nuget.org/packages/bunit/
 
 ## 5. Roadmap (Wellen)
 | Welle | Fokus |
@@ -86,7 +127,6 @@ Siehe Installationsanleitung in `docs/install.md`.
 ## 9. Entwicklung & Build
 ### Voraussetzungen
 - .NET 9 SDK
-- Node/NPM (optional für Build Pipelines künftiger Frontend Assets)
 - Optional: AlphaVantage API?Key (`AlphaVantage:ApiKey` bzw. ENV `ALPHAVANTAGE__APIKEY`). Ohne Key werden keine Kurse abgerufen.
 
 ### Lokaler Start
