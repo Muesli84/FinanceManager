@@ -44,6 +44,17 @@ public sealed class ReportAggregationService : IReportAggregationService
         var ytdMode = query.Interval == ReportInterval.Ytd;
         var allHistoryMode = query.Interval == ReportInterval.AllHistory;
 
+        // Fallback for YTD security dividends with IncludeDividendRelated=true and Dividend subtype selected
+        const int SecurityPostingSubType_Dividend = 2;
+        var includeDividendRelated2 = query.Filters?.IncludeDividendRelated == true;
+        var onlySecurityKind2 = kinds.Length == 1 && kinds[0] == PostingKind.Security;
+        var dividendSelected = query.Filters?.SecuritySubTypes?.Contains(SecurityPostingSubType_Dividend) == true;
+        if (includeDividendRelated2 && onlySecurityKind2 && ytdMode && dividendSelected)
+        {
+            var result = await QuerySecurityDividendsNetAsync(query, ct);
+            return result;
+        }
+
         // Normalize analysis date to month start if provided, else use UTC now month start
         var analysis = (query.AnalysisDate?.Date) ?? DateTime.UtcNow.Date;
         analysis = new DateTime(analysis.Year, analysis.Month, 1);
@@ -441,9 +452,13 @@ public sealed class ReportAggregationService : IReportAggregationService
         // Helper to compute the latest anchoring period based on interval --------
         DateTime ComputeLatestPeriod(ReportInterval interval, DateTime analysisDate)
         {
-            if (interval == ReportInterval.Month || interval == ReportInterval.Ytd)
+            if (interval == ReportInterval.Month)
             {
                 return analysisDate;
+            }
+            if (interval == ReportInterval.Ytd)
+            {
+                return new DateTime(analysisDate.Year, 1, 1);
             }
             if (interval == ReportInterval.Quarter)
             {
@@ -610,16 +625,16 @@ public sealed class ReportAggregationService : IReportAggregationService
             .Where(p => p.BookingDate >= startMonth && p.BookingDate < endExclusive)
             .Where(p => p.SecuritySubType != null);
 
-        const int SecurityPostingSubType_Dividend = 2;
-        const int SecurityPostingSubType_Fee = 3;
-        const int SecurityPostingSubType_Tax = 4;
+        const int SecurityPostingSubType_Dividend2 = 2;
+        const int SecurityPostingSubType_Fee2 = 3;
+        const int SecurityPostingSubType_Tax2 = 4;
 
         var dividendGroups = postings
-            .Where(p => (int)p.SecuritySubType! == SecurityPostingSubType_Dividend)
+            .Where(p => (int)p.SecuritySubType! == SecurityPostingSubType_Dividend2)
             .Select(p => p.GroupId)
             .Distinct();
 
-        var allowedSubTypes = new[] { SecurityPostingSubType_Dividend, SecurityPostingSubType_Fee, SecurityPostingSubType_Tax };
+        var allowedSubTypes = new[] { SecurityPostingSubType_Dividend2, SecurityPostingSubType_Fee2, SecurityPostingSubType_Tax2 };
 
         var rows = await postings
             .Where(p => dividendGroups.Contains(p.GroupId))
@@ -665,7 +680,7 @@ public sealed class ReportAggregationService : IReportAggregationService
             points.Add(new ReportAggregatePointDto(e.Month, key, name, categoryName, e.Amount, parent, null, null));
         }
 
-        // Type/category aggregates similar to default when IncludeCategory=true (optional)
+        // Category aggregates (optional)
         if (query.IncludeCategory)
         {
             var catAgg = monthly
@@ -680,7 +695,7 @@ public sealed class ReportAggregationService : IReportAggregationService
             }
         }
 
-        // Transform for interval (aggregate months to Quarter/HalfYear/Year or YTD/AllHistory)
+        // Transform for interval (aggregate months to desired interval)
         List<ReportAggregatePointDto> TransformToInterval(List<ReportAggregatePointDto> src)
         {
             if (query.Interval == ReportInterval.Month)
@@ -745,9 +760,13 @@ public sealed class ReportAggregationService : IReportAggregationService
         // Ensure latest period exists
         DateTime ComputeLatestPeriod(ReportInterval interval, DateTime analysisDate)
         {
-            if (interval == ReportInterval.Month || interval == ReportInterval.Ytd)
+            if (interval == ReportInterval.Month)
             {
                 return analysisDate;
+            }
+            if (interval == ReportInterval.Ytd)
+            {
+                return new DateTime(analysisDate.Year, 1, 1);
             }
             if (interval == ReportInterval.Quarter)
             {
