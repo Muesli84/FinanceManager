@@ -1,1 +1,0 @@
-Satiren sollen als Anhang für verschiedene Entitäten hochgeladen werden können. Als erstes sollen Kontoauszugeinträge Anhänge erhalten. Diese sollen nach dem Buchen aus den Posten heraus aufgerufen werden können. Als zweites sollen Kontakte Anhänge bekommen. Mit Hilfe von Anhangkategorien sollen diese heiter werden können.
