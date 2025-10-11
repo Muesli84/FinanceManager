@@ -138,11 +138,12 @@ else
                 var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
                 items.Add(new Ribbon<TabId>.RibbonItem
                 {
+                    Id = it.Action == "Import" ? "drafts-import-btn" : null,
                     Label = it.Label,
                     IconSvg = it.IconSvg,
                     Size = size,
                     Disabled = it.Disabled,
-                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                    Callback = () => HandleRibbonActionAsync(it.Action) // ensure async user-gesture chain
                 });
             }
             groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
@@ -159,17 +160,36 @@ else
     }
 
     private ElementReference _hiddenFileInput;
-    private bool _fileInputRendered;
 
     private async Task TriggerFileInputAsync()
     {
-        if (!_fileInputRendered)
+        // Overlay the file input over the Import ribbon button and click (iOS/Edge safe)
+        var js = @"(function(){
+            var btn = document.getElementById('drafts-import-btn');
+            var inp = document.getElementById('draft-upload-input');
+            if(!btn || !inp) return false;
+            var r = btn.getBoundingClientRect();
+            var scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+            var scrollY = window.pageYOffset || document.documentElement.scrollTop;
+            inp.style.position='absolute';
+            inp.style.left = (r.left + scrollX) + 'px';
+            inp.style.top = (r.top + scrollY) + 'px';
+            inp.style.width = r.width + 'px';
+            inp.style.height = r.height + 'px';
+            inp.style.opacity = '0.01';
+            inp.style.pointerEvents = 'auto';
+            try { inp.click(); } catch(e) {}
+            return true;
+        })();";
+        try
         {
-            _fileInputRendered = true; // will render input next cycle
-            StateHasChanged();
-            await Task.Delay(50);
+            var ok = await JS.InvokeAsync<bool>("eval", js);
+            if (!ok)
+            {
+                await JS.InvokeVoidAsync("eval", "document.getElementById('draft-upload-input')?.click();");
+            }
         }
-        await JS.InvokeVoidAsync("eval", "document.getElementById('draft-upload-input')?.click();");
+        catch { }
     }
 
     private async Task OnHiddenFileChanged(InputFileChangeEventArgs e) => await OnFileChanged(e);
@@ -267,9 +287,15 @@ else
     private async Task OnFileChanged(InputFileChangeEventArgs e)
     {
         var file = e.File;
-        if (file == null) { return; }
+        if (file == null)
+        {
+            await JS.InvokeVoidAsync("eval", "(function(){var inp=document.getElementById('draft-upload-input'); if(inp){inp.style.left='-9999px';inp.style.opacity='0';inp.style.pointerEvents='none';}})()");
+            return;
+        }
         await using var stream = file.OpenReadStream(25_000_000);
         var firstId = await _vm!.UploadAsync(stream, file.Name);
+        // Hide input again
+        await JS.InvokeVoidAsync("eval", "(function(){var inp=document.getElementById('draft-upload-input'); if(inp){inp.style.left='-9999px';inp.style.opacity='0';inp.style.pointerEvents='none';}})()");
         if (firstId.HasValue)
         {
             Nav.NavigateTo($"/statement-drafts/{firstId.Value}");
@@ -337,28 +363,25 @@ else
      private sealed record UploadResultDto(StatementDraftDto? FirstDraft, object? SplitInfo);
  }
 
-@if(_fileInputRendered)
-{
-    <InputFile id="draft-upload-input" OnChange="OnHiddenFileChanged" style="display:none;" />
-}
+<!-- Single always-present file input for iOS Safari: off-screen but not display:none/visibility:hidden -->
+<InputFile id="draft-upload-input" OnChange="OnHiddenFileChanged" style="position:fixed; left:-9999px; width:1px; height:1px; opacity:0;" />
 
 @code {
-    private void HandleRibbonAction(string action)
+    private Task HandleRibbonActionAsync(string action)
     {
         switch (action)
         {
             case "DeleteAll":
                 OpenDeleteAllDialog();
-                break;
+                return Task.CompletedTask;
             case "Reclassify":
-                _ = ClassifyAsync();
-                break;
+                return ClassifyAsync();
             case "MassBooking":
                 OpenBookAllDialog();
-                break;
+                return Task.CompletedTask;
             case "Import":
-                _ = TriggerFileInputAsync();
-                break;
+                return TriggerFileInputAsync();
         }
+        return Task.CompletedTask;
     }
 }
