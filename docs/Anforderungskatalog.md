@@ -1,7 +1,7 @@
 # Anforderungskatalog
 
-Version: 0.1 (Entwurf)
-Datum: 2025-08-31
+Version: 0.2 (Entwurf)
+Datum: 2025-10-11
 Autor: (auszufüllen)
 
 ## 1. Ziel & Zweck
@@ -50,6 +50,12 @@ Nummerierung: FA-[DOMÄNE]-[laufende Nummer]
 - FA-AUSZ-009: Wenn Empfänger die eigene Bank ist, kann (optional) eine Wertpapierzuordnung erfolgen (Transaktionstyp, Gebühren, Steuern, Menge).
 - FA-AUSZ-010: PDF-Parsing extrahiert Tabelle(n) mit Buchungszeilen (Heuristiken / Vorlagen pro Bank anlegbar).
 - FA-AUSZ-011: Import-Pipeline nutzt Format-Strategie (Strategy Pattern) zur einfachen Erweiterung um neue Formate.
+- FA-AUSZ-012: Anzeige und Berechnung der Gesamtbeträge verknüpfter Aufteilungs-Entwürfe (Splits) in der Eintragsansicht.
+- FA-AUSZ-013: Einträge mit Zahlungsintermediär bleiben offen, bis die Summe aller verknüpften Splits (ggf. Upload-Gruppe) den Ursprungsbetrag exakt trifft; Validierung verhindert Abweichungen.
+- FA-AUSZ-014: Originaldatei des Imports wird gespeichert und kann heruntergeladen/inline angezeigt werden.
+- FA-AUSZ-015: Massenbuchung über mehrere Kontoauszugs-Entwürfe.
+- FA-AUSZ-016: Konfigurierbare Aufteilung beim Import: monatlich, feste Größe oder hybrid (Monatlich-oder-Fixed). Einstellungen pro Benutzer (max. Einträge/Entwurf, monatlicher Schwellenwert, Mindestanzahl/Monat für Merge-Regeln).
+- FA-AUSZ-017: Persistenter Navigationskontext zwischen Listen- und Detailansichten.
 
 ### 5.3 Kontakte & Kategorien
 - FA-KON-001: Verwaltung von Kontakten (CRUD).
@@ -91,6 +97,9 @@ Nummerierung: FA-[DOMÄNE]-[laufende Nummer]
 - FA-REP-003: Optional Vergleich mit Vorjahreszeitraum.
 - FA-REP-004: Gewinn-und-Verlustrechnung pro Monat gruppiert nach Kontaktkategorien / Kategorien.
 - FA-REP-005: Renditekennzahlen für Wertpapiere (Dividende, Kurs, Gesamt) über Zeiträume.
+- FA-REP-006: Umsatzauswertungs-Grafiken (Balkendiagramm) mit lokalisierten Formaten.
+- FA-REP-007: Export von Postenlisten (CSV & Excel) inkl. aktiver Filter.
+- FA-REP-008: Berichtsdashboard mit konfigurierbaren Favoriten (Postingarten/Multi, Filter je Entitätstyp, Vergleichswerte, Mini-Chart, YTD); Favoriten CRUD und Anwendung.
 
 ### 5.8 KPI Dashboard (Startseite)
 - FA-KPI-001: Anzeige Dividenden aktueller Monat.
@@ -132,6 +141,25 @@ Nummerierung: FA-[DOMÄNE]-[laufende Nummer]
 - FA-I18N-005: Sprachwechsel im eingeloggten Zustand aktualisiert sichtbare Texte ohne Neuanmeldung (Dynamic Refresh).
 - FA-I18N-006: Datums-, Zahlen- und Währungsformate folgen der aktiven UI-Kultur.
 
+### 5.13 Backups
+- FA-BACK-001: Benutzer kann Datensicherung erstellen (Zip mit NDJSON-Inhalt).
+- FA-BACK-002: Liste der eigenen Sicherungen einsehen und herunterladen.
+- FA-BACK-003: Sicherungsdatei hochladen (Zip oder NDJSON, wird in Zip verpackt).
+- FA-BACK-004: Sicherung wiederherstellen (Import mit Fortschritt, optional bestehende Daten ersetzen).
+- FA-BACK-005: Sicherung löschen.
+
+### 5.14 Anhänge
+- FA-ATT-001: Anhänge an Kontoauszugs-Entwurf (Draft) und Einträge hochladen.
+- FA-ATT-002: Anhänge werden beim Buchen ohne Blob-Kopie den erzeugten Postings zugeordnet (Referenzen für Mehrfachverwendung).
+- FA-ATT-003: Anhänge an Kontakten und an gebuchten Postings anzeigen & verwalten.
+- FA-ATT-004: Kategorien für Anhänge (System- und benutzerdefiniert) verwalten.
+- FA-ATT-005: Upload mit Größen-/MIME-Validierung; Download; Löschen nur durch Besitzer.
+- FA-ATT-006: Paginierte Listen inkl. Filter (Kategorie, Suchtext, URL-Only) für Anhänge.
+
+### 5.15 Benachrichtigungen
+- FA-NOT-001: Zeitgesteuerte Monatsabschluss-Benachrichtigung (letzter Werktag, Länder/Regionen-konfigurierbar).
+- FA-NOT-002: Benutzerdefinierte Einstellungen für Uhrzeit/Provider/Land/Subdivision; Hinweise auf der Startseite anzeigen und abwählbar machen.
+
 ## 6. Nicht-funktionale Anforderungen
 - NFA-PERF-001: Import von 1.000 Buchungszeilen < 10 Sekunden (Zielwert; Messpunkt nach Implementierung validieren).
 - NFA-PERF-002: Dashboard-KPIs laden < 2 Sekunden bei Datenbestand < 50k Posten.
@@ -164,6 +192,8 @@ Nummerierung: FA-[DOMÄNE]-[laufende Nummer]
 - Kursposten: Id, WertpapierId, Datum, Schlusskurs, Quelle
 - Kontakt: Id, Name, KategorieId?, Typ (Bank, Person, Selbst, Sonstige), BenutzerId? (null wenn geteilter Bankkontakt)
 - Aliasname: Id, KontaktId, Pattern
+- Anhang: Id, OwnerUserId, EntityKind, EntityId, Dateiname, Größe, MIME, UploadDatumUtc, KategorieId?, Hash, IsUrl
+- Backup: Id, OwnerUserId, FileName, SizeBytes, Source, StoragePath, CreatedUtc
 
 ## 8. Geschäftsregeln (Auszüge)
 - GR-001: Duplikatserkennung basiert auf (KontoId + Buchungsdatum + Betrag + normalisierter Betreff) oder Hash der Originalzeile.
@@ -179,6 +209,7 @@ Nummerierung: FA-[DOMÄNE]-[laufende Nummer]
 - GR-011: Löschen eines Benutzers durch Admin führt zu definiertem Lösch-/Übertragungsworkflow für dessen Objekte (Spezifikation erforderlich, s. Offene Punkte).
 - GR-012: Sprachermittlung Reihenfolge: Benutzerpräferenz -> Browser/Systemsprache -> Standard Deutsch.
 - GR-013: Import-Strategieauswahl anhand Dateimerkmale (Extension + Content Detection bei PDF/CSV).
+- GR-014: Split-Validierung: Summenbildung über alle Kinder-Entwürfe einer Upload-Gruppe; Abweichungen verhindern Buchung.
 
 ## 9. UI-Anforderungen (Auszüge)
 - Symbole/Badges für Sparziel-Status (erreicht, nahe, verfehlt Prognose) in Kontoauszugübersicht & Detailkarten.
@@ -187,6 +218,7 @@ Nummerierung: FA-[DOMÄNE]-[laufende Nummer]
 - Dialog / Oberfläche zum Teilen eines Bankkontos (Benutzer suchen, Rolle vergeben, Entzug durchführen).
 - Administrationsbereich: Benutzerliste (Filter, Suche), Aktionen (Anlegen, Bearbeiten, Sperren/Entsperren, Löschen), Detailansicht inkl. Audit-Einträge.
 - Sprachumschalter (Toggle / Dropdown) sichtbar nach Login und auf Login-Seite.
+- Ribbon-Komponente als einheitliche Aktionsleiste zwischen Überschrift und Inhalt auf Detailseiten; Symbole aus `sprite.svg`.
 
 ## 10. Fehler- & Ausnahmebehandlung
 - Importfehler: Protokollierung je Zeile, Fortsetzung übriger Zeilen.
@@ -213,6 +245,8 @@ Nummerierung: FA-[DOMÄNE]-[laufende Nummer]
 - OP-011: Aufbewahrungs-/Löschkonzept für Audit-Logs (DSGVO-Aspekte?).
 - OP-012: Erweiterung weiterer Importformate (MT940, CAMT) Priorität & Zeitplan.
 - OP-013: Kriterien für Echtzeit-Sprachwechsel (Client-Speicherung, Persistenz bei Refresh).
+- OP-014: Anhänge-Virenscan (Hook/Integration) und Quarantäne-Konzept.
+- OP-015: Backup-Versionierung/Kompatibilität (Migrationsstrategie bei Strukturänderungen).
 
 ## 13. Priorisierung (grobe Wellen)
 Welle 1: Benutzer & Auth-Basis, Konten, Kontakte, Import (CSV/PDF), Buchung, Alias, Basis-Dashboard.
@@ -234,6 +268,9 @@ Welle 4: Internationale UI Verfeinerung, zusätzliche Importformate, Admin-Erweit
 - AK-I18N-002: Benutzer ohne gesetzte Sprache erhält UI in Browser-Sprache (Test mit de/en Browser-Locale) sonst Deutsch.
 - AK-IMP-CSV-001: CSV-Datei wird korrekt erkannt und geparst (Trennzeichen-Konfiguration testbar).
 - AK-IMP-PDF-001: PDF-Kontoauszug mit unterstützter Struktur erzeugt korrekte Buchungszeilen.
+- AK-SPLIT-001: Buchung eines Intermediär-Eintrags mit verknüpfter Upload-Gruppe bucht alle Kinder-Entwürfe mit und verhindert Summenabweichungen.
+- AK-ATT-001: Upload eines Anhangs an DraftEntry ist nach Buchung an Bank-/Kontakt-/Sparplan-/Wertpapier-Postings sichtbar (ohne Blob-Kopie).
+- AK-BACK-001: Anlegen, Auflisten, Download, Wiederherstellung und Löschung von Backups funktionieren für den angemeldeten Benutzer.
 
 ## 15. Sicherheit & Datenschutz (Erweiterung)
 - Lokale Verschlüsselung sensibler Konfigurationsschlüssel (API Key AlphaVantage).
