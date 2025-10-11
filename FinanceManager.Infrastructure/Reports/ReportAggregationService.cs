@@ -447,6 +447,30 @@ public sealed class ReportAggregationService : IReportAggregationService
                 hist.Add(new ReportAggregatePointDto(anchor, sample.GroupKey, sample.GroupName, sample.CategoryName, sum, sample.ParentGroupKey, null, null));
             }
             points = hist.OrderBy(p => p.GroupKey).ToList();
+
+            // Additionally: add Type-level aggregates even for single-kind mode to provide top-level totals for AllHistory
+            var typeSums = points
+                .Where(p => !p.GroupKey.StartsWith("Type:"))
+                .GroupBy(p => new { p.PeriodStart, Kind = ParseKindFromKey(p.GroupKey) })
+                .Where(g => g.Key.Kind.HasValue)
+                .Select(g => new { g.Key.PeriodStart, Kind = g.Key.Kind!.Value, Amount = g.Sum(x => x.Amount) })
+                .ToList();
+            foreach (var ts in typeSums)
+            {
+                var name = ts.Kind switch
+                {
+                    PostingKind.Bank => "Accounts",
+                    PostingKind.Contact => "Contacts",
+                    PostingKind.SavingsPlan => "SavingsPlans",
+                    PostingKind.Security => "Securities",
+                    _ => ts.Kind.ToString()
+                };
+                var typeKey = TypeKey(ts.Kind);
+                if (!points.Any(p => p.GroupKey == typeKey && p.PeriodStart == ts.PeriodStart))
+                {
+                    points.Add(new ReportAggregatePointDto(ts.PeriodStart, typeKey, name, null, ts.Amount, null, null, null));
+                }
+            }
         }
 
         // Helper to compute the latest anchoring period based on interval --------
@@ -474,7 +498,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Ensure latest period row based on analysis month ------------------------
-        if (points.Count > 0)
+        if (!allHistoryMode && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod(query.Interval, analysis);
             var groups2 = points.GroupBy(p => p.GroupKey).Select(g => new { Key = g.Key, Latest = g.OrderBy(x => x.PeriodStart).Last() }).ToList();
@@ -557,7 +581,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Remove empty latest groups (same rule as default)
-        if ((query.ComparePrevious || query.CompareYear) && points.Count > 0)
+        if (!allHistoryMode && (query.ComparePrevious || query.CompareYear) && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod(query.Interval, analysis);
             var removable = points.Where(p => p.PeriodStart == latestPeriod)
@@ -736,6 +760,31 @@ public sealed class ReportAggregationService : IReportAggregationService
                     var anchor = new DateTime(2000, 1, 1);
                     hist.Add(new ReportAggregatePointDto(anchor, sample.GroupKey, sample.GroupName, sample.CategoryName, sum, sample.ParentGroupKey, null, null));
                 }
+
+                // Add Type-level rows for AllHistory to provide totals even in single-kind mode
+                var typeSums = hist
+                    .Where(p => !p.GroupKey.StartsWith("Type:"))
+                    .GroupBy(p => new { p.PeriodStart, Kind = ParseKindFromKey(p.GroupKey) })
+                    .Where(g => g.Key.Kind.HasValue)
+                    .Select(g => new { g.Key.PeriodStart, Kind = g.Key.Kind!.Value, Amount = g.Sum(x => x.Amount) })
+                    .ToList();
+                foreach (var ts in typeSums)
+                {
+                    var name = ts.Kind switch
+                    {
+                        PostingKind.Bank => "Accounts",
+                        PostingKind.Contact => "Contacts",
+                        PostingKind.SavingsPlan => "SavingsPlans",
+                        PostingKind.Security => "Securities",
+                        _ => ts.Kind.ToString()
+                    };
+                    var typeKey = $"Type:{ts.Kind}";
+                    if (!hist.Any(p => p.GroupKey == typeKey && p.PeriodStart == ts.PeriodStart))
+                    {
+                        hist.Add(new ReportAggregatePointDto(ts.PeriodStart, typeKey, name, null, ts.Amount, null, null, null));
+                    }
+                }
+
                 return hist;
             }
             // Quarter / HalfYear / Year
@@ -781,7 +830,7 @@ public sealed class ReportAggregationService : IReportAggregationService
             return new DateTime(analysisDate.Year, 1, 1);
         }
 
-        if (points.Count > 0)
+        if (query.Interval != ReportInterval.AllHistory && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod(query.Interval, analysis);
             var groups2 = points.GroupBy(p => p.GroupKey).Select(g => new { Key = g.Key, Latest = g.OrderBy(x => x.PeriodStart).Last() }).ToList();
@@ -850,7 +899,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         }
 
         // Remove empty latest groups (same rule as default)
-        if ((query.ComparePrevious || query.CompareYear) && points.Count > 0)
+        if (query.Interval != ReportInterval.AllHistory && (query.ComparePrevious || query.CompareYear) && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod(query.Interval, analysis);
             var removable = points.Where(p => p.PeriodStart == latestPeriod)
