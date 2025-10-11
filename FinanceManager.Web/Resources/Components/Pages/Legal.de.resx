@@ -117,46 +117,64 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Notifications_TabTitle" xml:space="preserve">
-    <value>Benachrichtigungen</value>
+  <data name="Title" xml:space="preserve">
+    <value>Rechtliches</value>
   </data>
-  <data name="Notifications_MonthlyReminder" xml:space="preserve">
-    <value>Monatsabschluss-Hinweis aktivieren</value>
+  <data name="Intro" xml:space="preserve">
+    <value>Diese Seite informiert über Quellcode, verwendete Komponenten sowie Datenschutz-Aspekte dieser Anwendung.</value>
   </data>
-  <data name="Notifications_MonthlyReminder_Help" xml:space="preserve">
-    <value>Am letzten Werktag des Monats eine Erinnerung auf der Startseite anzeigen.</value>
+  <data name="Section_Usage" xml:space="preserve">
+    <value>Nutzung</value>
   </data>
-  <data name="Notifications_MonthlyReminder_Time" xml:space="preserve">
-    <value>Uhrzeit (lokal)</value>
+  <data name="Usage_Private" xml:space="preserve">
+    <value>Die Anwendung ist für die private Nutzung gedacht. Ein technisch versierter Privatanwender kann die Anwendung auf einem Heimrechner als Serveranwendung installieren und verwenden.</value>
   </data>
-  <data name="Notifications_MonthlyReminder_Time_Help" xml:space="preserve">
-    <value>Bevorzugte Uhrzeit für die Erinnerung (HH:mm). Standard 09:00.</value>
+  <data name="Usage_LocalStorage" xml:space="preserve">
+    <value>Die Anwendungsdaten werden lokal auf dem eigenen Gerät in einer SQLite-Datenbank gespeichert, sofern keine andere Datenbank konfiguriert wurde.</value>
   </data>
-  <data name="Notifications_Holidays_Provider" xml:space="preserve">
-    <value>Feiertags-Quelle</value>
+  <data name="Usage_OperatorDisclosure" xml:space="preserve">
+    <value>Sofern die Anwendung anderen Personen bereitgestellt wird (z. B. im Heimnetz oder darüber hinaus), muss der Betreiber über die Verarbeitung personenbezogener Daten informieren (Zwecke, Speicherdauer, Empfänger) und auf etwaige Drittanbieter hinweisen.</value>
   </data>
-  <data name="Notifications_Holidays_Provider_Help" xml:space="preserve">
-    <value>Quelle für den Feiertagskalender: Memory (einfach, nur Land) oder Nager.Date (Land + Region/Counties).</value>
+  <data name="Section_Source" xml:space="preserve">
+    <value>Quellcode / Repository</value>
   </data>
-  <data name="Notifications_Holidays_Region" xml:space="preserve">
-    <value>Feiertags-Region</value>
+  <data name="Section_ThirdParty" xml:space="preserve">
+    <value>Drittanbieter-Komponenten</value>
   </data>
-  <data name="Notifications_Holidays_Region_Help" xml:space="preserve">
-    <value>Land (z.B. DE) und optional Bundesland/Region (z.B. DE-BY) zur Berücksichtigung gesetzlicher Feiertage.</value>
+  <data name="ThirdParty_Intro" xml:space="preserve">
+    <value>Diese Anwendung verwendet Open-Source-Bibliotheken (NuGet) sowie optionale Web-APIs von Drittanbietern.</value>
   </data>
-  <data name="Notifications_SaveSuccess" xml:space="preserve">
-    <value>Einstellungen gespeichert.</value>
+  <data name="ThirdParty_NuGet" xml:space="preserve">
+    <value>NuGet-Pakete (Auszug): Microsoft.EntityFrameworkCore.*, Microsoft.Data.Sqlite, Nager.Date (Feiertage), System.Text.Json, u.a.</value>
   </data>
-  <data name="Msg_Loading" xml:space="preserve">
-    <value>Lade ...</value>
+  <data name="ThirdParty_Apis" xml:space="preserve">
+    <value>Optionale Web-APIs: AlphaVantage (Kursdaten) - nur bei hinterlegtem API-Schlüssel und expliziter Nutzung; Anfragen enthalten IP-/Client-Daten gemäß deren Richtlinien.</value>
   </data>
-  <data name="Btn_Retry" xml:space="preserve">
-    <value>Erneut versuchen</value>
+  <data name="ThirdParty_NuGetPackages" xml:space="preserve">
+    <value>NuGet-Pakete</value>
   </data>
-  <data name="Btn_Save" xml:space="preserve">
-    <value>Speichern</value>
+  <data name="ThirdParty_TestPackages" xml:space="preserve">
+    <value>Test-Pakete</value>
   </data>
-  <data name="Btn_Reset" xml:space="preserve">
-    <value>Zurücksetzen</value>
+  <data name="Label_TestsOnly" xml:space="preserve">
+    <value>nur in Tests</value>
+  </data>
+  <data name="Section_Privacy" xml:space="preserve">
+    <value>Datenschutz</value>
+  </data>
+  <data name="Privacy_SessionCookie" xml:space="preserve">
+    <value>Diese Anwendung verwendet ein Session-/Auth-Cookie (fm_auth), um angemeldete Sitzungen zu verwalten. Das Cookie enthält ein JWT-Token, das ausschließlich zur Authentifizierung genutzt wird.</value>
+  </data>
+  <data name="Privacy_ThirdParty" xml:space="preserve">
+    <value>Bei Nutzung externer Dienste (z. B. Kursabrufe) können Daten (IP-Adresse, Anfragezeitpunkt) an Anbieter übertragen werden. Bitte prüfen Sie die Datenschutzhinweise der jeweiligen Dienste.</value>
+  </data>
+  <data name="Section_Other" xml:space="preserve">
+    <value>Weitere Hinweise</value>
+  </data>
+  <data name="Other_Disclaimer" xml:space="preserve">
+    <value>Alle Angaben ohne Gewähr. Nutzung auf eigenes Risiko. Es werden keine Finanz- oder Anlageberatungen erbracht.</value>
+  </data>
+  <data name="Other_Contact" xml:space="preserve">
+    <value>Kontakt/Feedback: Issues und Diskussionen im GitHub-Repository willkommen.</value>
   </data>
 </root>

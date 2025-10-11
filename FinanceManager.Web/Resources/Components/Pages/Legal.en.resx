@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    Version 2.0
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="Title" xml:space="preserve"><value>Legal</value></data>
+  <data name="Intro" xml:space="preserve"><value>This page provides information about the source code, third-party components and privacy aspects of this application.</value></data>
+
+  <data name="Section_Usage" xml:space="preserve"><value>Usage</value></data>
+  <data name="Usage_Private" xml:space="preserve"><value>The application is intended for private use. A technically skilled private user can install and run it as a server application on a home computer.</value></data>
+  <data name="Usage_LocalStorage" xml:space="preserve"><value>Application data is stored locally on the user's machine in a SQLite database, unless configured otherwise.</value></data>
+  <data name="Usage_OperatorDisclosure" xml:space="preserve"><value>If the application is made available to other persons (e.g., in a home network or beyond), the operator must provide information about the processing of personal data (purposes, retention, recipients) and about any third-party services used.</value></data>
+
+  <data name="Section_Source" xml:space="preserve"><value>Source / Repository</value></data>
+
+  <data name="Section_ThirdParty" xml:space="preserve"><value>Third-party components</value></data>
+  <data name="ThirdParty_Intro" xml:space="preserve"><value>This application uses open-source libraries (NuGet) and optional third-party web APIs.</value></data>
+  <data name="ThirdParty_NuGet" xml:space="preserve"><value>NuGet packages (excerpt): Microsoft.EntityFrameworkCore.*, Microsoft.Data.Sqlite, Nager.Date (holidays), System.Text.Json, etc.</value></data>
+  <data name="ThirdParty_Apis" xml:space="preserve"><value>Optional web APIs: AlphaVantage (price data) - only when an API key is configured and explicitly used; requests include IP/client data per their policies.</value></data>
+  <data name="ThirdParty_NuGetPackages" xml:space="preserve"><value>NuGet packages</value></data>
+  <data name="ThirdParty_TestPackages" xml:space="preserve"><value>Test packages</value></data>
+  <data name="Label_TestsOnly" xml:space="preserve"><value>tests only</value></data>
+
+  <data name="Section_Privacy" xml:space="preserve"><value>Privacy</value></data>
+  <data name="Privacy_SessionCookie" xml:space="preserve"><value>This application uses a session/auth cookie (fm_auth) to manage signed-in sessions. The cookie contains a JWT token used solely for authentication.</value></data>
+  <data name="Privacy_ThirdParty" xml:space="preserve"><value>When using external services (e.g., price lookups), data (IP address, request timestamp) may be transmitted to those providers. Please refer to their privacy policies.</value></data>
+
+  <data name="Section_Other" xml:space="preserve"><value>Other information</value></data>
+  <data name="Other_Disclaimer" xml:space="preserve"><value>No guarantee for correctness. Use at your own risk. No financial or investment advice.</value></data>
+  <data name="Other_Contact" xml:space="preserve"><value>Contact/Feedback: Issues and discussions welcome in the GitHub repository.</value></data>
+</root>

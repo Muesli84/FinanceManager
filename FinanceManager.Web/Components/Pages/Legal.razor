@@ -1,0 +1,70 @@
+@page "/legal"
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Legal> L
+
+<h2>@L["Title"]</h2>
+
+<p>@L["Intro"]</p>
+
+<h3>@L["Section_Usage"]</h3>
+<p>@L["Usage_Private"]</p>
+<p>@L["Usage_LocalStorage"]</p>
+<p>@L["Usage_OperatorDisclosure"]</p>
+
+<h3>@L["Section_Source"]</h3>
+<ul>
+    <li><a href="https://github.com/Muesli84/FinanceManager" target="_blank" rel="noopener noreferrer">https://github.com/Muesli84/FinanceManager</a></li>
+</ul>
+
+<h3>@L["Section_ThirdParty"]</h3>
+<p>@L["ThirdParty_Intro"]</p>
+<ul>
+    <li>@L["ThirdParty_NuGet"]</li>
+    <li>@L["ThirdParty_Apis"]</li>
+</ul>
+
+<h4>@L["ThirdParty_NuGetPackages"]</h4>
+<ul>
+    <li><a href="https://www.nuget.org/packages/DocumentFormat.OpenXml/" target="_blank" rel="noopener noreferrer">DocumentFormat.OpenXml</a></li>
+    <li><a href="https://www.nuget.org/packages/itext/" target="_blank" rel="noopener noreferrer">itext</a></li>
+    <li><a href="https://www.nuget.org/packages/itext.bouncy-castle-adapter/" target="_blank" rel="noopener noreferrer">itext.bouncy-castle-adapter</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.JwtBearer/" target="_blank" rel="noopener noreferrer">Microsoft.AspNetCore.Authentication.JwtBearer</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.Cryptography.KeyDerivation/" target="_blank" rel="noopener noreferrer">Microsoft.AspNetCore.Cryptography.KeyDerivation</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.EntityFrameworkCore/" target="_blank" rel="noopener noreferrer">Microsoft.EntityFrameworkCore</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Design/" target="_blank" rel="noopener noreferrer">Microsoft.EntityFrameworkCore.Design</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Sqlite/" target="_blank" rel="noopener noreferrer">Microsoft.EntityFrameworkCore.Sqlite</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.Extensions.Caching.Memory/" target="_blank" rel="noopener noreferrer">Microsoft.Extensions.Caching.Memory</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.Extensions.Hosting.Abstractions/" target="_blank" rel="noopener noreferrer">Microsoft.Extensions.Hosting.Abstractions</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.Extensions.Http/" target="_blank" rel="noopener noreferrer">Microsoft.Extensions.Http</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.IdentityModel.Tokens/" target="_blank" rel="noopener noreferrer">Microsoft.IdentityModel.Tokens</a></li>
+    <li><a href="https://www.nuget.org/packages/Portable.BouncyCastle/" target="_blank" rel="noopener noreferrer">Portable.BouncyCastle</a></li>
+    <li><a href="https://www.nuget.org/packages/Serilog.AspNetCore/" target="_blank" rel="noopener noreferrer">Serilog.AspNetCore</a></li>
+    <li><a href="https://www.nuget.org/packages/Serilog.Enrichers.Environment/" target="_blank" rel="noopener noreferrer">Serilog.Enrichers.Environment</a></li>
+    <li><a href="https://www.nuget.org/packages/Serilog.Enrichers.Process/" target="_blank" rel="noopener noreferrer">Serilog.Enrichers.Process</a></li>
+    <li><a href="https://www.nuget.org/packages/Serilog.Enrichers.Thread/" target="_blank" rel="noopener noreferrer">Serilog.Enrichers.Thread</a></li>
+    <li><a href="https://www.nuget.org/packages/Serilog.Settings.Configuration/" target="_blank" rel="noopener noreferrer">Serilog.Settings.Configuration</a></li>
+    <li><a href="https://www.nuget.org/packages/Serilog.Sinks.Console/" target="_blank" rel="noopener noreferrer">Serilog.Sinks.Console</a></li>
+    <li><a href="https://www.nuget.org/packages/System.IdentityModel.Tokens.Jwt/" target="_blank" rel="noopener noreferrer">System.IdentityModel.Tokens.Jwt</a></li>
+</ul>
+
+<h4>@L["ThirdParty_TestPackages"]</h4>
+<ul>
+    <li><a href="https://www.nuget.org/packages/bunit/" target="_blank" rel="noopener noreferrer">bunit</a></li>
+    <li><a href="https://www.nuget.org/packages/coverlet.collector/" target="_blank" rel="noopener noreferrer">coverlet.collector</a></li>
+    <li><a href="https://www.nuget.org/packages/FluentAssertions/" target="_blank" rel="noopener noreferrer">FluentAssertions</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.Mvc.Core/" target="_blank" rel="noopener noreferrer">Microsoft.AspNetCore.Mvc.Core</a> (@L["Label_TestsOnly"])</li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.InMemory/" target="_blank" rel="noopener noreferrer">Microsoft.EntityFrameworkCore.InMemory</a></li>
+    <li><a href="https://www.nuget.org/packages/Microsoft.NET.Test.Sdk/" target="_blank" rel="noopener noreferrer">Microsoft.NET.Test.Sdk</a></li>
+    <li><a href="https://www.nuget.org/packages/Moq/" target="_blank" rel="noopener noreferrer">Moq</a></li>
+    <li><a href="https://www.nuget.org/packages/xunit/" target="_blank" rel="noopener noreferrer">xunit</a></li>
+    <li><a href="https://www.nuget.org/packages/xunit.runner.visualstudio/" target="_blank" rel="noopener noreferrer">xunit.runner.visualstudio</a></li>
+</ul>
+
+<h3>@L["Section_Privacy"]</h3>
+<p>@L["Privacy_SessionCookie"]</p>
+<p>@L["Privacy_ThirdParty"]</p>
+
+<h3>@L["Section_Other"]</h3>
+<ul>
+    <li>@L["Other_Disclaimer"]</li>
+    <li>@L["Other_Contact"]</li>
+</ul>

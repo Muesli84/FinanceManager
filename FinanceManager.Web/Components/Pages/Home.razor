@@ -58,10 +58,8 @@
     <HomeKpiGrid EditMode="@_kpiEditMode" />
 </div>
 
-@if(_showHiddenInput)
-{
-    <InputFile id="home-import-input" OnChange="OnFileChanged" multiple style="display:none;" />
-}
+<!-- File input used for import. Normally off-screen; moved over the Import button for iOS taps. -->
+<InputFile id="home-import-input" OnChange="OnFileChanged" multiple style="position:fixed; left:-9999px; width:1px; height:1px; opacity:0;" />
 
 @code {
     private enum TabId { Home }
@@ -82,10 +80,11 @@
             {
                 new Ribbon<TabId>.RibbonItem
                 {
+                    Id = "home-import-btn",
                     Label = Localizer["Ribbon_Import"],
                     IconSvg = "<svg><use href='/icons/sprite.svg#upload'/></svg>",
                     Size = Ribbon<TabId>.RibbonItemSize.Large,
-                    Callback = () => { TriggerImport(); return Task.CompletedTask; }
+                    Callback = async () => { await TriggerImportOverlayAsync(); }
                 }
             }
         };
@@ -117,7 +116,6 @@
 
     private bool _importSuccess;
     private Guid? _draftId;
-    private bool _showHiddenInput;
 
     private SplitInfoDto? _splitInfo;
 
@@ -143,26 +141,39 @@
         BuildRibbon();
     }
 
-    private void TriggerImport()
+    private async Task TriggerImportOverlayAsync()
     {
-        if(!_showHiddenInput)
-        {
-            _showHiddenInput = true; StateHasChanged();
-            _ = Task.Run(async () => { await Task.Delay(50); await JSInvokeClick(); });
-        }
-        else
-        {
-            _ = JSInvokeClick();
-        }
-    }
-
-    private async Task JSInvokeClick()
-    {
+        // Position input over the button and immediately click it in the same user gesture.
+        var js = @"(function(){
+            var btn = document.getElementById('home-import-btn');
+            var inp = document.getElementById('home-import-input');
+            if(!btn || !inp) return false;
+            var r = btn.getBoundingClientRect();
+            var scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+            var scrollY = window.pageYOffset || document.documentElement.scrollTop;
+            inp.style.position='absolute';
+            inp.style.left = (r.left + scrollX) + 'px';
+            inp.style.top = (r.top + scrollY) + 'px';
+            inp.style.width = r.width + 'px';
+            inp.style.height = r.height + 'px';
+            inp.style.opacity = '0.01';
+            inp.style.pointerEvents = 'auto';
+            try { inp.click(); } catch(e) {}
+            return true;
+        })();";
         try
         {
-            await JS.InvokeVoidAsync("eval", "document.getElementById('home-import-input')?.click();");
+            var ok = await JS.InvokeAsync<bool>("eval", js);
+            if (!ok)
+            {
+                await JS.InvokeVoidAsync("eval", "document.getElementById('home-import-input')?.click();");
+            }
         }
-        catch { }
+        catch
+        {
+            // Fallback: navigate to drafts page where import also exists
+            Nav.NavigateTo("/statement-drafts");
+        }
     }
 
     private async Task OnFileChanged(InputFileChangeEventArgs e)
@@ -170,6 +181,8 @@
         var files = e.GetMultipleFiles();
         if (files == null || files.Count == 0)
         {
+            // Hide input again
+            await JS.InvokeVoidAsync("eval", "(function(){var inp=document.getElementById('home-import-input'); if(inp){inp.style.left='-9999px';inp.style.opacity='0';inp.style.pointerEvents='none';}})()");
             return;
         }
 
@@ -210,6 +223,9 @@
 
         _uploadInProgress = false;
         _currentFileName = null;
+
+        // Hide input again
+        await JS.InvokeVoidAsync("eval", "(function(){var inp=document.getElementById('home-import-input'); if(inp){inp.style.left='-9999px';inp.style.opacity='0';inp.style.pointerEvents='none';}})()");
 
         if (firstDraftId.HasValue)
         {

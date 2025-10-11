@@ -256,7 +256,7 @@
     <value>Year</value>
   </data>
   <data name="Interval_Ytd" xml:space="preserve">
-    <value>YTD</value>
+    <value>YTM</value>
   </data>
   <data name="Interval_AllHistory" xml:space="preserve">
     <value>All history</value>

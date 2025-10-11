@@ -153,4 +153,7 @@
   <data name="Nav_Setup" xml:space="preserve">
     <value>Setup</value>
   </data>
+  <data name="Nav_Legal" xml:space="preserve">
+    <value>Legal</value>
+  </data>
 </root>
