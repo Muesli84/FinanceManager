@@ -1,6 +1,8 @@
-﻿# Prozessablaufbeschreibungen (FinanceManager)
+﻿# Prozessablaufbeschreibungen (FinanceManager) (Entwurf)
 
 Dieses Dokument beschreibt die wichtigsten im Programm implementierten Abläufe. Die Schritte sind jeweils in Anwenderaktionen und automatisierte Systemschritte unterteilt. Informationen, die nur das Verständnis der Stammdatenpflege unterstützen, sind als solche gekennzeichnet.
+
+!!! Dieses Dokument muss vervollständigt werden !!!
 
 ---
 
