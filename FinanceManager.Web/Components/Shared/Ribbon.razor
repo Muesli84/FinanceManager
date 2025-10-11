@@ -43,7 +43,7 @@
                             <div class="fm-ribbon-group-body ribbon-items-grid">
                                 @foreach (var item in g.Items)
                                 {
-                                    <button disabled="@item.Disabled"
+                                    <button id="@item.Id" disabled="@item.Disabled"
                                             aria-disabled="@(item.Disabled ? "true" : null)"
                                             aria-label="@item.Label"
                                             title="@(!string.IsNullOrWhiteSpace(item.Tooltip)?item.Tooltip:item.Label)"
@@ -136,6 +136,7 @@
     }
     public class RibbonItem
     {
+        public string? Id { get; set; }
         public required string Label { get; set; }
         public required string IconSvg { get; set; }
         public RibbonItemSize Size { get; set; } = RibbonItemSize.Small;
