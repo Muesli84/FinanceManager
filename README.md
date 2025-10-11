@@ -1,8 +1,8 @@
-﻿# FinanceManager (Arbeitsname)
+﻿# Finance Manager
 
 > Persönliche Finanzverwaltung mit Kontoauszug-Import, Sparplänen, Wertpapiertracking, Auswertungen & Mehrbenutzer?/Sharing-Funktionen.
 >
-> Hinweis: Projektname vs. "Finanzverwaltung" noch zu vereinheitlichen (siehe Offene Punkte OP-002).
+> Dieses Projekt wurde zum größten Teil anhand von Anweisungen an GitHub Copilot erstellt.
 
 ## Inhalt
 1. Überblick
