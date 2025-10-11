@@ -17,7 +17,7 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
     private string? _cachedToken;
     private DateTimeOffset _cachedExpiry;
 
-    private static readonly TimeSpan RenewalWindow = TimeSpan.FromMinutes(5); // Vor Ablauf erneuern
+    private static readonly TimeSpan MinRenewalWindow = TimeSpan.FromMinutes(5);
 
     public JwtCookieAuthTokenProvider(IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
     {
@@ -35,8 +35,12 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
 
         var now = DateTimeOffset.UtcNow;
 
+        // Determine renewal window from configured lifetime (half of it)
+        var lifetimeMinutes = int.TryParse(_configuration["Jwt:LifetimeMinutes"], out var lm) ? lm : 30;
+        var renewalWindow = TimeSpan.FromMinutes(Math.Max(MinRenewalWindow.TotalMinutes, lm / 2.0));
+
         // Cache noch gültig?
-        if (_cachedToken != null && _cachedExpiry - RenewalWindow > now)
+        if (_cachedToken != null && _cachedExpiry - renewalWindow > now)
         {
             return Task.FromResult<string?>(_cachedToken);
         }
@@ -74,9 +78,9 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
             var exp = DateTimeOffset.FromUnixTimeSeconds(long.Parse(jwt.Claims.First(c => c.Type == JwtRegisteredClaimNames.Exp).Value));
 
             // Erneuern wenn bald ablaufend
-            if (exp - RenewalWindow <= now)
+            if (exp - renewalWindow <= now)
             {
-                var refreshed = IssueToken(principal.Claims);
+                var refreshed = IssueToken(principal.Claims, lifetimeMinutes);
                 SetCookie(ctx, refreshed.token, refreshed.expiry);
                 Cache(refreshed.token, refreshed.expiry);
                 return Task.FromResult<string?>(refreshed.token);
@@ -98,10 +102,9 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
         InvalidateCache();
     }
 
-    private (string token, DateTimeOffset expiry) IssueToken(IEnumerable<Claim> claims)
+    private (string token, DateTimeOffset expiry) IssueToken(IEnumerable<Claim> claims, int lifetimeMinutes)
     {
         var key = _configuration["Jwt:Key"]!;
-        var lifetimeMinutes = int.TryParse(_configuration["Jwt:LifetimeMinutes"], out var lm) ? lm : 30;
         var expiry = DateTimeOffset.UtcNow.AddMinutes(lifetimeMinutes);
 
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));

@@ -14,7 +14,6 @@ namespace FinanceManager.Web.Infrastructure.Auth
 
         private const string RefreshHeaderName = "X-Auth-Token";
         private const string RefreshExpiresHeaderName = "X-Auth-Token-Expires";
-        private static readonly TimeSpan RenewalWindow = TimeSpan.FromMinutes(60);
 
         public JwtRefreshMiddleware(RequestDelegate next, IConfiguration configuration)
         {
@@ -56,12 +55,16 @@ namespace FinanceManager.Web.Infrastructure.Auth
 
                 var exp = DateTimeOffset.FromUnixTimeSeconds(expSec);
                 var now = DateTimeOffset.UtcNow;
-                if (exp - RenewalWindow > now)
+
+                // Determine renewal window dynamically based on configured lifetime
+                var lifetimeMinutes = int.TryParse(_configuration["Jwt:LifetimeMinutes"], out var lm) ? lm : 30;
+                var renewalWindow = TimeSpan.FromMinutes(Math.Max(5, lm / 2)); // renew when half of lifetime has passed
+
+                if (exp - renewalWindow > now)
                 {
                     return;
                 }
 
-                var lifetimeMinutes = int.TryParse(_configuration["Jwt:LifetimeMinutes"], out var lm) ? lm : 30;
                 var newExpiry = DateTimeOffset.UtcNow.AddMinutes(lifetimeMinutes);
 
                 var userIdStr = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -80,7 +83,6 @@ namespace FinanceManager.Web.Infrastructure.Auth
                 var jts = context.RequestServices.GetRequiredService<IJwtTokenService>();
                 var newToken = jts.CreateToken(userId, username, isAdmin, newExpiry.UtcDateTime);
 
-                // Setze Cookie früh in der Pipeline, bevor die Antwort startet
                 if (!context.Response.HasStarted)
                 {
                     context.Response.Cookies.Append("fm_auth", newToken, new CookieOptions
@@ -88,11 +90,11 @@ namespace FinanceManager.Web.Infrastructure.Auth
                         HttpOnly = true,
                         Secure = true,
                         SameSite = SameSiteMode.Lax,
-                        Expires = newExpiry
+                        Expires = newExpiry,
+                        Path = "/"
                     });
                 }
 
-                // Optional: Header weiterhin setzen (diagnostisch/Clients ohne Cookies)
                 context.Response.Headers[RefreshHeaderName] = newToken;
                 context.Response.Headers[RefreshExpiresHeaderName] = newExpiry.UtcDateTime.ToString("o");
             }
