@@ -1540,6 +1540,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
             _db.Postings.Add(bankPosting); await UpsertAggregatesAsync(bankPosting, token);
             var contactPosting = new Domain.Postings.Posting(e.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, amount, e.Subject, e.RecipientName, e.BookingDescription, null).SetGroup(gid);
             _db.Postings.Add(contactPosting); await UpsertAggregatesAsync(contactPosting, token);
+
+            // Kontosaldo anpassen (nur Bank-Buchung relevant)
+            if (amount != 0m)
+            {
+                account.AdjustBalance(amount);
+            }
+
             // Attachments handling happens by caller after all postings are created (needs posting ids)
             return gid;
         }
@@ -1738,6 +1745,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     _db.Postings.Add(bank); await UpsertAggregatesAsync(bank, ct);
                     var contactPosting = new Domain.Postings.Posting(e.Id, PostingKind.Contact, null, e.ContactId, null, null, e.BookingDate, amount, e.Subject, e.RecipientName, e.BookingDescription, null).SetGroup(gid);
                     _db.Postings.Add(contactPosting); await UpsertAggregatesAsync(contactPosting, ct);
+
+                    // Kontosaldo anpassen (nur Bank-Buchung relevant)
+                    if (amount != 0m)
+                    {
+                        account.AdjustBalance(amount);
+                    }
+
                     return gid;
                 }
                 async Task CreateSecurityAsync(StatementDraftEntry e, Guid gid)

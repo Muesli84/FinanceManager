@@ -126,7 +126,6 @@ public sealed class PostingAggregateService : IPostingAggregateService
             {
                 var start = GetPeriodStart(p.BookingDate, period);
 
-                // Nur die passende Dimension befüllen – wie zuvor
                 (Guid? acc, Guid? con, Guid? sav, Guid? sec, SecurityPostingSubType? sub) dim = p.Kind switch
                 {
                     PostingKind.Bank       => (p.AccountId, null, null, null, null),
@@ -174,5 +173,25 @@ public sealed class PostingAggregateService : IPostingAggregateService
         }
 
         progressCallback(total, total);
+
+        // 6) Kontosalden (CurrentBalance) aus Bank-Postings neu berechnen
+        var bankSums = await _db.Postings.AsNoTracking()
+            .Where(p => p.Kind == PostingKind.Bank && p.AccountId != null && accountIds.Contains(p.AccountId.Value))
+            .GroupBy(p => p.AccountId!.Value)
+            .Select(g => new { AccountId = g.Key, Balance = g.Sum(x => x.Amount) })
+            .ToListAsync(ct);
+        var byAcc = bankSums.ToDictionary(x => x.AccountId, x => x.Balance);
+        var ownedAccounts = await _db.Accounts.Where(a => a.OwnerUserId == userId).ToListAsync(ct);
+        foreach (var acc in ownedAccounts)
+        {
+            var val = byAcc.TryGetValue(acc.Id, out var b) ? b : 0m;
+            // set via domain method to keep ModifiedUtc in sync
+            var delta = val - acc.CurrentBalance;
+            if (delta != 0m)
+            {
+                acc.AdjustBalance(delta);
+            }
+        }
+        await _db.SaveChangesAsync(ct);
     }
 }
