@@ -2,8 +2,63 @@
 <root>
   <!-- 
     Microsoft ResX Schema 
+    
     Version 2.0
-  -->
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -62,30 +117,64 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-
-  <data name="Title" xml:space="preserve"><value>Rechtliches</value></data>
-  <data name="Intro" xml:space="preserve"><value>Diese Seite informiert über Quellcode, verwendete Komponenten sowie Datenschutz-Aspekte dieser Anwendung.</value></data>
-
-  <data name="Section_Usage" xml:space="preserve"><value>Nutzung</value></data>
-  <data name="Usage_Private" xml:space="preserve"><value>Die Anwendung ist fuer die private Nutzung gedacht. Ein technisch versierter Privatanwender kann die Anwendung auf einem Heimrechner als Serveranwendung installieren und verwenden.</value></data>
-  <data name="Usage_LocalStorage" xml:space="preserve"><value>Die Anwendungsdaten werden lokal auf dem eigenen Geraet in einer SQLite-Datenbank gespeichert, sofern keine andere Datenbank konfiguriert wurde.</value></data>
-  <data name="Usage_OperatorDisclosure" xml:space="preserve"><value>Sofern die Anwendung anderen Personen bereitgestellt wird (z. B. im Heimnetz oder darüber hinaus), muss der Betreiber ueber die Verarbeitung personenbezogener Daten informieren (Zwecke, Speicherdauer, Empfaenger) und auf etwaige Drittanbieter hinweisen.</value></data>
-
-  <data name="Section_Source" xml:space="preserve"><value>Quellcode / Repository</value></data>
-
-  <data name="Section_ThirdParty" xml:space="preserve"><value>Drittanbieter-Komponenten</value></data>
-  <data name="ThirdParty_Intro" xml:space="preserve"><value>Diese Anwendung verwendet Open-Source-Bibliotheken (NuGet) sowie optionale Web-APIs von Drittanbietern.</value></data>
-  <data name="ThirdParty_NuGet" xml:space="preserve"><value>NuGet-Pakete (Auszug): Microsoft.EntityFrameworkCore.*, Microsoft.Data.Sqlite, Nager.Date (Feiertage), System.Text.Json, u.a.</value></data>
-  <data name="ThirdParty_Apis" xml:space="preserve"><value>Optionale Web-APIs: AlphaVantage (Kursdaten) - nur bei hinterlegtem API-Schluessel und expliziter Nutzung; Anfragen enthalten IP-/Client-Daten gemaess deren Richtlinien.</value></data>
-  <data name="ThirdParty_NuGetPackages" xml:space="preserve"><value>NuGet-Pakete</value></data>
-  <data name="ThirdParty_TestPackages" xml:space="preserve"><value>Test-Pakete</value></data>
-  <data name="Label_TestsOnly" xml:space="preserve"><value>nur in Tests</value></data>
-
-  <data name="Section_Privacy" xml:space="preserve"><value>Datenschutz</value></data>
-  <data name="Privacy_SessionCookie" xml:space="preserve"><value>Diese Anwendung verwendet ein Session-/Auth-Cookie (fm_auth), um angemeldete Sitzungen zu verwalten. Das Cookie enthaelt ein JWT-Token, das ausschliesslich zur Authentifizierung genutzt wird.</value></data>
-  <data name="Privacy_ThirdParty" xml:space="preserve"><value>Bei Nutzung externer Dienste (z. B. Kursabrufe) koennen Daten (IP-Adresse, Anfragezeitpunkt) an Anbieter uebertragen werden. Bitte pruefen Sie die Datenschutzhinweise der jeweiligen Dienste.</value></data>
-
-  <data name="Section_Other" xml:space="preserve"><value>Weitere Hinweise</value></data>
-  <data name="Other_Disclaimer" xml:space="preserve"><value>Alle Angaben ohne Gewaehr. Nutzung auf eigenes Risiko. Es werden keine Finanz- oder Anlageberatungen erbracht.</value></data>
-  <data name="Other_Contact" xml:space="preserve"><value>Kontakt/Feedback: Issues und Diskussionen im GitHub-Repository willkommen.</value></data>
+  <data name="Title" xml:space="preserve">
+    <value>Rechtliches</value>
+  </data>
+  <data name="Intro" xml:space="preserve">
+    <value>Diese Seite informiert über Quellcode, verwendete Komponenten sowie Datenschutz-Aspekte dieser Anwendung.</value>
+  </data>
+  <data name="Section_Usage" xml:space="preserve">
+    <value>Nutzung</value>
+  </data>
+  <data name="Usage_Private" xml:space="preserve">
+    <value>Die Anwendung ist für die private Nutzung gedacht. Ein technisch versierter Privatanwender kann die Anwendung auf einem Heimrechner als Serveranwendung installieren und verwenden.</value>
+  </data>
+  <data name="Usage_LocalStorage" xml:space="preserve">
+    <value>Die Anwendungsdaten werden lokal auf dem eigenen Gerät in einer SQLite-Datenbank gespeichert, sofern keine andere Datenbank konfiguriert wurde.</value>
+  </data>
+  <data name="Usage_OperatorDisclosure" xml:space="preserve">
+    <value>Sofern die Anwendung anderen Personen bereitgestellt wird (z. B. im Heimnetz oder darüber hinaus), muss der Betreiber über die Verarbeitung personenbezogener Daten informieren (Zwecke, Speicherdauer, Empfänger) und auf etwaige Drittanbieter hinweisen.</value>
+  </data>
+  <data name="Section_Source" xml:space="preserve">
+    <value>Quellcode / Repository</value>
+  </data>
+  <data name="Section_ThirdParty" xml:space="preserve">
+    <value>Drittanbieter-Komponenten</value>
+  </data>
+  <data name="ThirdParty_Intro" xml:space="preserve">
+    <value>Diese Anwendung verwendet Open-Source-Bibliotheken (NuGet) sowie optionale Web-APIs von Drittanbietern.</value>
+  </data>
+  <data name="ThirdParty_NuGet" xml:space="preserve">
+    <value>NuGet-Pakete (Auszug): Microsoft.EntityFrameworkCore.*, Microsoft.Data.Sqlite, Nager.Date (Feiertage), System.Text.Json, u.a.</value>
+  </data>
+  <data name="ThirdParty_Apis" xml:space="preserve">
+    <value>Optionale Web-APIs: AlphaVantage (Kursdaten) - nur bei hinterlegtem API-Schlüssel und expliziter Nutzung; Anfragen enthalten IP-/Client-Daten gemäß deren Richtlinien.</value>
+  </data>
+  <data name="ThirdParty_NuGetPackages" xml:space="preserve">
+    <value>NuGet-Pakete</value>
+  </data>
+  <data name="ThirdParty_TestPackages" xml:space="preserve">
+    <value>Test-Pakete</value>
+  </data>
+  <data name="Label_TestsOnly" xml:space="preserve">
+    <value>nur in Tests</value>
+  </data>
+  <data name="Section_Privacy" xml:space="preserve">
+    <value>Datenschutz</value>
+  </data>
+  <data name="Privacy_SessionCookie" xml:space="preserve">
+    <value>Diese Anwendung verwendet ein Session-/Auth-Cookie (fm_auth), um angemeldete Sitzungen zu verwalten. Das Cookie enthält ein JWT-Token, das ausschließlich zur Authentifizierung genutzt wird.</value>
+  </data>
+  <data name="Privacy_ThirdParty" xml:space="preserve">
+    <value>Bei Nutzung externer Dienste (z. B. Kursabrufe) können Daten (IP-Adresse, Anfragezeitpunkt) an Anbieter übertragen werden. Bitte prüfen Sie die Datenschutzhinweise der jeweiligen Dienste.</value>
+  </data>
+  <data name="Section_Other" xml:space="preserve">
+    <value>Weitere Hinweise</value>
+  </data>
+  <data name="Other_Disclaimer" xml:space="preserve">
+    <value>Alle Angaben ohne Gewähr. Nutzung auf eigenes Risiko. Es werden keine Finanz- oder Anlageberatungen erbracht.</value>
+  </data>
+  <data name="Other_Contact" xml:space="preserve">
+    <value>Kontakt/Feedback: Issues und Diskussionen im GitHub-Repository willkommen.</value>
+  </data>
 </root>
