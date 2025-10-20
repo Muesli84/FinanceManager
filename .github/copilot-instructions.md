@@ -60,7 +60,7 @@ Diese Richtlinien definieren konsistente, wartbare und sichere Standards für di
 - `IAsyncDisposable` nutzen wo async Clean-up nötig.
 
 ### 2.8 Logging
-- ILogger<T>. Provider zentral (z.B. Serilog) konfiguriert.
+- ILogger<T>. Provider zentral konfiguriert.
 - Log-Level Guidance:
   - Trace/Debug: Entwicklungsdiagnostik.
   - Information: Geschäftsrelevante Events (Import abgeschlossen, Konto geteilt, Kursabruf gestartet/beendet). Nicht jede Service-Methode automatisch loggen → Vermeide Log Noise.
@@ -126,6 +126,9 @@ Diese Richtlinien definieren konsistente, wartbare und sichere Standards für di
 - Kein künstliches 100% Ziel, Qualität > Quantität. Mindestziel initial 70% für Kern-Domain, evaluieren.
 
 ## 4. Projekttyp-spezifische Richtlinien
+
+Folgend wrden projekttypische Strukturen und Konventionen für verschiedenste Arten von Projekte beschrieben. Nicht alle sind für das aktuelle Projekt relevant, aber sie bieten eine gute Grundlage für zukünftige Erweiterungen oder Projekte.
+
 ### 4.1 Blazor Server
 - Verzeichnisstruktur:
   - /Pages: Razor Components (Routen via @page)
@@ -237,7 +240,7 @@ public sealed class AccountImportService : IAccountImportService
 - **Alle Aktionen, die nur einen einzelnen Eintrag betreffen (z.B. Bearbeiten, Archivieren, Löschen), sind ausschließlich auf der Detailseite verfügbar.**
 - In der Übersichtsseite dürfen nur Aktionen für die Neuanlage oder für Massenverarbeitungen angeboten werden.
 - Die Aktionen auf der Detailseite werden i.d.R. in einer Aktionsleiste als Schaltflächen mit Symbolen zwischen Überschrift und Inhalt angeboten.
-- Die Symbole für di Aktionen werden in einer sprite.svg-Datei bereitgestellt.
+- Die Symbole für die Aktionen werden in einer sprite.svg-Datei bereitgestellt.
 
 ---
 Diese Richtlinien werden stetig weiterentwickelt; Änderungen über Pull Request dokumentieren.

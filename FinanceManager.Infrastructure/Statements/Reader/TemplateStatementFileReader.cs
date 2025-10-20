@@ -1,5 +1,7 @@
 ﻿using FinanceManager.Application.Statements;
+using Org.BouncyCastle.Math.EC.Multiplier;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Xml;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -276,25 +278,15 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             {
                 foreach (XmlNode Field in CurrentSection.ChildNodes)
                 {
-                    if (Field.Name != "field")
-                        continue;
-                    string VariableName = Field.Attributes["variable"]?.Value;
-                    int.TryParse(Field.Attributes["length"]?.Value, out int fieldLength);
-                    if (!int.TryParse(Field.Attributes["multiplier"]?.Value, out int multiplier))
-                        multiplier = 1;
-                    if (TableFieldSeparator == "#None#")
+                    switch(Field.Name)
                     {
-                        if (fieldLength == 0)
-                            fieldLength = Values[0].Length;
-                        var currentValue = Values[0].Substring(0, fieldLength);
-                        Values[0] = Values[0].Remove(0, fieldLength);
-                        ParseVariable(VariableName, currentValue, false, VariableMode.Always, multiplier);
-                    }
-                    else
-                    {
-                        ParseVariable(VariableName, Values[FieldIdx], false, VariableMode.Always, multiplier);
-                        FieldIdx += 1;
-                    }
+                        case "field":
+                            FieldIdx = ParseField(Values, FieldIdx, Field);
+                            break;
+                        case "regExp":
+                            ParseRegularExpression(line, Field);
+                            break;
+                    }                    
                 }
             }
             catch (ArgumentOutOfRangeException)
@@ -306,10 +298,58 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             return FinishRecord();
         }
 
+        private void ParseRegularExpression(string input, XmlNode field)
+        {
+            var pattern = field.Attributes["pattern"].Value;
+            var regex = new Regex(pattern, RegexOptions.IgnorePatternWhitespace);
+            var match = regex.Match(input);
+            if (!int.TryParse(field.Attributes["multiplier"]?.Value, out int multiplier))
+                multiplier = 1;
+            if (match.Success)
+            {
+                foreach (var groupName in regex.GetGroupNames())
+                {
+                    if (int.TryParse(groupName, out _))
+                        continue;
+
+                    var value = match.Groups[groupName].Value;
+                    if (string.IsNullOrEmpty(value))
+                        continue;
+                    ParseVariable(groupName, value, false, VariableMode.Always, multiplier);
+                }
+            }
+        }
+
+        private int ParseField(string[] Values, int FieldIdx, XmlNode Field)
+        {
+            string VariableName = Field.Attributes["variable"]?.Value;
+            int.TryParse(Field.Attributes["length"]?.Value, out int fieldLength);
+            if (!int.TryParse(Field.Attributes["multiplier"]?.Value, out int multiplier))
+                multiplier = 1;
+            if (TableFieldSeparator == "#None#")
+            {
+                if (fieldLength == 0)
+                    fieldLength = Values[0].Length;
+                var currentValue = Values[0].Substring(0, fieldLength);
+                Values[0] = Values[0].Remove(0, fieldLength);
+                ParseVariable(VariableName, currentValue, false, VariableMode.Always, multiplier);
+            }
+            else
+            {
+                ParseVariable(VariableName, Values[FieldIdx], false, VariableMode.Always, multiplier);
+                FieldIdx += 1;
+            }
+
+            return FieldIdx;
+        }
+
         private StatementMovement FinishRecord()
         {
             try
             {
+                if (RecordLineData.Amount == 0 && string.IsNullOrWhiteSpace(RecordLineData.Subject) && RecordLineData.BookingDate == DateTime.MinValue)
+                    return null;
+
                 RecordLineData.IsPreview = (RecordLineData.BookingDate == DateTime.MinValue)
                     || (RecordLineData.BookingDate > DateTime.Today);
                 return RecordLineData;
