@@ -369,3 +369,4 @@ FodyWeavers.xsd
 /FinanceManager.Web/financemanager.db-wal
 /init
 /FinanceManager.Web/init
+/FinanceManager.Web/.config/dotnet-tools.json
