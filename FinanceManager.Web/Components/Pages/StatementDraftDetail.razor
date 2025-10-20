@@ -452,7 +452,7 @@ else
 
     @if(_validation != null)
     {
-        var globalMessages = _validation.Messages.Where(m=>m.EntryId==null).ToList();
+        var globalMessages = _validation.Messages.Where(m=>m.EntryId==null || m.DraftId != Id).ToList();
         if(globalMessages.Any())
         {
             <div style="margin:.5rem 0 1rem 0;padding:.6rem .75rem;border:1px solid #444;border-radius:4px;background:#181818;max-width:960px;">
