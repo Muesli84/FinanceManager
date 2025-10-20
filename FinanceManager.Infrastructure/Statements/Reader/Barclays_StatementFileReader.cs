@@ -12,26 +12,11 @@ namespace FinanceManager.Infrastructure.Statements.Reader
 <template>
   <section name='Block1' type='ignore' endKeyword='Allgemeine Umsätze '/>
   <section name='table' type='table' containsheader='false' fieldSeparator='#None#' endKeyword='Wie mit Ihnen vereinbart,'>
-    <ignore keyword='Allgemeine Umsätze'/>    
-    <field name='Auftraggeber/Empfänger' variable='SourceName' length='29'/>
-    <field name='Buchung' variable='PostingDate' length='9'/>
-    <field name='OrigBetrag' variable='' length='13'/>    
-    <field name='Rate' variable='' length='2'/>
-    <field name='Reference' variable='Description' length='13'/>    
-    <field name='Betrag' variable='Amount' multiplier='-1'/>      
+    <regExp pattern='^(?:\s*(?&lt;Buchungsart&gt;\w+):)?\s*(?&lt;SourceName&gt;.*?)\s+(?&lt;PostingDate&gt;\d{2}\.\d{2}\.\d{2})\s+(?&lt;Gesamtbetrag&gt;\d{1,3},\d{2})-\s+(?&lt;Description&gt;.+?)\s+(?&lt;Amount&gt;\d{1,3},\d{2})' multiplier='-1'/>
   </section>
   <section name='Block2' type='ignore' endKeyword='Hauptkarte/n|Umsatzübersicht'/>
   <section name='table' type='table' containsheader='false' fieldSeparator='#None#' endKeyword='Umsätze |Per Lastschrift dankend erhalten' stopOnError='true'>
-    <ignore keyword='Allgemeine Umsätze'/>
-    <ignore keyword='Alter Saldo'/>
-    <ignore keyword='Hauptkarte/n'/>
-    <field name='Buchung' variable='PostingDate' length='11'/>
-    <field name='Valuta' variable='ValutaDate' length='11'/>
-    <field name='Auftraggeber/Empfänger' variable='SourceName' length='23'/>
-    <field name='Ort' variable='' length='14'/>
-    <field name='Land' variable='' length='3'/>
-    <field name='Karte' variable='' length='15'/>
-    <field name='Betrag' variable='Amount'/>    
+    <regExp pattern='^(?&lt;PostingDate&gt;\d{2}\.\d{2}\.\d{4})\s+(?&lt;ValutaDate&gt;\d{2}\.\d{2}\.\d{4})\s+(?&lt;SourceName&gt;.+?)\s+(?&lt;Card&gt;Visa)\s+(?&lt;Amount&gt;\d{1,3},\d{2}[-+])' />
   </section>
   <section name='Block2' type='ignore' endKeyword='Hauptkarte/n|Umsatzübersicht'/>
   <section name='table' type='table' containsheader='false' fieldSeparator='#None#' endKeyword='Umsätze |Per Lastschrift dankend erhalten' stopOnError='true'>
@@ -114,6 +99,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                 PdfDocument pdfDoc = new PdfDocument(iTextReader);
                 int numberofpages = pdfDoc.GetNumberOfPages();
                 ITextExtractionStrategy strategy = new SimpleTextExtractionStrategy();
+                var totalContent = "";
                 var lastContent = "";
                 for (int pageNo = 1; pageNo <= numberofpages; pageNo++)
                 {
@@ -123,11 +109,12 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     if (!string.IsNullOrWhiteSpace(lastContent) && pageContent.StartsWith(lastContent))
                         pageContent = pageContent.Remove(0, lastContent.Length).TrimStart('\n');
                     lastContent = currentContent;
-
-                    var pageLines = pageContent.TrimEnd('\n').Split('\n');
-                    foreach (var line in pageLines)
-                        yield return line;
+                    totalContent += pageContent;
                 }
+
+                var pageLines = totalContent.TrimEnd('\n').Split('\n');
+                foreach (var line in pageLines)
+                    yield return line;
             }
             finally
             {
