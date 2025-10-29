@@ -8,13 +8,14 @@ using FinanceManager.Domain.Contacts;
 using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/accounts")]
 [Produces(MediaTypeNames.Application.Json)]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class AccountsController : ControllerBase
 {
     private readonly IAccountService _accounts;

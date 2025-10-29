@@ -1,21 +1,22 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Mime;
 using FinanceManager.Application;
 using FinanceManager.Application.Attachments;
 using FinanceManager.Domain.Attachments;
 using FinanceManager.Shared.Dtos;
+using FinanceManager.Web.Infrastructure.Attachments;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using FinanceManager.Web.Infrastructure.Attachments;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
+using System.ComponentModel.DataAnnotations;
+using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/attachments")] 
 [Produces(MediaTypeNames.Application.Json)]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class AttachmentsController : ControllerBase
 {
     private readonly IAttachmentService _service;

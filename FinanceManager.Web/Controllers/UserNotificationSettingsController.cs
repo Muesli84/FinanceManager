@@ -1,16 +1,17 @@
 using FinanceManager.Application;
+using FinanceManager.Domain.Notifications;
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
-using FinanceManager.Domain.Notifications;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/user/notification-settings")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class UserNotificationSettingsController : ControllerBase
 {
     private readonly FinanceManager.Infrastructure.AppDbContext _db;

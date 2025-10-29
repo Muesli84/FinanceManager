@@ -1,17 +1,18 @@
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace FinanceManager.Web.Controllers
 {
     [ApiController]
-    [Route("api/aggregates")] 
-    [Authorize]
+    [Route("api/aggregates")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public sealed class AggregatesController : ControllerBase
     {
         private readonly IBackgroundTaskManager _tasks;

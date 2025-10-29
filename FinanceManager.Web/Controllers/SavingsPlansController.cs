@@ -1,15 +1,16 @@
-using System.ComponentModel.DataAnnotations;
 using FinanceManager.Application.Savings;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/savings-plans")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class SavingsPlansController : ControllerBase
 {
     private readonly ISavingsPlanService _service;

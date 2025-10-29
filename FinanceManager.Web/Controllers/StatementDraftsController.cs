@@ -1,31 +1,32 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Accounts;
+using FinanceManager.Application.Attachments; // new
 using FinanceManager.Application.Statements;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Accounts;
+using FinanceManager.Domain.Attachments; // new
+using FinanceManager.Domain.Securities;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Accounts;
+using FinanceManager.Infrastructure.Statements; // for ImportSplitInfo
 using FinanceManager.Shared.Dtos;
+using FinanceManager.Web.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Net.Mime;
-using FinanceManager.Domain.Securities;
-using FinanceManager.Web.Services;
 using System.Text.Json;
-using FinanceManager.Infrastructure.Statements; // for ImportSplitInfo
-using FinanceManager.Application.Attachments; // new
-using FinanceManager.Domain.Attachments; // new
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/statement-drafts")]
 [Produces(MediaTypeNames.Application.Json)]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class StatementDraftsController : ControllerBase
 {
     private readonly IStatementDraftService _drafts;

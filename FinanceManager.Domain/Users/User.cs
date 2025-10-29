@@ -1,15 +1,18 @@
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FinanceManager.Domain.Users;
 
-public sealed partial class User : Entity, IAggregateRoot
+public sealed partial class User : IdentityUser<Guid>, IAggregateRoot
 {
     private User() { }
-    public User(string username, string passwordHash, bool isAdmin)
+
+    // Existing constructor for callers that already compute a password hash
+    public User(string username, string passwordHash)
     {
-        Username = Guards.NotNullOrWhiteSpace(username, nameof(username));
-        PasswordHash = Guards.NotNullOrWhiteSpace(passwordHash, nameof(passwordHash));
-        IsAdmin = isAdmin;
+        Rename(username);        
+        SetPasswordHash(passwordHash);
         // Defaults for import split settings (FA-AUSZ-016)
         ImportSplitMode = ImportSplitMode.MonthlyOrFixed;
         ImportMaxEntriesPerDraft = 250;
@@ -17,21 +20,68 @@ public sealed partial class User : Entity, IAggregateRoot
         ImportMinEntriesPerDraft = 8; // new default (FA-AUSZ-016-12)
     }
 
-    public string Username { get; private set; } = null!;
-    public string PasswordHash { get; private set; } = null!;
-    public bool IsAdmin { get; private set; }
-    public DateTime? LockedUntilUtc { get; private set; }
+    // Backwards-compatible alias used in other parts of the codebase
+    [NotMapped]
+    [Obsolete("Use UserName property from IdentityUser base class instead.", true)]
+    public string Username { get => base.UserName!; set => base.UserName = value; }
+
+    // New constructor to support UserManager.CreateAsync(user, password)
+    public User(string username)
+    {
+        UserName = Guards.NotNullOrWhiteSpace(username, nameof(username));
+        // Password will be set by Identity's UserManager when CreateAsync(user, password) is used
+        // Defaults for import split settings
+        ImportSplitMode = ImportSplitMode.MonthlyOrFixed;
+        ImportMaxEntriesPerDraft = 250;
+        ImportMonthlySplitThreshold = 250;
+        ImportMinEntriesPerDraft = 8;
+    }
+
+    // New constructor to support creating a user and specifying admin flag
+    public User(string username, bool isAdmin)
+    {
+        UserName = Guards.NotNullOrWhiteSpace(username, nameof(username));
+        IsAdmin = isAdmin;
+        // Defaults for import split settings
+        ImportSplitMode = ImportSplitMode.MonthlyOrFixed;
+        ImportMaxEntriesPerDraft = 250;
+        ImportMonthlySplitThreshold = 250;
+        ImportMinEntriesPerDraft = 8;
+    }
+
+    // New constructor to preserve older callsites that passed isAdmin flag
+    public User(string username, string passwordHash, bool isAdmin)
+    {
+        UserName = Guards.NotNullOrWhiteSpace(username, nameof(username));
+        base.PasswordHash = Guards.NotNullOrWhiteSpace(passwordHash, nameof(passwordHash));
+        IsAdmin = isAdmin;
+        // Defaults for import split settings
+        ImportSplitMode = ImportSplitMode.MonthlyOrFixed;
+        ImportMaxEntriesPerDraft = 250;
+        ImportMonthlySplitThreshold = 250;
+        ImportMinEntriesPerDraft = 8;
+    }
+
     public string? PreferredLanguage { get; private set; }
     public DateTime LastLoginUtc { get; private set; }
     public bool Active { get; private set; } = true;
-    public int FailedLoginAttempts { get; private set; }
-    public DateTime? LastFailedLoginUtc { get; private set; }
 
     // --- Import Split Settings (User Preferences) ---
     public ImportSplitMode ImportSplitMode { get; private set; } = ImportSplitMode.MonthlyOrFixed;
     public int ImportMaxEntriesPerDraft { get; private set; } = 250;
     public int? ImportMonthlySplitThreshold { get; private set; } = 250; // nullable to allow future unset -> fallback
     public int ImportMinEntriesPerDraft { get; private set; } = 1; // new minimum entries preference
+
+    // Admin flag persisted in DB
+    public bool IsAdmin { get; private set; }
+
+    private void Touch() { /* marker for state change — intentionally no-op for now */ }
+
+    public void SetAdmin(bool isAdmin)
+    {
+        IsAdmin = isAdmin;
+        Touch();
+    }
 
     public void SetImportSplitSettings(ImportSplitMode mode, int maxEntriesPerDraft, int? monthlySplitThreshold, int? minEntriesPerDraft = null)
     {
@@ -82,42 +132,11 @@ public sealed partial class User : Entity, IAggregateRoot
     public void MarkLogin(DateTime utcNow)
     {
         LastLoginUtc = utcNow;
-        ResetFailedLoginAttempts();
     }
-    public void SetLockedUntil(DateTime? utc)
-    {
-        LockedUntilUtc = utc;
-        if (utc == null)
-        {
-            ResetFailedLoginAttempts();
-        }
-    }
+
     public void SetPreferredLanguage(string? lang) => PreferredLanguage = string.IsNullOrWhiteSpace(lang) ? null : lang.Trim();
     public void Deactivate() => Active = false;
     public void Activate() => Active = true;
-    public void Rename(string newUsername) => Username = Guards.NotNullOrWhiteSpace(newUsername, nameof(newUsername));
-    public void SetAdmin(bool isAdmin) => IsAdmin = isAdmin;
-    public void SetPasswordHash(string passwordHash) => PasswordHash = Guards.NotNullOrWhiteSpace(passwordHash, nameof(passwordHash));
-    public int IncrementFailedLoginAttempts() => ++FailedLoginAttempts;
-    public void ResetFailedLoginAttempts()
-    {
-        FailedLoginAttempts = 0;
-        LastFailedLoginUtc = null;
-    }
-
-    /// <summary>
-    /// Increments failed login attempts with time-based reset if last failure is older than resetAfter.
-    /// Returns the effective counter after increment.
-    /// </summary>
-    public int RegisterFailedLogin(DateTime utcNow, TimeSpan resetAfter)
-    {
-        if (LastFailedLoginUtc.HasValue && utcNow - LastFailedLoginUtc.Value >= resetAfter)
-        {
-            FailedLoginAttempts = 0;
-        }
-        FailedLoginAttempts++;
-        LastFailedLoginUtc = utcNow;
-        Touch();
-        return FailedLoginAttempts;
-    }
+    public void Rename(string newUsername) => base.UserName = Guards.NotNullOrWhiteSpace(newUsername, nameof(newUsername));
+    public void SetPasswordHash(string passwordHash) => base.PasswordHash = Guards.NotNullOrWhiteSpace(passwordHash, nameof(passwordHash));
 }

@@ -1,15 +1,16 @@
-using System.ComponentModel.DataAnnotations;
 using FinanceManager.Application;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Reports;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/home-kpis")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class HomeKpisController : ControllerBase
 {
     private readonly IHomeKpiService _service;

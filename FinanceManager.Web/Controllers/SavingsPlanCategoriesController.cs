@@ -1,10 +1,13 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Savings;
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/savings-plan-categories")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class SavingsPlanCategoriesController : ControllerBase
 {
     private readonly ISavingsPlanCategoryService _service;

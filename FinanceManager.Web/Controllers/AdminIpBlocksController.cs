@@ -1,16 +1,17 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Mime;
 using FinanceManager.Application;
 using FinanceManager.Application.Security;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/admin/ip-blocks")] 
 [Produces(MediaTypeNames.Application.Json)]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class AdminIpBlocksController : ControllerBase
 {
     private readonly IIpBlockService _service;

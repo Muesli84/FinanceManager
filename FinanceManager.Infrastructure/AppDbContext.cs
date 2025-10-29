@@ -16,10 +16,12 @@ using FinanceManager.Domain.Security; // new
 using FinanceManager.Domain.Notifications; // new
 using FinanceManager.Infrastructure.Notifications; // new
 using FinanceManager.Domain.Attachments; // new
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace FinanceManager.Infrastructure;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -47,16 +49,14 @@ public class AppDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>(); // new
     public DbSet<Attachment> Attachments => Set<Attachment>(); // new
     public DbSet<AttachmentCategory> AttachmentCategories => Set<AttachmentCategory>(); // new
-
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<User>(b =>
         {
-            b.HasIndex(x => x.Username).IsUnique();
-            b.Property(x => x.Username).HasMaxLength(100).IsRequired();
+            b.HasIndex(x => x.UserName).IsUnique();
+            b.Property(x => x.UserName).HasMaxLength(100).IsRequired();
             b.Property(x => x.PasswordHash).IsRequired();
             // Import split settings columns
             b.Property(x => x.ImportSplitMode).HasConversion<short>().IsRequired();
@@ -325,7 +325,6 @@ public class AppDbContext : DbContext
             b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
         });
     }
-
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.ConfigureWarnings(w => w.Ignore(RelationalEventId.NonTransactionalMigrationOperationWarning));

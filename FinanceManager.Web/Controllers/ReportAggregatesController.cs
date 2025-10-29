@@ -1,17 +1,18 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Reports;
+using FinanceManager.Infrastructure; // DbContext
+using FinanceManager.Infrastructure.Setup; // SchemaPatcher
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
-using FinanceManager.Infrastructure; // DbContext
-using FinanceManager.Infrastructure.Setup; // SchemaPatcher
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/report-aggregates")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class ReportAggregatesController : ControllerBase
 {
     private readonly IReportAggregationService _agg;
@@ -122,10 +123,6 @@ public sealed class ReportAggregatesController : ControllerBase
                 analysisDate,
                 filters);
 
-            // Proaktiv Schema-Upgrade sicherstellen (SQLite Alt-Bestände)
-            var schemaLogger = _loggerFactory.CreateLogger("SchemaPatcher");
-            SchemaPatcher.EnsurePostingAggregatesSecuritySubType(_db, schemaLogger);
-
             var result = await _agg.QueryAsync(query, ct);
             return Ok(result);
         }
@@ -134,8 +131,6 @@ public sealed class ReportAggregatesController : ControllerBase
             _logger.LogWarning(ex, "Aggregation failed due to missing column. Attempting schema patch and retry.");
             try
             {
-                var schemaLogger = _loggerFactory.CreateLogger("SchemaPatcher");
-                SchemaPatcher.EnsurePostingAggregatesSecuritySubType(_db, schemaLogger);
                 var query = new ReportAggregationQuery(
                     _current.UserId,
                     req.PostingKind,

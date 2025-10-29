@@ -2,6 +2,7 @@ using FinanceManager.Application;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,7 +10,7 @@ namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/savings-plans/{planId:guid}/aggregates")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class SavingsPlanReportsController : PostingReportsControllerBase
 {
     protected override PostingKind Kind => PostingKind.SavingsPlan;
@@ -28,7 +29,7 @@ public sealed class SavingsPlanReportsController : PostingReportsControllerBase
 
 [ApiController]
 [Route("api/savings-plans/aggregates")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class SavingsPlansAllReportsController : PostingReportsControllerBase
 {
     protected override PostingKind Kind => PostingKind.SavingsPlan;

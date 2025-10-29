@@ -1,16 +1,17 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Mime;
 using FinanceManager.Application;
 using FinanceManager.Application.Contacts;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/contact-categories")]
 [Produces(MediaTypeNames.Application.Json)]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class ContactCategoriesController : ControllerBase
 {
     private readonly IContactCategoryService _svc;

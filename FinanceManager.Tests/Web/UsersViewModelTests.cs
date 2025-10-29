@@ -154,20 +154,20 @@ public sealed class UsersViewModelTests
     }
 
     [Fact]
-    public async Task UnlockAsync_ShouldClearLockedUntil()
+    public async Task UnlockAsync_ShouldClearLockoutEnd()
     {
         var (vm, router) = CreateVmWithRoutes();
         var id = Guid.NewGuid();
-        var user = new UsersViewModel.UserVm { Id = id, Username = "u", Active = true, LockedUntilUtc = DateTime.UtcNow.AddHours(1) };
+        var user = new UsersViewModel.UserVm { Id = id, Username = "u", Active = true, LockoutEnd = DateTime.UtcNow.AddHours(1) };
         router.Map(HttpMethod.Get, "/api/admin/users$", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { user }) });
         router.Map(HttpMethod.Post, $"/api/admin/users/{id}/unlock$", _ => new HttpResponseMessage(HttpStatusCode.OK));
 
         await vm.InitializeAsync();
-        vm.Users.Single().LockedUntilUtc.Should().NotBeNull();
+        vm.Users.Single().LockoutEnd.Should().NotBeNull();
 
         await vm.UnlockAsync(id);
 
-        vm.Users.Single().LockedUntilUtc.Should().BeNull();
+        vm.Users.Single().LockoutEnd.Should().BeNull();
     }
 
     [Fact]

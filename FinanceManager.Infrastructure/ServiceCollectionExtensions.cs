@@ -26,6 +26,9 @@ using FinanceManager.Application.Notifications; // new
 using FinanceManager.Infrastructure.Notifications; // new
 using FinanceManager.Application.Attachments; // new
 using FinanceManager.Infrastructure.Attachments; // new
+using Microsoft.AspNetCore.Identity;
+using FinanceManager.Domain.Users;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore; // required for RoleStore
 
 namespace FinanceManager.Infrastructure;
 
@@ -39,7 +42,11 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddScoped<IDateTimeProvider, SystemDateTimeProvider>();
-        services.AddScoped<IPasswordHasher, Pbkdf2PasswordHasher>();
+        // Register identity-compatible password hasher that delegates to legacy implementation
+        services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<User>, Pbkdf2IdentityPasswordHasher>();
+        // Expose hashing helper for internal services
+        services.AddScoped<IPasswordHashingService, Pbkdf2IdentityPasswordHasher>();
+
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<FinanceManager.Application.Users.IUserAuthService, UserAuthService>();
         services.AddScoped<FinanceManager.Application.Users.IUserReadService, UserReadService>();
@@ -65,6 +72,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAttachmentService, AttachmentService>(); // new
         services.AddScoped<IAttachmentCategoryService, AttachmentCategoryService>(); // new
         services.AddScoped<IPostingExportService, PostingExportService>(); // new
+
+        // Register Identity RoleStore for Guid-based roles (RoleManager is registered by AddIdentity in Program.cs)
+        services.AddScoped<IRoleStore<IdentityRole<Guid>>, RoleStore<IdentityRole<Guid>, AppDbContext, Guid>>();
+
         return services;
     }
 }
