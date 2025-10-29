@@ -49,8 +49,26 @@ public sealed class SetupIpBlocksViewModel : ViewModelBase
         try
         {
             Error = null;
-            var list = await _http.GetFromJsonAsync<List<IpBlockItem>>("/api/admin/ip-blocks", ct);
-            Items = list ?? new();
+            var resp = await _http.GetAsync("/api/admin/ip-blocks", ct);
+            if (resp.IsSuccessStatusCode)
+            {
+                var list = await resp.Content.ReadFromJsonAsync<List<IpBlockItem>>(cancellationToken: ct);
+                Items = list ?? new();
+            }
+            else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Treat 404 as 'no items' rather than an error
+                Items = new();
+            }
+            else
+            {
+                var txt = await resp.Content.ReadAsStringAsync(ct);
+                Error = !string.IsNullOrWhiteSpace(txt) ? txt : $"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase}";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

@@ -174,7 +174,7 @@ public sealed class UsersViewModel : ViewModelBase
             if (resp.IsSuccessStatusCode)
             {
                 var found = Users.FirstOrDefault(x => x.Id == id);
-                if (found != null) { found.LockedUntilUtc = null; }
+                if (found != null) { found.LockoutEnd = null; }
             }
             else { Error = await resp.Content.ReadAsStringAsync(ct); }
         }
@@ -222,5 +222,5 @@ public sealed class UsersViewModel : ViewModelBase
     public sealed class CreateUserRequest { public string Username { get; set; } = string.Empty; public string Password { get; set; } = string.Empty; public bool IsAdmin { get; set; } }
     public sealed class UpdateUserRequest { public string? Username { get; set; } public bool? IsAdmin { get; set; } public bool? Active { get; set; } }
     public sealed class ResetPasswordRequest { public string NewPassword { get; set; } = string.Empty; }
-    public sealed class UserVm { public Guid Id { get; set; } public string Username { get; set; } = string.Empty; public bool IsAdmin { get; set; } public bool Active { get; set; } public DateTime? LockedUntilUtc { get; set; } public DateTime LastLoginUtc { get; set; } public string? PreferredLanguage { get; set; } }
+    public sealed class UserVm { public Guid Id { get; set; } public string Username { get; set; } = string.Empty; public bool IsAdmin { get; set; } public bool Active { get; set; } public DateTime? LockoutEnd { get; set; } public DateTime LastLoginUtc { get; set; } public string? PreferredLanguage { get; set; } }
 }

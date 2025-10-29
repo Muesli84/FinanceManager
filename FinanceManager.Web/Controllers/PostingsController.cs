@@ -1,20 +1,21 @@
-using System.Linq;
-using System.Threading.Tasks;
+using FinanceManager.Application;
+using FinanceManager.Domain;
+using FinanceManager.Domain.Postings;
+using FinanceManager.Infrastructure;
+using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
-using FinanceManager.Infrastructure;
-using FinanceManager.Domain;
-using FinanceManager.Application;
 using System.Globalization;
-using FinanceManager.Domain.Postings;
-using FinanceManager.Shared.Dtos;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
-[Route("api/postings")] 
-[Authorize]
+[Route("api/postings")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class PostingsController : ControllerBase
 {
     private readonly AppDbContext _db;

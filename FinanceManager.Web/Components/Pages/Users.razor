@@ -83,7 +83,7 @@ else
         @foreach (var u in _vm!.Users)
         {
             var editing = _vm!.Edit?.Id == u.Id;
-            bool locked = u.LockedUntilUtc != null && u.LockedUntilUtc > DateTime.UtcNow;
+            bool locked = u.LockoutEnd != null && u.LockoutEnd > DateTime.UtcNow;
             <tr class="@(locked?"locked-row":"")">
                 <td>
                     @if (editing) { <InputText @bind-Value="_vm!.EditUsername" /> } else { @u.Username }
@@ -94,7 +94,7 @@ else
                 <td style="text-align:center;">
                     @if (editing) { <input type="checkbox" @bind="_vm!.EditActive" /> } else { @((MarkupString)(u.Active ? "&#10003;" : "&#10007;")) }
                 </td>
-                <td style="text-align:center;">@(u.LockedUntilUtc?.ToString("u") ?? "-")</td>
+                <td style="text-align:center;">@(u.LockoutEnd?.ToString("u") ?? "-")</td>
                 <td style="text-align:center;">@((u.LastLoginUtc==default)?"-":u.LastLoginUtc.ToString("u"))</td>
                 <td style="white-space:nowrap;">
                     @if (editing)

@@ -1,16 +1,17 @@
-using System.ComponentModel.DataAnnotations;
 using FinanceManager.Application;
 using FinanceManager.Infrastructure;
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/user/profile-settings")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class UserProfileSettingsController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -73,14 +74,14 @@ public sealed class UserProfileSettingsController : ControllerBase
                 user.SetAlphaVantageKey(req.AlphaVantageApiKey);
             }
 
-            // Share flag: nur Admin darf aktivieren/deaktivieren
+            // Share flag: only users in Admin role may enable/disable sharing
             if (req.ShareAlphaVantageApiKey.HasValue)
             {
-                if (!user.IsAdmin && req.ShareAlphaVantageApiKey.Value)
+                if (!_current.IsAdmin && req.ShareAlphaVantageApiKey.Value)
                 {
                     return Forbid();
                 }
-                if (user.IsAdmin)
+                if (_current.IsAdmin)
                 {
                     user.SetShareAlphaVantageKey(req.ShareAlphaVantageApiKey.Value);
                 }

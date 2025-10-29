@@ -26,9 +26,13 @@ public sealed class JwtTokenService : IJwtTokenService
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new(ClaimTypes.NameIdentifier, userId.ToString()), // ensure claim recognized by CurrentUserService
             new(ClaimTypes.Name, username),
-            new(JwtRegisteredClaimNames.UniqueName, username),
-            new("is_admin", isAdmin ? "true" : "false")
+            new(JwtRegisteredClaimNames.UniqueName, username)
         };
+        if (isAdmin)
+        {
+            // use standard role claim instead of custom is_admin flag
+            claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+        }
         if (!string.IsNullOrWhiteSpace(preferredLanguage))
         {
             claims.Add(new Claim("pref_lang", preferredLanguage));

@@ -30,7 +30,7 @@ public sealed class AlphaVantageKeyResolver : IAlphaVantageKeyResolver
     {
         return await _db.Users.AsNoTracking()
             .Where(u => u.IsAdmin && u.ShareAlphaVantageApiKey && u.AlphaVantageApiKey != null)
-            .OrderBy(u => u.Username) // deterministic choice
+            .OrderBy(u => u.UserName) // deterministic choice — use mapped Identity property
             .Select(u => u.AlphaVantageApiKey!)
             .FirstOrDefaultAsync(ct);
     }

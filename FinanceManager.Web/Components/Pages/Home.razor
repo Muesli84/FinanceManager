@@ -15,51 +15,61 @@
 
 <h1>@Localizer["PageTitle"]</h1>
 
-<HomeNotifications />
-
-@if (_uploadInProgress)
+@if (CurrentUser.IsAuthenticated)
 {
-    <div class="upload-progress" role="status" aria-live="polite">
-        <div class="hdr">
-            <span class="title">@Localizer["Upload_Progress_Title"]</span>
-            <span class="cnt">@_uploadDone/@_uploadTotal</span>
+    <HomeNotifications />
+
+    @if (_uploadInProgress)
+    {
+        <div class="upload-progress" role="status" aria-live="polite">
+            <div class="hdr">
+                <span class="title">@Localizer["Upload_Progress_Title"]</span>
+                <span class="cnt">@_uploadDone/@_uploadTotal</span>
+            </div>
+            <div class="bar"><div class="bar-inner" style="width:@UploadPercent%"></div></div>
+            @if(!string.IsNullOrWhiteSpace(_currentFileName))
+            {
+                <div class="file" title="@_currentFileName">@_currentFileName</div>
+            }
         </div>
-        <div class="bar"><div class="bar-inner" style="width:@UploadPercent%"></div></div>
-        @if(!string.IsNullOrWhiteSpace(_currentFileName))
-        {
-            <div class="file" title="@_currentFileName">@_currentFileName</div>
-        }
-    </div>
-}
+    }
 
-@if (_importSuccess && _draftId != null)
+    @if (_importSuccess && _draftId != null)
+    {
+        <div class="alert alert-success" style="margin-top:1rem;">
+            @Localizer["Import_Success"]
+            <a href="@($"/statement-drafts/{_draftId}")" class="alert-link">@Localizer["Import_ShowDetails"]</a>
+        </div>
+    }
+    @if (_splitInfo != null)
+    {
+        <div class="alert" style="margin-top:.6rem;font-size:.7rem;padding:.55rem .75rem;border:1px solid #334;background:#182028;max-width:740px;">
+            @if(_splitInfo.EffectiveMonthly)
+            {
+                <span>@string.Format(Localizer["Import_SplitInfo_Monthly"], _splitInfo.TotalMovements, _splitInfo.DraftCount)</span>
+            }
+            else
+            {
+                <span>@string.Format(Localizer["Import_SplitInfo_Fixed"], _splitInfo.TotalMovements, _splitInfo.DraftCount)</span>
+            }
+            <span style="opacity:.75;display:block;margin-top:.25rem;">@string.Format(Localizer["Import_SplitInfo_Details"], _splitInfo.Mode, _splitInfo.MaxEntriesPerDraft, _splitInfo.LargestDraftSize)</span>
+        </div>
+    }
+
+    <div class="kpi-grid">
+        <HomeKpiGrid EditMode="@_kpiEditMode" />
+    </div>
+
+    <!-- File input used for import. Normally off-screen; moved over the Import button for iOS taps. -->
+    <InputFile id="home-import-input" OnChange="OnFileChanged" multiple style="position:fixed; left:-9999px; width:1px; height:1px; opacity:0;" />
+}
+else
 {
-    <div class="alert alert-success" style="margin-top:1rem;">
-        @Localizer["Import_Success"]
-        <a href="@($"/statement-drafts/{_draftId}")" class="alert-link">@Localizer["Import_ShowDetails"]</a>
+    <div class="signed-out" style="margin-top:1rem;opacity:.8;">
+        @* Lightweight placeholder when not authenticated to avoid unnecessary data loading *@
+        <p>@Localizer["PleaseLoginPrompt"]</p>
     </div>
 }
-@if (_splitInfo != null)
-{
-    <div class="alert" style="margin-top:.6rem;font-size:.7rem;padding:.55rem .75rem;border:1px solid #334;background:#182028;max-width:740px;">
-        @if(_splitInfo.EffectiveMonthly)
-        {
-            <span>@string.Format(Localizer["Import_SplitInfo_Monthly"], _splitInfo.TotalMovements, _splitInfo.DraftCount)</span>
-        }
-        else
-        {
-            <span>@string.Format(Localizer["Import_SplitInfo_Fixed"], _splitInfo.TotalMovements, _splitInfo.DraftCount)</span>
-        }
-        <span style="opacity:.75;display:block;margin-top:.25rem;">@string.Format(Localizer["Import_SplitInfo_Details"], _splitInfo.Mode, _splitInfo.MaxEntriesPerDraft, _splitInfo.LargestDraftSize)</span>
-    </div>
-}
-
-<div class="kpi-grid">
-    <HomeKpiGrid EditMode="@_kpiEditMode" />
-</div>
-
-<!-- File input used for import. Normally off-screen; moved over the Import button for iOS taps. -->
-<InputFile id="home-import-input" OnChange="OnFileChanged" multiple style="position:fixed; left:-9999px; width:1px; height:1px; opacity:0;" />
 
 @code {
     private enum TabId { Home }

@@ -13,6 +13,7 @@ using Xunit;
 using FinanceManager.Infrastructure;
 using FinanceManager.Domain.Users;
 using FinanceManager.Domain;
+using FinanceManager.Tests.TestHelpers;
 
 namespace FinanceManager.Tests.Controllers;
 
@@ -42,7 +43,8 @@ public sealed class SavingsPlanCategoriesControllerTests
         current.UserId = Guid.NewGuid();
         // seed a user (required by FK ownership if enforced later)
         var user = new User("tester", "hash", false);
-        typeof(Entity).GetProperty("Id")!.SetValue(user, current.UserId);
+        // set protected Id via TestEntityHelper to avoid reflection issues
+        TestEntityHelper.SetEntityId(user, current.UserId);
         db.Users.Add(user);
         db.SaveChanges();
 

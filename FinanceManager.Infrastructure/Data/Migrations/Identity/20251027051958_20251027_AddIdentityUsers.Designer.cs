@@ -3,16 +3,19 @@ using System;
 using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FinanceManager.Infrastructure.Migrations
+namespace FinanceManager.Infrastructure.Data.Migrations.Identity
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251027051958_20251027_AddIdentityUsers")]
+    partial class _20251027_AddIdentityUsers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
@@ -1077,6 +1080,9 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("HolidayCountryCode")
                         .HasColumnType("TEXT");
 
@@ -1101,7 +1107,13 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("LastFailedLoginUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("LastLoginUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LockedUntilUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("LockoutEnabled")

@@ -15,6 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 
 namespace FinanceManager.Infrastructure.Setup
 {
@@ -61,20 +62,28 @@ namespace FinanceManager.Infrastructure.Setup
         {
             try
             {
-                // Ersten Admin-Benutzer ermitteln
-                var admin = await _db.Users
-                    .AsNoTracking()
-                    .Where(u => u.IsAdmin)
-                    .OrderBy(u => u.Username) // deterministisch
-                    .FirstOrDefaultAsync(ct);
-
-                if (admin == null)
+                // Find first user that has the Admin role
+                var adminRole = await _db.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Name == "Admin", ct);
+                if (adminRole == null)
                 {
-                    _logger.LogInformation("AutoInit: Kein Administrator gefunden – Initialisierung übersprungen.");
+                    _logger.LogInformation("AutoInit: No 'Admin' role found – initialization skipped.");
                     return;
                 }
 
-                // init-Verzeichnis bestimmen (erst ContentRoot, dann BaseDirectory)
+                var admin = await (from u in _db.Users.AsNoTracking()
+                                   join ur in _db.Set<IdentityUserRole<Guid>>().AsNoTracking() on u.Id equals ur.UserId
+                                   where ur.RoleId == adminRole.Id
+                                   orderby u.UserName
+                                   select u)
+                                  .FirstOrDefaultAsync(ct);
+
+                if (admin == null)
+                {
+                    _logger.LogInformation("AutoInit: No administrator user found – initialization skipped.");
+                    return;
+                }
+
+                // init directory determination (first ContentRoot, then BaseDirectory)
                 var initDir = Path.Combine(_env.ContentRootPath, "init");
                 if (!Directory.Exists(initDir))
                 {
@@ -105,20 +114,20 @@ namespace FinanceManager.Infrastructure.Setup
         {
             var drafts = new List<StatementDraftDto>();
             drafts.AddRange((await _statementDraftService.GetOpenDraftsAsync(admin.Id, ct)).Select(d => _statementDraftService.GetDraftAsync(d.DraftId, admin.Id, ct).Result));
-            var actionFiless = Directory.EnumerateFiles(initDir, "action-*.txt", SearchOption.TopDirectoryOnly);
-            foreach (var file in actionFiless)
+            var actionFiles = Directory.EnumerateFiles(initDir, "action-*.txt", SearchOption.TopDirectoryOnly);
+            foreach (var file in actionFiles)
             {
                 try
                 {
                     _logger.LogInformation("AutoInit: Verarbeite Aktions-Datei '{File}'.", Path.GetFileName(file));
                     var actions = await File.ReadAllLinesAsync(file, ct);
-                    foreach (var action in actions.Select(action => action.Split("\":\"").Select(v => v.Trim('"')).ToArray()))
+                    foreach (var action in actions.Select(action => action.Split(":\"").Select(v => v.Trim('"')).ToArray()))
                     {
                         switch (action[0])
                         {
                             case "backup-import":
                                 {
-                                    // 1) Setup-Importe (init-*.json) in Reihenfolge, erste Datei mit replace=true
+                                    // 1) Setup-imports (init-*.json) in order, first file with replace=true
                                     var setupFiles = Directory
                                         .EnumerateFiles(initDir, "init-*.json", SearchOption.TopDirectoryOnly)
                                         .OrderBy(f => Path.GetFileName(f))
@@ -146,12 +155,11 @@ namespace FinanceManager.Infrastructure.Setup
                                 break;
                             case "statement-import":
                                 {
-                                    // 2) Statement-Drafts (draft-*.csv / draft-*.pdf)
                                     var draftJson = Directory.EnumerateFiles(initDir, "draft-*.json", SearchOption.TopDirectoryOnly);
                                     var draftCsv = Directory.EnumerateFiles(initDir, "draft-*.csv", SearchOption.TopDirectoryOnly);
                                     var draftPdf = Directory.EnumerateFiles(initDir, "draft-*.pdf", SearchOption.TopDirectoryOnly);
                                     var draftFiles = draftJson.Concat(draftCsv).Concat(draftPdf).OrderBy(f => Path.GetFileName(f)).ToList();
-                                    
+
                                     foreach (var draftFile in draftFiles.Where(f => Path.GetFileName(f) == action[1]))
                                     {
                                         try

@@ -1,19 +1,20 @@
+using FinanceManager.Application;
+using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using FinanceManager.Shared.Dtos;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using FinanceManager.Application;
 
 namespace FinanceManager.Web.Controllers
 {
     [ApiController]
     [Route("api/background-tasks")]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class BackgroundTasksController : ControllerBase
     {
         private readonly IBackgroundTaskManager _taskManager;

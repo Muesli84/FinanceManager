@@ -17,6 +17,8 @@ using Xunit;
 using FinanceManager.Infrastructure; // AppDbContext
 using FinanceManager.Domain.Users; // User entity
 using FinanceManager.Domain; // Entity base
+using System.Reflection;
+using FinanceManager.Tests.TestHelpers;
 
 namespace FinanceManager.Tests.Controllers;
 
@@ -44,8 +46,8 @@ public sealed class UserImportSplitSettingsControllerTests
         var current = (TestCurrentUser)sp.GetRequiredService<ICurrentUserService>();
         current.UserId = Guid.NewGuid();
         var user = new User("test", "hash", false);
-        // set protected Id via reflection
-        typeof(Entity).GetProperty("Id")!.SetValue(user, current.UserId);
+        // set protected Id via runtime-type reflection to avoid TargetException
+        TestEntityHelper.SetEntityId(user, current.UserId);
         db.Users.Add(user);
         db.SaveChanges();
 

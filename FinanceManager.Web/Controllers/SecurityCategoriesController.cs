@@ -1,14 +1,15 @@
-using System.ComponentModel.DataAnnotations;
 using FinanceManager.Application;
 using FinanceManager.Application.Securities;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/security-categories")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class SecurityCategoriesController : ControllerBase
 {
     private readonly ISecurityCategoryService _service;

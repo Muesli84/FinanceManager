@@ -1,18 +1,19 @@
-using System.Globalization;
+using FinanceManager.Application; // for ICurrentUserService
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain;
 using FinanceManager.Infrastructure;
+using FinanceManager.Web.Infrastructure; // added
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Application; // for ICurrentUserService
-using FinanceManager.Web.Infrastructure; // added
+using System.Globalization;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
-[Route("api/postings")] 
-[Authorize]
+[Route("api/postings")]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class PostingsExportController : ControllerBase
 {
     private readonly AppDbContext _db;

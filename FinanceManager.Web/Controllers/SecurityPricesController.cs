@@ -1,5 +1,6 @@
 using FinanceManager.Application;
 using FinanceManager.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/securities/{id:guid}/prices")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class SecurityPricesController : ControllerBase
 {
     private readonly AppDbContext _db;

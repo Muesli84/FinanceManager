@@ -1,19 +1,20 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Mime;
 using FinanceManager.Application;
 using FinanceManager.Application.Contacts;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
+using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/contacts")]
 [Produces(MediaTypeNames.Application.Json)]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class ContactsController : ControllerBase
 {
     private readonly IContactService _contacts;

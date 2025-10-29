@@ -23,7 +23,7 @@ public sealed class CurrentUserService : ICurrentUserService
     }
     public string? PreferredLanguage => User?.FindFirstValue("pref_lang");
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;
-    public bool IsAdmin => (User?.FindFirst("is_admin")?.Value) == "true";
+    public bool IsAdmin => User?.IsInRole("Admin") ?? false;
 
     private ClaimsPrincipal? User => _http.HttpContext?.User;
 }

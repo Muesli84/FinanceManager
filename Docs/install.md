@@ -12,7 +12,7 @@
 - Konfigurierte appsettings.json oder Umgebungsvariablen
 
 ### Projektspezifisch (FinanceManager)
-- Zwingend: `Jwt:Key` (geheimer Schlüssel zur Token-Signierung). Ohne diesen startet die App nicht.
+- Zwingend: `Jwt__Key` (geheimer Schlüssel zur Token-Signierung). Ohne diesen startet die App nicht.
 - Optional: AlphaVantage‑Schlüssel (für Kursabruf). Dieser wird im Setup-Bereich unter „Profil“ pro Benutzer hinterlegt; ein Administrator kann seinen Schlüssel für alle Benutzer freigeben. Ohne freigegebenen Admin‑Schlüssel ruht der Kurs‑Worker.
 - Optional: `Api:BaseAddress` (falls die App hinter einem Proxy läuft und der interne HttpClient absolute Basis benötigt).
 - Für Reverse-Proxy/TLS-Termination: `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` (damit `Request.IsHttps` korrekt erkannt wird → Secure-Cookie `fm_auth`).
@@ -60,14 +60,28 @@ User=www-data
 Environment=ASPNETCORE_ENVIRONMENT=Production
 # URLs nur intern binden, wenn Reverse Proxy genutzt wird (z. B. Nginx)
 Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
-# Erforderliche App-Settings
-Environment=Jwt:Key=__SET_A_RANDOM_LONG_SECRET__
-Environment=ConnectionStrings:Default=Data Source=/var/www/financemanager/app.db
+# Erforderliche App-Settings als Umgebungsvariablen (Nutze Doppel-Unterstrich für Konfigurationsebenen)
+Environment=Jwt__Key=__SET_A_RANDOM_LONG_SECRET__
+Environment=ConnectionStrings__Default=Data Source=/var/www/financemanager/app.db
 # Forwarded Headers für TLS am Reverse Proxy (setzt Request.IsHttps richtig)
 Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 
 [Install]
 WantedBy=multi-user.target
+```
+
+Hinweis zur Sicherheit: Es ist empfehlenswert, sensible Variablen nicht direkt in der Unit-Datei zu hinterlegen. Verwende stattdessen einen `EnvironmentFile` oder einen Secret-Store (Systemd `EnvironmentFile=/etc/financemanager/env`, HashiCorp Vault, Azure Key Vault etc.). Beispiel mit `EnvironmentFile`:
+
+```
+# In /etc/systemd/system/financemanager.service
+EnvironmentFile=/etc/financemanager/env
+```
+
+und in `/etc/financemanager/env` (nur lesbar für den Dienstaccount):
+
+```
+Jwt__Key=__SET_A_RANDOM_LONG_SECRET__
+ConnectionStrings__Default=Data Source=/var/www/financemanager/app.db
 ```
 
 🔁 Falls du kein Self-Contained Build nutzt:
@@ -139,7 +153,7 @@ dotnet publish -c Release -o "C:\inetpub\financemanager"
 ### 2. IIS vorbereiten
 
 - Rolle „Webserver (IIS)“ installieren
-- Feature „ASP.NET Core Module“ aktivieren
+- Feature „ASP.NET Core Module" aktivieren
 - .NET Hosting Bundle für .NET 9 installieren
 - WebSocket‑Protokoll aktivieren (Blazor Server erfordert WebSockets)
 
@@ -147,7 +161,7 @@ dotnet publish -c Release -o "C:\inetpub\financemanager"
 
 - Pfad: `C:\inetpub\financemanager`
 - Port: z. B. 8080 oder 80
-- App-Pool: .NET CLR = „No Managed Code“, Startmodus = „Immer gestartet“
+- App-Pool: .NET CLR = „No Managed Code", Startmodus = „Immer gestartet"
 
 ### 4. Berechtigungen setzen
 
@@ -177,8 +191,8 @@ icacls "C:\inetpub\financemanager" /grant "IIS_IUSRS:(OI)(CI)M"
 Hinweise:
 - Große Uploads: Die App erlaubt bis 1 GB (`MultipartBodyLengthLimit`). In IIS ggf. zusätzlich Request‑Limits erhöhen (Request Filtering → `maxAllowedContentLength`).
 - Umgebung/Secrets in IIS setzen:
-  - Systemweite Umgebungsvariablen (empfohlen): `Jwt:Key`, `ConnectionStrings:Default`, `AlphaVantage:ApiKey`.
-  - Oder im App‑Pool/Website unter „Konfiguration bearbeiten“ → Umgebungsvariablen.
+  - Systemweite Umgebungsvariablen (empfohlen): `Jwt__Key`, `ConnectionStrings__Default`, `AlphaVantage__ApiKey`.
+  - Oder im App‑Pool/Website unter „Konfiguration bearbeiten" → Umgebungsvariablen.
 
 ---
 
@@ -187,10 +201,8 @@ Hinweise:
 ### Umgebungsvariablen (Linux systemd)
 
 ```
-Environment=Jwt:Key=__SET_A_RANDOM_LONG_SECRET__
-Environment=ConnectionStrings:Default=Data Source=/var/www/financemanager/app.db
-Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
-Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+Environment=Jwt__Key=__SET_A_RANDOM_LONG_SECRET__
+Environment=ConnectionStrings__Default=Data Source=/var/www/financemanager/app.db
 ```
 
 ### appsettings.Production.json (optional)
@@ -206,10 +218,11 @@ Environment=ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
     "Rolling": "Day"
   },
   "Jwt": { "Key": "__SET_A_RANDOM_LONG_SECRET__" },
-  "ConnectionStrings": { "Default": "Data Source=/var/www/financemanager/app.db" },
-  "AlphaVantage": { "ApiKey": "__YOUR_ALPHA_VANTAGE_KEY__" }
+  "ConnectionStrings": { "Default": "Data Source=/var/www/financemanager/app.db" }
 }
 ```
+
+Hinweis: Das Beispiel `appsettings.Production.json` enthält keinen globalen AlphaVantage‑ApiKey. API‑Schlüssel werden in FinanceManager pro Benutzer in der Datenbank gespeichert; ein Administrator kann optional einen Key freigeben, der vom Kurs‑Worker verwendet wird. Falls du zuvor einen globalen Key genutzt hast, plane eine Migration auf die benutzerbasierte Speicherung.
 
 ---
 

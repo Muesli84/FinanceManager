@@ -13,6 +13,7 @@ using Microsoft.Extensions.Localization;
 using Moq;
 using FinanceManager.Application.Notifications;
 using FinanceManager.Domain.Notifications;
+using FinanceManager.Tests.TestHelpers;
 
 namespace FinanceManager.Tests.Notifications;
 
@@ -29,7 +30,7 @@ public sealed class MonthlyReminderSchedulerTests
 
         var userId = Guid.NewGuid();
         var u = new User("alice", "hash", false);
-        typeof(FinanceManager.Domain.Entity).GetProperty("Id")!.SetValue(u, userId);
+        TestEntityHelper.SetEntityId(u, userId);
         u.SetNotificationSettings(monthlyReminderEnabled: true);
         db.Users.Add(u);
         await db.SaveChangesAsync();

@@ -114,7 +114,10 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
         var filtered = claims.Where(c =>
             c.Type != JwtRegisteredClaimNames.Exp &&
             c.Type != JwtRegisteredClaimNames.Nbf &&
-            c.Type != JwtRegisteredClaimNames.Iat);
+            c.Type != JwtRegisteredClaimNames.Iat).ToList();
+
+        // Ensure Admin role claim is present when principal indicates admin
+        var hasRoleClaim = filtered.Any(c => c.Type == ClaimTypes.Role || string.Equals(c.Type, "role", StringComparison.OrdinalIgnoreCase));
 
         var jwt = new JwtSecurityToken(
             claims: filtered,

@@ -2,6 +2,7 @@ using FinanceManager.Application;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,7 +10,7 @@ namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/accounts/{accountId:guid}/aggregates")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class AccountReportsController : PostingReportsControllerBase
 {
     protected override PostingKind Kind => PostingKind.Bank;
@@ -29,7 +30,7 @@ public sealed class AccountReportsController : PostingReportsControllerBase
 
 [ApiController]
 [Route("api/accounts/aggregates")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class AccountsAllReportsController : PostingReportsControllerBase
 {
     protected override PostingKind Kind => PostingKind.Bank;

@@ -1,18 +1,19 @@
-using System.ComponentModel.DataAnnotations;
 using FinanceManager.Application;
+using FinanceManager.Domain.Users; // ImportSplitMode on entity
+using FinanceManager.Infrastructure; // AppDbContext
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Infrastructure; // AppDbContext
-using FinanceManager.Domain.Users; // ImportSplitMode on entity
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/user/import-split-settings")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class UserImportSplitSettingsController : ControllerBase
 {
     private readonly AppDbContext _db;

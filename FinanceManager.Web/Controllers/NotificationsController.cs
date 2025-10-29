@@ -1,16 +1,17 @@
-using System.Net.Mime;
 using FinanceManager.Application;
 using FinanceManager.Application.Notifications;
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/notifications")]
 [Produces(MediaTypeNames.Application.Json)]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class NotificationsController : ControllerBase
 {
     private readonly INotificationService _notifications;

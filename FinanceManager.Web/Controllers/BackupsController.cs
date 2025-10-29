@@ -1,16 +1,17 @@
+using FinanceManager.Application;
 using FinanceManager.Application.Backups;
+using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Mime;
-using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/setup/backups")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class BackupsController : ControllerBase
 {
     private readonly IBackupService _svc;

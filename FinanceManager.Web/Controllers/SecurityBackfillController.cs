@@ -1,14 +1,15 @@
-using System.Text.Json;
 using FinanceManager.Application;
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/securities/backfill")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class SecurityBackfillController : ControllerBase
 {
     private readonly IBackgroundTaskManager _tasks;

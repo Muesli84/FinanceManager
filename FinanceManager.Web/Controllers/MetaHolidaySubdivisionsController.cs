@@ -1,5 +1,6 @@
 using FinanceManager.Application.Notifications;
 using FinanceManager.Domain.Notifications;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,7 +8,7 @@ namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/meta/holiday-subdivisions")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class MetaHolidaySubdivisionsController : ControllerBase
 {
     private readonly IHolidaySubdivisionService _service;

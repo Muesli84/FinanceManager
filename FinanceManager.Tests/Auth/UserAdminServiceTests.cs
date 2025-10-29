@@ -1,125 +1,170 @@
+using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using FinanceManager.Application.Users;
-using FinanceManager.Domain.Users;
-using FinanceManager.Infrastructure;
-using FinanceManager.Infrastructure.Auth;
+using System.Collections.Generic;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Identity;
 using Moq;
 using Xunit;
+using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Auth;
+using FinanceManager.Domain.Users;
+using FinanceManager.Domain.Contacts;
+using FinanceManager.Shared.Dtos;
 
-namespace FinanceManager.Tests.Auth;
-
-public sealed class UserAdminServiceTests
+namespace FinanceManager.Tests.Auth
 {
-    private static (UserAdminService sut, AppDbContext db, Mock<IPasswordHasher> hasher) Create()
+    public sealed class UserAdminServiceTests
     {
-        var services = new ServiceCollection();
-        services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
-        services.AddLogging(); // Logger registrieren
-        var sp = services.BuildServiceProvider();
-        var db = sp.GetRequiredService<AppDbContext>();
-        var hasher = new Mock<IPasswordHasher>();
-        hasher.Setup(h => h.Hash(It.IsAny<string>())).Returns<string>(p => $"HASH::{p}");
-        var logger = sp.GetRequiredService<ILogger<UserAdminService>>(); // Logger abrufen
-        var sut = new UserAdminService(db, hasher.Object, logger); // Logger übergeben
-        return (sut, db, hasher);
-    }
+        private static (UserAdminService sut, AppDbContext db, Mock<IPasswordHashingService> hasher, Mock<UserManager<User>> userManagerMock) Create()
+        {
+            var services = new ServiceCollection();
+            services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+            services.AddLogging(); // Logger registrieren
+            var sp = services.BuildServiceProvider();
+            var db = sp.GetRequiredService<AppDbContext>();
+            var hasher = new Mock<IPasswordHashingService>();
+            hasher.Setup(h => h.Hash(It.IsAny<string>())).Returns<string>(p => $"HASH::{p}");
+            var logger = sp.GetRequiredService<ILogger<UserAdminService>>(); // Logger abrufen
 
-    [Fact]
-    public async Task CreateAsync_ShouldPersistUser()
-    {
-        var (sut, db, _) = Create();
-        var dto = await sut.CreateAsync("alice", "Password1", true, CancellationToken.None);
-        dto.Username.Should().Be("alice");
-        dto.IsAdmin.Should().BeTrue();
-        db.Users.Count().Should().Be(1);
-    }
+            // create a minimal UserManager mock to satisfy constructor
+            var store = new Mock<IUserStore<User>>();
+            var userManagerMock = new Mock<UserManager<User>>(store.Object, null, null, null, null, null, null, null, null);
+            userManagerMock.Setup(u => u.SetLockoutEndDateAsync(It.IsAny<User>(), It.IsAny<DateTimeOffset?>())).ReturnsAsync(IdentityResult.Success);
+            userManagerMock.Setup(u => u.ResetAccessFailedCountAsync(It.IsAny<User>())).ReturnsAsync(IdentityResult.Success);
 
-    [Fact]
-    public async Task CreateAsync_DuplicateUsername_Throws()
-    {
-        var (sut, db, _) = Create();
-        db.Users.Add(new User("alice", "HASH::x", false));
-        db.SaveChanges();
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.CreateAsync("alice", "pw", false, CancellationToken.None));
-    }
+            // --- NEW: maintain role membership state inside the mock ---
+            var adminUsers = new HashSet<Guid>();
+            userManagerMock
+                .Setup(um => um.AddToRoleAsync(It.IsAny<User>(), It.IsAny<string>()))
+                .ReturnsAsync(IdentityResult.Success)
+                .Callback<User, string>((user, role) =>
+                {
+                    if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+                        adminUsers.Add(user.Id);
+                });
 
-    [Fact]
-    public async Task UpdateAsync_Rename_WhenUnique_Works()
-    {
-        var (sut, db, _) = Create();
-        var u = new User("old", "HASH::x", false);
-        db.Users.Add(u); db.SaveChanges();
-        var updated = await sut.UpdateAsync(u.Id, "new", null, null, null, CancellationToken.None);
-        updated!.Username.Should().Be("new");
-    }
+            userManagerMock
+                .Setup(um => um.RemoveFromRoleAsync(It.IsAny<User>(), It.IsAny<string>()))
+                .ReturnsAsync(IdentityResult.Success)
+                .Callback<User, string>((user, role) =>
+                {
+                    if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+                        adminUsers.Remove(user.Id);
+                });
 
-    [Fact]
-    public async Task UpdateAsync_Rename_ToExisting_Throws()
-    {
-        var (sut, db, _) = Create();
-        var a = new User("a", "HASH::x", false);
-        var b = new User("b", "HASH::x", false);
-        db.Users.AddRange(a, b); db.SaveChanges();
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.UpdateAsync(a.Id, "b", null, null, null, CancellationToken.None));
-    }
+            userManagerMock
+                .Setup(um => um.IsInRoleAsync(It.IsAny<User>(), It.IsAny<string>()))
+                .ReturnsAsync((User user, string role) =>
+                {
+                    if (user == null || string.IsNullOrEmpty(role)) return false;
+                    return string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) && adminUsers.Contains(user.Id);
+                });
+            // --- END NEW ---
 
-    [Fact]
-    public async Task ResetPasswordAsync_UpdatesHash()
-    {
-        var (sut, db, hasher) = Create();
-        var u = new User("user", "HASH::old", false);
-        db.Users.Add(u); db.SaveChanges();
-        hasher.Setup(h => h.Hash("newpw")).Returns("HASH::newpw");
-        var ok = await sut.ResetPasswordAsync(u.Id, "newpw", CancellationToken.None);
-        ok.Should().BeTrue();
-        // Verify hash changed in tracked entity (reflection set) by reloading
-        var re = db.Users.Single();
-        re.PasswordHash.Should().Be("HASH::newpw");
-    }
+            var sut = new UserAdminService(db, userManagerMock.Object, hasher.Object, logger); // pass userManager
+            return (sut, db, hasher, userManagerMock);
+        }
 
-    [Fact]
-    public async Task ResetPasswordAsync_Empty_Throws()
-    {
-        var (sut, db, _) = Create();
-        var u = new User("user", "HASH::old", false);
-        db.Users.Add(u); db.SaveChanges();
-        await Assert.ThrowsAsync<ArgumentException>(() => sut.ResetPasswordAsync(u.Id, "", CancellationToken.None));
-    }
+        [Fact]
+        public async Task CreateAsync_ShouldPersistUser()
+        {
+            var (sut, db, _, _) = Create();
+            var dto = await sut.CreateAsync("alice", "Password1", true, CancellationToken.None);
+            dto.Username.Should().Be("alice");
+            dto.IsAdmin.Should().BeTrue();
+            db.Users.Count().Should().Be(1);
+        }
 
-    [Fact]
-    public async Task UnlockAsync_ClearsLock()
-    {
-        var (sut, db, _) = Create();
-        var u = new User("user", "HASH::x", false);
-        // set lock (reflection via entity method)
-        u.SetLockedUntil(DateTime.UtcNow.AddMinutes(10));
-        db.Users.Add(u); db.SaveChanges();
-        var ok = await sut.UnlockAsync(u.Id, CancellationToken.None);
-        ok.Should().BeTrue();
-        db.Users.Single().LockedUntilUtc.Should().BeNull();
-    }
+        [Fact]
+        public async Task CreateAsync_DuplicateUsername_Throws()
+        {
+            var (sut, db, _, _) = Create();
+            db.Users.Add(new User("alice", "HASH::x", false));
+            db.SaveChanges();
+            await Assert.ThrowsAsync<InvalidOperationException>(() => sut.CreateAsync("alice", "pw", false, CancellationToken.None));
+        }
 
-    [Fact]
-    public async Task DeleteAsync_RemovesUser()
-    {
-        var (sut, db, _) = Create();
-        var u = new User("user", "HASH::x", false);
-        db.Users.Add(u); db.SaveChanges();
-        var ok = await sut.DeleteAsync(u.Id, CancellationToken.None);
-        ok.Should().BeTrue();
-        db.Users.Count().Should().Be(0);
-    }
+        [Fact]
+        public async Task UpdateAsync_Rename_WhenUnique_Works()
+        {
+            var (sut, db, _, _) = Create();
+            var u = new User("old", "HASH::x", false);
+            db.Users.Add(u); db.SaveChanges();
+            var updated = await sut.UpdateAsync(u.Id, "new", null, null, null, CancellationToken.None);
+            updated!.Username.Should().Be("new");
+        }
 
-    [Fact]
-    public async Task DeleteAsync_NonExisting_ReturnsFalse()
-    {
-        var (sut, db, _) = Create();
-        var ok = await sut.DeleteAsync(Guid.NewGuid(), CancellationToken.None);
-        ok.Should().BeFalse();
+        [Fact]
+        public async Task UpdateAsync_Rename_ToExisting_Throws()
+        {
+            var (sut, db, _, _) = Create();
+            var a = new User("a", "HASH::x", false);
+            var b = new User("b", "HASH::x", false);
+            db.Users.AddRange(a, b); db.SaveChanges();
+            await Assert.ThrowsAsync<InvalidOperationException>(() => sut.UpdateAsync(a.Id, "b", null, null, null, CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_UpdatesHash()
+        {
+            var (sut, db, hasher, _) = Create();
+            var u = new User("user", "HASH::old", false);
+            db.Users.Add(u); db.SaveChanges();
+            hasher.Setup(h => h.Hash("newpw")).Returns("HASH::newpw");
+            var ok = await sut.ResetPasswordAsync(u.Id, "newpw", CancellationToken.None);
+            ok.Should().BeTrue();
+            // Verify hash changed in tracked entity (reflection set) by reloading
+            var re = db.Users.Single();
+            re.PasswordHash.Should().Be("HASH::newpw");
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_Empty_Throws()
+        {
+            var (sut, db, _, _) = Create();
+            var u = new User("user", "HASH::old", false);
+            db.Users.Add(u); db.SaveChanges();
+            await Assert.ThrowsAsync<ArgumentException>(() => sut.ResetPasswordAsync(u.Id, "", CancellationToken.None));
+        }
+
+        [Fact]
+        public async Task UnlockAsync_ClearsIdentityLockout()
+        {
+            var (sut, db, _, userManagerMock) = Create();
+            var u = new User("user", "HASH::x", false);
+            // set Identity lockout end
+            u.LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(10);
+            db.Users.Add(u); db.SaveChanges();
+
+            var ok = await sut.UnlockAsync(u.Id, CancellationToken.None);
+            ok.Should().BeTrue();
+
+            userManagerMock.Verify(um => um.SetLockoutEndDateAsync(It.Is<User>(x => x.Id == u.Id), null), Times.Once);
+            userManagerMock.Verify(um => um.ResetAccessFailedCountAsync(It.Is<User>(x => x.Id == u.Id)), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_RemovesUser()
+        {
+            var (sut, db, _, _) = Create();
+            var u = new User("user", "HASH::x", false);
+            db.Users.Add(u); db.SaveChanges();
+            var ok = await sut.DeleteAsync(u.Id, CancellationToken.None);
+            ok.Should().BeTrue();
+            db.Users.Count().Should().Be(0);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_NonExisting_ReturnsFalse()
+        {
+            var (sut, db, _, _) = Create();
+            var ok = await sut.DeleteAsync(Guid.NewGuid(), CancellationToken.None);
+            ok.Should().BeFalse();
+        }
     }
 }

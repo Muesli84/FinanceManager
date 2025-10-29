@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -5,7 +6,7 @@ namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/meta/holiday-countries")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class MetaHolidayCountriesController : ControllerBase
 {
     private static readonly string[] Countries = new[]

@@ -73,7 +73,7 @@ namespace FinanceManager.Web.Infrastructure.Auth
                                ?? context.User.FindFirstValue(JwtRegisteredClaimNames.UniqueName)
                                ?? context.User.FindFirstValue(ClaimTypes.Name)
                                ?? string.Empty;
-                var isAdmin = (context.User.FindFirst("is_admin")?.Value)?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+                var isAdmin = context.User.IsInRole("Admin");
 
                 if (!Guid.TryParse(userIdStr, out var userId))
                 {

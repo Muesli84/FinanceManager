@@ -1,15 +1,16 @@
 using FinanceManager.Application;
+using FinanceManager.Domain; // PostingKind
 using FinanceManager.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Domain; // PostingKind
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/securities/dividends")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class DividendsReportsController : ControllerBase
 {
     private readonly ICurrentUserService _currentUser;

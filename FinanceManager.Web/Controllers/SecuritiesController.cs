@@ -1,15 +1,16 @@
-using System.ComponentModel.DataAnnotations;
 using FinanceManager.Application;
 using FinanceManager.Application.Securities;
 using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/securities")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class SecuritiesController : ControllerBase
 {
     private readonly ISecurityService _service;
