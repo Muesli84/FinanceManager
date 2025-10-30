@@ -231,7 +231,10 @@ public sealed class StatementDraftBookingTests
         var intermediary = new Contact(owner, "PayService", ContactType.Organization, null, null, true);
         db.Contacts.Add(intermediary);
         await db.SaveChangesAsync();
-        var pEntry = parent.AddEntry(DateTime.Today, 80m, "Split Root", intermediary.Name, DateTime.Today, "EUR", null, false);
+        // parent booking and valuta differ
+        var pBooking = new DateTime(2024, 6, 1);
+        var pValuta = new DateTime(2024, 6, 5);
+        var pEntry = parent.AddEntry(pBooking, 80m, "Split Root", intermediary.Name, pValuta, "EUR", null, false);
         pEntry.MarkAccounted(intermediary.Id);
         db.Entry(pEntry).State = EntityState.Added;
         await db.SaveChangesAsync();
@@ -242,8 +245,13 @@ public sealed class StatementDraftBookingTests
         var rec2 = new Contact(owner, "Bob", ContactType.Person, null, null);
         db.Contacts.AddRange(rec1, rec2);
         await db.SaveChangesAsync();
-        var c1 = child.AddEntry(DateTime.Today, 30m, "Child A", rec1.Name, DateTime.Today, "EUR", null, false);
-        var c2 = child.AddEntry(DateTime.Today, 50m, "Child B", rec2.Name, DateTime.Today, "EUR", null, false);
+        // children have different booking/valuta (and different from parent)
+        var c1Booking = new DateTime(2024, 6, 2);
+        var c1Valuta = new DateTime(2024, 6, 3);
+        var c2Booking = new DateTime(2024, 6, 2);
+        var c2Valuta = new DateTime(2024, 6, 4);
+        var c1 = child.AddEntry(c1Booking, 30m, "Child A", rec1.Name, c1Valuta, "EUR", null, false);
+        var c2 = child.AddEntry(c2Booking, 50m, "Child B", rec2.Name, c2Valuta, "EUR", null, false);
         c1.MarkAccounted(rec1.Id);
         c2.MarkAccounted(rec2.Id);
         db.Entry(c1).State = EntityState.Added;
@@ -273,7 +281,49 @@ public sealed class StatementDraftBookingTests
         contactPostings.Count(p => p.Amount == 0m).Should().Be(1);
         contactPostings.Where(p => p.Amount != 0m).Sum(p => p.Amount).Should().Be(80m);
 
-        // Both drafts expected committed (current implementation likely only commits parent -> test will fail until implemented)
+        // All created postings (parent + children) must have parent's valuta date
+        var allPostings = db.Postings.ToList();
+        allPostings.Should().OnlyContain(p => p.ValutaDate == pEntry.ValutaDate);
+
+        // Additionally, booking dates of postings must match their source entry booking dates
+        var parentBank = db.Postings.Single(p => p.SourceId == pEntry.Id && p.Kind == PostingKind.Bank);
+        var parentContact = db.Postings.Single(p => p.SourceId == pEntry.Id && p.Kind == PostingKind.Contact);
+        parentBank.BookingDate.Should().Be(pEntry.BookingDate);
+        parentBank.ValutaDate.Should().Be(pEntry.ValutaDate);
+        parentBank.Amount.Should().Be(0m);
+        parentContact.BookingDate.Should().Be(pEntry.BookingDate);
+        parentContact.ValutaDate.Should().Be(pEntry.ValutaDate);
+        parentContact.Amount.Should().Be(0m);
+
+        var child1Bank = db.Postings.Single(p => p.SourceId == c1.Id && p.Kind == PostingKind.Bank);
+        var child1Contact = db.Postings.Single(p => p.SourceId == c1.Id && p.Kind == PostingKind.Contact);
+        child1Bank.BookingDate.Should().Be(c1Booking);
+        child1Bank.ValutaDate.Should().Be(pEntry.ValutaDate);
+        child1Bank.Amount.Should().Be(c1.Amount);
+        child1Contact.BookingDate.Should().Be(c1Booking);
+        child1Contact.ValutaDate.Should().Be(pEntry.ValutaDate);
+        child1Contact.Amount.Should().Be(c1.Amount);
+
+        var child2Bank = db.Postings.Single(p => p.SourceId == c2.Id && p.Kind == PostingKind.Bank);
+        var child2Contact = db.Postings.Single(p => p.SourceId == c2.Id && p.Kind == PostingKind.Contact);
+        child2Bank.BookingDate.Should().Be(c2Booking);
+        child2Bank.ValutaDate.Should().Be(pEntry.ValutaDate);
+        child2Bank.Amount.Should().Be(c2.Amount);
+        child2Contact.BookingDate.Should().Be(c2Booking);
+        child2Contact.ValutaDate.Should().Be(pEntry.ValutaDate);
+        child2Contact.Amount.Should().Be(c2.Amount);
+
+        // Parent postings should not have parent set
+        parentBank.ParentId.Should().BeNull();
+        parentContact.ParentId.Should().BeNull();
+
+        // Child postings must reference parent's corresponding posting ids
+        child1Bank.ParentId.Should().Be(parentBank.Id);
+        child1Contact.ParentId.Should().Be(parentContact.Id);
+        child2Bank.ParentId.Should().Be(parentBank.Id);
+        child2Contact.ParentId.Should().Be(parentContact.Id);
+
+        // Both drafts expected committed
         (await db.StatementDrafts.FindAsync(parent.Id))!.Status.Should().Be(StatementDraftStatus.Committed);
         (await db.StatementDrafts.FindAsync(child.Id))!.Status.Should().Be(StatementDraftStatus.Committed);
 

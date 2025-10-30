@@ -120,6 +120,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
         modelBuilder.Entity<Posting>(b =>
         {
             b.HasIndex(x => new { x.AccountId, x.BookingDate });
+            b.Property(p => p.ParentId);
         });
 
         modelBuilder.Entity<StatementDraft>(b =>
