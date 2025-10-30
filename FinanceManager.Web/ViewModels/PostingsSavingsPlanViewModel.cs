@@ -110,6 +110,7 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
     {
         Id = p.Id,
         BookingDate = p.BookingDate,
+        ValutaDate = p.ValutaDate,
         Amount = p.Amount,
         Kind = p.Kind,
         AccountId = p.AccountId,
@@ -124,7 +125,7 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
         SecuritySubType = p.SecuritySubType
     };
 
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid? GroupId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
+    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid? GroupId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
 
     public enum PostingKind { Bank=0, Contact=1, SavingsPlan=2, Security=3 }
     public enum SecurityPostingSubType { Buy=0, Sell=1, Dividend=2, Fee=3, Tax=4 }
@@ -133,6 +134,7 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
     {
         public Guid Id { get; set; }
         public DateTime BookingDate { get; set; }
+        public DateTime ValutaDate { get; set; }
         public decimal Amount { get; set; }
         public PostingKind Kind { get; set; }
         public Guid? AccountId { get; set; }

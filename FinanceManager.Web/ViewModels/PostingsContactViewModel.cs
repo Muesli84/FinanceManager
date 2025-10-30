@@ -152,6 +152,7 @@ public sealed class PostingsContactViewModel : ViewModelBase
     {
         Id = p.Id,
         BookingDate = p.BookingDate,
+        ValutaDate = p.ValutaDate,
         Amount = p.Amount,
         Kind = p.Kind,
         AccountId = p.AccountId,
@@ -167,13 +168,14 @@ public sealed class PostingsContactViewModel : ViewModelBase
         Quantity = p.Quantity
     };
 
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId);
+    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId);
     public sealed record GroupLinksResponse(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
     public sealed class PostingItem
     {
         public Guid Id { get; set; }
         public DateTime BookingDate { get; set; }
+        public DateTime ValutaDate { get; set; }
         public decimal Amount { get; set; }
         public PostingKind Kind { get; set; }
         public Guid? AccountId { get; set; }

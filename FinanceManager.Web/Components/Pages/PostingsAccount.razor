@@ -36,10 +36,11 @@ else
         <thead>
             <tr>
                 <th style="width:7rem;">@Localizer["Th_Date"]</th>
+                <th style="width:7rem;">@Localizer["Th_Valuta"]</th>
                 <th style="width:7rem;text-align:right;">@Localizer["Th_Amount"]</th>
                 <th style="width:6rem;">@Localizer["Th_Kind"]</th>
-                <th style="width:18%;">@Localizer["Th_Recipient"]</th>
-                <th style="width:22%;">@Localizer["Th_Subject"]</th>
+                <th style="width:18%">@Localizer["Th_Recipient"]</th>
+                <th style="width:22%">@Localizer["Th_Subject"]</th>
                 <th>@Localizer["Th_Description"]</th>
             </tr>
         </thead>
@@ -48,6 +49,7 @@ else
             {
                 <tr style="cursor:pointer;" @onclick="(()=> OpenDetail(p.Id))">
                     <td>@p.BookingDate.ToShortDateString()</td>
+                    <td>@p.ValutaDate.ToShortDateString()</td>
                     <td style="text-align:right;">@p.Amount</td>
                     <td>@(p.Kind == PostingKind.Security && p.SecuritySubType.HasValue ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.RecipientName)?"-":p.RecipientName)</td>
@@ -57,7 +59,7 @@ else
             }
             @if(_vm.Loading)
             {
-                <tr><td colspan="6" style="opacity:.6;">@Localizer["Loading"]</td></tr>
+                <tr><td colspan="7" style="opacity:.6;">@Localizer["Loading"]</td></tr>
             }
         </tbody>
     </table>
@@ -179,16 +181,11 @@ else
         switch (action)
         {
             case "Back": Back(); break;
-            case "ClearSearch": _vm!.ClearSearch(); break;
+            case "ClearSearch": _vm!.ClearSearch(); _ = _vm.LoadMoreAsync(); break;
             case "ClearRange": _vm!.ClearRange(); break;
             case "ExportCsv": Export("csv"); break;
             case "ExportXlsx": Export("xlsx"); break;
         }
-    }
-
-    private void OpenDetail(Guid id)
-    {
-        Nav.NavigateTo($"/postings/{id}?back={BuildBackValue()}");
     }
 
     [JSInvokable]
@@ -225,6 +222,11 @@ else
     }
 
     private string BuildBackValue() => Uri.EscapeDataString("/" + Nav.ToBaseRelativePath(Nav.Uri));
+
+    private void OpenDetail(Guid id)
+    {
+        Nav.NavigateTo($"/postings/{id}?back={BuildBackValue()}");
+    }
 
     private void Back()
     {

@@ -99,6 +99,6 @@ public sealed class PostingDetailViewModel : ViewModelBase
 
     private static bool HasId(Guid? id) => id.HasValue && id.Value != Guid.Empty;
 
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, int Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, int? SecuritySubType, decimal? Quantity, Guid GroupId);
+    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, int Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, int? SecuritySubType, decimal? Quantity, Guid GroupId);
     public sealed record GroupLinksResponse(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 }

@@ -29,10 +29,11 @@ else
         <thead>
             <tr>
                 <th style="width:7rem;">@Localizer["Th_Date"]</th>
+                <th style="width:7rem;">@Localizer["Th_Valuta"]</th>
                 <th style="width:7rem;text-align:right;">@Localizer["Th_Amount"]</th>
                 <th style="width:6rem;">@Localizer["Th_Kind"]</th>
                 <th style="width:18%;">@Localizer["Th_Recipient"]</th>
-                <th style="width:22%;">@Localizer["Th_Subject"]</th>
+                <th style="width:22%">@Localizer["Th_Subject"]</th>
                 <th>@Localizer["Th_Description"]</th>
             </tr>
         </thead>
@@ -41,6 +42,7 @@ else
             {
                 <tr style="cursor:pointer;" @onclick="(()=> OpenDetail(p.Id))">
                     <td>@p.BookingDate.ToShortDateString()</td>
+                    <td>@p.ValutaDate.ToShortDateString()</td>
                     <td style="text-align:right;">@p.Amount</td>
                     <td>@(p.Kind == Domain.PostingKind.Security && p.SecuritySubType.HasValue ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.RecipientName)?"-":p.RecipientName)</td>
@@ -50,7 +52,7 @@ else
             }
             @if(_vm.Loading)
             {
-                <tr><td colspan="6" style="opacity:.6;">@Localizer["Loading"]</td></tr>
+                <tr><td colspan="7" style="opacity:.6;">@Localizer["Loading"]</td></tr>
             }
         </tbody>
     </table>
