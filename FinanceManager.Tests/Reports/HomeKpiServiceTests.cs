@@ -6,7 +6,6 @@ using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Reports;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -39,27 +38,26 @@ public sealed class HomeKpiServiceTests
 
         // create predefined
         var k1 = await svc.CreateAsync(user1.Id, new HomeKpiCreateRequest(HomeKpiKind.Predefined, null, HomeKpiDisplayMode.TotalOnly, 0), CancellationToken.None);
-        k1.Kind.Should().Be(HomeKpiKind.Predefined);
+        Assert.Equal(HomeKpiKind.Predefined, k1.Kind);
 
         // create favorite
         var k2 = await svc.CreateAsync(user1.Id, new HomeKpiCreateRequest(HomeKpiKind.ReportFavorite, fav1.Id, HomeKpiDisplayMode.TotalWithComparisons, 1), CancellationToken.None);
-        k2.ReportFavoriteId.Should().Be(fav1.Id);
+        Assert.Equal(fav1.Id, k2.ReportFavoriteId);
 
         // list
         var list = await svc.ListAsync(user1.Id, CancellationToken.None);
-        list.Should().HaveCount(2);
+        Assert.Equal(2, list.Count);
 
         // update
         var upd = await svc.UpdateAsync(k2.Id, user1.Id, new HomeKpiUpdateRequest(HomeKpiKind.ReportFavorite, fav1.Id, HomeKpiDisplayMode.ReportGraph, 3), CancellationToken.None);
-        upd!.DisplayMode.Should().Be(HomeKpiDisplayMode.ReportGraph);
-        upd.SortOrder.Should().Be(3);
+        Assert.Equal(HomeKpiDisplayMode.ReportGraph, upd!.DisplayMode);
+        Assert.Equal(3, upd.SortOrder);
 
         // ownership check on favorite
-        await FluentActions.Invoking(() => svc.CreateAsync(user2.Id, new HomeKpiCreateRequest(HomeKpiKind.ReportFavorite, fav1.Id, HomeKpiDisplayMode.TotalOnly, 0), CancellationToken.None))
-            .Should().ThrowAsync<InvalidOperationException>();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.CreateAsync(user2.Id, new HomeKpiCreateRequest(HomeKpiKind.ReportFavorite, fav1.Id, HomeKpiDisplayMode.TotalOnly, 0), CancellationToken.None));
 
         // delete
-        (await svc.DeleteAsync(k1.Id, user1.Id, CancellationToken.None)).Should().BeTrue();
-        (await svc.DeleteAsync(Guid.NewGuid(), user1.Id, CancellationToken.None)).Should().BeFalse();
+        Assert.True(await svc.DeleteAsync(k1.Id, user1.Id, CancellationToken.None));
+        Assert.False(await svc.DeleteAsync(Guid.NewGuid(), user1.Id, CancellationToken.None));
     }
 }

@@ -5,7 +5,6 @@ using FinanceManager.Application.Users;
 using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Auth;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -156,10 +155,10 @@ public sealed class UserAuthServiceTests
         var cmd = new RegisterUserCommand("alice", "Password123", null, null);
         var result = await sut.RegisterAsync(cmd, CancellationToken.None);
 
-        result.Success.Should().BeTrue();
-        result.Value!.IsAdmin.Should().BeTrue();
-        db.Users.Count().Should().Be(1);
-        db.Users.Single().IsAdmin.Should().BeTrue();
+        Assert.True(result.Success);
+        Assert.True(result.Value!.IsAdmin);
+        Assert.Equal(1, db.Users.Count());
+        Assert.True(db.Users.Single().IsAdmin);
     }
 
     [Fact]
@@ -170,8 +169,8 @@ public sealed class UserAuthServiceTests
         db.SaveChanges();
         var cmd = new RegisterUserCommand("bob", "pw", null, null);
         var result = await sut.RegisterAsync(cmd, CancellationToken.None);
-        result.Success.Should().BeFalse();
-        result.Error.Should().Contain("exists");
+        Assert.False(result.Success);
+        Assert.Contains("exists", result.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -181,9 +180,9 @@ public sealed class UserAuthServiceTests
         var cmd = new RegisterUserCommand("carol", "Password123", "en", null);
         var res = await sut.RegisterAsync(cmd, CancellationToken.None);
 
-        res.Success.Should().BeTrue();
+        Assert.True(res.Success);
         var user = db.Users.Single(u => u.UserName == "carol");
-        user.PreferredLanguage.Should().Be("en");
+        Assert.Equal("en", user.PreferredLanguage);
     }
 
     [Fact]
@@ -194,10 +193,10 @@ public sealed class UserAuthServiceTests
         var res1 = await sut.RegisterAsync(new RegisterUserCommand("", "pw", null, null), CancellationToken.None);
         var res2 = await sut.RegisterAsync(new RegisterUserCommand("user", "", null, null), CancellationToken.None);
 
-        res1.Success.Should().BeFalse();
-        res2.Success.Should().BeFalse();
-        res1.Error.Should().Contain("required");
-        res2.Error.Should().Contain("required");
+        Assert.False(res1.Success);
+        Assert.False(res2.Success);
+        Assert.Contains("required", res1.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("required", res2.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -211,11 +210,11 @@ public sealed class UserAuthServiceTests
 
         // first invalid
         var r1 = await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
-        r1.Success.Should().BeFalse();
+        Assert.False(r1.Success);
 
         // second invalid
         var r2 = await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
-        r2.Success.Should().BeFalse();
+        Assert.False(r2.Success);
     }
 
     [Fact]
@@ -235,8 +234,8 @@ public sealed class UserAuthServiceTests
         await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
         var res = await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
 
-        res.Success.Should().BeFalse();
-        res.Error.Should().Contain("locked");
+        Assert.False(res.Success);
+        Assert.Contains("locked", res.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -249,7 +248,7 @@ public sealed class UserAuthServiceTests
         signInManager.Setup(s => s.PasswordSignInAsync(user, "pw", false, true)).ReturnsAsync(SignInResult.Success);
 
         var success = await sut.LoginAsync(new LoginCommand("bob", "pw"), CancellationToken.None);
-        success.Success.Should().BeTrue();
+        Assert.True(success.Success);
     }
 
     [Fact]
@@ -261,8 +260,8 @@ public sealed class UserAuthServiceTests
         signInManager.Setup(s => s.PasswordSignInAsync(user, "pw", false, true)).ReturnsAsync(SignInResult.Success);
 
         var res = await sut.LoginAsync(new LoginCommand("bob", "pw"), CancellationToken.None);
-        res.Success.Should().BeTrue();
-        res.Value!.Token.Should().Be("token");
+        Assert.True(res.Success);
+        Assert.Equal("token", res.Value!.Token);
     }
 
     [Fact]
@@ -279,11 +278,11 @@ public sealed class UserAuthServiceTests
             .ReturnsAsync(SignInResult.Success);
 
         var r1 = await sut.LoginAsync(new LoginCommand("bob", "wrong"), CancellationToken.None);
-        r1.Success.Should().BeFalse();
+        Assert.False(r1.Success);
 
         var r2 = await sut.LoginAsync(new LoginCommand("bob", "pw"), CancellationToken.None);
-        r2.Success.Should().BeTrue();
-        r2.Value!.Token.Should().Be("token");
+        Assert.True(r2.Success);
+        Assert.Equal("token", r2.Value!.Token);
     }
 
     [Fact]
@@ -298,8 +297,8 @@ public sealed class UserAuthServiceTests
         signInManager.Setup(s => s.PasswordSignInAsync(user, It.IsAny<string>(), false, true)).ReturnsAsync(SignInResult.LockedOut);
 
         var res = await sut.LoginAsync(new LoginCommand("eve", "wrong"), CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Error.Should().Contain("locked");
+        Assert.False(res.Success);
+        Assert.Contains("locked", res.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed class TestClock : IDateTimeProvider

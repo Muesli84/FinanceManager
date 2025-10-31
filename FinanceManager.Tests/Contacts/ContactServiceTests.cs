@@ -8,7 +8,6 @@ using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Contacts;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -35,9 +34,9 @@ public sealed class ContactServiceTests
 
         var dto = await sut.CreateAsync(owner, "Alice", ContactType.Person, null, null, null, CancellationToken.None);
 
-        dto.Name.Should().Be("Alice");
-        dto.Type.Should().Be(ContactType.Person);
-        db.Contacts.Count().Should().Be(1);
+        Assert.Equal("Alice", dto.Name);
+        Assert.Equal(ContactType.Person, dto.Type);
+        Assert.Equal(1, db.Contacts.Count());
     }
 
     [Fact]
@@ -46,8 +45,8 @@ public sealed class ContactServiceTests
         var (sut, _) = Create();
         var owner = Guid.NewGuid();
         Func<Task> act = () => sut.CreateAsync(owner, "Me", ContactType.Self, null, null, null, CancellationToken.None);
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Self*");
+        var ex = await Assert.ThrowsAsync<ArgumentException>(act);
+        Assert.Contains("Self", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -59,9 +58,9 @@ public sealed class ContactServiceTests
 
         var updated = await sut.UpdateAsync(created.Id, owner, "BankY", ContactType.Bank, null, null, null, CancellationToken.None);
 
-        updated.Should().NotBeNull();
-        updated!.Name.Should().Be("BankY");
-        updated.Type.Should().Be(ContactType.Bank);
+        Assert.NotNull(updated);
+        Assert.Equal("BankY", updated!.Name);
+        Assert.Equal(ContactType.Bank, updated.Type);
     }
 
     [Fact]
@@ -74,8 +73,8 @@ public sealed class ContactServiceTests
         await db.SaveChangesAsync();
 
         Func<Task> act = () => sut.UpdateAsync(self.Id, owner, "Me2", ContactType.Person, null, null, null, CancellationToken.None);
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Self*");
+        var ex = await Assert.ThrowsAsync<ArgumentException>(act);
+        Assert.Contains("Self", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -86,8 +85,8 @@ public sealed class ContactServiceTests
         var created = await sut.CreateAsync(owner, "Org", ContactType.Organization, null, null, null, CancellationToken.None);
 
         Func<Task> act = () => sut.UpdateAsync(created.Id, owner, "Org", ContactType.Self, null, null, null, CancellationToken.None);
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Self*");
+        var ex = await Assert.ThrowsAsync<ArgumentException>(act);
+        Assert.Contains("Self", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -99,8 +98,8 @@ public sealed class ContactServiceTests
 
         var ok = await sut.DeleteAsync(c.Id, owner, CancellationToken.None);
 
-        ok.Should().BeTrue();
-        db.Contacts.Count().Should().Be(0);
+        Assert.True(ok);
+        Assert.Equal(0, db.Contacts.Count());
     }
 
     [Fact]
@@ -113,8 +112,8 @@ public sealed class ContactServiceTests
         await db.SaveChangesAsync();
 
         Func<Task> act = () => sut.DeleteAsync(self.Id, owner, CancellationToken.None);
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Self*");
+        var ex = await Assert.ThrowsAsync<ArgumentException>(act);
+        Assert.Contains("Self", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -131,8 +130,8 @@ public sealed class ContactServiceTests
 
         var list = await sut.ListAsync(owner1, 0, 50, null, null, CancellationToken.None);
 
-        list.Should().HaveCount(2);
-        list.Select(c => c.Name).Should().BeEquivalentTo(new[] { "A", "C" });
+        Assert.Equal(2, list.Count);
+        Assert.Equal(new[] { "A", "C" }, list.Select(c => c.Name).ToArray());
     }
 
     [Fact]
@@ -146,6 +145,6 @@ public sealed class ContactServiceTests
         await db.SaveChangesAsync();
 
         var dto = await sut.GetAsync(c.Id, owner2, CancellationToken.None);
-        dto.Should().BeNull();
+        Assert.Null(dto);
     }
 }

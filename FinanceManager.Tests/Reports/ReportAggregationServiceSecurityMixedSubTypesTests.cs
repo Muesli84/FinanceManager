@@ -9,7 +9,6 @@ using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
 using FinanceManager.Shared.Dtos; // SecurityPostingSubType
 using FinanceManager.Domain.Reports; // ReportInterval
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -73,16 +72,16 @@ public sealed class ReportAggregationServiceSecurityMixedSubTypesTests
         );
 
         var result = await sut.QueryAsync(query, CancellationToken.None);
-        result.Interval.Should().Be(ReportInterval.Month);
-        result.Points.Should().NotBeEmpty();
+        Assert.Equal(ReportInterval.Month, result.Interval);
+        Assert.NotEmpty(result.Points);
 
         var key = $"Security:{sec.Id}";
         var row = result.Points.Single(p => p.GroupKey == key && p.PeriodStart == analysis);
 
         var expected = -1000.00m - 4.50m + 25.75m - 3.90m; // sum of all sub types
-        row.Amount.Should().Be(expected);
+        Assert.Equal(expected, row.Amount);
 
         // Ensure only one row for that security+month (aggregated across sub types)
-        result.Points.Count(p => p.GroupKey == key && p.PeriodStart == analysis).Should().Be(1);
+        Assert.Equal(1, result.Points.Count(p => p.GroupKey == key && p.PeriodStart == analysis));
     }
 }

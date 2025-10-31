@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -33,11 +32,11 @@ public sealed class BackgroundTasksControllerTests
         var (controller, userA, _, manager) = Create();
         var result = controller.Enqueue(BackgroundTaskType.BackupRestore, false); // allowDuplicate false
         var ok = result.Result as OkObjectResult;
-        ok.Should().NotBeNull();
+        Assert.NotNull(ok);
         var info = ok!.Value as BackgroundTaskInfo;
-        info.Should().NotBeNull();
-        info!.UserId.Should().Be(userA);
-        manager.GetAll().Should().ContainSingle(t => t.Id == info.Id);
+        Assert.NotNull(info);
+        Assert.Equal(userA, info!.UserId);
+        Assert.Single(manager.GetAll().Where(t => t.Id == info.Id));
     }
 
     [Fact]
@@ -46,7 +45,7 @@ public sealed class BackgroundTasksControllerTests
         var (controller, _, _, _) = Create();
         var first = (controller.Enqueue(BackgroundTaskType.BookAllDrafts, false).Result as OkObjectResult)!.Value as BackgroundTaskInfo;
         var second = (controller.Enqueue(BackgroundTaskType.BookAllDrafts, false).Result as OkObjectResult)!.Value as BackgroundTaskInfo;
-        second!.Id.Should().Be(first!.Id); // same
+        Assert.Equal(first!.Id, second!.Id); // same
     }
 
     [Fact]
@@ -55,7 +54,7 @@ public sealed class BackgroundTasksControllerTests
         var (controller, _, _, _) = Create();
         var first = (controller.Enqueue(BackgroundTaskType.ClassifyAllDrafts, true).Result as OkObjectResult)!.Value as BackgroundTaskInfo;
         var second = (controller.Enqueue(BackgroundTaskType.ClassifyAllDrafts, true).Result as OkObjectResult)!.Value as BackgroundTaskInfo;
-        second!.Id.Should().NotBe(first!.Id); // different
+        Assert.NotEqual(first!.Id, second!.Id); // different
     }
 
     [Fact]
@@ -68,9 +67,10 @@ public sealed class BackgroundTasksControllerTests
         manager.Enqueue(BackgroundTaskType.BookAllDrafts, userB);
         var listResult = controller.GetActiveAndQueued();
         var ok = listResult.Result as OkObjectResult;
-        ok.Should().NotBeNull();
+        Assert.NotNull(ok);
         var tasks = ((System.Collections.Generic.IEnumerable<BackgroundTaskInfo>)ok!.Value!).ToList();
-        tasks.Should().OnlyContain(t => t.UserId == userA);
+        // ensure all tasks belong to userA
+        Assert.All(tasks, t => Assert.Equal(userA, t.UserId));
     }
 
     [Fact]
@@ -81,9 +81,10 @@ public sealed class BackgroundTasksControllerTests
         // Update to running
         manager.UpdateTaskInfo(info! with { Status = BackgroundTaskStatus.Running, StartedUtc = DateTime.UtcNow });
         var response = controller.CancelOrRemove(info!.Id);
-        response.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(response);
         var updated = manager.Get(info.Id);
-        updated!.Status.Should().Be(BackgroundTaskStatus.Cancelled);
+        Assert.NotNull(updated);
+        Assert.Equal(BackgroundTaskStatus.Cancelled, updated!.Status);
     }
 
     [Fact]
@@ -92,8 +93,8 @@ public sealed class BackgroundTasksControllerTests
         var (controller, _, _, manager) = Create();
         var info = (controller.Enqueue(BackgroundTaskType.BookAllDrafts, false).Result as OkObjectResult)!.Value as BackgroundTaskInfo;
         var response = controller.CancelOrRemove(info!.Id);
-        response.Should().BeOfType<NoContentResult>();
-        manager.Get(info.Id).Should().BeNull();
+        Assert.IsType<NoContentResult>(response);
+        Assert.Null(manager.Get(info.Id));
     }
 
     [Fact]
@@ -103,6 +104,6 @@ public sealed class BackgroundTasksControllerTests
         // add task for userB directly
         var otherTask = manager.Enqueue(BackgroundTaskType.ClassifyAllDrafts, userB);
         var resp = controller.GetDetail(otherTask.Id);
-        resp.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(resp.Result);
     }
 }

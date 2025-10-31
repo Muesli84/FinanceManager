@@ -13,7 +13,6 @@ using FinanceManager.Infrastructure.Contacts;
 using FinanceManager.Infrastructure.Savings;
 using FinanceManager.Infrastructure.Securities;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -53,14 +52,14 @@ public sealed class AttachmentCleanupTests
         db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Contact, c2.Id, "b.txt", "text/plain", 1, null, null, new byte[]{2}, null));
         await db.SaveChangesAsync();
 
-        (await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact)).Should().Be(2);
+        Assert.Equal(2, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact));
 
         var ok = await svc.DeleteAsync(c1.Id, owner, CancellationToken.None);
-        ok.Should().BeTrue();
+        Assert.True(ok);
 
         // c1 attachments removed, c2 remains
-        (await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == c1.Id)).Should().Be(0);
-        (await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == c2.Id)).Should().Be(1);
+        Assert.Equal(0, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == c1.Id));
+        Assert.Equal(1, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == c2.Id));
 
         conn.Dispose();
     }
@@ -83,13 +82,13 @@ public sealed class AttachmentCleanupTests
 
         var svc = new AccountService(db);
         var ok = await svc.DeleteAsync(acc.Id, owner, CancellationToken.None);
-        ok.Should().BeTrue();
+        Assert.True(ok);
 
         // account attachments removed
-        (await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Account && a.EntityId == acc.Id)).Should().Be(0);
+        Assert.Equal(0, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Account && a.EntityId == acc.Id));
         // bank contact removed -> its attachments removed too
-        (await db.Contacts.AnyAsync(c => c.Id == bank.Id)).Should().BeFalse();
-        (await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == bank.Id)).Should().Be(0);
+        Assert.False(await db.Contacts.AnyAsync(c => c.Id == bank.Id));
+        Assert.Equal(0, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == bank.Id));
 
         conn.Dispose();
     }
@@ -112,17 +111,17 @@ public sealed class AttachmentCleanupTests
 
         var svc = new AccountService(db);
         var ok = await svc.DeleteAsync(acc1.Id, owner, CancellationToken.None);
-        ok.Should().BeTrue();
+        Assert.True(ok);
 
         // bank contact still exists, its attachment remains
-        (await db.Contacts.AnyAsync(c => c.Id == bank.Id)).Should().BeTrue();
-        (await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == bank.Id)).Should().Be(1);
+        Assert.True(await db.Contacts.AnyAsync(c => c.Id == bank.Id));
+        Assert.Equal(1, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == bank.Id));
 
         // cleanup: delete second account, then bank contact attachment should be removed
         ok = await svc.DeleteAsync(acc2.Id, owner, CancellationToken.None);
-        ok.Should().BeTrue();
-        (await db.Contacts.AnyAsync(c => c.Id == bank.Id)).Should().BeFalse();
-        (await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == bank.Id)).Should().Be(0);
+        Assert.True(ok);
+        Assert.False(await db.Contacts.AnyAsync(c => c.Id == bank.Id));
+        Assert.Equal(0, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact && a.EntityId == bank.Id));
 
         conn.Dispose();
     }
@@ -135,14 +134,14 @@ public sealed class AttachmentCleanupTests
         var dto = await svc.CreateAsync(owner, "Plan A", SavingsPlanType.OneTime, null, null, null, null, null, CancellationToken.None);
         // archive then add attachment and delete
         var archived = await svc.ArchiveAsync(dto.Id, owner, CancellationToken.None);
-        archived.Should().BeTrue();
+        Assert.True(archived);
 
         db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.SavingsPlan, dto.Id, "sp.txt", "text/plain", 1, null, null, new byte[]{1}, null));
         await db.SaveChangesAsync();
 
         var ok = await svc.DeleteAsync(dto.Id, owner, CancellationToken.None);
-        ok.Should().BeTrue();
-        (await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.SavingsPlan && a.EntityId == dto.Id)).Should().Be(0);
+        Assert.True(ok);
+        Assert.Equal(0, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.SavingsPlan && a.EntityId == dto.Id));
         conn.Dispose();
     }
 
@@ -153,14 +152,15 @@ public sealed class AttachmentCleanupTests
         var svc = new SecurityService(db);
         var created = await svc.CreateAsync(owner, name: "SEC A", identifier: "ID123", description: null, alphaVantageCode: null, currencyCode: "EUR", categoryId: null, ct: CancellationToken.None);
         // archive before delete
-        (await svc.ArchiveAsync(created.Id, owner, CancellationToken.None)).Should().BeTrue();
+        var archived = await svc.ArchiveAsync(created.Id, owner, CancellationToken.None);
+        Assert.True(archived);
 
         db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Security, created.Id, "sec.txt", "text/plain", 1, null, null, new byte[]{1}, null));
         await db.SaveChangesAsync();
 
         var ok = await svc.DeleteAsync(created.Id, owner, CancellationToken.None);
-        ok.Should().BeTrue();
-        (await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Security && a.EntityId == created.Id)).Should().Be(0);
+        Assert.True(ok);
+        Assert.Equal(0, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Security && a.EntityId == created.Id));
         conn.Dispose();
     }
 }

@@ -7,7 +7,6 @@ using FinanceManager.Application;
 using FinanceManager.Domain.Users;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -63,12 +62,13 @@ public sealed class UserImportSplitSettingsControllerTests
     {
         var (controller, _, _) = Create();
         var result = await controller.GetAsync(CancellationToken.None) as OkObjectResult;
-        result.Should().NotBeNull();
+        Assert.NotNull(result);
         var dto = result!.Value as ImportSplitSettingsDto;
-        dto!.Mode.Should().Be(ImportSplitMode.MonthlyOrFixed);
-        dto.MaxEntriesPerDraft.Should().Be(250);
-        dto.MonthlySplitThreshold.Should().Be(250);
-        dto.MinEntriesPerDraft.Should().Be(8); // new default
+        Assert.NotNull(dto);
+        Assert.Equal(ImportSplitMode.MonthlyOrFixed, dto!.Mode);
+        Assert.Equal(250, dto.MaxEntriesPerDraft);
+        Assert.Equal(250, dto.MonthlySplitThreshold);
+        Assert.Equal(8, dto.MinEntriesPerDraft); // new default
     }
 
     [Fact]
@@ -83,13 +83,12 @@ public sealed class UserImportSplitSettingsControllerTests
             MinEntriesPerDraft = 5
         };
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
-        resp.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(resp);
 
         var user = await db.Users.SingleAsync();
-        user.ImportSplitMode.Should().Be(ImportSplitMode.MonthlyOrFixed);
-        user.ImportMaxEntriesPerDraft.Should().Be(300);
-        user.ImportMonthlySplitThreshold.Should().Be(350);
-        user.ImportMinEntriesPerDraft.Should().Be(5);
+        Assert.Equal(ImportSplitMode.MonthlyOrFixed, user.ImportSplitMode);
+        Assert.Equal(300, user.ImportMaxEntriesPerDraft);
+        Assert.Equal(5, user.ImportMinEntriesPerDraft);
     }
 
     [Fact]
@@ -104,13 +103,13 @@ public sealed class UserImportSplitSettingsControllerTests
             MinEntriesPerDraft = 8
         };
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
-        var obj = resp.Should().BeOfType<ObjectResult>().Subject;
-        var details = obj.Value.Should().BeOfType<ValidationProblemDetails>().Subject;
-        details.Errors.Should().ContainKey(nameof(req.MonthlySplitThreshold));
+        var obj = Assert.IsType<ObjectResult>(resp);
+        var details = Assert.IsType<ValidationProblemDetails>(obj.Value);
+        Assert.True(details.Errors.ContainsKey(nameof(req.MonthlySplitThreshold)));
 
         var user = await db.Users.SingleAsync();
-        user.ImportMaxEntriesPerDraft.Should().Be(250); // unchanged
-        user.ImportMinEntriesPerDraft.Should().Be(8); // unchanged default
+        Assert.Equal(250, user.ImportMaxEntriesPerDraft); // unchanged
+        Assert.Equal(8, user.ImportMinEntriesPerDraft); // unchanged default
     }
 
     [Fact]
@@ -125,12 +124,12 @@ public sealed class UserImportSplitSettingsControllerTests
             MinEntriesPerDraft = 3 // ignored in fixed size but persisted for later
         };
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
-        resp.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(resp);
 
         var user = await db.Users.SingleAsync();
-        user.ImportSplitMode.Should().Be(ImportSplitMode.FixedSize);
-        user.ImportMaxEntriesPerDraft.Should().Be(400);
-        user.ImportMinEntriesPerDraft.Should().Be(3);
+        Assert.Equal(ImportSplitMode.FixedSize, user.ImportSplitMode);
+        Assert.Equal(400, user.ImportMaxEntriesPerDraft);
+        Assert.Equal(3, user.ImportMinEntriesPerDraft);
     }
 
     [Fact]
@@ -145,12 +144,12 @@ public sealed class UserImportSplitSettingsControllerTests
             MinEntriesPerDraft = 60 // invalid
         };
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
-        var obj = resp.Should().BeOfType<ObjectResult>().Subject;
-        var details = obj.Value.Should().BeOfType<ValidationProblemDetails>().Subject;
-        details.Errors.Should().ContainKey(nameof(req.MinEntriesPerDraft));
+        var obj = Assert.IsType<ObjectResult>(resp);
+        var details = Assert.IsType<ValidationProblemDetails>(obj.Value);
+        Assert.True(details.Errors.ContainsKey(nameof(req.MinEntriesPerDraft)));
 
         var user = await db.Users.SingleAsync();
-        user.ImportMaxEntriesPerDraft.Should().Be(250); // unchanged
-        user.ImportMinEntriesPerDraft.Should().Be(8);   // unchanged
+        Assert.Equal(250, user.ImportMaxEntriesPerDraft); // unchanged
+        Assert.Equal(8, user.ImportMinEntriesPerDraft);   // unchanged
     }
 }

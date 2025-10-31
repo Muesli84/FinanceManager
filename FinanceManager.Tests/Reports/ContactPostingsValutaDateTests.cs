@@ -7,7 +7,6 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -116,15 +115,15 @@ public sealed class ContactPostingsValutaDateTests
         var result = await sut.QueryAsync(query, ct);
 
         // Assert: points should be grouped by Valuta month (Jan and Feb)
-        result.Interval.Should().Be(ReportInterval.Month);
+        Assert.Equal(ReportInterval.Month, result.Interval);
         var jan = new DateTime(year, 1, 1);
         var feb = new DateTime(year, 2, 1);
 
         var janRow = result.Points.Single(p => p.GroupKey == $"Contact:{contact.Id}" && p.PeriodStart == jan);
-        janRow.Amount.Should().Be(100m);
+        Assert.Equal(100m, janRow.Amount);
 
         var febRow = result.Points.Single(p => p.GroupKey == $"Contact:{contact.Id}" && p.PeriodStart == feb);
-        febRow.Amount.Should().Be(200m);
+        Assert.Equal(200m, febRow.Amount);
     }
 
     [Fact]
@@ -213,14 +212,14 @@ public sealed class ContactPostingsValutaDateTests
         var result = await sut.QueryAsync(query, ct);
 
         // Assert: points should be grouped by Booking month (Jan) with agg value and Feb zero
-        result.Interval.Should().Be(ReportInterval.Month);
+        Assert.Equal(ReportInterval.Month, result.Interval);
         var jan = new DateTime(year, 1, 1);
         var feb = new DateTime(year, 2, 1);
 
         var janRow = result.Points.Single(p => p.GroupKey == $"Contact:{contact.Id}" && p.PeriodStart == jan);
-        janRow.Amount.Should().Be(300m);
+        Assert.Equal(300m, janRow.Amount);
 
         var febRow = result.Points.Single(p => p.GroupKey == $"Contact:{contact.Id}" && p.PeriodStart == feb);
-        febRow.Amount.Should().Be(0m);
+        Assert.Equal(0m, febRow.Amount);
     }
 }

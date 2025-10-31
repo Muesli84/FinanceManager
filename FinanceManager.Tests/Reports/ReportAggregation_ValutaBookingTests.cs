@@ -10,7 +10,6 @@ using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Reports;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -127,25 +126,25 @@ public sealed class ReportAggregation_ValutaBookingTests
         );
 
         var result = await svc.QueryAsync(query, ct);
-        result.Interval.Should().Be(ReportInterval.Month);
+        Assert.Equal(ReportInterval.Month, result.Interval);
         var periodStart = new DateTime(2025,9,1);
         var row = result.Points.Single(p => p.GroupKey == $"Contact:{contact.Id}" && p.PeriodStart == periodStart);
         // Expect only two rows with valuta in Sep 2025: -1 and -13.56 => sum -14.56
-        row.Amount.Should().BeApproximately(-14.56m, 0.0001m);
+        Assert.Equal(-14.56m, row.Amount, 3);
 
         // additionally assert that posting aggregates exist for booking AND valuta date kinds for relevant months
         var bookingAggExists = await db.PostingAggregates.AnyAsync(a => a.Kind == PostingKind.Contact && a.ContactId == contact.Id && a.Period == AggregatePeriod.Month && a.DateKind == AggregateDateKind.Booking, ct);
         var valutaAggExists = await db.PostingAggregates.AnyAsync(a => a.Kind == PostingKind.Contact && a.ContactId == contact.Id && a.Period == AggregatePeriod.Month && a.DateKind == AggregateDateKind.Valuta, ct);
-        bookingAggExists.Should().BeTrue();
-        valutaAggExists.Should().BeTrue();
+        Assert.True(bookingAggExists);
+        Assert.True(valutaAggExists);
 
         // Verify the aggregate value for Valuta Sep 2025 matches expected sum
         var expectedValutaSep = Rows.Where(r => r.Valuta.Year == 2025 && r.Valuta.Month == 9).Sum(r => r.Amount);
         var valutaAgg = await db.PostingAggregates.SingleAsync(a => a.Kind == PostingKind.Contact && a.ContactId == contact.Id && a.Period == AggregatePeriod.Month && a.PeriodStart == periodStart && a.DateKind == AggregateDateKind.Valuta, ct);
-        valutaAgg.Amount.Should().BeApproximately(expectedValutaSep, 0.0001m);
+        Assert.Equal(expectedValutaSep, valutaAgg.Amount, 3);
 
         // Ensure QueryAsync did not include periods beyond analysis month (e.g., Oct 2025)
-        result.Points.Should().NotContain(p => p.PeriodStart > periodStart);
+        Assert.DoesNotContain(result.Points, p => p.PeriodStart > periodStart);
     }
 
     [Fact]
@@ -195,24 +194,24 @@ public sealed class ReportAggregation_ValutaBookingTests
         );
 
         var result = await svc.QueryAsync(query, ct);
-        result.Interval.Should().Be(ReportInterval.Month);
+        Assert.Equal(ReportInterval.Month, result.Interval);
         var periodStart = new DateTime(2025,9,1);
         var row = result.Points.Single(p => p.GroupKey == $"Contact:{contact.Id}" && p.PeriodStart == periodStart);
         // Expect sum of bookings in Sep 2025: computed manually = -38.61
-        row.Amount.Should().BeApproximately(-38.61m, 0.0001m);
+        Assert.Equal(-38.61m, row.Amount, 3);
 
         // ensure aggregates were created for both date kinds
         var bookingAggExists = await db.PostingAggregates.AnyAsync(a => a.Kind == PostingKind.Contact && a.ContactId == contact.Id && a.Period == AggregatePeriod.Month && a.DateKind == AggregateDateKind.Booking, ct);
         var valutaAggExists = await db.PostingAggregates.AnyAsync(a => a.Kind == PostingKind.Contact && a.ContactId == contact.Id && a.Period == AggregatePeriod.Month && a.DateKind == AggregateDateKind.Valuta, ct);
-        bookingAggExists.Should().BeTrue();
-        valutaAggExists.Should().BeTrue();
+        Assert.True(bookingAggExists);
+        Assert.True(valutaAggExists);
 
         // Verify the aggregate value for Booking Sep 2025 matches expected sum
         var expectedBookingSep = Rows.Where(r => r.Booking.Year == 2025 && r.Booking.Month == 9).Sum(r => r.Amount);
         var bookingAgg = await db.PostingAggregates.SingleAsync(a => a.Kind == PostingKind.Contact && a.ContactId == contact.Id && a.Period == AggregatePeriod.Month && a.PeriodStart == periodStart && a.DateKind == AggregateDateKind.Booking, ct);
-        bookingAgg.Amount.Should().BeApproximately(expectedBookingSep, 0.0001m);
+        Assert.Equal(expectedBookingSep, bookingAgg.Amount, 3);
 
         // Ensure QueryAsync did not include periods beyond analysis month (e.g., Oct 2025)
-        result.Points.Should().NotContain(p => p.PeriodStart > periodStart);
+        Assert.DoesNotContain(result.Points, p => p.PeriodStart > periodStart);
     }
 }

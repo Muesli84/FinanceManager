@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -75,9 +74,9 @@ namespace FinanceManager.Tests.Auth
         {
             var (sut, db, _, _) = Create();
             var dto = await sut.CreateAsync("alice", "Password1", true, CancellationToken.None);
-            dto.Username.Should().Be("alice");
-            dto.IsAdmin.Should().BeTrue();
-            db.Users.Count().Should().Be(1);
+            Assert.Equal("alice", dto.Username);
+            Assert.True(dto.IsAdmin);
+            Assert.Equal(1, db.Users.Count());
         }
 
         [Fact]
@@ -96,7 +95,7 @@ namespace FinanceManager.Tests.Auth
             var u = new User("old", "HASH::x", false);
             db.Users.Add(u); db.SaveChanges();
             var updated = await sut.UpdateAsync(u.Id, "new", null, null, null, CancellationToken.None);
-            updated!.Username.Should().Be("new");
+            Assert.Equal("new", updated!.Username);
         }
 
         [Fact]
@@ -117,10 +116,10 @@ namespace FinanceManager.Tests.Auth
             db.Users.Add(u); db.SaveChanges();
             hasher.Setup(h => h.Hash("newpw")).Returns("HASH::newpw");
             var ok = await sut.ResetPasswordAsync(u.Id, "newpw", CancellationToken.None);
-            ok.Should().BeTrue();
+            Assert.True(ok);
             // Verify hash changed in tracked entity (reflection set) by reloading
             var re = db.Users.Single();
-            re.PasswordHash.Should().Be("HASH::newpw");
+            Assert.Equal("HASH::newpw", re.PasswordHash);
         }
 
         [Fact]
@@ -142,7 +141,7 @@ namespace FinanceManager.Tests.Auth
             db.Users.Add(u); db.SaveChanges();
 
             var ok = await sut.UnlockAsync(u.Id, CancellationToken.None);
-            ok.Should().BeTrue();
+            Assert.True(ok);
 
             userManagerMock.Verify(um => um.SetLockoutEndDateAsync(It.Is<User>(x => x.Id == u.Id), null), Times.Once);
             userManagerMock.Verify(um => um.ResetAccessFailedCountAsync(It.Is<User>(x => x.Id == u.Id)), Times.Once);
@@ -155,8 +154,8 @@ namespace FinanceManager.Tests.Auth
             var u = new User("user", "HASH::x", false);
             db.Users.Add(u); db.SaveChanges();
             var ok = await sut.DeleteAsync(u.Id, CancellationToken.None);
-            ok.Should().BeTrue();
-            db.Users.Count().Should().Be(0);
+            Assert.True(ok);
+            Assert.Equal(0, db.Users.Count());
         }
 
         [Fact]
@@ -164,7 +163,7 @@ namespace FinanceManager.Tests.Auth
         {
             var (sut, db, _, _) = Create();
             var ok = await sut.DeleteAsync(Guid.NewGuid(), CancellationToken.None);
-            ok.Should().BeFalse();
+            Assert.False(ok);
         }
     }
 }

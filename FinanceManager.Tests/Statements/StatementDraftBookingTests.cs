@@ -8,7 +8,6 @@ using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -93,18 +92,18 @@ public sealed class StatementDraftBookingTests
         var res = await freshSut.BookAsync(draft.Id, e1.Id, owner, false, CancellationToken.None);
 
         // Assert
-        res.Success.Should().BeTrue();
+        Assert.True(res.Success);
 
         // Reload draft and verify status and remaining entries using fresh context
         var reloaded = await freshDb.StatementDrafts.Include(d => d.Entries).FirstAsync(d => d.Id == draft.Id);
-        reloaded.Status.Should().Be(StatementDraftStatus.Draft); // not committed because one entry remains
-        reloaded.Entries.Should().HaveCount(1);
-        reloaded.Entries.Single().Subject.Should().Be("B");
+        Assert.Equal(StatementDraftStatus.Draft, reloaded.Status); // not committed because one entry remains
+        Assert.Equal(1, reloaded.Entries.Count);
+        Assert.Equal("B", reloaded.Entries.Single().Subject);
 
         // Exactly two postings (bank + contact) for the booked entry
-        freshDb.Postings.Count().Should().Be(2);
-        freshDb.Postings.Count(p => p.Kind == PostingKind.Bank).Should().Be(1);
-        freshDb.Postings.Count(p => p.Kind == PostingKind.Contact).Should().Be(1);
+        Assert.Equal(2, freshDb.Postings.Count());
+        Assert.Equal(1, freshDb.Postings.Count(p => p.Kind == PostingKind.Bank));
+        Assert.Equal(1, freshDb.Postings.Count(p => p.Kind == PostingKind.Contact));
 
         conn.Dispose();
     }
@@ -120,8 +119,8 @@ public sealed class StatementDraftBookingTests
 
         var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
 
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "NO_ACCOUNT").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Code == "NO_ACCOUNT"));
         conn.Dispose();
     }
 
@@ -137,8 +136,8 @@ public sealed class StatementDraftBookingTests
 
         var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
 
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "ENTRY_NO_CONTACT").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Code == "ENTRY_NO_CONTACT"));
         conn.Dispose();
     }
 
@@ -155,19 +154,19 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res1 = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res1.Success.Should().BeFalse();
-        res1.HasWarnings.Should().BeTrue();
-        res1.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_MISSING_FOR_SELF").Should().BeTrue();
+        Assert.False(res1.Success);
+        Assert.True(res1.HasWarnings);
+        Assert.True(res1.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_MISSING_FOR_SELF"));
 
         var res2 = await sut.BookAsync(draft.Id, null,owner, true, CancellationToken.None);
-        res2.Success.Should().BeTrue();
-        db.Postings.Count().Should().Be(2);
-        db.Postings.Count(p => p.Kind == PostingKind.Bank).Should().Be(1);
-        db.Postings.Count(p => p.Kind == PostingKind.Contact).Should().Be(1);
+        Assert.True(res2.Success);
+        Assert.Equal(2, db.Postings.Count());
+        Assert.Equal(1, db.Postings.Count(p => p.Kind == PostingKind.Bank));
+        Assert.Equal(1, db.Postings.Count(p => p.Kind == PostingKind.Contact));
         // Aggregates created for month/quarter/halfyear/year for account and contact
         // New behavior: aggregates created per DateKind (Booking + Valuta) so counts are doubled
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(8);
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact).Should().Be(8);
+        Assert.Equal(8, db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank));
+        Assert.Equal(8, db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact));
         conn.Dispose();
     }
 
@@ -188,16 +187,16 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-        db.Postings.Count().Should().Be(3);
-        db.Postings.Count(p => p.Kind == PostingKind.Bank).Should().Be(1);
-        db.Postings.Count(p => p.Kind == PostingKind.Contact).Should().Be(1);
-        db.Postings.Count(p => p.Kind == PostingKind.SavingsPlan).Should().Be(1);
-        db.Postings.Single(p => p.Kind == PostingKind.SavingsPlan).Amount.Should().Be(-100m);
+        Assert.True(res.Success);
+        Assert.Equal(3, db.Postings.Count());
+        Assert.Equal(1, db.Postings.Count(p => p.Kind == PostingKind.Bank));
+        Assert.Equal(1, db.Postings.Count(p => p.Kind == PostingKind.Contact));
+        Assert.Equal(1, db.Postings.Count(p => p.Kind == PostingKind.SavingsPlan));
+        Assert.Equal(-100m, db.Postings.Single(p => p.Kind == PostingKind.SavingsPlan).Amount);
         // Aggregates exist for bank/contact/savingsplan (doubled due to DateKind)
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(8);
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact).Should().Be(8);
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.SavingsPlan).Should().Be(8);
+        Assert.Equal(8, db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank));
+        Assert.Equal(8, db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact));
+        Assert.Equal(8, db.PostingAggregates.Count(a => a.Kind == PostingKind.SavingsPlan));
         conn.Dispose();
     }
 
@@ -216,8 +215,8 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "INTERMEDIARY_NO_SPLIT").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Code == "INTERMEDIARY_NO_SPLIT"));
         conn.Dispose();
     }
 
@@ -265,68 +264,68 @@ public sealed class StatementDraftBookingTests
 
         // Booking the child (split) draft should fail
         var childRes = await sut.BookAsync(child.Id, null, owner, false, CancellationToken.None);
-        childRes.Success.Should().BeFalse();
+        Assert.False(childRes.Success);
 
         // Booking the parent should succeed and create 0-amount parent postings + child postings
         var parentRes = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
-        parentRes.Success.Should().BeTrue();
+        Assert.True(parentRes.Success);
 
         var bankPostings = db.Postings.Where(p => p.Kind == PostingKind.Bank).ToList();
         var contactPostings = db.Postings.Where(p => p.Kind == PostingKind.Contact).ToList();
 
-        bankPostings.Count.Should().Be(3); // 1 parent (0) + 2 child
-        bankPostings.Count(p => p.Amount == 0m).Should().Be(1);
-        bankPostings.Where(p => p.Amount != 0m).Sum(p => p.Amount).Should().Be(80m);
+        Assert.Equal(3, bankPostings.Count); // 1 parent (0) + 2 child
+        Assert.Equal(1, bankPostings.Count(p => p.Amount == 0m));
+        Assert.Equal(80m, bankPostings.Where(p => p.Amount != 0m).Sum(p => p.Amount));
 
-        contactPostings.Count.Should().Be(3); // 1 parent (0) + 2 child
-        contactPostings.Count(p => p.Amount == 0m).Should().Be(1);
-        contactPostings.Where(p => p.Amount != 0m).Sum(p => p.Amount).Should().Be(80m);
+        Assert.Equal(3, contactPostings.Count); // 1 parent (0) + 2 child
+        Assert.Equal(1, contactPostings.Count(p => p.Amount == 0m));
+        Assert.Equal(80m, contactPostings.Where(p => p.Amount != 0m).Sum(p => p.Amount));
 
         // All created postings (parent + children) must have parent's valuta date
         var allPostings = db.Postings.ToList();
-        allPostings.Should().OnlyContain(p => p.ValutaDate == pEntry.ValutaDate);
+        Assert.All(allPostings, p => Assert.Equal(pEntry.ValutaDate, p.ValutaDate));
 
         // Additionally, booking dates of postings must match their source entry booking dates
         var parentBank = db.Postings.Single(p => p.SourceId == pEntry.Id && p.Kind == PostingKind.Bank);
         var parentContact = db.Postings.Single(p => p.SourceId == pEntry.Id && p.Kind == PostingKind.Contact);
-        parentBank.BookingDate.Should().Be(pEntry.BookingDate);
-        parentBank.ValutaDate.Should().Be(pEntry.ValutaDate);
-        parentBank.Amount.Should().Be(0m);
-        parentContact.BookingDate.Should().Be(pEntry.BookingDate);
-        parentContact.ValutaDate.Should().Be(pEntry.ValutaDate);
-        parentContact.Amount.Should().Be(0m);
+        Assert.Equal(pEntry.BookingDate, parentBank.BookingDate);
+        Assert.Equal(pEntry.ValutaDate, parentBank.ValutaDate);
+        Assert.Equal(0m, parentBank.Amount);
+        Assert.Equal(pEntry.BookingDate, parentContact.BookingDate);
+        Assert.Equal(pEntry.ValutaDate, parentContact.ValutaDate);
+        Assert.Equal(0m, parentContact.Amount);
 
         var child1Bank = db.Postings.Single(p => p.SourceId == c1.Id && p.Kind == PostingKind.Bank);
         var child1Contact = db.Postings.Single(p => p.SourceId == c1.Id && p.Kind == PostingKind.Contact);
-        child1Bank.BookingDate.Should().Be(c1Booking);
-        child1Bank.ValutaDate.Should().Be(pEntry.ValutaDate);
-        child1Bank.Amount.Should().Be(c1.Amount);
-        child1Contact.BookingDate.Should().Be(c1Booking);
-        child1Contact.ValutaDate.Should().Be(pEntry.ValutaDate);
-        child1Contact.Amount.Should().Be(c1.Amount);
+        Assert.Equal(c1Booking, child1Bank.BookingDate);
+        Assert.Equal(pEntry.ValutaDate, child1Bank.ValutaDate);
+        Assert.Equal(c1.Amount, child1Bank.Amount);
+        Assert.Equal(c1Booking, child1Contact.BookingDate);
+        Assert.Equal(pEntry.ValutaDate, child1Contact.ValutaDate);
+        Assert.Equal(c1.Amount, child1Contact.Amount);
 
         var child2Bank = db.Postings.Single(p => p.SourceId == c2.Id && p.Kind == PostingKind.Bank);
         var child2Contact = db.Postings.Single(p => p.SourceId == c2.Id && p.Kind == PostingKind.Contact);
-        child2Bank.BookingDate.Should().Be(c2Booking);
-        child2Bank.ValutaDate.Should().Be(pEntry.ValutaDate);
-        child2Bank.Amount.Should().Be(c2.Amount);
-        child2Contact.BookingDate.Should().Be(c2Booking);
-        child2Contact.ValutaDate.Should().Be(pEntry.ValutaDate);
-        child2Contact.Amount.Should().Be(c2.Amount);
+        Assert.Equal(c2Booking, child2Bank.BookingDate);
+        Assert.Equal(pEntry.ValutaDate, child2Bank.ValutaDate);
+        Assert.Equal(c2.Amount, child2Bank.Amount);
+        Assert.Equal(c2Booking, child2Contact.BookingDate);
+        Assert.Equal(pEntry.ValutaDate, child2Contact.ValutaDate);
+        Assert.Equal(c2.Amount, child2Contact.Amount);
 
         // Parent postings should not have parent set
-        parentBank.ParentId.Should().BeNull();
-        parentContact.ParentId.Should().BeNull();
+        Assert.Null(parentBank.ParentId);
+        Assert.Null(parentContact.ParentId);
 
         // Child postings must reference parent's corresponding posting ids
-        child1Bank.ParentId.Should().Be(parentBank.Id);
-        child1Contact.ParentId.Should().Be(parentContact.Id);
-        child2Bank.ParentId.Should().Be(parentBank.Id);
-        child2Contact.ParentId.Should().Be(parentContact.Id);
+        Assert.Equal(parentBank.Id, child1Bank.ParentId);
+        Assert.Equal(parentContact.Id, child1Contact.ParentId);
+        Assert.Equal(parentBank.Id, child2Bank.ParentId);
+        Assert.Equal(parentContact.Id, child2Contact.ParentId);
 
         // Both drafts expected committed
-        (await db.StatementDrafts.FindAsync(parent.Id))!.Status.Should().Be(StatementDraftStatus.Committed);
-        (await db.StatementDrafts.FindAsync(child.Id))!.Status.Should().Be(StatementDraftStatus.Committed);
+        Assert.Equal(StatementDraftStatus.Committed, (await db.StatementDrafts.FindAsync(parent.Id))!.Status);
+        Assert.Equal(StatementDraftStatus.Committed, (await db.StatementDrafts.FindAsync(child.Id))!.Status);
 
         conn.Dispose();
     }
@@ -356,9 +355,9 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "INTERMEDIARY_NO_SPLIT").Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "ENTRY_NO_CONTACT").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.False(res.Validation.Messages.Any(m => m.Code == "INTERMEDIARY_NO_SPLIT"));
+        Assert.True(res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "ENTRY_NO_CONTACT"));
         conn.Dispose();
     }
 
@@ -387,8 +386,8 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SPLIT_AMOUNT_MISMATCH").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Code == "SPLIT_AMOUNT_MISMATCH"));
         conn.Dispose();
     }
 
@@ -417,9 +416,9 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.HasWarnings.Should().BeTrue();
-        res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "SAVINGSPLAN_MISSING_FOR_SELF").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.HasWarnings);
+        Assert.True(res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "SAVINGSPLAN_MISSING_FOR_SELF"));
         conn.Dispose();
     }
 
@@ -446,8 +445,8 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "INTERMEDIARY_NO_SPLIT").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Message.Contains("[Split]") && m.Code == "INTERMEDIARY_NO_SPLIT"));
         conn.Dispose();
     }
 
@@ -470,8 +469,8 @@ public sealed class StatementDraftBookingTests
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, null, null, null, null, owner, CancellationToken.None);
 
         var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SECURITY_MISSING_TXTYPE").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Code == "SECURITY_MISSING_TXTYPE"));
         conn.Dispose();
     }
 
@@ -494,8 +493,8 @@ public sealed class StatementDraftBookingTests
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, null, null, null, owner, CancellationToken.None);
 
         var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SECURITY_MISSING_QUANTITY").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Code == "SECURITY_MISSING_QUANTITY"));
         conn.Dispose();
     }
 
@@ -521,8 +520,8 @@ public sealed class StatementDraftBookingTests
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, 1.0m, 70.00m, 40.00m, owner, CancellationToken.None);
 
         var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SECURITY_FEE_TAX_EXCEEDS_AMOUNT").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Code == "SECURITY_FEE_TAX_EXCEEDS_AMOUNT"));
         conn.Dispose();
     }
 
@@ -546,24 +545,24 @@ public sealed class StatementDraftBookingTests
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, 1.123456m, 2.50m, 5.00m, owner, CancellationToken.None);
 
         var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-        db.Postings.Count(p => p.Kind == PostingKind.Security).Should().Be(3);
+        Assert.True(res.Success);
+        Assert.Equal(3, db.Postings.Count(p => p.Kind == PostingKind.Security));
 
         // Main security posting must be of subtype Buy
         var main = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Buy);
         var fee = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Fee);
         var tax = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Tax);
-        main.Amount.Should().Be(1000m - 2.50m - 5.00m);
-        fee.Amount.Should().Be(2.50m);
-        tax.Amount.Should().Be(5.00m);
+        Assert.Equal(1000m - 2.50m - 5.00m, main.Amount);
+        Assert.Equal(2.50m, fee.Amount);
+        Assert.Equal(5.00m, tax.Amount);
 
         // Sum of security postings equals original entry amount
-        (main.Amount + fee.Amount + tax.Amount).Should().Be(entry.Amount);
+        Assert.Equal(entry.Amount, main.Amount + fee.Amount + tax.Amount);
 
         // Quantity assertions
-        main.Quantity.Should().Be(1.123456m);
-        fee.Quantity.Should().BeNull();
-        tax.Quantity.Should().BeNull();
+        Assert.Equal(1.123456m, main.Quantity);
+        Assert.Null(fee.Quantity);
+        Assert.Null(tax.Quantity);
 
         conn.Dispose();
     }
@@ -589,23 +588,23 @@ public sealed class StatementDraftBookingTests
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Sell, 5.0m, feeAmt, taxAmt, owner, CancellationToken.None);
 
         var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
-        db.Postings.Count(p => p.Kind == PostingKind.Security).Should().Be(3);
+        Assert.True(res.Success);
+        Assert.Equal(3, db.Postings.Count(p => p.Kind == PostingKind.Security));
 
         var main = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Sell);
         var fee = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Fee);
         var tax = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Tax);
 
         // Sell: main = amount + fee + tax; fee/tax negative
-        main.Amount.Should().Be(800m + feeAmt + taxAmt);
-        fee.Amount.Should().Be(-feeAmt);
-        tax.Amount.Should().Be(-taxAmt);
-        (main.Amount + fee.Amount + tax.Amount).Should().Be(entry.Amount);
+        Assert.Equal(800m + feeAmt + taxAmt, main.Amount);
+        Assert.Equal(-feeAmt, fee.Amount);
+        Assert.Equal(-taxAmt, tax.Amount);
+        Assert.Equal(entry.Amount, main.Amount + fee.Amount + tax.Amount);
 
         // Quantity assertions: sell should be negative
-        main.Quantity.Should().Be(-5.0m);
-        fee.Quantity.Should().BeNull();
-        tax.Quantity.Should().BeNull();
+        Assert.Equal(-5.0m, main.Quantity);
+        Assert.Null(fee.Quantity);
+        Assert.Null(tax.Quantity);
 
         conn.Dispose();
     }
@@ -632,22 +631,22 @@ public sealed class StatementDraftBookingTests
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Dividend, null, feeAmt, taxAmt, owner, CancellationToken.None);
 
         var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
+        Assert.True(res.Success);
 
         var main = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Dividend);
         var fee = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Fee);
         var tax = db.Postings.Single(p => p.Kind == PostingKind.Security && p.SecuritySubType == SecurityPostingSubType.Tax);
 
         // Dividend: main = amount + fee + tax; fee/tax negative
-        main.Amount.Should().Be(entry.Amount + feeAmt + taxAmt);
-        fee.Amount.Should().Be(-feeAmt);
-        tax.Amount.Should().Be(-taxAmt);
-        (main.Amount + fee.Amount + tax.Amount).Should().Be(entry.Amount);
+        Assert.Equal(entry.Amount + feeAmt + taxAmt, main.Amount);
+        Assert.Equal(-feeAmt, fee.Amount);
+        Assert.Equal(-taxAmt, tax.Amount);
+        Assert.Equal(entry.Amount, main.Amount + fee.Amount + tax.Amount);
 
         // Quantity assertions: dividend should have no quantity
-        main.Quantity.Should().BeNull();
-        fee.Quantity.Should().BeNull();
-        tax.Quantity.Should().BeNull();
+        Assert.Null(main.Quantity);
+        Assert.Null(fee.Quantity);
+        Assert.Null(tax.Quantity);
 
         conn.Dispose();
     }
@@ -675,17 +674,17 @@ public sealed class StatementDraftBookingTests
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Dividend, null, null, 1.68m, owner, CancellationToken.None);
 
         var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
+        Assert.True(res.Success);
 
         var securityPosts = db.Postings.Where(p => p.Kind == PostingKind.Security).ToList();
-        securityPosts.Count.Should().Be(2);
+        Assert.Equal(2, securityPosts.Count);
 
         var main = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Dividend);
         var tax = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Tax);
 
-        main.Amount.Should().Be(13.56m);
-        tax.Amount.Should().Be(-1.68m);
-        (main.Amount + tax.Amount).Should().Be(entry.Amount);
+        Assert.Equal(13.56m, main.Amount);
+        Assert.Equal(-1.68m, tax.Amount);
+        Assert.Equal(entry.Amount, main.Amount + tax.Amount);
 
         conn.Dispose();
     }
@@ -713,18 +712,18 @@ public sealed class StatementDraftBookingTests
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Dividend, null, null, -0.22m, owner, CancellationToken.None);
 
         var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
+        Assert.True(res.Success);
 
         var securityPosts = db.Postings.Where(p => p.Kind == PostingKind.Security).ToList();
-        securityPosts.Count.Should().Be(2);
+        Assert.Equal(2, securityPosts.Count);
 
         var main = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Dividend);
         var tax = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Tax);
 
         // Expect main -1.84; tax +0.22; total equals entry amount
-        main.Amount.Should().Be(-1.84m);
-        tax.Amount.Should().Be(0.22m);
-        (main.Amount + tax.Amount).Should().Be(entry.Amount);
+        Assert.Equal(-1.84m, main.Amount);
+        Assert.Equal(0.22m, tax.Amount);
+        Assert.Equal(entry.Amount, main.Amount + tax.Amount);
 
         conn.Dispose();
     }
@@ -752,18 +751,18 @@ public sealed class StatementDraftBookingTests
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Dividend, null, null, 0.22m, owner, CancellationToken.None);
 
         var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
+        Assert.True(res.Success);
 
         var securityPosts = db.Postings.Where(p => p.Kind == PostingKind.Security).ToList();
-        securityPosts.Count.Should().Be(2);
+        Assert.Equal(2, securityPosts.Count);
 
         var main = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Dividend);
         var tax = securityPosts.Single(p => p.SecuritySubType == SecurityPostingSubType.Tax);
 
         // Expect main +1.84; tax -0.22; total equals entry amount
-        main.Amount.Should().Be(1.84m);
-        tax.Amount.Should().Be(-0.22m);
-        (main.Amount + tax.Amount).Should().Be(entry.Amount);
+        Assert.Equal(1.84m, main.Amount);
+        Assert.Equal(-0.22m, tax.Amount);
+        Assert.Equal(entry.Amount, main.Amount + tax.Amount);
 
         conn.Dispose();
     }
@@ -787,10 +786,10 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
+        Assert.True(res.Success);
 
         var updatedPlan = await db.SavingsPlans.FirstAsync(p => p.Id == plan.Id);
-        updatedPlan.TargetDate!.Value.Date.Should().Be(new DateTime(2024, 2, 29));
+        Assert.Equal(new DateTime(2024, 2, 29), updatedPlan.TargetDate!.Value.Date);
 
         conn.Dispose();
     }
@@ -814,10 +813,10 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
+        Assert.True(res.Success);
 
         var updatedPlan = await db.SavingsPlans.FirstAsync(p => p.Id == plan.Id);
-        updatedPlan.TargetDate!.Value.Date.Should().Be(new DateTime(2024, 2, 29));
+        Assert.Equal(new DateTime(2024, 2, 29), updatedPlan.TargetDate!.Value.Date);
 
         conn.Dispose();
     }
@@ -842,10 +841,10 @@ public sealed class StatementDraftBookingTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeTrue();
+        Assert.True(res.Success);
 
         var updatedPlan = await db.SavingsPlans.FirstAsync(p => p.Id == plan.Id);
-        updatedPlan.TargetDate!.Value.Date.Should().Be(new DateTime(2024, 3, 31));
+        Assert.Equal(new DateTime(2024, 3, 31), updatedPlan.TargetDate!.Value.Date);
 
         conn.Dispose();
     }

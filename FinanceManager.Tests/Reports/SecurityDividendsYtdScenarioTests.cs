@@ -15,7 +15,6 @@ using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Reports;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -85,7 +84,7 @@ public sealed class SecurityDividendsYtdScenarioTests
             SecurityTransactionType? txType, decimal? qty, decimal? fee, decimal? tax)
         {
             var dto = await drafts.AddEntryAsync(draft.Id, user.Id, bookingDate, amount, subject, ct);
-            dto.Should().NotBeNull();
+            Assert.NotNull(dto);
             var entryId = dto!.Entries.Last().Id;
             await drafts.UpdateEntryCoreAsync(draft.Id, entryId, user.Id, bookingDate, bookingDate, amount, subject, recipient, null, desc, ct);
             await drafts.SetEntryContactAsync(draft.Id, entryId, bankContact.Id, user.Id, ct);
@@ -126,7 +125,7 @@ public sealed class SecurityDividendsYtdScenarioTests
 
         // Validate and book (force warnings if any)
         var bookResult = await drafts.BookAsync(draft.Id, null, user.Id, true, ct);
-        bookResult.Success.Should().BeTrue("draft should be booked successfully");
+        Assert.True(bookResult.Success, "draft should be booked successfully");
 
         // Diagnostic dump: postings, group nets and posting aggregates
         var postings = await db.Postings.AsNoTracking()
@@ -195,13 +194,13 @@ public sealed class SecurityDividendsYtdScenarioTests
             _output.WriteLine($"Period={p.PeriodStart:yyyy-MM-dd}, Group={p.GroupKey}, Amount={p.Amount}, Prev={p.PreviousAmount}");
         }
 
-        result.Interval.Should().Be(ReportInterval.Ytd);
+        Assert.Equal(ReportInterval.Ytd, result.Interval);
         var periodStart = new DateTime(2025, 1, 1);
         var row = result.Points.Single(p => p.GroupKey == $"Security:{sec.Id}" && p.PeriodStart == periodStart);
         // Aggregates are created per date kind (Booking + Valuta) in other flows, but the net-dividend special-case returns net sums once.
         // 2025 net sum = 1.64 + 1.70 + 2.01 = 5.35 (single net)
-        row.Amount.Should().Be(5.35m);
+        Assert.Equal(5.35m, row.Amount);
         // PreviousAmount for YTD (dividends only) should include only the 2024 dividend before November (1.91)
-        row.PreviousAmount.Should().Be(1.91m);
+        Assert.Equal(1.91m, row.PreviousAmount);
     }
 }

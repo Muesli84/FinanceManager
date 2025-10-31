@@ -9,7 +9,6 @@ using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Accounts;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -39,9 +38,9 @@ public sealed class AccountServiceTests
 
         var dto = await sut.CreateAsync(owner, "Konto 1", AccountType.Giro, "DE123", bankContact.Id, CancellationToken.None);
 
-        dto.Name.Should().Be("Konto 1");
-        dto.Iban.Should().Be("DE123");
-        db.Accounts.Count().Should().Be(1);
+        Assert.Equal("Konto 1", dto.Name);
+        Assert.Equal("DE123", dto.Iban);
+        Assert.Equal(1, db.Accounts.Count());
     }
 
     [Fact]
@@ -56,7 +55,8 @@ public sealed class AccountServiceTests
         await sut.CreateAsync(owner, "A", AccountType.Giro, "DE999", bankContact.Id, CancellationToken.None);
         Func<Task> act = () => sut.CreateAsync(owner, "B", AccountType.Giro, "DE999", bankContact.Id, CancellationToken.None);
 
-        await act.Should().ThrowAsync<ArgumentException>().WithMessage("*IBAN*");
+        var ex = await Assert.ThrowsAsync<ArgumentException>(act);
+        Assert.Contains("IBAN", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -71,9 +71,9 @@ public sealed class AccountServiceTests
 
         var ok = await sut.DeleteAsync(acc.Id, owner, CancellationToken.None);
 
-        ok.Should().BeTrue();
-        db.Accounts.Any().Should().BeFalse();
-        db.Contacts.Any(c => c.Id == bankContact.Id).Should().BeFalse();
+        Assert.True(ok);
+        Assert.False(db.Accounts.Any());
+        Assert.False(db.Contacts.Any(c => c.Id == bankContact.Id));
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public sealed class AccountServiceTests
 
         var ok = await sut.DeleteAsync(a1.Id, owner, CancellationToken.None);
 
-        ok.Should().BeTrue();
-        db.Contacts.Any(c => c.Id == bankContact.Id).Should().BeTrue();
+        Assert.True(ok);
+        Assert.True(db.Contacts.Any(c => c.Id == bankContact.Id));
     }
 }

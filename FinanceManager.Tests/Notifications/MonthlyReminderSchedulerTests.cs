@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
 using FinanceManager.Web.Services;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -62,13 +61,13 @@ public sealed class MonthlyReminderSchedulerTests
 
         // Assert: exactly 12 notifications (one per month)
         var notes = await db.Notifications.AsNoTracking().Where(n => n.OwnerUserId == userId).OrderBy(n => n.ScheduledDateUtc).ToListAsync();
-        notes.Should().HaveCount(12);
+        Assert.Equal(12, notes.Count);
 
         // Check dates equal last business day of each month in 2024
         for (int m = 1; m <= 12; m++)
         {
             var expected = BusinessDayCalculator.GetLastBusinessDayUtc(new DateTime(2024, m, 15, 0, 0, 0, DateTimeKind.Utc));
-            notes[m - 1].ScheduledDateUtc.Should().Be(expected);
+            Assert.Equal(expected, notes[m - 1].ScheduledDateUtc);
         }
     }
 }

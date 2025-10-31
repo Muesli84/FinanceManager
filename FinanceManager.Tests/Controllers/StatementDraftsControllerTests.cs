@@ -6,7 +6,6 @@ using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
@@ -102,7 +101,7 @@ public sealed class StatementDraftsControllerTests
         };
 
         var result = await controller.UploadAsync(formFile, default);
-        result.Should().BeOfType<OkObjectResult>();
+        Assert.IsType<OkObjectResult>(result);
     }
 
     [Fact]
@@ -110,7 +109,7 @@ public sealed class StatementDraftsControllerTests
     {
         var (controller, _, _) = Create();
         var response = await controller.AddEntryAsync(Guid.NewGuid(), new StatementDraftsController.AddEntryRequest(DateTime.UtcNow.Date, 10m, "X"), default);
-        response.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(response);
     }
 
     [Fact]
@@ -118,7 +117,7 @@ public sealed class StatementDraftsControllerTests
     {
         var (controller, _, _) = Create();
         var response = await controller.CommitAsync(Guid.NewGuid(), new StatementDraftsController.CommitRequest(Guid.NewGuid(), FinanceManager.Domain.ImportFormat.Csv), default);
-        response.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(response);
     }
 
     [Fact]
@@ -162,20 +161,20 @@ public sealed class StatementDraftsControllerTests
 
         // Link only ONE child draft (child2) via controller endpoint
         var linkResult = await controller.SetEntrySplitDraftAsync(parent.Id, parentEntry.Id, new StatementDraftsController.SetSplitDraftRequest(child2.Id), CancellationToken.None);
-        linkResult.Should().BeOfType<OkObjectResult>();
+        Assert.IsType<OkObjectResult>(linkResult);
         var okLink = (OkObjectResult)linkResult;
         var splitSumProp = okLink.Value!.GetType().GetProperty("SplitSum")!.GetValue(okLink.Value);
         var diffProp = okLink.Value!.GetType().GetProperty("Difference")!.GetValue(okLink.Value);
-        splitSumProp.Should().Be(300m);
-        diffProp.Should().Be(0m);
+        Assert.Equal(300m, Convert.ToDecimal(splitSumProp));
+        Assert.Equal(0m, Convert.ToDecimal(diffProp));
 
         // Now query entry again and verify SplitSum uses full upload group
         var getResult = await controller.GetEntryAsync(parent.Id, parentEntry.Id, CancellationToken.None);
-        getResult.Should().BeOfType<OkObjectResult>();
+        Assert.IsType<OkObjectResult>(getResult);
         var okGet = (OkObjectResult)getResult;
         var splitSumGet = okGet.Value!.GetType().GetProperty("SplitSum")!.GetValue(okGet.Value);
         var diffGet = okGet.Value!.GetType().GetProperty("Difference")!.GetValue(okGet.Value);
-        splitSumGet.Should().Be(300m);
-        diffGet.Should().Be(0m);
+        Assert.Equal(300m, Convert.ToDecimal(splitSumGet));
+        Assert.Equal(0m, Convert.ToDecimal(diffGet));
     }
 }

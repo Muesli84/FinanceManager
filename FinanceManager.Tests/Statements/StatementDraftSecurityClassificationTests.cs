@@ -10,7 +10,6 @@ using FinanceManager.Domain.Securities;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -71,9 +70,9 @@ public sealed class StatementDraftSecurityClassificationTests
         var added = await sut.AddEntryAsync(draft.Id, owner, DateTime.Today, 100m, "Trade DE000A0XYZ", CancellationToken.None);
 
         // Assert
-        added.Should().NotBeNull();
+        Assert.NotNull(added);
         var e = added!.Entries.Single();
-        e.SecurityId.Should().Be(sec.Id);
+        Assert.Equal(sec.Id, e.SecurityId);
 
         conn.Dispose();
     }
@@ -93,8 +92,8 @@ public sealed class StatementDraftSecurityClassificationTests
         // Subject uses ue/ue instead of umlauts and includes spaces/punctuation
         var dto = await sut.AddEntryAsync(draft.Id, owner, DateTime.Today, 12.34m, "Dividende Muenchener Rueckversicherung AG", CancellationToken.None);
 
-        dto.Should().NotBeNull();
-        dto!.Entries.Single().SecurityId.Should().Be(sec.Id);
+        Assert.NotNull(dto);
+        Assert.Equal(sec.Id, dto!.Entries.Single().SecurityId);
 
         conn.Dispose();
     }
@@ -115,10 +114,10 @@ public sealed class StatementDraftSecurityClassificationTests
         // Subject contains both identifiers -> ambiguous match
         var dto = await sut.AddEntryAsync(draft.Id, owner, DateTime.Today, 50m, "Trade DE111111 + DE222222", CancellationToken.None);
 
-        dto.Should().NotBeNull();
+        Assert.NotNull(dto);
         var entry = dto!.Entries.Single();
-        entry.SecurityId.Should().Be(first.Id); // assigned the first by name (AAA Corp)
-        entry.Status.Should().Be(StatementDraftEntryStatus.Open); // remains open on ambiguity
+        Assert.Equal(first.Id, entry.SecurityId); // assigned the first by name (AAA Corp)
+        Assert.Equal(StatementDraftEntryStatus.Open, entry.Status); // remains open on ambiguity
 
         conn.Dispose();
     }

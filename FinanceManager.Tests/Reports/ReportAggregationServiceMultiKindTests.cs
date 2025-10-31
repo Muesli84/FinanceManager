@@ -11,7 +11,6 @@ using FinanceManager.Domain.Reports;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -75,22 +74,22 @@ public sealed class ReportAggregationServiceMultiKindTests
         // Expect type rows for both kinds in latest month (feb)
         var typeContact = result.Points.Single(p => p.GroupKey == $"Type:{PostingKind.Contact}" && p.PeriodStart == feb);
         var typeSavings = result.Points.Single(p => p.GroupKey == $"Type:{PostingKind.SavingsPlan}" && p.PeriodStart == feb);
-        typeContact.Amount.Should().Be(20m); // category sum of contacts
-        typeSavings.Amount.Should().Be(30m); // category sum of savings plans (uncategorized)
+        Assert.Equal(20m, typeContact.Amount); // category sum of contacts
+        Assert.Equal(30m, typeSavings.Amount); // category sum of savings plans (uncategorized)
 
         // Category nodes exist with parent=Type
         var catContact = result.Points.Single(p => p.GroupKey == $"Category:{PostingKind.Contact}:{contactCat.Id}" && p.PeriodStart == feb);
-        catContact.ParentGroupKey.Should().Be($"Type:{PostingKind.Contact}");
+        Assert.Equal($"Type:{PostingKind.Contact}", catContact.ParentGroupKey);
         var catSavings = result.Points.Single(p => p.GroupKey == $"Category:{PostingKind.SavingsPlan}:_none" && p.PeriodStart == feb);
-        catSavings.ParentGroupKey.Should().Be($"Type:{PostingKind.SavingsPlan}");
+        Assert.Equal($"Type:{PostingKind.SavingsPlan}", catSavings.ParentGroupKey);
 
         // Entity nodes exist with parent=Category when includeCategory=true in multi
         var contactEntity = result.Points.Single(p => p.GroupKey.StartsWith("Contact:") && p.PeriodStart == feb);
-        contactEntity.ParentGroupKey.Should().Be(catContact.GroupKey);
-        contactEntity.Amount.Should().Be(20m);
+        Assert.Equal(catContact.GroupKey, contactEntity.ParentGroupKey);
+        Assert.Equal(20m, contactEntity.Amount);
         var savingsEntity = result.Points.Single(p => p.GroupKey.StartsWith("SavingsPlan:") && p.PeriodStart == feb);
-        savingsEntity.ParentGroupKey.Should().Be(catSavings.GroupKey);
-        savingsEntity.Amount.Should().Be(30m);
+        Assert.Equal(catSavings.GroupKey, savingsEntity.ParentGroupKey);
+        Assert.Equal(30m, savingsEntity.Amount);
     }
 
     [Fact]
@@ -119,17 +118,17 @@ public sealed class ReportAggregationServiceMultiKindTests
         // Type rows exist and sum entity amounts
         var typeContact = result.Points.Single(p => p.GroupKey == $"Type:{PostingKind.Contact}" && p.PeriodStart == feb);
         var typeSavings = result.Points.Single(p => p.GroupKey == $"Type:{PostingKind.SavingsPlan}" && p.PeriodStart == feb);
-        typeContact.Amount.Should().Be(20m);
-        typeSavings.Amount.Should().Be(12m);
+        Assert.Equal(20m, typeContact.Amount);
+        Assert.Equal(12m, typeSavings.Amount);
 
         // No category nodes
-        result.Points.Should().NotContain(p => p.GroupKey.StartsWith("Category:"));
+        Assert.DoesNotContain(result.Points, p => p.GroupKey.StartsWith("Category:"));
 
         // Entities parent is Type
         var contactEntity = result.Points.Single(p => p.GroupKey.StartsWith("Contact:") && p.PeriodStart == feb);
-        contactEntity.ParentGroupKey.Should().Be($"Type:{PostingKind.Contact}");
+        Assert.Equal($"Type:{PostingKind.Contact}", contactEntity.ParentGroupKey);
         var savingsEntity = result.Points.Single(p => p.GroupKey.StartsWith("SavingsPlan:") && p.PeriodStart == feb);
-        savingsEntity.ParentGroupKey.Should().Be($"Type:{PostingKind.SavingsPlan}");
+        Assert.Equal($"Type:{PostingKind.SavingsPlan}", savingsEntity.ParentGroupKey);
     }
 }
 

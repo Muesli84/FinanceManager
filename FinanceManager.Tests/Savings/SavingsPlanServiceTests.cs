@@ -6,7 +6,6 @@ using FinanceManager.Domain.Savings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Savings;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -33,8 +32,8 @@ public sealed class SavingsPlanServiceTests
         var owner = Guid.NewGuid();
         var dto = await sut.CreateAsync(owner, "Testplan", SavingsPlanType.OneTime, 1000, DateTime.Today.AddMonths(6), null, null, null, CancellationToken.None);
         var fetched = await sut.GetAsync(dto.Id, owner, CancellationToken.None);
-        fetched.Should().NotBeNull();
-        fetched!.Name.Should().Be("Testplan");
+        Assert.NotNull(fetched);
+        Assert.Equal("Testplan", fetched!.Name);
         conn.Dispose();
     }
 
@@ -45,11 +44,11 @@ public sealed class SavingsPlanServiceTests
         var owner = Guid.NewGuid();
         var dto = await sut.CreateAsync(owner, "Testplan", SavingsPlanType.OneTime, 1000, DateTime.Today.AddMonths(6), null, null, null, CancellationToken.None);
         var updated = await sut.UpdateAsync(dto.Id, owner, "Neu", SavingsPlanType.Recurring, 200, null, SavingsPlanInterval.Monthly, null, null, CancellationToken.None);
-        updated.Should().NotBeNull();
-        updated!.Name.Should().Be("Neu");
-        updated.Type.Should().Be(SavingsPlanType.Recurring);
-        updated.TargetAmount.Should().Be(200);
-        updated.Interval.Should().Be(SavingsPlanInterval.Monthly);
+        Assert.NotNull(updated);
+        Assert.Equal("Neu", updated!.Name);
+        Assert.Equal(SavingsPlanType.Recurring, updated.Type);
+        Assert.Equal(200, updated.TargetAmount);
+        Assert.Equal(SavingsPlanInterval.Monthly, updated.Interval);
         conn.Dispose();
     }
 
@@ -60,9 +59,9 @@ public sealed class SavingsPlanServiceTests
         var owner = Guid.NewGuid();
         var dto = await sut.CreateAsync(owner, "Testplan", SavingsPlanType.OneTime, 1000, DateTime.Today.AddMonths(6), null, null, null, CancellationToken.None);
         var ok = await sut.ArchiveAsync(dto.Id, owner, CancellationToken.None);
-        ok.Should().BeTrue();
+        Assert.True(ok);
         var deleted = await sut.DeleteAsync(dto.Id, owner, CancellationToken.None);
-        deleted.Should().BeTrue();
+        Assert.True(deleted);
         conn.Dispose();
     }
 
@@ -102,19 +101,19 @@ public sealed class SavingsPlanServiceTests
         var analysis = await sut.AnalyzeAsync(dto.Id, owner, CancellationToken.None);
 
         // Assert: accumulated amount should reflect actual postings even if TargetDate missing
-        analysis.Should().NotBeNull();
-        analysis.PlanId.Should().Be(dto.Id);
-        analysis.TargetAmount.Should().Be(0m);
-        analysis.TargetDate.Should().BeNull();
-        analysis.AccumulatedAmount.Should().Be(150m);
-        analysis.RequiredMonthly.Should().Be(0m);
-        analysis.MonthsRemaining.Should().Be(0);
+        Assert.NotNull(analysis);
+        Assert.Equal(dto.Id, analysis.PlanId);
+        Assert.Equal(0m, analysis.TargetAmount);
+        Assert.Null(analysis.TargetDate);
+        Assert.Equal(150m, analysis.AccumulatedAmount);
+        Assert.Equal(0m, analysis.RequiredMonthly);
+        Assert.Equal(0, analysis.MonthsRemaining);
         // With target 0, reachable is true
-        analysis.TargetReachable.Should().BeTrue();
+        Assert.True(analysis.TargetReachable);
 
         // Sanity: postings sum in DB
         var sum = await db.Postings.AsNoTracking().Where(p => p.SavingsPlanId == dto.Id).SumAsync(p => p.Amount);
-        sum.Should().Be(150m);
+        Assert.Equal(150m, sum);
 
         conn.Dispose();
     }

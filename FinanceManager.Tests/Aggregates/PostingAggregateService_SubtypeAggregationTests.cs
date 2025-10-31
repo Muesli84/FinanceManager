@@ -7,7 +7,6 @@ using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Shared.Dtos; // SecurityPostingSubType
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -83,10 +82,10 @@ public sealed class PostingAggregateService_SubtypeAggregationTests
             => db.PostingAggregates.Count(a => a.Kind == PostingKind.Security && a.SecurityId == securityId && a.Period == p && a.PeriodStart == start);
 
         // Expect 4 aggregates now (Booking+Valuta × Dividend+Tax)
-        Count(monthStart, AggregatePeriod.Month).Should().Be(4);
-        Count(quarterStart, AggregatePeriod.Quarter).Should().Be(4);
-        Count(halfStart, AggregatePeriod.HalfYear).Should().Be(4);
-        Count(yearStart, AggregatePeriod.Year).Should().Be(4);
+        Assert.Equal(4, Count(monthStart, AggregatePeriod.Month));
+        Assert.Equal(4, Count(quarterStart, AggregatePeriod.Quarter));
+        Assert.Equal(4, Count(halfStart, AggregatePeriod.HalfYear));
+        Assert.Equal(4, Count(yearStart, AggregatePeriod.Year));
 
         // Also ensure amounts are present: each subtype appears for both DateKinds
         var amountsMonth = db.PostingAggregates
@@ -97,7 +96,7 @@ public sealed class PostingAggregateService_SubtypeAggregationTests
             .ToArray();
 
         // Expect two occurrences of each amount (one per DateKind)
-        amountsMonth.Count(x => x == 1.64m).Should().Be(2);
-        amountsMonth.Count(x => x == -0.24m).Should().Be(2);
+        Assert.Equal(2, amountsMonth.Count(x => x == 1.64m));
+        Assert.Equal(2, amountsMonth.Count(x => x == -0.24m));
     }
 }

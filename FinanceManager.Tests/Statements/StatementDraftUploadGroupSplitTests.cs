@@ -9,7 +9,6 @@ using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -121,26 +120,28 @@ public sealed class StatementDraftUploadGroupSplitTests
         var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
 
         // Assert (expected success once implementation aggregates all three children)
-        res.Success.Should().BeTrue("sum of grouped child drafts (300) equals parent entry amount 300");
+        Assert.True(res.Success, "sum of grouped child drafts (300) equals parent entry amount 300");
 
         // All three grouped drafts committed
-        (await db.StatementDrafts.FindAsync(child1.Id))!.Status.Should().Be(StatementDraftStatus.Committed);
-        (await db.StatementDrafts.FindAsync(child2.Id))!.Status.Should().Be(StatementDraftStatus.Committed);
-        (await db.StatementDrafts.FindAsync(child3.Id))!.Status.Should().Be(StatementDraftStatus.Committed);
-        (await db.StatementDrafts.FindAsync(parent.Id))!.Status.Should().Be(StatementDraftStatus.Committed);
+        Assert.Equal(StatementDraftStatus.Committed, (await db.StatementDrafts.FindAsync(child1.Id))!.Status);
+        Assert.Equal(StatementDraftStatus.Committed, (await db.StatementDrafts.FindAsync(child2.Id))!.Status);
+        Assert.Equal(StatementDraftStatus.Committed, (await db.StatementDrafts.FindAsync(child3.Id))!.Status);
+        Assert.Equal(StatementDraftStatus.Committed, (await db.StatementDrafts.FindAsync(parent.Id))!.Status);
 
         // Independent draft remains Draft
-        (await db.StatementDrafts.FindAsync(independent.Id))!.Status.Should().Be(StatementDraftStatus.Draft);
+        Assert.Equal(StatementDraftStatus.Draft, (await db.StatementDrafts.FindAsync(independent.Id))!.Status);
 
         // Postings: parent zero postings + 3 children with normal postings (each 2) => 1 parent (0 bank + 0 contact) + 3*2 child = 8 total postings of kind Bank/Contact
         var bank = db.Postings.Where(p => p.Kind == PostingKind.Bank).ToList();
         var contact = db.Postings.Where(p => p.Kind == PostingKind.Contact).ToList();
-        bank.Count.Should().Be(1 + 3); // 1 zero + 3 real
-        contact.Count.Should().Be(1 + 3);
-        bank.Single(p => p.Amount == 0m).Should().NotBeNull();
-        contact.Single(p => p.Amount == 0m).Should().NotBeNull();
-        bank.Where(p => p.Amount != 0m).Sum(p => p.Amount).Should().Be(300m);
-        contact.Where(p => p.Amount != 0m).Sum(p => p.Amount).Should().Be(300m);
+        Assert.Equal(1 + 3, bank.Count); // 1 zero + 3 real
+        Assert.Equal(1 + 3, contact.Count);
+        var zeroBank = bank.Single(p => p.Amount == 0m);
+        Assert.NotNull(zeroBank);
+        var zeroContact = contact.Single(p => p.Amount == 0m);
+        Assert.NotNull(zeroContact);
+        Assert.Equal(300m, bank.Where(p => p.Amount != 0m).Sum(p => p.Amount));
+        Assert.Equal(300m, contact.Where(p => p.Amount != 0m).Sum(p => p.Amount));
 
         conn.Dispose();
     }
@@ -171,8 +172,8 @@ public sealed class StatementDraftUploadGroupSplitTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SPLIT_AMOUNT_MISMATCH").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Code == "SPLIT_AMOUNT_MISMATCH"));
         conn.Dispose();
     }
 
@@ -203,8 +204,8 @@ public sealed class StatementDraftUploadGroupSplitTests
         await db.SaveChangesAsync();
 
         var res = await sut.BookAsync(parent.Id, null, owner, false, CancellationToken.None);
-        res.Success.Should().BeFalse();
-        res.Validation.Messages.Any(m => m.Code == "SPLIT_AMOUNT_MISMATCH").Should().BeTrue();
+        Assert.False(res.Success);
+        Assert.True(res.Validation.Messages.Any(m => m.Code == "SPLIT_AMOUNT_MISMATCH"));
         conn.Dispose();
     }
 }

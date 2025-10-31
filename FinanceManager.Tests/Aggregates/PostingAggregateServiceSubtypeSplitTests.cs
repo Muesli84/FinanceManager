@@ -7,7 +7,6 @@ using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -67,10 +66,10 @@ public sealed class PostingAggregateServiceSubtypeSplitTests
         int CountPer(DateTime start, AggregatePeriod period)
             => db.PostingAggregates.Count(a => a.Kind == PostingKind.Security && a.SecurityId == securityId && a.Period == period && a.PeriodStart == start);
 
-        CountPer(monthStart, AggregatePeriod.Month).Should().Be(4);
-        CountPer(quarterStart, AggregatePeriod.Quarter).Should().Be(4);
-        CountPer(halfStart, AggregatePeriod.HalfYear).Should().Be(4);
-        CountPer(yearStart, AggregatePeriod.Year).Should().Be(4);
+        Assert.Equal(4, CountPer(monthStart, AggregatePeriod.Month));
+        Assert.Equal(4, CountPer(quarterStart, AggregatePeriod.Quarter));
+        Assert.Equal(4, CountPer(halfStart, AggregatePeriod.HalfYear));
+        Assert.Equal(4, CountPer(yearStart, AggregatePeriod.Year));
 
         // And amounts should include both +1.64 and -0.24 for each period
         void AssertAmounts(DateTime start, AggregatePeriod period)
@@ -81,7 +80,8 @@ public sealed class PostingAggregateServiceSubtypeSplitTests
                 .AsEnumerable() // force client-side ordering to avoid SQLite decimal ORDER BY limitation
                 .OrderBy(x => x)
                 .ToList();
-            amts.Should().Contain(new[] { -0.24m, 1.64m });
+            Assert.Contains(-0.24m, amts);
+            Assert.Contains(1.64m, amts);
         }
 
         AssertAmounts(monthStart, AggregatePeriod.Month);

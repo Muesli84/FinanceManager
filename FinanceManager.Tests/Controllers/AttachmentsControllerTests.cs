@@ -9,7 +9,6 @@ using FinanceManager.Domain.Attachments;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
 using FinanceManager.Web.Infrastructure.Attachments;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -75,8 +74,8 @@ public sealed class AttachmentsControllerTests
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, Guid.NewGuid(), formFile, null, null, CancellationToken.None);
 
-        var bad = resp.Should().BeOfType<BadRequestObjectResult>().Subject;
-        bad.Value!.ToString()!.ToLowerInvariant().Should().Contain("empty file");
+        var bad = Assert.IsType<BadRequestObjectResult>(resp);
+        Assert.Contains("empty file", bad.Value!.ToString()!.ToLowerInvariant());
     }
 
     [Fact]
@@ -89,8 +88,8 @@ public sealed class AttachmentsControllerTests
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, Guid.NewGuid(), formFile, null, null, CancellationToken.None);
 
-        var bad = resp.Should().BeOfType<BadRequestObjectResult>().Subject;
-        bad.Value!.ToString()!.ToLowerInvariant().Should().Contain("file too large");
+        var bad = Assert.IsType<BadRequestObjectResult>(resp);
+        Assert.Contains("file too large", bad.Value!.ToString()!.ToLowerInvariant());
     }
 
     [Fact]
@@ -104,8 +103,8 @@ public sealed class AttachmentsControllerTests
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, Guid.NewGuid(), formFile, null, null, CancellationToken.None);
 
-        var bad = resp.Should().BeOfType<BadRequestObjectResult>().Subject;
-        bad.Value!.ToString()!.ToLowerInvariant().Should().Contain("unsupported content type");
+        var bad = Assert.IsType<BadRequestObjectResult>(resp);
+        Assert.Contains("unsupported content type", bad.Value!.ToString()!.ToLowerInvariant());
     }
 
     [Fact]
@@ -131,8 +130,8 @@ public sealed class AttachmentsControllerTests
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, Guid.NewGuid(), formFile, null, null, CancellationToken.None);
 
-        var ok = resp.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().BeAssignableTo<AttachmentDto>();
+        var ok = Assert.IsType<OkObjectResult>(resp);
+        Assert.IsType<AttachmentDto>(ok.Value);
         service.VerifyAll();
     }
 
@@ -157,8 +156,8 @@ public sealed class AttachmentsControllerTests
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, entityId, null, null, "http://example", CancellationToken.None);
 
-        var ok = resp.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().BeAssignableTo<AttachmentDto>();
+        var ok = Assert.IsType<OkObjectResult>(resp);
+        Assert.IsType<AttachmentDto>(ok.Value);
         service.VerifyAll();
     }
 
@@ -169,8 +168,8 @@ public sealed class AttachmentsControllerTests
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, Guid.NewGuid(), null, null, null, CancellationToken.None);
 
-        var bad = resp.Should().BeOfType<BadRequestObjectResult>().Subject;
-        bad.Value!.ToString()!.ToLowerInvariant().Should().Contain("file or url");
+        var bad = Assert.IsType<BadRequestObjectResult>(resp);
+        Assert.Contains("file or url", bad.Value!.ToString()!.ToLowerInvariant());
     }
 
     [Fact]
@@ -178,8 +177,8 @@ public sealed class AttachmentsControllerTests
     {
         var (controller, _, _, _) = Create();
         var resp = await controller.UploadAsync(short.MaxValue, Guid.NewGuid(), null, null, "http://example", CancellationToken.None);
-        var bad = resp.Should().BeOfType<BadRequestObjectResult>().Subject;
-        bad.Value!.ToString()!.ToLowerInvariant().Should().Contain("invalid entitykind");
+        var bad = Assert.IsType<BadRequestObjectResult>(resp);
+        Assert.Contains("invalid entitykind", bad.Value!.ToString()!.ToLowerInvariant());
     }
 
     [Fact]
@@ -196,7 +195,7 @@ public sealed class AttachmentsControllerTests
                .ReturnsAsync(new AttachmentDto(Guid.NewGuid(), (short)AttachmentEntityKind.Contact, entityId, "doc.pdf", "application/pdf", 10, categoryId, DateTime.UtcNow, false));
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, entityId, formFile, categoryId, null, CancellationToken.None);
-        resp.Should().BeOfType<OkObjectResult>();
+        Assert.IsType<OkObjectResult>(resp);
         service.VerifyAll();
     }
 
@@ -211,7 +210,7 @@ public sealed class AttachmentsControllerTests
                .ReturnsAsync(new AttachmentDto(Guid.NewGuid(), (short)AttachmentEntityKind.Contact, entityId, "http://example", "text/plain", 0, categoryId, DateTime.UtcNow, true));
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, entityId, null, categoryId, "http://example", CancellationToken.None);
-        resp.Should().BeOfType<OkObjectResult>();
+        Assert.IsType<OkObjectResult>(resp);
         service.VerifyAll();
     }
 
@@ -224,7 +223,7 @@ public sealed class AttachmentsControllerTests
                .ReturnsAsync(((Stream, string, string)?)null);
 
         var resp = await controller.DownloadAsync(id, CancellationToken.None);
-        resp.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(resp);
         service.VerifyAll();
     }
 
@@ -238,9 +237,9 @@ public sealed class AttachmentsControllerTests
                .ReturnsAsync((content, "file.bin", "application/octet-stream"));
 
         var resp = await controller.DownloadAsync(id, CancellationToken.None);
-        var file = resp.Should().BeOfType<FileStreamResult>().Subject;
-        file.FileDownloadName.Should().Be("file.bin");
-        file.ContentType.Should().Be("application/octet-stream");
+        var file = Assert.IsType<FileStreamResult>(resp);
+        Assert.Equal("file.bin", file.FileDownloadName);
+        Assert.Equal("application/octet-stream", file.ContentType);
         service.VerifyAll();
     }
 
@@ -252,7 +251,7 @@ public sealed class AttachmentsControllerTests
         service.Setup(s => s.DeleteAsync(current.UserId, id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var resp = await controller.DeleteAsync(id, CancellationToken.None);
-        resp.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(resp);
         service.VerifyAll();
     }
 
@@ -264,7 +263,7 @@ public sealed class AttachmentsControllerTests
         service.Setup(s => s.DeleteAsync(current.UserId, id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var resp = await controller.DeleteAsync(id, CancellationToken.None);
-        resp.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(resp);
         service.VerifyAll();
     }
 
@@ -276,7 +275,7 @@ public sealed class AttachmentsControllerTests
         service.Setup(s => s.UpdateCoreAsync(current.UserId, id, "name.pdf", null, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var resp = await controller.UpdateAsync(id, new AttachmentsController.UpdateCoreRequest("name.pdf", null), CancellationToken.None);
-        resp.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(resp);
         service.VerifyAll();
     }
 
@@ -288,7 +287,7 @@ public sealed class AttachmentsControllerTests
         service.Setup(s => s.UpdateCoreAsync(current.UserId, id, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var resp = await controller.UpdateAsync(id, new AttachmentsController.UpdateCoreRequest(null, null), CancellationToken.None);
-        resp.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(resp);
         service.VerifyAll();
     }
 
@@ -301,7 +300,7 @@ public sealed class AttachmentsControllerTests
         service.Setup(s => s.UpdateCategoryAsync(current.UserId, id, cat, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var resp = await controller.UpdateCategoryAsync(id, new AttachmentsController.UpdateCategoryRequest(cat), CancellationToken.None);
-        resp.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(resp);
         service.VerifyAll();
     }
 
@@ -313,7 +312,7 @@ public sealed class AttachmentsControllerTests
         service.Setup(s => s.UpdateCategoryAsync(current.UserId, id, null, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var resp = await controller.UpdateCategoryAsync(id, new AttachmentsController.UpdateCategoryRequest(null), CancellationToken.None);
-        resp.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(resp);
         service.VerifyAll();
     }
 
@@ -322,8 +321,8 @@ public sealed class AttachmentsControllerTests
     {
         var (controller, _, _, _) = Create();
         var resp = await controller.ListAsync(short.MaxValue, Guid.NewGuid(), 0, 50, null, null, null, CancellationToken.None);
-        var bad = resp.Should().BeOfType<BadRequestObjectResult>().Subject;
-        bad.Value!.ToString()!.ToLowerInvariant().Should().Contain("invalid entitykind");
+        var bad = Assert.IsType<BadRequestObjectResult>(resp);
+        Assert.Contains("invalid entitykind", bad.Value!.ToString()!.ToLowerInvariant());
     }
 
     [Fact]
@@ -336,11 +335,11 @@ public sealed class AttachmentsControllerTests
         service.Setup(s => s.CountAsync(current.UserId, AttachmentEntityKind.Contact, entityId, null, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         var resp = await controller.ListAsync((short)AttachmentEntityKind.Contact, entityId, 0, 50, null, null, null, CancellationToken.None);
-        var ok = resp.Should().BeOfType<OkObjectResult>().Subject;
-        var page = ok.Value.Should().BeAssignableTo<PageResult<AttachmentDto>>().Subject;
-        page.Items.Should().BeEquivalentTo(list);
-        page.HasMore.Should().BeFalse();
-        page.Total.Should().Be(1);
+        var ok = Assert.IsType<OkObjectResult>(resp);
+        var page = Assert.IsType<PageResult<AttachmentDto>>(ok.Value);
+        Assert.Equal(list, page.Items);
+        Assert.False(page.HasMore);
+        Assert.Equal(1, page.Total);
         service.VerifyAll();
     }
 
@@ -352,8 +351,8 @@ public sealed class AttachmentsControllerTests
         cats.Setup(s => s.ListAsync(current.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(list);
 
         var resp = await controller.ListCategoriesAsync(CancellationToken.None);
-        var ok = resp.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().BeEquivalentTo(list);
+        var ok = Assert.IsType<OkObjectResult>(resp);
+        Assert.Equal(list, ok.Value);
         cats.VerifyAll();
     }
 
@@ -365,10 +364,10 @@ public sealed class AttachmentsControllerTests
         cats.Setup(s => s.CreateAsync(current.UserId, "Invoices", It.IsAny<CancellationToken>())).ReturnsAsync(dto);
 
         var resp = await controller.CreateCategoryAsync(new AttachmentsController.CreateCategoryRequest("Invoices"), CancellationToken.None);
-        var created = resp.Should().BeOfType<CreatedResult>().Subject;
-        created.Value.Should().Be(dto);
-        created.Location.Should().Be("/api/attachments/categories");
-        created.StatusCode.Should().Be(201);
+        var created = Assert.IsType<CreatedResult>(resp);
+        Assert.Equal(dto, created.Value);
+        Assert.Equal("/api/attachments/categories", created.Location);
+        Assert.Equal(201, created.StatusCode);
         cats.VerifyAll();
     }
 
@@ -379,7 +378,7 @@ public sealed class AttachmentsControllerTests
         controller.ModelState.AddModelError("Name", "Required");
 
         var resp = await controller.CreateCategoryAsync(new AttachmentsController.CreateCategoryRequest(""), CancellationToken.None);
-        resp.Should().BeOfType<ObjectResult>(); // ValidationProblem returns ObjectResult in unit tests
+        Assert.IsType<ObjectResult>(resp); // ValidationProblem returns ObjectResult in unit tests
         cats.VerifyNoOtherCalls();
     }
 
@@ -392,8 +391,8 @@ public sealed class AttachmentsControllerTests
         cats.Setup(s => s.UpdateAsync(current.UserId, id, "NewName", It.IsAny<CancellationToken>())).ReturnsAsync(dto);
 
         var resp = await controller.UpdateCategoryNameAsync(id, new AttachmentsController.UpdateCategoryNameRequest("NewName"), CancellationToken.None);
-        var ok = resp.Should().BeOfType<OkObjectResult>().Subject;
-        ok.Value.Should().Be(dto);
+        var ok = Assert.IsType<OkObjectResult>(resp);
+        Assert.Equal(dto, ok.Value);
         cats.VerifyAll();
     }
 
@@ -405,7 +404,7 @@ public sealed class AttachmentsControllerTests
         cats.Setup(s => s.UpdateAsync(current.UserId, id, "Dup", It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("duplicate"));
 
         var resp = await controller.UpdateCategoryNameAsync(id, new AttachmentsController.UpdateCategoryNameRequest("Dup"), CancellationToken.None);
-        resp.Should().BeOfType<ConflictObjectResult>();
+        Assert.IsType<ConflictObjectResult>(resp);
         cats.VerifyAll();
     }
 
@@ -416,7 +415,7 @@ public sealed class AttachmentsControllerTests
         controller.ModelState.AddModelError("Name", "too short");
 
         var resp = await controller.UpdateCategoryNameAsync(Guid.NewGuid(), new AttachmentsController.UpdateCategoryNameRequest(""), CancellationToken.None);
-        resp.Should().BeOfType<ObjectResult>(); // ValidationProblem
+        Assert.IsType<ObjectResult>(resp); // ValidationProblem
         cats.VerifyNoOtherCalls();
     }
 
@@ -428,7 +427,7 @@ public sealed class AttachmentsControllerTests
         cats.Setup(s => s.UpdateAsync(current.UserId, id, "Missing", It.IsAny<CancellationToken>())).ReturnsAsync((AttachmentCategoryDto?)null);
 
         var resp = await controller.UpdateCategoryNameAsync(id, new AttachmentsController.UpdateCategoryNameRequest("Missing"), CancellationToken.None);
-        resp.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(resp);
         cats.VerifyAll();
     }
 
@@ -440,7 +439,7 @@ public sealed class AttachmentsControllerTests
         cats.Setup(s => s.DeleteAsync(current.UserId, id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var resp = await controller.DeleteCategoryAsync(id, CancellationToken.None);
-        resp.Should().BeOfType<NoContentResult>();
+        Assert.IsType<NoContentResult>(resp);
         cats.VerifyAll();
     }
 
@@ -452,7 +451,7 @@ public sealed class AttachmentsControllerTests
         cats.Setup(s => s.DeleteAsync(current.UserId, id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var resp = await controller.DeleteCategoryAsync(id, CancellationToken.None);
-        resp.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(resp);
         cats.VerifyAll();
     }
 
@@ -464,7 +463,7 @@ public sealed class AttachmentsControllerTests
         cats.Setup(s => s.DeleteAsync(current.UserId, id, It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("in use"));
 
         var resp = await controller.DeleteCategoryAsync(id, CancellationToken.None);
-        resp.Should().BeOfType<ConflictObjectResult>();
+        Assert.IsType<ConflictObjectResult>(resp);
         cats.VerifyAll();
     }
 
@@ -475,7 +474,7 @@ public sealed class AttachmentsControllerTests
         cats.Setup(s => s.CreateAsync(current.UserId, "Bad", It.IsAny<CancellationToken>())).ThrowsAsync(new ArgumentException("bad"));
 
         var resp = await controller.CreateCategoryAsync(new AttachmentsController.CreateCategoryRequest("Bad"), CancellationToken.None);
-        resp.Should().BeOfType<BadRequestObjectResult>();
+        Assert.IsType<BadRequestObjectResult>(resp);
         cats.VerifyAll();
     }
 
@@ -488,7 +487,7 @@ public sealed class AttachmentsControllerTests
                .ThrowsAsync(new ArgumentException("bad url"));
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, entityId, null, null, "http://bad", CancellationToken.None);
-        resp.Should().BeOfType<BadRequestObjectResult>();
+        Assert.IsType<BadRequestObjectResult>(resp);
         service.VerifyAll();
     }
 
@@ -501,8 +500,8 @@ public sealed class AttachmentsControllerTests
                .ThrowsAsync(new Exception("boom"));
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, entityId, null, null, "http://err", CancellationToken.None);
-        var problem = resp.Should().BeOfType<ObjectResult>().Subject;
-        problem.StatusCode.Should().Be(500);
+        var problem = Assert.IsType<ObjectResult>(resp);
+        Assert.Equal(500, problem.StatusCode);
         service.VerifyAll();
     }
 
@@ -518,7 +517,7 @@ public sealed class AttachmentsControllerTests
                .ThrowsAsync(new ArgumentException("invalid"));
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, entityId, formFile, null, null, CancellationToken.None);
-        resp.Should().BeOfType<BadRequestObjectResult>();
+        Assert.IsType<BadRequestObjectResult>(resp);
         service.VerifyAll();
     }
 
@@ -534,8 +533,8 @@ public sealed class AttachmentsControllerTests
                .ThrowsAsync(new Exception("err"));
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, entityId, formFile, null, null, CancellationToken.None);
-        var problem = resp.Should().BeOfType<ObjectResult>().Subject;
-        problem.StatusCode.Should().Be(500);
+        var problem = Assert.IsType<ObjectResult>(resp);
+        Assert.Equal(500, problem.StatusCode);
         service.VerifyAll();
     }
 
@@ -550,7 +549,7 @@ public sealed class AttachmentsControllerTests
                .ReturnsAsync(new AttachmentDto(Guid.NewGuid(), (short)AttachmentEntityKind.Contact, Guid.NewGuid(), "doc.pdf", "Application/PDF", 10, null, DateTime.UtcNow, false));
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, Guid.NewGuid(), formFile, null, null, CancellationToken.None);
-        resp.Should().BeOfType<OkObjectResult>();
+        Assert.IsType<OkObjectResult>(resp);
         service.VerifyAll();
     }
 
@@ -565,7 +564,7 @@ public sealed class AttachmentsControllerTests
                .ReturnsAsync(new AttachmentDto(Guid.NewGuid(), (short)AttachmentEntityKind.Contact, Guid.NewGuid(), "a.bin", "application/x-bin", 10, null, DateTime.UtcNow, false));
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, Guid.NewGuid(), formFile, null, null, CancellationToken.None);
-        resp.Should().BeOfType<OkObjectResult>();
+        Assert.IsType<OkObjectResult>(resp);
         service.VerifyAll();
     }
 }

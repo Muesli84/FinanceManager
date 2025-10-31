@@ -7,7 +7,6 @@ using FinanceManager.Domain;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Savings;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -51,7 +50,7 @@ public sealed class SavingsPlanAnalysisTests
         await AddPlanPostingAsync(db, planId, DateTime.Today.AddMonths(-3), 10m);
 
         var result = await sut.AnalyzeAsync(planId, owner, CancellationToken.None);
-        result.TargetReachable.Should().BeTrue();
+        Assert.True(result.TargetReachable);
         conn.Dispose();
     }
 
@@ -64,7 +63,7 @@ public sealed class SavingsPlanAnalysisTests
         await AddPlanPostingAsync(db, planId, DateTime.Today.AddMonths(-2), 10m);
 
         var result = await sut.AnalyzeAsync(planId, owner, CancellationToken.None);
-        result.TargetReachable.Should().BeFalse();
+        Assert.False(result.TargetReachable);
         conn.Dispose();
     }
 
@@ -78,7 +77,7 @@ public sealed class SavingsPlanAnalysisTests
         await AddPlanPostingAsync(db, planId, DateTime.Today.AddMonths(-1), 10m);
 
         var result = await sut.AnalyzeAsync(planId, owner, CancellationToken.None);
-        result.TargetReachable.Should().BeTrue();
+        Assert.True(result.TargetReachable);
         conn.Dispose();
     }
 
@@ -93,7 +92,7 @@ public sealed class SavingsPlanAnalysisTests
         await AddPlanPostingAsync(db, planId, DateTime.Today.AddMonths(-4), 10m);
 
         var result = await sut.AnalyzeAsync(planId, owner, CancellationToken.None);
-        result.TargetReachable.Should().BeTrue();
+        Assert.True(result.TargetReachable);
         conn.Dispose();
     }
 }

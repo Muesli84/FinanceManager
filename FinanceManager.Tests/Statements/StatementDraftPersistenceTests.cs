@@ -5,7 +5,6 @@ using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -68,11 +67,11 @@ public sealed class StatementDraftPersistenceTests
         await foreach (var created in sut.CreateDraftAsync(owner, "x.csv", bytes, CancellationToken.None))
         {
             var fetched = await sut.GetDraftAsync(created.DraftId, owner, CancellationToken.None);
-            fetched.Should().NotBeNull();
-            fetched!.Entries.Should().HaveCount(created.Entries.Count);
+            Assert.NotNull(fetched);
+            Assert.Equal(created.Entries.Count, fetched!.Entries.Count);
             counter++;
         }
-        counter.Should().Be(1);
+        Assert.Equal(1, counter);
     }
 
     [Fact]
@@ -89,12 +88,12 @@ public sealed class StatementDraftPersistenceTests
         {
             var updated = await sut.AddEntryAsync(draft.DraftId, owner, DateTime.UtcNow.Date, 10m, "Manual", CancellationToken.None);
 
-            updated.Should().NotBeNull();
-            updated!.Entries.Should().HaveCount(draft.Entries.Count + 1);
-            updated.Entries.Any(e => e.Subject == "Manual").Should().BeTrue();
+            Assert.NotNull(updated);
+            Assert.Equal(draft.Entries.Count + 1, updated!.Entries.Count);
+            Assert.True(updated.Entries.Any(e => e.Subject == "Manual"));
             counter++;
         }
-        counter.Should().Be(1);
+        Assert.Equal(1, counter);
     }
 
     [Fact]
@@ -108,13 +107,13 @@ public sealed class StatementDraftPersistenceTests
         await foreach (var draft in sut.CreateDraftAsync(owner, "z.csv", bytes, CancellationToken.None))
         {
             var ok = await sut.CancelAsync(draft.DraftId, owner, CancellationToken.None);
-            ok.Should().BeTrue();
+            Assert.True(ok);
 
             var fetched = await sut.GetDraftAsync(draft.DraftId, owner, CancellationToken.None);
-            fetched.Should().BeNull();
+            Assert.Null(fetched);
             counter++;
         }
-        counter.Should().Be(1);
+        Assert.Equal(1, counter);
     }
 
     [Fact]
@@ -131,13 +130,13 @@ public sealed class StatementDraftPersistenceTests
         {
             var result = await sut.CommitAsync(draft.DraftId, owner, account.Id, FinanceManager.Domain.ImportFormat.Csv, CancellationToken.None);
 
-            result.Should().NotBeNull();
-            db.StatementImports.Count().Should().Be(1);
-            db.StatementEntries.Count().Should().Be(draft.Entries.Count);
+            Assert.NotNull(result);
+            Assert.Equal(1, db.StatementImports.Count());
+            Assert.Equal(draft.Entries.Count, db.StatementEntries.Count());
             var persistedDraft = await sut.GetDraftAsync(draft.DraftId, owner, CancellationToken.None);
-            persistedDraft!.Status.Should().Be(FinanceManager.Domain.StatementDraftStatus.Committed);
+            Assert.Equal(FinanceManager.Domain.StatementDraftStatus.Committed, persistedDraft!.Status);
             counter++;
         }
-        counter.Should().Be(1);
+        Assert.Equal(1, counter);
     }
 }
