@@ -35,9 +35,10 @@ public sealed class PostingAggregateService : IPostingAggregateService
         var periods = new[] { AggregatePeriod.Month, AggregatePeriod.Quarter, AggregatePeriod.HalfYear, AggregatePeriod.Year };
         foreach (var p in periods)
         {
-            var periodStart = GetPeriodStart(posting.BookingDate, p);
+            var bookingStart = GetPeriodStart(posting.BookingDate, p);
+            var valutaStart = GetPeriodStart(posting.ValutaDate, p);
 
-            async Task Upsert(Guid? accountId, Guid? contactId, Guid? savingsPlanId, Guid? securityId, SecurityPostingSubType? securitySubType)
+            async Task Upsert(Guid? accountId, Guid? contactId, Guid? savingsPlanId, Guid? securityId, SecurityPostingSubType? securitySubType, DateTime periodStart, AggregateDateKind dateKind)
             {
                 var agg = _db.PostingAggregates.Local.FirstOrDefault(x => x.Kind == posting.Kind
                     && x.AccountId == accountId
@@ -46,7 +47,8 @@ public sealed class PostingAggregateService : IPostingAggregateService
                     && x.SecurityId == securityId
                     && x.SecuritySubType == securitySubType
                     && x.Period == p
-                    && x.PeriodStart == periodStart);
+                    && x.PeriodStart == periodStart
+                    && x.DateKind == dateKind);
 
                 if (agg == null)
                 {
@@ -58,12 +60,13 @@ public sealed class PostingAggregateService : IPostingAggregateService
                             && x.SecurityId == securityId
                             && x.SecuritySubType == securitySubType
                             && x.Period == p
-                            && x.PeriodStart == periodStart, ct);
+                            && x.PeriodStart == periodStart
+                            && x.DateKind == dateKind, ct);
                 }
 
                 if (agg == null)
                 {
-                    agg = new PostingAggregate(posting.Kind, accountId, contactId, savingsPlanId, securityId, periodStart, p, securitySubType);
+                    agg = new PostingAggregate(posting.Kind, accountId, contactId, savingsPlanId, securityId, periodStart, p, securitySubType, dateKind);
                     _db.PostingAggregates.Add(agg);
                 }
                 agg.Add(posting.Amount);
@@ -72,16 +75,20 @@ public sealed class PostingAggregateService : IPostingAggregateService
             switch (posting.Kind)
             {
                 case PostingKind.Bank:
-                    await Upsert(posting.AccountId, null, null, null, null);
+                    await Upsert(posting.AccountId, null, null, null, null, bookingStart, AggregateDateKind.Booking);
+                    await Upsert(posting.AccountId, null, null, null, null, valutaStart, AggregateDateKind.Valuta);
                     break;
                 case PostingKind.Contact:
-                    await Upsert(null, posting.ContactId, null, null, null);
+                    await Upsert(null, posting.ContactId, null, null, null, bookingStart, AggregateDateKind.Booking);
+                    await Upsert(null, posting.ContactId, null, null, null, valutaStart, AggregateDateKind.Valuta);
                     break;
                 case PostingKind.SavingsPlan:
-                    await Upsert(null, null, posting.SavingsPlanId, null, null);
+                    await Upsert(null, null, posting.SavingsPlanId, null, null, bookingStart, AggregateDateKind.Booking);
+                    await Upsert(null, null, posting.SavingsPlanId, null, null, valutaStart, AggregateDateKind.Valuta);
                     break;
                 case PostingKind.Security:
-                    await Upsert(null, null, null, posting.SecurityId, posting.SecuritySubType);
+                    await Upsert(null, null, null, posting.SecurityId, posting.SecuritySubType, bookingStart, AggregateDateKind.Booking);
+                    await Upsert(null, null, null, posting.SecurityId, posting.SecuritySubType, valutaStart, AggregateDateKind.Valuta);
                     break;
                 default:
                     break;
@@ -105,18 +112,18 @@ public sealed class PostingAggregateService : IPostingAggregateService
                      || (p.SecurityId != null && securityIds.Contains(p.SecurityId.Value)))
             .ExecuteDeleteAsync(ct);
 
-        // 3) Relevante Postings minimal laden
+        // 3) Relevante Postings minimal laden (inkl. ValutaDate)
         var postings = await _db.Postings.AsNoTracking()
             .Where(p => (p.AccountId != null && accountIds.Contains(p.AccountId.Value))
                      || (p.ContactId != null && contactIds.Contains(p.ContactId.Value))
                      || (p.SavingsPlanId != null && savingsPlanIds.Contains(p.SavingsPlanId.Value))
                      || (p.SecurityId != null && securityIds.Contains(p.SecurityId.Value)))
-            .Select(p => new { p.Kind, p.AccountId, p.ContactId, p.SavingsPlanId, p.SecurityId, p.BookingDate, p.Amount, p.SecuritySubType })
+            .Select(p => new { p.Kind, p.AccountId, p.ContactId, p.SavingsPlanId, p.SecurityId, p.BookingDate, p.ValutaDate, p.Amount, p.SecuritySubType })
             .ToListAsync(ct);
 
-        // 4) In-Memory verdichten: Key = (Kind, DimensionIds, Period, PeriodStart)
+        // 4) In-Memory verdichten: Key = (Kind, DimensionIds, Period, PeriodStart, DateKind)
         var periods = new[] { AggregatePeriod.Month, AggregatePeriod.Quarter, AggregatePeriod.HalfYear, AggregatePeriod.Year };
-        var sums = new Dictionary<(PostingKind kind, Guid? acc, Guid? con, Guid? sav, Guid? sec, SecurityPostingSubType? sub, AggregatePeriod period, DateTime start), decimal>();
+        var sums = new Dictionary<(PostingKind kind, Guid? acc, Guid? con, Guid? sav, Guid? sec, SecurityPostingSubType? sub, AggregatePeriod period, DateTime start, AggregateDateKind dateKind), decimal>();
 
         foreach (var p in postings)
         {
@@ -124,7 +131,10 @@ public sealed class PostingAggregateService : IPostingAggregateService
 
             foreach (var period in periods)
             {
-                var start = GetPeriodStart(p.BookingDate, period);
+                // booking
+                var startBooking = GetPeriodStart(p.BookingDate, period);
+                // valuta
+                var startValuta = GetPeriodStart(p.ValutaDate, period);
 
                 (Guid? acc, Guid? con, Guid? sav, Guid? sec, SecurityPostingSubType? sub) dim = p.Kind switch
                 {
@@ -134,9 +144,15 @@ public sealed class PostingAggregateService : IPostingAggregateService
                     PostingKind.Security   => (null, null, null, p.SecurityId, p.SecuritySubType),
                     _ => (null, null, null, null, null)
                 };
-                var key = (p.Kind, dim.acc, dim.con, dim.sav, dim.sec, dim.sub, period, start);
-                sums.TryGetValue(key, out var curr);
-                sums[key] = curr + p.Amount;
+
+                var keyBooking = (p.Kind, dim.acc, dim.con, dim.sav, dim.sec, dim.sub, period, startBooking, AggregateDateKind.Booking);
+                sums.TryGetValue(keyBooking, out var currB);
+                sums[keyBooking] = currB + p.Amount;
+
+                // always produce valuta aggregates as well
+                var keyValuta = (p.Kind, dim.acc, dim.con, dim.sav, dim.sec, dim.sub, period, startValuta, AggregateDateKind.Valuta);
+                sums.TryGetValue(keyValuta, out var currV);
+                sums[keyValuta] = currV + p.Amount;
             }
         }
 
@@ -149,11 +165,11 @@ public sealed class PostingAggregateService : IPostingAggregateService
         foreach (var kvp in sums)
         {
             processed++;
-            var (kind, acc, con, sav, sec, sub, period, start) = kvp.Key;
+            var (kind, acc, con, sav, sec, sub, period, start, dateKind) = kvp.Key;
             var amount = kvp.Value;
             if (amount == 0m) { continue; }
 
-            var agg = new PostingAggregate(kind, acc, con, sav, sec, start, period, sub);
+            var agg = new PostingAggregate(kind, acc, con, sav, sec, start, period, sub, dateKind);
             agg.Add(amount);
             batch.Add(agg);
 

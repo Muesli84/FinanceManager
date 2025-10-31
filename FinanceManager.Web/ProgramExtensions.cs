@@ -221,6 +221,15 @@ namespace FinanceManager.Web
             {
                 db.Database.Migrate();
                 var schemaLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SchemaPatcher");
+                // Run runtime patcher to trigger background work that cannot run in migrations (e.g. rebuilding aggregates)
+                try
+                {
+                    SchemaPatcher.RunPostMigrationPatches(scope.ServiceProvider, db, schemaLogger);
+                }
+                catch (Exception ex)
+                {
+                    schemaLogger.LogError(ex, "Post-migration patches failed");
+                }
                 EnsureAdminRole(app, scope, db);
             }
             catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)

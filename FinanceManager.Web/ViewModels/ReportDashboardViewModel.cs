@@ -28,6 +28,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     public int Take { get; set; } = 24;
 
     public bool IncludeDividendRelated { get; set; } // new
+    public bool UseValutaDate { get; set; } // new: whether to use Valuta date when computing aggregates
 
     public Guid? ActiveFavoriteId { get; set; }
     public string FavoriteName { get; set; } = string.Empty;
@@ -141,7 +142,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         IsBusy = true; RaiseStateChanged();
         try
         {
-            var result = await LoadAsync(PrimaryKind, Interval, Take, IncludeCategory, ComparePrevious, CompareYear, IsMulti ? SelectedKinds : null, analysisDate, BuildFiltersPayload(), ct);
+            var result = await LoadAsync(PrimaryKind, Interval, Take, IncludeCategory, ComparePrevious, CompareYear, IsMulti ? SelectedKinds : null, analysisDate, BuildFiltersPayload(), UseValutaDate, ct);
             Points = result.Points
                 .OrderBy(p => p.GroupKey)
                 .ThenBy(p => p.PeriodStart)
@@ -272,16 +273,16 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         return false;
     }
 
-    public async Task<AggregationResponse> LoadAsync(int primaryKind, int interval, int take, bool includeCategory, bool comparePrevious, bool compareYear, IReadOnlyCollection<int>? postingKinds, DateTime? analysisDate, FiltersPayload? filters, CancellationToken ct = default)
+    public async Task<AggregationResponse> LoadAsync(int primaryKind, int interval, int take, bool includeCategory, bool comparePrevious, bool compareYear, IReadOnlyCollection<int>? postingKinds, DateTime? analysisDate, FiltersPayload? filters, bool useValutaDate = false, CancellationToken ct = default)
     {
-        var req = new QueryRequest(primaryKind, interval, take, includeCategory, comparePrevious, compareYear, postingKinds, analysisDate, filters);
+        var req = new QueryRequest(primaryKind, interval, take, includeCategory, comparePrevious, compareYear, useValutaDate, postingKinds, analysisDate, filters);
         var resp = await _http.PostAsJsonAsync("/api/report-aggregates", req, ct);
         resp.EnsureSuccessStatusCode();
         var result = await resp.Content.ReadFromJsonAsync<AggregationResponse>(cancellationToken: ct) ?? new AggregationResponse(interval, new(), false, false);
         return result;
     }
 
-    public async Task<FavoriteDto?> SaveFavoriteAsync(string name, int primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<int>? postingKinds, FiltersPayload? filters, CancellationToken ct = default)
+    public async Task<FavoriteDto?> SaveFavoriteAsync(string name, int primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<int>? postingKinds, FiltersPayload? filters, bool useValutaDate = false, CancellationToken ct = default)
     {
         var payload = new FavCreate
         {
@@ -306,14 +307,15 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 SecurityCategoryIds = filters.SecurityCategoryIds,
                 SecuritySubTypes = filters.SecuritySubTypes,
                 IncludeDividendRelated = filters.IncludeDividendRelated
-            }
+            },
+            UseValutaDate = useValutaDate
         };
         var resp = await _http.PostAsJsonAsync("/api/report-favorites", payload, ct);
         if (!resp.IsSuccessStatusCode) { return null; }
         return await resp.Content.ReadFromJsonAsync<FavoriteDto>(cancellationToken: ct);
     }
 
-    public async Task<FavoriteDto?> UpdateFavoriteAsync(Guid id, string name, int primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<int>? postingKinds, FiltersPayload? filters, CancellationToken ct = default)
+    public async Task<FavoriteDto?> UpdateFavoriteAsync(Guid id, string name, int primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<int>? postingKinds, FiltersPayload? filters, bool useValutaDate = false, CancellationToken ct = default)
     {
         var payload = new FavCreate
         {
@@ -338,7 +340,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 SecurityCategoryIds = filters.SecurityCategoryIds,
                 SecuritySubTypes = filters.SecuritySubTypes,
                 IncludeDividendRelated = filters.IncludeDividendRelated
-            }
+            },
+            UseValutaDate = useValutaDate
         };
         var resp = await _http.PutAsJsonAsync($"/api/report-favorites/{id}", payload, ct);
         if (!resp.IsSuccessStatusCode) { return null; }
@@ -369,7 +372,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         RaiseStateChanged();
     }
 
-    public async Task<FavoriteDto?> SubmitFavoriteDialogAsync(string defaultName, int primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<int>? postingKinds, FiltersPayload? filters, CancellationToken ct = default)
+    public async Task<FavoriteDto?> SubmitFavoriteDialogAsync(string defaultName, int primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<int>? postingKinds, FiltersPayload? filters, bool useValutaDate = false, CancellationToken ct = default)
     {
         FavoriteError = null;
         try
@@ -378,7 +381,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
             {
                 var res = await UpdateFavoriteAsync(ActiveFavoriteId.Value,
                     FavoriteName.Trim(), primaryKind, includeCategory, interval, take,
-                    comparePrevious, compareYear, showChart, expandable, postingKinds, filters, ct);
+                    comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate, ct);
                 if (res is null)
                 {
                     FavoriteError = "Error_UpdateFavorite";
@@ -394,7 +397,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
             {
                 var name = string.IsNullOrWhiteSpace(FavoriteName) ? defaultName : FavoriteName.Trim();
                 var res = await SaveFavoriteAsync(name, primaryKind, includeCategory, interval, take,
-                    comparePrevious, compareYear, showChart, expandable, postingKinds, filters, ct);
+                    comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate, ct);
                 if (res is null)
                 {
                     FavoriteError = "Error_SaveFavorite";
@@ -428,12 +431,12 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         bool? IncludeDividendRelated // new
     );
 
-    public sealed record QueryRequest(int PostingKind, int Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate, FiltersPayload? Filters);
+    public sealed record QueryRequest(int PostingKind, int Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, bool UseValutaDate, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate, FiltersPayload? Filters);
 
     public sealed record AggregationResponse(int Interval, List<PointDto> Points, bool ComparedPrevious, bool ComparedYear);
     public sealed record PointDto(DateTime PeriodStart, string GroupKey, string GroupName, string? CategoryName, decimal Amount, string? ParentGroupKey, decimal? PreviousAmount, decimal? YearAgoAmount);
 
-    public sealed record FavoriteDto(Guid Id, string Name, int PostingKind, bool IncludeCategory, int Interval, int Take, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds, FavFiltersDto? Filters);
+    public sealed record FavoriteDto(Guid Id, string Name, int PostingKind, bool IncludeCategory, int Interval, int Take, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds, FavFiltersDto? Filters, bool UseValutaDate = false);
 
     public sealed class FavCreate
     {
@@ -448,6 +451,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         public bool Expandable { get; set; }
         public IReadOnlyCollection<int>? PostingKinds { get; set; }
         public FavFiltersDto? Filters { get; set; }
+        public bool UseValutaDate { get; set; }
     }
 
     public sealed class FavFiltersDto

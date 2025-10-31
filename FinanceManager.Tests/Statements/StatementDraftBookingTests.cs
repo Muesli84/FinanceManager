@@ -165,8 +165,9 @@ public sealed class StatementDraftBookingTests
         db.Postings.Count(p => p.Kind == PostingKind.Bank).Should().Be(1);
         db.Postings.Count(p => p.Kind == PostingKind.Contact).Should().Be(1);
         // Aggregates created for month/quarter/halfyear/year for account and contact
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(4);
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact).Should().Be(4);
+        // New behavior: aggregates created per DateKind (Booking + Valuta) so counts are doubled
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(8);
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact).Should().Be(8);
         conn.Dispose();
     }
 
@@ -193,10 +194,10 @@ public sealed class StatementDraftBookingTests
         db.Postings.Count(p => p.Kind == PostingKind.Contact).Should().Be(1);
         db.Postings.Count(p => p.Kind == PostingKind.SavingsPlan).Should().Be(1);
         db.Postings.Single(p => p.Kind == PostingKind.SavingsPlan).Amount.Should().Be(-100m);
-        // Aggregates exist for bank/contact/savingsplan
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(4);
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact).Should().Be(4);
-        db.PostingAggregates.Count(a => a.Kind == PostingKind.SavingsPlan).Should().Be(4);
+        // Aggregates exist for bank/contact/savingsplan (doubled due to DateKind)
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.Bank).Should().Be(8);
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.Contact).Should().Be(8);
+        db.PostingAggregates.Count(a => a.Kind == PostingKind.SavingsPlan).Should().Be(8);
         conn.Dispose();
     }
 

@@ -72,7 +72,7 @@ public sealed class PostingAggregateService_SubtypeAggregationTests
         await svc.UpsertForPostingAsync(tax, ct);
         await db.SaveChangesAsync(ct);
 
-        // Assert: expect two aggregates per each period start (sub type separated)
+        // Assert: expect aggregates for each DateKind and subtype (Booking + Valuta) -> 2 subtypes * 2 date kinds = 4
 
         var monthStart = new DateTime(2025, 8, 1);
         var quarterStart = new DateTime(2025, 7, 1);
@@ -82,18 +82,22 @@ public sealed class PostingAggregateService_SubtypeAggregationTests
         int Count(DateTime start, AggregatePeriod p)
             => db.PostingAggregates.Count(a => a.Kind == PostingKind.Security && a.SecurityId == securityId && a.Period == p && a.PeriodStart == start);
 
-        Count(monthStart, AggregatePeriod.Month).Should().Be(2);
-        Count(quarterStart, AggregatePeriod.Quarter).Should().Be(2);
-        Count(halfStart, AggregatePeriod.HalfYear).Should().Be(2);
-        Count(yearStart, AggregatePeriod.Year).Should().Be(2);
+        // Expect 4 aggregates now (Booking+Valuta × Dividend+Tax)
+        Count(monthStart, AggregatePeriod.Month).Should().Be(4);
+        Count(quarterStart, AggregatePeriod.Quarter).Should().Be(4);
+        Count(halfStart, AggregatePeriod.HalfYear).Should().Be(4);
+        Count(yearStart, AggregatePeriod.Year).Should().Be(4);
 
-        // Also ensure amounts are present (order not guaranteed)
+        // Also ensure amounts are present: each subtype appears for both DateKinds
         var amountsMonth = db.PostingAggregates
             .Where(a => a.Kind == PostingKind.Security && a.SecurityId == securityId && a.Period == AggregatePeriod.Month && a.PeriodStart == monthStart)
             .Select(a => a.Amount)
             .AsEnumerable()
             .OrderBy(x => x)
             .ToArray();
-        amountsMonth.Should().Contain(new[] { -0.24m, 1.64m });
+
+        // Expect two occurrences of each amount (one per DateKind)
+        amountsMonth.Count(x => x == 1.64m).Should().Be(2);
+        amountsMonth.Count(x => x == -0.24m).Should().Be(2);
     }
 }

@@ -58,6 +58,7 @@ public sealed class ReportAggregatesController : ControllerBase
         bool IncludeCategory = false,
         bool ComparePrevious = false,
         bool CompareYear = false,
+        bool UseValutaDate = false,
         IReadOnlyCollection<int>? PostingKinds = null, // neu: Multi aus Body
         DateTime? AnalysisDate = null, // neu: optionales Analysedatum (Monatsgenau)
         FiltersRequest? Filters = null // neu: optionale Entitäts-/Kategorie-Filter
@@ -121,6 +122,7 @@ public sealed class ReportAggregatesController : ControllerBase
                 req.CompareYear,
                 multi,
                 analysisDate,
+                req.UseValutaDate,
                 filters);
 
             var result = await _agg.QueryAsync(query, ct);
@@ -141,6 +143,7 @@ public sealed class ReportAggregatesController : ControllerBase
                     req.CompareYear,
                     req.PostingKinds,
                     req.AnalysisDate,
+                    req.UseValutaDate,
                     req.Filters?.ToModel());
                 var result = await _agg.QueryAsync(query, ct);
                 return Ok(result);

@@ -62,6 +62,8 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
 
     // New: store dividend-related toggle
     public bool? IncludeDividendRelated { get; private set; }
+    // New: whether to aggregate by ValutaDate instead of BookingDate
+    public bool UseValutaDate { get; private set; }
 
     public void Rename(string name)
     {
@@ -69,7 +71,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         Touch();
     }
 
-    public void Update(int postingKind, bool includeCategory, ReportInterval interval, bool comparePrevious, bool compareYear, bool showChart, bool expandable, int take)
+    public void Update(int postingKind, bool includeCategory, ReportInterval interval, bool comparePrevious, bool compareYear, bool showChart, bool expandable, int take, bool useValutaDate)
     {
         PostingKind = postingKind;
         IncludeCategory = includeCategory;
@@ -79,6 +81,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         ShowChart = showChart;
         Expandable = expandable;
         SetTake(take);
+        UseValutaDate = useValutaDate;
         Touch();
     }
 
@@ -92,12 +95,12 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         (PostingKindsCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries)
             .Select(s => int.Parse(s)).ToArray()) ?? new [] { PostingKind };
 
-    public void SetPostingKinds(IEnumerable<int> kinds)
-    {
+     public void SetPostingKinds(IEnumerable<int> kinds)
+     {
         var list = kinds.Distinct().ToArray();
         PostingKindsCsv = string.Join(",", list);
         Touch();
-    }
+     }
 
     public void SetFilters(
         IEnumerable<Guid>? accountIds,

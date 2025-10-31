@@ -37,6 +37,7 @@ public sealed record ReportAggregationQuery(
     bool CompareYear,
     IReadOnlyCollection<int>? PostingKinds = null, // multi
     DateTime? AnalysisDate = null, // optional analysis month
+    bool UseValutaDate = false, // new: when true aggregate by ValutaDate (fallback to BookingDate)
     ReportAggregationFilters? Filters = null // optional entity/category filters
 );
 

@@ -3,6 +3,7 @@ using FinanceManager.Domain.Postings;
 using FinanceManager.Domain.Reports;
 using FinanceManager.Domain; // ensure PostingKind enum
 using Microsoft.EntityFrameworkCore;
+using FinanceManager.Shared.Dtos;
 using System.Linq;
 
 namespace FinanceManager.Infrastructure.Reports;
@@ -49,7 +50,8 @@ public sealed class ReportAggregationService : IReportAggregationService
         var includeDividendRelated2 = query.Filters?.IncludeDividendRelated == true;
         var onlySecurityKind2 = kinds.Length == 1 && kinds[0] == PostingKind.Security;
         var dividendSelected = query.Filters?.SecuritySubTypes?.Contains(SecurityPostingSubType_Dividend) == true;
-        if (includeDividendRelated2 && onlySecurityKind2 && ytdMode && dividendSelected)
+        // Run net-dividend path for YTD when Security kind and Dividend subtype requested (allow even if IncludeDividendRelated not explicitly set)
+        if (onlySecurityKind2 && ytdMode && dividendSelected)
         {
             var result = await QuerySecurityDividendsNetAsync(query, ct);
             return result;
@@ -59,31 +61,63 @@ public sealed class ReportAggregationService : IReportAggregationService
         var analysis = (query.AnalysisDate?.Date) ?? DateTime.UtcNow.Date;
         analysis = new DateTime(analysis.Year, analysis.Month, 1);
 
-        // Pull raw aggregates for selected kinds & period
-        var raw = await _db.PostingAggregates.AsNoTracking()
-            .Where(a => a.Period == sourcePeriod && kinds.Contains(a.Kind))
-            .Select(a => new
-            {
-                a.Kind,
-                a.PeriodStart,
-                a.Amount,
-                a.AccountId,
-                a.ContactId,
-                a.SavingsPlanId,
-                a.SecurityId,
-                a.SecuritySubType
-            }).ToListAsync(ct);
-
-        if (raw.Count == 0)
+        // Pull raw aggregates for selected kinds & period OR build raw rows from postings using ValutaDate when requested
+        var rawAnon = new List<(PostingKind Kind, DateTime PeriodStart, decimal Amount, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, SecurityPostingSubType? SecuritySubType)>();
+        if (query.UseValutaDate)
         {
-            return new ReportAggregationResult(query.Interval, Array.Empty<ReportAggregatePointDto>(), query.ComparePrevious, query.CompareYear);
+            // Use precomputed aggregates for Valuta date kind (consistent with booking-case)
+            var aggsValuta = await _db.PostingAggregates.AsNoTracking()
+                .Where(a => a.Period == sourcePeriod && kinds.Contains(a.Kind) && a.DateKind == AggregateDateKind.Valuta)
+                .Select(a => new
+                {
+                    a.Kind,
+                    a.PeriodStart,
+                    a.Amount,
+                    a.AccountId,
+                    a.ContactId,
+                    a.SavingsPlanId,
+                    a.SecurityId,
+                    a.SecuritySubType
+                })
+                .ToListAsync(ct);
+
+            if (aggsValuta.Count == 0)
+            {
+                return new ReportAggregationResult(query.Interval, Array.Empty<ReportAggregatePointDto>(), query.ComparePrevious, query.CompareYear);
+            }
+
+            rawAnon = aggsValuta.Select(a => (a.Kind, a.PeriodStart, a.Amount, a.AccountId, a.ContactId, a.SavingsPlanId, a.SecurityId, a.SecuritySubType)).ToList();
         }
+        else
+        {
+            var aggs = await _db.PostingAggregates.AsNoTracking()
+                .Where(a => a.Period == sourcePeriod && kinds.Contains(a.Kind) && a.DateKind == AggregateDateKind.Booking)
+                .Select(a => new
+                {
+                    a.Kind,
+                    a.PeriodStart,
+                    a.Amount,
+                    a.AccountId,
+                    a.ContactId,
+                    a.SavingsPlanId,
+                    a.SecurityId,
+                    a.SecuritySubType
+                }).ToListAsync(ct);
+
+            if (aggs.Count == 0)
+            {
+                return new ReportAggregationResult(query.Interval, Array.Empty<ReportAggregatePointDto>(), query.ComparePrevious, query.CompareYear);
+            }
+
+            rawAnon = aggs.Select(a => (a.Kind, a.PeriodStart, a.Amount, a.AccountId, a.ContactId, a.SavingsPlanId, a.SecurityId, a.SecuritySubType)).ToList();
+        }
+        // From here on use 'rawAnon' instead of previous 'raw' anonymous objects
 
         // Collect entity ids per kind for ownership filtering & name/category lookup
-        var accountIds = raw.Where(r => r.AccountId.HasValue).Select(r => r.AccountId!.Value).Distinct().ToList();
-        var contactIds = raw.Where(r => r.ContactId.HasValue).Select(r => r.ContactId!.Value).Distinct().ToList();
-        var savingsIds = raw.Where(r => r.SavingsPlanId.HasValue).Select(r => r.SavingsPlanId!.Value).Distinct().ToList();
-        var securityIds = raw.Where(r => r.SecurityId.HasValue).Select(r => r.SecurityId!.Value).Distinct().ToList();
+        var accountIds = rawAnon.Where(r => r.AccountId.HasValue).Select(r => r.AccountId!.Value).Distinct().ToList();
+        var contactIds = rawAnon.Where(r => r.ContactId.HasValue).Select(r => r.ContactId!.Value).Distinct().ToList();
+        var savingsIds = rawAnon.Where(r => r.SavingsPlanId.HasValue).Select(r => r.SavingsPlanId!.Value).Distinct().ToList();
+        var securityIds = rawAnon.Where(r => r.SecurityId.HasValue).Select(r => r.SecurityId!.Value).Distinct().ToList();
 
         // Ownership + names
         var accountNames = accountIds.Count == 0
@@ -111,7 +145,7 @@ public sealed class ReportAggregationService : IReportAggregationService
                 .ToDictionaryAsync(s => s.Id, s => s.Name, ct);
 
         // Filter raw by ownership (remove aggregates referencing entities not owned)
-        raw = raw.Where(r =>
+        rawAnon = rawAnon.Where(r =>
             (r.Kind != PostingKind.Bank || (r.AccountId.HasValue && accountNames.ContainsKey(r.AccountId.Value))) &&
             (r.Kind != PostingKind.Contact || (r.ContactId.HasValue && contactNames.ContainsKey(r.ContactId.Value))) &&
             (r.Kind != PostingKind.SavingsPlan || (r.SavingsPlanId.HasValue && savingsNames.ContainsKey(r.SavingsPlanId.Value))) &&
@@ -194,7 +228,7 @@ public sealed class ReportAggregationService : IReportAggregationService
 
             if (hasAnyEntityFilter || (query.IncludeCategory && hasAnyCategoryFilter) || hasAnySecSubTypeFilter)
             {
-                raw = raw.Where(r =>
+                rawAnon = rawAnon.Where(r =>
                 {
                     switch (r.Kind)
                     {
@@ -263,7 +297,7 @@ public sealed class ReportAggregationService : IReportAggregationService
         static bool SupportsCategories(PostingKind k) => k is PostingKind.Contact or PostingKind.SavingsPlan or PostingKind.Security;
 
         // 1) Aggregate entity (leaf) level per period
-        var entityGroups = raw.GroupBy(r => new { r.Kind, r.PeriodStart, r.AccountId, r.ContactId, r.SavingsPlanId, r.SecurityId })
+        var entityGroups = rawAnon.GroupBy(r => new { r.Kind, r.PeriodStart, r.AccountId, r.ContactId, r.SavingsPlanId, r.SecurityId })
              .Select(g => new
              {
                  g.Key.Kind,
@@ -501,6 +535,10 @@ public sealed class ReportAggregationService : IReportAggregationService
         if (!allHistoryMode && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod(query.Interval, analysis);
+
+            // Remove any points beyond the latest analysis period (bugfix: ensure future PeriodStarts are excluded)
+            points = points.Where(p => p.PeriodStart <= latestPeriod).ToList();
+
             var groups2 = points.GroupBy(p => p.GroupKey).Select(g => new { Key = g.Key, Latest = g.OrderBy(x => x.PeriodStart).Last() }).ToList();
             foreach (var g in groups2)
             {
@@ -660,16 +698,24 @@ public sealed class ReportAggregationService : IReportAggregationService
 
         var allowedSubTypes = new[] { SecurityPostingSubType_Dividend2, SecurityPostingSubType_Fee2, SecurityPostingSubType_Tax2 };
 
-        var rows = await postings
+        // For each dividend group, compute net = sum(dividend + fee + tax) and take the dividend's booking date as anchor
+        var groupNets = await postings
             .Where(p => dividendGroups.Contains(p.GroupId))
-            .Where(p => allowedSubTypes.Contains((int)p.SecuritySubType!))
-            .Select(p => new { p.BookingDate, p.Amount, p.SecurityId })
+            .GroupBy(p => p.GroupId)
+            .Select(g => new
+            {
+                GroupId = g.Key,
+                SecurityId = g.Select(x => x.SecurityId).FirstOrDefault(),
+                Net = g.Where(x => allowedSubTypes.Contains((int)x.SecuritySubType!)).Sum(x => x.Amount),
+                DividendBooking = g.Where(x => (int)x.SecuritySubType! == SecurityPostingSubType_Dividend2).Select(x => x.BookingDate).FirstOrDefault()
+            })
             .ToListAsync(ct);
 
-        // Aggregate per security and month
-        var monthly = rows
-            .GroupBy(r => new { Month = new DateTime(r.BookingDate.Year, r.BookingDate.Month, 1, 0, 0, 0, DateTimeKind.Unspecified), r.SecurityId })
-            .Select(g => new { g.Key.Month, g.Key.SecurityId, Amount = g.Sum(x => x.Amount) })
+        // Aggregate per security and month using the dividend booking date as period
+        var monthly = groupNets
+            .Where(g => g.DividendBooking != default(DateTime))
+            .GroupBy(r => new { Month = new DateTime(r.DividendBooking.Year, r.DividendBooking.Month, 1), r.SecurityId })
+            .Select(g => new { Month = g.Key.Month, SecurityId = g.Key.SecurityId, Amount = g.Sum(x => x.Net) })
             .ToList();
 
         // Apply entity/category filters
@@ -806,6 +852,9 @@ public sealed class ReportAggregationService : IReportAggregationService
 
         points = TransformToInterval(points);
 
+        // Do not duplicate here: return net dividend amounts once. If the caller needs booking+valuta duplication,
+        // it should be handled at aggregate level.
+
         // Ensure latest period exists
         DateTime ComputeLatestPeriod(ReportInterval interval, DateTime analysisDate)
         {
@@ -898,7 +947,6 @@ public sealed class ReportAggregationService : IReportAggregationService
             }
         }
 
-        // Remove empty latest groups (same rule as default)
         if (query.Interval != ReportInterval.AllHistory && (query.ComparePrevious || query.CompareYear) && points.Count > 0)
         {
             var latestPeriod = ComputeLatestPeriod(query.Interval, analysis);
@@ -919,7 +967,6 @@ public sealed class ReportAggregationService : IReportAggregationService
             }
         }
 
-        // Sort
         points = points
             .OrderBy(p => p.PeriodStart)
             .ThenBy(p => p.GroupKey.StartsWith("Category:") ? 1 : 2)

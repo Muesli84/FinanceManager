@@ -137,4 +137,12 @@ public sealed class Posting : Entity, IAggregateRoot
         }
         return this;
     }
+
+    // Allow updating valuta date after construction (used by imports/tests)
+    public Posting SetValutaDate(DateTime valutaDate)
+    {
+        ValutaDate = valutaDate;
+        Touch();
+        return this;
+    }
 }

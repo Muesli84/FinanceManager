@@ -63,13 +63,14 @@ public sealed class PostingAggregateServiceSubtypeSplitTests
         var yearStart = new DateTime(2025, 1, 1);
 
         // Expected: two aggregates per period for the security (one for Dividend, one for Tax) since subtype now part of key
+        // Note: aggregates are created per DateKind (Booking + Valuta) resulting in doubled rows -> expect 4
         int CountPer(DateTime start, AggregatePeriod period)
             => db.PostingAggregates.Count(a => a.Kind == PostingKind.Security && a.SecurityId == securityId && a.Period == period && a.PeriodStart == start);
 
-        CountPer(monthStart, AggregatePeriod.Month).Should().Be(2);
-        CountPer(quarterStart, AggregatePeriod.Quarter).Should().Be(2);
-        CountPer(halfStart, AggregatePeriod.HalfYear).Should().Be(2);
-        CountPer(yearStart, AggregatePeriod.Year).Should().Be(2);
+        CountPer(monthStart, AggregatePeriod.Month).Should().Be(4);
+        CountPer(quarterStart, AggregatePeriod.Quarter).Should().Be(4);
+        CountPer(halfStart, AggregatePeriod.HalfYear).Should().Be(4);
+        CountPer(yearStart, AggregatePeriod.Year).Should().Be(4);
 
         // And amounts should include both +1.64 and -0.24 for each period
         void AssertAmounts(DateTime start, AggregatePeriod period)

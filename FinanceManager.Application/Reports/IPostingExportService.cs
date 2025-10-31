@@ -27,6 +27,7 @@ public sealed record PostingExportQuery(
 
 public sealed record PostingExportRow(
     DateTime BookingDate,
+    DateTime ValutaDate,
     decimal Amount,
     PostingKind Kind,
     string? Subject,

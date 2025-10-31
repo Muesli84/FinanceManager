@@ -3,16 +3,19 @@ using System;
 using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FinanceManager.Infrastructure.Migrations
+namespace FinanceManager.Infrastructure.Data.Migrations.Identity
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251030175554_AddReportFavoriteSettings2")]
+    partial class AddReportFavoriteSettings2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.10");
@@ -418,9 +421,6 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("DateKind")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("Kind")
                         .HasColumnType("INTEGER");
 
@@ -444,23 +444,23 @@ namespace FinanceManager.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Kind", "AccountId", "Period", "PeriodStart", "DateKind")
+                    b.HasIndex("Kind", "AccountId", "Period", "PeriodStart")
                         .IsUnique()
                         .HasFilter("[AccountId] IS NOT NULL AND [ContactId] IS NULL AND [SavingsPlanId] IS NULL AND [SecurityId] IS NULL");
 
-                    b.HasIndex("Kind", "ContactId", "Period", "PeriodStart", "DateKind")
+                    b.HasIndex("Kind", "ContactId", "Period", "PeriodStart")
                         .IsUnique()
                         .HasFilter("[ContactId] IS NOT NULL AND [AccountId] IS NULL AND [SavingsPlanId] IS NULL AND [SecurityId] IS NULL");
 
-                    b.HasIndex("Kind", "SavingsPlanId", "Period", "PeriodStart", "DateKind")
+                    b.HasIndex("Kind", "SavingsPlanId", "Period", "PeriodStart")
                         .IsUnique()
                         .HasFilter("[SavingsPlanId] IS NOT NULL AND [AccountId] IS NULL AND [ContactId] IS NULL AND [SecurityId] IS NULL");
 
-                    b.HasIndex("Kind", "SecurityId", "SecuritySubType", "Period", "PeriodStart", "DateKind")
+                    b.HasIndex("Kind", "SecurityId", "SecuritySubType", "Period", "PeriodStart")
                         .IsUnique()
                         .HasFilter("[SecurityId] IS NOT NULL AND [AccountId] IS NULL AND [ContactId] IS NULL AND [SavingsPlanId] IS NULL");
 
-                    b.HasIndex("Kind", "AccountId", "ContactId", "SavingsPlanId", "SecurityId", "SecuritySubType", "Period", "PeriodStart", "DateKind")
+                    b.HasIndex("Kind", "AccountId", "ContactId", "SavingsPlanId", "SecurityId", "SecuritySubType", "Period", "PeriodStart")
                         .IsUnique();
 
                     b.ToTable("PostingAggregates");

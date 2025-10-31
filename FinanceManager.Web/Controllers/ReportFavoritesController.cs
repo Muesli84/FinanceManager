@@ -67,6 +67,7 @@ public sealed class ReportFavoritesController : ControllerBase
         public bool Expandable { get; set; } = true;
         public IReadOnlyCollection<int>? PostingKinds { get; set; } // multi-kind support
         public FiltersDto? Filters { get; set; }
+        public bool UseValutaDate { get; set; }
     }
 
     [HttpPost]
@@ -80,7 +81,7 @@ public sealed class ReportFavoritesController : ControllerBase
             var filters = req.Filters == null ? null : new ReportFavoriteFiltersDto(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds, req.Filters.SecuritySubTypes, req.Filters.IncludeDividendRelated);
             var dto = await _favorites.CreateAsync(
                 _current.UserId,
-                new ReportFavoriteCreateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters),
+                new ReportFavoriteCreateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters, req.UseValutaDate),
                 ct);
             return CreatedAtRoute("GetReportFavorite", new { id = dto.Id }, dto);
         }
@@ -112,6 +113,7 @@ public sealed class ReportFavoritesController : ControllerBase
         public bool Expandable { get; set; } = true;
         public IReadOnlyCollection<int>? PostingKinds { get; set; } // multi-kind support
         public FiltersDto? Filters { get; set; }
+        public bool UseValutaDate { get; set; }
     }
 
     [HttpPut("{id:guid}")]
@@ -126,7 +128,7 @@ public sealed class ReportFavoritesController : ControllerBase
             var dto = await _favorites.UpdateAsync(
                 id,
                 _current.UserId,
-                new ReportFavoriteUpdateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters),
+                new ReportFavoriteUpdateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters, req.UseValutaDate),
                 ct);
             return dto == null ? NotFound() : Ok(dto);
         }
