@@ -109,23 +109,24 @@ public sealed class SavingsPlanService : ISavingsPlanService
             return new SavingsPlanAnalysisDto(id, false, null, null, 0m, 0m, 0);
         }
 
-        // If no target defined, cannot analyze meaningful reachability
-        if (plan.TargetAmount is null || plan.TargetDate is null)
-        {
-            return new SavingsPlanAnalysisDto(id, true, plan.TargetAmount, plan.TargetDate, 0m, 0m, 0);
-        }
-
         var today = DateTime.Today;
-        var endDate = plan.TargetDate.Value.Date;
-        var monthsRemaining = Math.Max(0, ((endDate.Year - today.Year) * 12 + endDate.Month - today.Month));
 
-        // Past contributions up to today for this plan
+        // Past contributions up to today for this plan (always compute accumulated amount)
         var history = await _db.Postings.AsNoTracking()
             .Where(p => p.SavingsPlanId == id && p.Kind == PostingKind.SavingsPlan && p.BookingDate <= today)
             .Select(p => new { p.BookingDate, p.Amount })
             .ToListAsync(ct);
 
         var accumulated = history.Sum(x => x.Amount);
+
+        // If no target defined, return accumulated amount and no forecast
+        if (plan.TargetAmount is null || plan.TargetDate is null)
+        {
+            return new SavingsPlanAnalysisDto(id, true, plan.TargetAmount, plan.TargetDate, accumulated, 0m, 0);
+        }
+
+        var endDate = plan.TargetDate.Value.Date;
+        var monthsRemaining = Math.Max(0, ((endDate.Year - today.Year) * 12 + endDate.Month - today.Month));
 
         var target = plan.TargetAmount.Value;
 
