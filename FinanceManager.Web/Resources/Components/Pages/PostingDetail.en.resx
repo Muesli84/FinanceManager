@@ -9,6 +9,7 @@
   <data name="Loading" xml:space="preserve"><value>Loading...</value></data>
   <data name="NotFound" xml:space="preserve"><value>Posting not found.</value></data>
   <data name="Date" xml:space="preserve"><value>Date</value></data>
+  <data name="ValutaDate" xml:space="preserve"><value>Value date</value></data>
   <data name="Amount" xml:space="preserve"><value>Amount</value></data>
   <data name="Kind" xml:space="preserve"><value>Kind</value></data>
   <data name="Subject" xml:space="preserve"><value>Subject</value></data>

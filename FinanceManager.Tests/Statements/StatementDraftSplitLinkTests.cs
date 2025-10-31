@@ -7,7 +7,6 @@ using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -62,9 +61,9 @@ public sealed class StatementDraftSplitLinkTests
         var result = await sut.SetEntrySplitDraftAsync(parent.Id, pEntry.Id, child.Id, owner, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
+        Assert.NotNull(result);
         var updated = await db.StatementDraftEntries.FirstAsync(e => e.Id == pEntry.Id);
-        updated.SplitDraftId.Should().Be(child.Id);
+        Assert.Equal(child.Id, updated.SplitDraftId);
 
         conn.Dispose();
     }
@@ -93,8 +92,8 @@ public sealed class StatementDraftSplitLinkTests
         await db.SaveChangesAsync();
 
         var act = async () => await sut.SetEntrySplitDraftAsync(parent.Id, pEntry.Id, child.Id, owner, CancellationToken.None);
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*must NOT originate from the same upload*");
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(act);
+        Assert.Contains("must NOT originate from the same upload", ex.Message, StringComparison.OrdinalIgnoreCase);
 
         conn.Dispose();
     }

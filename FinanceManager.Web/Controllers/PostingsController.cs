@@ -27,7 +27,8 @@ public sealed class PostingsController : ControllerBase
         _db = db; _current = current;
     }
 
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId);
+    // Added ValutaDate to DTO
+    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId);
 
     public sealed record GroupLinksDto(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
@@ -60,6 +61,7 @@ public sealed class PostingsController : ControllerBase
         var dto = new PostingDto(
             p.Id,
             p.BookingDate,
+            p.ValutaDate, // <- include valuta
             p.Amount,
             p.Kind,
             p.AccountId,
@@ -129,9 +131,10 @@ public sealed class PostingsController : ControllerBase
                 );
             }
 
-            // Order BEFORE projection so EF can translate
+            // Order by ValutaDate desc, then BookingDate desc, then Id desc
             var ordered = joined
-                .OrderByDescending(x => x.P.BookingDate)
+                .OrderByDescending(x => x.P.ValutaDate)
+                .ThenByDescending(x => x.P.BookingDate)
                 .ThenByDescending(x => x.P.Id)
                 .Skip(skip)
                 .Take(take);
@@ -140,6 +143,7 @@ public sealed class PostingsController : ControllerBase
                 .Select(x => new PostingDto(
                     x.P.Id,
                     x.P.BookingDate,
+                    x.P.ValutaDate, // <- include valuta
                     x.P.Amount,
                     x.P.Kind,
                     x.P.AccountId,
@@ -197,7 +201,8 @@ public sealed class PostingsController : ControllerBase
             var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
         }
 
-        query = query.OrderByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
+        // Order by ValutaDate desc, then BookingDate desc, then Id desc
+        query = query.OrderByDescending(p => p.ValutaDate).ThenByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
             .Skip(skip).Take(take);
 
         var result = await (from p in query
@@ -206,6 +211,7 @@ public sealed class PostingsController : ControllerBase
                             select new PostingDto(
                                 p.Id,
                                 p.BookingDate,
+                                p.ValutaDate,
                                 p.Amount,
                                 p.Kind,
                                 p.AccountId,
@@ -241,7 +247,8 @@ public sealed class PostingsController : ControllerBase
             var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
         }
 
-        query = query.OrderByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
+        // Order by ValutaDate desc, then BookingDate desc, then Id desc
+        query = query.OrderByDescending(p => p.ValutaDate).ThenByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
             .Skip(skip).Take(take);
 
         var result = await (from p in query
@@ -250,6 +257,7 @@ public sealed class PostingsController : ControllerBase
                             select new PostingDto(
                                 p.Id,
                                 p.BookingDate,
+                                p.ValutaDate,
                                 p.Amount,
                                 p.Kind,
                                 p.AccountId,
@@ -285,7 +293,8 @@ public sealed class PostingsController : ControllerBase
             var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
         }
 
-        query = query.OrderByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
+        // Order by ValutaDate desc, then BookingDate desc, then Id desc
+        query = query.OrderByDescending(p => p.ValutaDate).ThenByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
             .Skip(skip).Take(take);
 
         var result = await (from p in query
@@ -294,6 +303,7 @@ public sealed class PostingsController : ControllerBase
                             select new PostingDto(
                                 p.Id,
                                 p.BookingDate,
+                                p.ValutaDate,
                                 p.Amount,
                                 p.Kind,
                                 p.AccountId,

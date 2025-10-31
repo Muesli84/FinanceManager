@@ -6,7 +6,6 @@ using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Attachments;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -86,12 +85,12 @@ public sealed class StatementDraftServiceTests
         var bytes = Encoding.UTF8.GetBytes($"{{\"Type\":\"Backup\",\"Version\":2}}\n{{ \"BankAccounts\": [{{ \"IBAN\": \"\"}}], \"BankAccountLedgerEntries\": [], \"BankAccountJournalLines\": [{{\"Id\": 1,\"PostingDate\": \"2017-07-15T00:00:00\",\"ValutaDate\": \"2017-07-15T00:00:00\",\"PostingDescription\": \"Lastschrift\",\"SourceName\": \"GEZ\",\"Description\": \"GEZ Gebuehr\",\"CurrencyCode\": \"EUR\",\"Amount\": -97.95,\"CreatedAt\": \"2017-07-16T12:33:42.000041\"}}] }}");
         await foreach (var draft in sut.CreateDraftAsync(owner, "file.csv", bytes, CancellationToken.None))
         {
-            draft.Entries.Should().HaveCount(1);
-            draft.DetectedAccountId.Should().NotBeNull();
-            draft.OriginalFileName.Should().Be("file.csv");
+            Assert.Equal(1, draft.Entries.Count);
+            Assert.NotNull(draft.DetectedAccountId);
+            Assert.Equal("file.csv", draft.OriginalFileName);
             counter++;
         }
-        counter.Should().Be(1);
+        Assert.Equal(1, counter);
     }
 
     [Fact]
@@ -103,10 +102,10 @@ public sealed class StatementDraftServiceTests
         var bytes = Encoding.UTF8.GetBytes($"{{\"Type\":\"Backup\",\"Version\":2}}\n{{ \"BankAccounts\": [{{ \"IBAN\": \"DE123456\"}}], \"BankAccountLedgerEntries\": [], \"BankAccountJournalLines\": [{{\"Id\": 1,\"PostingDate\": \"2017-07-15T00:00:00\",\"ValutaDate\": \"2017-07-15T00:00:00\",\"PostingDescription\": \"Lastschrift\",\"SourceName\": \"GEZ\",\"Description\": \"GEZ Gebuehr\",\"CurrencyCode\": \"EUR\",\"Amount\": -97.95,\"CreatedAt\": \"2017-07-16T12:33:42.000041\"}}] }}");
         await foreach (var draft in sut.CreateDraftAsync(owner, "f.csv", bytes, CancellationToken.None))
         {
-            draft.DetectedAccountId.Should().BeNull();
+            Assert.Null(draft.DetectedAccountId);
             counter++;
         }
-        counter.Should().Be(1);        
+        Assert.Equal(1, counter);
     }
 
     [Fact]
@@ -129,8 +128,8 @@ public sealed class StatementDraftServiceTests
         var result = await sut.CommitAsync(draft.Id, owner, db.Accounts.Single().Id, FinanceManager.Domain.ImportFormat.Csv, CancellationToken.None);
 
         // Assert
-        result.Should().NotBeNull();
-        result!.TotalEntries.Should().Be(2);
+        Assert.NotNull(result);
+        Assert.Equal(2, result!.TotalEntries);
     }
 
     [Fact]
@@ -147,14 +146,14 @@ public sealed class StatementDraftServiceTests
         {
             createdDraftId = draft.DraftId;
         }
-        createdDraftId.Should().NotBe(Guid.Empty);
+        Assert.NotEqual(Guid.Empty, createdDraftId);
 
         // Verify attachment stored
         var att = await db.Attachments.FirstOrDefaultAsync(a => a.OwnerUserId == owner && a.EntityKind == FinanceManager.Domain.Attachments.AttachmentEntityKind.StatementDraft && a.EntityId == createdDraftId);
-        att.Should().NotBeNull();
-        att!.FileName.Should().Be("original.ndjson");
-        att.ContentType.Should().Be("application/octet-stream");
-        att.Content.Should().NotBeNull();
-        att.Content!.Length.Should().BeGreaterThan(0);
+        Assert.NotNull(att);
+        Assert.Equal("original.ndjson", att!.FileName);
+        Assert.Equal("application/octet-stream", att.ContentType);
+        Assert.NotNull(att.Content);
+        Assert.True(att.Content!.Length > 0);
     }
 }

@@ -6,7 +6,6 @@ using System.Text.Json;
 using FinanceManager.Application;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.ViewModels;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Xunit;
@@ -69,8 +68,8 @@ public sealed class ContactsViewModelTests
 
         await vm.InitializeAsync();
 
-        requestedReturn.Should().BeNull();
-        vm.Loaded.Should().BeFalse();
+        Assert.Null(requestedReturn);
+        Assert.False(vm.Loaded);
     }
 
     [Fact]
@@ -101,10 +100,10 @@ public sealed class ContactsViewModelTests
 
         await vm.InitializeAsync();
 
-        vm.Loaded.Should().BeTrue();
-        vm.Contacts.Should().HaveCount(1);
-        vm.Contacts[0].Name.Should().Be("Alice");
-        vm.Contacts[0].CategoryName.Should().Be("Friends");
+        Assert.True(vm.Loaded);
+        Assert.Equal(1, vm.Contacts.Count);
+        Assert.Equal("Alice", vm.Contacts[0].Name);
+        Assert.Equal("Friends", vm.Contacts[0].CategoryName);
     }
 
     [Fact]
@@ -137,12 +136,12 @@ public sealed class ContactsViewModelTests
         }, isAuthenticated: true);
 
         await vm.InitializeAsync(); // loads first page
-        vm.Contacts.Should().HaveCount(50);
-        vm.AllLoaded.Should().BeFalse();
+        Assert.Equal(50, vm.Contacts.Count);
+        Assert.False(vm.AllLoaded);
 
         await vm.LoadMoreAsync();
-        vm.Contacts.Should().HaveCount(60);
-        vm.AllLoaded.Should().BeTrue();
+        Assert.Equal(60, vm.Contacts.Count);
+        Assert.True(vm.AllLoaded);
     }
 
     [Fact]
@@ -175,15 +174,15 @@ public sealed class ContactsViewModelTests
         }, isAuthenticated: true);
 
         await vm.InitializeAsync();
-        vm.Contacts.Should().HaveCount(1);
+        Assert.Equal(1, vm.Contacts.Count);
 
         await vm.SetFilterAsync("A");
-        vm.Contacts.Should().HaveCount(2);
-        vm.AllLoaded.Should().BeTrue(); // because page size > returned
+        Assert.Equal(2, vm.Contacts.Count);
+        Assert.True(vm.AllLoaded); // because page size > returned
 
         var ribbon = vm.GetRibbon(new PassthroughLocalizer());
-        ribbon.Should().HaveCount(1);
+        Assert.Equal(1, ribbon.Count);
         var items = ribbon[0].Items;
-        items.Any(i => i.Action == "ClearFilter").Should().BeTrue();
+        Assert.True(items.Any(i => i.Action == "ClearFilter"));
     }
 }

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,7 +56,7 @@ public sealed class SavingsPlanCategoriesControllerTests
     {
         var (controller, _, _) = Create();
         var resp = await controller.GetAsync(Guid.NewGuid(), CancellationToken.None);
-        resp.Result.Should().BeOfType<NotFoundResult>();
+        Assert.IsType<NotFoundResult>(resp.Result);
     }
 
     [Fact]
@@ -65,12 +64,12 @@ public sealed class SavingsPlanCategoriesControllerTests
     {
         var (controller, _, _) = Create();
         var created = await controller.CreateAsync(new SavingsPlanCategoryDto { Name = "MyCat" }, CancellationToken.None);
-        created.Value.Should().NotBeNull();
+        Assert.NotNull(created.Value);
 
         var id = created.Value!.Id;
         var get = await controller.GetAsync(id, CancellationToken.None);
-        get.Value.Should().NotBeNull();
-        get.Value!.Name.Should().Be("MyCat");
+        Assert.NotNull(get.Value);
+        Assert.Equal("MyCat", get.Value!.Name);
     }
 
     [Fact]
@@ -81,9 +80,9 @@ public sealed class SavingsPlanCategoriesControllerTests
         var id = created.Value!.Id;
 
         var updated = await controller.UpdateAsync(id, new SavingsPlanCategoryDto { Name = "NewName" }, CancellationToken.None);
-        updated.Value!.Name.Should().Be("NewName");
+        Assert.Equal("NewName", updated.Value!.Name);
 
         var get = await controller.GetAsync(id, CancellationToken.None);
-        get.Value!.Name.Should().Be("NewName");
+        Assert.Equal("NewName", get.Value!.Name);
     }
 }

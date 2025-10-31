@@ -9,7 +9,6 @@ using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -87,10 +86,11 @@ public sealed class StatementDraftImportSplitTests
         u.SetImportSplitSettings(ImportSplitMode.FixedSize, 3, null, 1);
         await db.SaveChangesAsync();
         var drafts = await ImportAsync(sut, db, user, payload);
-        drafts.Should().HaveCount(3);
-        drafts.Select(d => d.EntryCount).Should().ContainInOrder(3,3,1);
-        drafts[0].Description.Should().Contain("(Teil 1)");
-        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeFalse();
+        Assert.Equal(3, drafts.Count);
+        var counts = drafts.Select(d => d.EntryCount).ToArray();
+        Assert.Equal(new[] { 3, 3, 1 }, counts);
+        Assert.Contains("(Teil 1)", drafts[0].Description);
+        Assert.False(sut.LastImportSplitInfo!.EffectiveMonthly);
         conn.Dispose();
     }
 
@@ -110,9 +110,9 @@ public sealed class StatementDraftImportSplitTests
         u.SetImportSplitSettings(ImportSplitMode.Monthly, 100, null, 1);
         await db.SaveChangesAsync();
         var drafts = await ImportAsync(sut, db, user, payload);
-        drafts.Should().HaveCount(2);
-        drafts.All(d => d.Description!.EndsWith("2024-01") || d.Description!.EndsWith("2024-02")).Should().BeTrue();
-        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeTrue();
+        Assert.Equal(2, drafts.Count);
+        Assert.True(drafts.All(d => d.Description!.EndsWith("2024-01") || d.Description!.EndsWith("2024-02")));
+        Assert.True(sut.LastImportSplitInfo!.EffectiveMonthly);
         conn.Dispose();
     }
 
@@ -126,10 +126,11 @@ public sealed class StatementDraftImportSplitTests
         u.SetImportSplitSettings(ImportSplitMode.Monthly, 2, null, 1);
         await db.SaveChangesAsync();
         var drafts = await ImportAsync(sut, db, user, payload);
-        drafts.Should().HaveCount(3);
-        drafts.Select(d => d.EntryCount).Should().ContainInOrder(2,2,1);
-        drafts[0].Description.Should().Contain("(Teil 1)");
-        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeTrue();
+        Assert.Equal(3, drafts.Count);
+        var counts = drafts.Select(d => d.EntryCount).ToArray();
+        Assert.Equal(new[] { 2, 2, 1 }, counts);
+        Assert.Contains("(Teil 1)", drafts[0].Description);
+        Assert.True(sut.LastImportSplitInfo!.EffectiveMonthly);
         conn.Dispose();
     }
 
@@ -144,8 +145,8 @@ public sealed class StatementDraftImportSplitTests
         u.SetImportSplitSettings(ImportSplitMode.MonthlyOrFixed, 8, 8, 1);
         await db.SaveChangesAsync();
         var drafts = await ImportAsync(sut, db, user, payload);
-        drafts.Should().HaveCount(2);
-        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeTrue();
+        Assert.Equal(2, drafts.Count);
+        Assert.True(sut.LastImportSplitInfo!.EffectiveMonthly);
         conn.Dispose();
     }
 
@@ -159,9 +160,9 @@ public sealed class StatementDraftImportSplitTests
         u.SetImportSplitSettings(ImportSplitMode.MonthlyOrFixed, 10, 10, 1);
         await db.SaveChangesAsync();
         var drafts = await ImportAsync(sut, db, user, payload);
-        drafts.Should().HaveCount(1);
-        drafts[0].EntryCount.Should().Be(6);
-        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeFalse();
+        Assert.Equal(1, drafts.Count);
+        Assert.Equal(6, drafts[0].EntryCount);
+        Assert.False(sut.LastImportSplitInfo!.EffectiveMonthly);
         conn.Dispose();
     }
 
@@ -177,8 +178,9 @@ public sealed class StatementDraftImportSplitTests
         u.SetImportSplitSettings(ImportSplitMode.Monthly, 50, null, 1);
         await db.SaveChangesAsync();
         var drafts = await ImportAsync(sut, db, user, payload);
-        drafts.Should().HaveCount(2);
-        drafts.Select(d => d.EntryCount).Order().Should().Equal(1,9);
+        Assert.Equal(2, drafts.Count);
+        var ordered = drafts.Select(d => d.EntryCount).OrderBy(x => x).ToArray();
+        Assert.Equal(new[] { 1, 9 }, ordered);
         conn.Dispose();
     }
 
@@ -223,11 +225,12 @@ public sealed class StatementDraftImportSplitTests
         var drafts = await ImportAsync(sut, db, user, payload);
 
         // Assert
-        drafts.Should().HaveCount(expectedDrafts.Length);
+        Assert.Equal(expectedDrafts.Length, drafts.Count);
 
-        drafts.Select(d => d.EntryCount).Should().BeEquivalentTo(expectedDrafts);
+        var actualCounts = drafts.Select(d => d.EntryCount).ToArray();
+        Assert.Equal(expectedDrafts, actualCounts);
 
-        sut.LastImportSplitInfo!.EffectiveMonthly.Should().BeTrue();
+        Assert.True(sut.LastImportSplitInfo!.EffectiveMonthly);
         conn.Dispose();
     }
 }

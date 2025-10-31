@@ -10,6 +10,12 @@ public enum AggregatePeriod
     Year = 3
 }
 
+public enum AggregateDateKind
+{
+    Booking = 0,
+    Valuta = 1
+}
+
 public sealed class PostingAggregate : Entity, IAggregateRoot
 {
     private PostingAggregate() { }
@@ -22,16 +28,18 @@ public sealed class PostingAggregate : Entity, IAggregateRoot
         Guid? securityId,
         DateTime periodStart,
         AggregatePeriod period,
-        SecurityPostingSubType? securitySubType = null)
+        SecurityPostingSubType? securitySubType = null,
+        AggregateDateKind dateKind = AggregateDateKind.Booking)
     {
         Kind = kind;
         AccountId = accountId;
         ContactId = contactId;
         SavingsPlanId = savingsPlanId;
         SecurityId = securityId;
+        SecuritySubType = securitySubType;
         PeriodStart = periodStart.Date;
         Period = period;
-        SecuritySubType = securitySubType;
+        DateKind = dateKind;
         Amount = 0m;
     }
 
@@ -40,7 +48,9 @@ public sealed class PostingAggregate : Entity, IAggregateRoot
     public Guid? ContactId { get; private set; }
     public Guid? SavingsPlanId { get; private set; }
     public Guid? SecurityId { get; private set; }
-    public SecurityPostingSubType? SecuritySubType { get; private set; } // new dimension (only for Kind=Security)
+    public SecurityPostingSubType? SecuritySubType { get; private set; }
+    // new: which date was used to compute the aggregate (Booking or Valuta)
+    public AggregateDateKind DateKind { get; private set; }
     public DateTime PeriodStart { get; private set; }
     public AggregatePeriod Period { get; private set; }
     public decimal Amount { get; private set; }

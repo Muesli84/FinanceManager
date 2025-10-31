@@ -342,6 +342,15 @@
   <data name="Label_IncludeDividendRelated" xml:space="preserve">
     <value>Include dividend-related fees/taxes</value>
   </data>
+  <data name="Label_DateKind" xml:space="preserve">
+    <value>Date to use</value>
+  </data>
+  <data name="DateKind_Booking" xml:space="preserve">
+    <value>Booking date</value>
+  </data>
+  <data name="DateKind_Valuta" xml:space="preserve">
+    <value>Valuta date</value>
+  </data>
   <data name="Ribbon_Tab" xml:space="preserve">
     <value>Dashboard</value>
   </data>

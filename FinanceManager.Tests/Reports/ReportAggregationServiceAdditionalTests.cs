@@ -10,7 +10,6 @@ using FinanceManager.Domain.Postings;
 using FinanceManager.Domain.Reports; // ReportInterval
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -56,11 +55,11 @@ public sealed class ReportAggregationServiceAdditionalTests
         var sut = new ReportAggregationService(db);
         var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: false, AnalysisDate: new DateTime(2025,2,1)), CancellationToken.None);
 
-        result.Points.Should().OnlyContain(p => p.GroupKey.StartsWith("Contact:"));
-        result.Points.Should().NotContain(p => p.GroupKey.StartsWith("Category:"));
+        Assert.All(result.Points, p => Assert.StartsWith("Contact:", p.GroupKey));
+        Assert.DoesNotContain(result.Points, p => p.GroupKey.StartsWith("Category:"));
         // Previous for Feb contact (c2) should be null because it only has single period itself
         var febPoint = result.Points.Single(p => p.GroupKey == $"Contact:{c2.Id}" && p.PeriodStart == new DateTime(2025,2,1));
-        febPoint.PreviousAmount.Should().BeNull();
+        Assert.Null(febPoint.PreviousAmount);
     }
 
     [Fact]
@@ -86,9 +85,9 @@ public sealed class ReportAggregationServiceAdditionalTests
 
         // c2 should have auto-added zero row in Feb with previous = Jan amount
         var c2Feb = result.Points.SingleOrDefault(p => p.GroupKey == $"Contact:{c2.Id}" && p.PeriodStart == latest);
-        c2Feb.Should().NotBeNull();
-        c2Feb!.Amount.Should().Be(0m);
-        c2Feb.PreviousAmount.Should().Be(30m);
+        Assert.NotNull(c2Feb);
+        Assert.Equal(0m, c2Feb!.Amount);
+        Assert.Equal(30m, c2Feb.PreviousAmount);
     }
 
     [Fact]
@@ -110,8 +109,8 @@ public sealed class ReportAggregationServiceAdditionalTests
         var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: true, AnalysisDate: new DateTime(2025,2,1)), CancellationToken.None);
 
         // Group for c1 should be removed (only zero data + zero row + no previous/year non-zero)
-        result.Points.Should().NotContain(p => p.GroupKey == $"Contact:{c1.Id}");
-        result.Points.Should().Contain(p => p.GroupKey == $"Contact:{c2.Id}");
+        Assert.DoesNotContain(result.Points, p => p.GroupKey == $"Contact:{c1.Id}");
+        Assert.Contains(result.Points, p => p.GroupKey == $"Contact:{c2.Id}");
     }
 
     [Fact]
@@ -138,8 +137,8 @@ public sealed class ReportAggregationServiceAdditionalTests
         var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, take, IncludeCategory: false, ComparePrevious: false, CompareYear: false, AnalysisDate: new DateTime(2025,3,1)), CancellationToken.None);
 
         var periods = result.Points.Select(p => p.PeriodStart).Distinct().OrderBy(d=>d).ToList();
-        periods.Should().HaveCount(take);
-        periods.First().Should().Be(new DateTime(2024,11,1)); // last 5 of 15 months (2024-11 .. 2025-03)
+        Assert.Equal(take, periods.Count);
+        Assert.Equal(new DateTime(2024,11,1), periods.First()); // last 5 of 15 months (2024-11 .. 2025-03)
     }
 
     [Fact]
@@ -164,20 +163,20 @@ public sealed class ReportAggregationServiceAdditionalTests
         var sut = new ReportAggregationService(db);
 
         var quarters = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Quarter, 10, IncludeCategory: false, ComparePrevious: true, CompareYear: true, AnalysisDate: new DateTime(2024,4,1)), CancellationToken.None);
-        quarters.Points.Where(p=>p.GroupKey.StartsWith("Contact:")).Should().HaveCount(2);
+        Assert.Equal(2, quarters.Points.Count(p=>p.GroupKey.StartsWith("Contact:")));
         var q2Point = quarters.Points.Single(p=>p.PeriodStart == new DateTime(2024,4,1) && p.GroupKey.StartsWith("Contact:"));
-        q2Point.PreviousAmount.Should().Be(100);
+        Assert.Equal(100m, q2Point.PreviousAmount);
 
         var halfYears = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.HalfYear, 10, IncludeCategory: false, ComparePrevious: true, CompareYear: false, AnalysisDate: new DateTime(2024,7,1)), CancellationToken.None);
-        halfYears.Points.Should().HaveCount(2);
+        Assert.Equal(2, halfYears.Points.Count);
         var h2Point = halfYears.Points.Single(p=>p.PeriodStart == new DateTime(2024,7,1));
-        h2Point.PreviousAmount.Should().Be(250);
+        Assert.Equal(250m, h2Point.PreviousAmount);
 
         var years = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Year, 10, IncludeCategory: false, ComparePrevious: true, CompareYear: true, AnalysisDate: new DateTime(2025,1,1)), CancellationToken.None);
-        years.Points.Should().HaveCount(2);
+        Assert.Equal(2, years.Points.Count);
         var y2025Point = years.Points.Single(p=>p.PeriodStart == new DateTime(2025,1,1));
-        y2025Point.PreviousAmount.Should().Be(550);
-        y2025Point.YearAgoAmount.Should().Be(550);
+        Assert.Equal(550m, y2025Point.PreviousAmount);
+        Assert.Equal(550m, y2025Point.YearAgoAmount);
     }
 
     [Fact]
@@ -193,8 +192,8 @@ public sealed class ReportAggregationServiceAdditionalTests
         await db.SaveChangesAsync();
         var sut = new ReportAggregationService(db);
         var result = await sut.QueryAsync(new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 5, IncludeCategory: true, ComparePrevious: false, CompareYear: false, AnalysisDate: new DateTime(2025,3,1)), CancellationToken.None);
-        result.Points.Should().Contain(p => p.GroupKey == $"Category:{PostingKind.Contact}:_none" && p.Amount == 42m);
+        Assert.Contains(result.Points, p => p.GroupKey == $"Category:{PostingKind.Contact}:_none" && p.Amount == 42m);
         var child = result.Points.Single(p => p.GroupKey == $"Contact:{c1.Id}");
-        child.ParentGroupKey.Should().Be($"Category:{PostingKind.Contact}:_none");
+        Assert.Equal($"Category:{PostingKind.Contact}:_none", child.ParentGroupKey);
     }
 }

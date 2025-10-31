@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Bunit;
 using FinanceManager.Web.Components.Shared;
-using FluentAssertions;
 using Xunit;
 
 namespace FinanceManager.Tests.Components;
@@ -43,12 +42,12 @@ public class RibbonTests : TestContext
             .Add(x => x.ActiveTab, TabId.One));
 
         // Assert
-        cut.FindAll(".fm-ribbon-group").Should().HaveCount(1);
-        cut.Markup.Should().Contain("Group A");
+        Assert.Equal(1, cut.FindAll(".fm-ribbon-group").Count);
+        Assert.Contains("Group A", cut.Markup);
         var buttons = cut.FindAll("button.fm-ribbon-btn");
-        buttons.Should().HaveCount(2);
-        buttons[0].GetAttribute("aria-disabled").Should().BeNull();
-        buttons[1].GetAttribute("aria-disabled").Should().Be("true");
+        Assert.Equal(2, buttons.Count);
+        Assert.Null(buttons[0].GetAttribute("aria-disabled"));
+        Assert.Equal("true", buttons[1].GetAttribute("aria-disabled"));
     }
 
     [Fact]
@@ -80,6 +79,6 @@ public class RibbonTests : TestContext
         cut.Find("button.fm-ribbon-btn").Click();
 
         // Assert
-        clicked.Should().BeTrue();
+        Assert.True(clicked);
     }
 }

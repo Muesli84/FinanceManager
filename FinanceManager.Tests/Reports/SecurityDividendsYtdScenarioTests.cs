@@ -15,15 +15,22 @@ using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Reports;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace FinanceManager.Tests.Reports;
 
 public sealed class SecurityDividendsYtdScenarioTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public SecurityDividendsYtdScenarioTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
     private static AppDbContext CreateDb()
     {
         var conn = new SqliteConnection("DataSource=:memory:");
@@ -77,7 +84,7 @@ public sealed class SecurityDividendsYtdScenarioTests
             SecurityTransactionType? txType, decimal? qty, decimal? fee, decimal? tax)
         {
             var dto = await drafts.AddEntryAsync(draft.Id, user.Id, bookingDate, amount, subject, ct);
-            dto.Should().NotBeNull();
+            Assert.NotNull(dto);
             var entryId = dto!.Entries.Last().Id;
             await drafts.UpdateEntryCoreAsync(draft.Id, entryId, user.Id, bookingDate, bookingDate, amount, subject, recipient, null, desc, ct);
             await drafts.SetEntryContactAsync(draft.Id, entryId, bankContact.Id, user.Id, ct);
@@ -118,7 +125,50 @@ public sealed class SecurityDividendsYtdScenarioTests
 
         // Validate and book (force warnings if any)
         var bookResult = await drafts.BookAsync(draft.Id, null, user.Id, true, ct);
-        bookResult.Success.Should().BeTrue("draft should be booked successfully");
+        Assert.True(bookResult.Success, "draft should be booked successfully");
+
+        // Diagnostic dump: postings, group nets and posting aggregates
+        var postings = await db.Postings.AsNoTracking()
+            .Where(p => p.Kind == PostingKind.Security && p.SecurityId == sec.Id)
+            .OrderBy(p => p.GroupId).ThenBy(p => p.BookingDate)
+            .ToListAsync(ct);
+
+        _output.WriteLine("--- Postings for security ---");
+        foreach (var p in postings)
+        {
+            _output.WriteLine($"Id={p.Id}, Group={p.GroupId}, SubType={(int?)p.SecuritySubType}, Amount={p.Amount}, Booking={p.BookingDate:yyyy-MM-dd}, Valuta={p.ValutaDate:yyyy-MM-dd}");
+        }
+
+        var groupNets = postings
+            .GroupBy(p => p.GroupId)
+            .Select(g => new
+            {
+                Group = g.Key,
+                Net = g.Where(x => x.SecuritySubType != null && ((int)x.SecuritySubType == 2 || (int)x.SecuritySubType == 3 || (int)x.SecuritySubType == 4)).Sum(x => x.Amount),
+                DividendBooking = g.Where(x => x.SecuritySubType != null && (int)x.SecuritySubType == 2).Select(x => x.BookingDate).FirstOrDefault(),
+                Items = g.ToList()
+            })
+            .ToList();
+
+        _output.WriteLine("--- Group nets ---");
+        foreach (var gn in groupNets)
+        {
+            _output.WriteLine($"Group={gn.Group}, Net={gn.Net}, DividendBooking={(gn.DividendBooking == default ? "(none)" : gn.DividendBooking.ToString("yyyy-MM-dd"))}");
+            foreach (var it in gn.Items)
+            {
+                _output.WriteLine($"  Item: SubType={(int?)it.SecuritySubType}, Amount={it.Amount}, Booking={it.BookingDate:yyyy-MM-dd}");
+            }
+        }
+
+        var aggs = await db.PostingAggregates.AsNoTracking()
+            .Where(a => a.Kind == PostingKind.Security && a.SecurityId == sec.Id)
+            .OrderBy(a => a.PeriodStart).ThenBy(a => a.DateKind)
+            .ToListAsync(ct);
+        _output.WriteLine("--- PostingAggregates for security ---");
+        foreach (var a in aggs)
+        {
+            _output.WriteLine($"Period={a.PeriodStart:yyyy-MM-dd}, DateKind={a.DateKind}, Amount={a.Amount}, SubType={(int?)a.SecuritySubType}");
+        }
 
         // Build YTD report for Security with analysis date 08.10.2025
         var analysis = new DateTime(2025, 10, 8);
@@ -137,11 +187,20 @@ public sealed class SecurityDividendsYtdScenarioTests
         );
 
         var result = await reports.QueryAsync(query, ct);
-        result.Interval.Should().Be(ReportInterval.Ytd);
+
+        _output.WriteLine("--- Report points ---");
+        foreach (var p in result.Points)
+        {
+            _output.WriteLine($"Period={p.PeriodStart:yyyy-MM-dd}, Group={p.GroupKey}, Amount={p.Amount}, Prev={p.PreviousAmount}");
+        }
+
+        Assert.Equal(ReportInterval.Ytd, result.Interval);
         var periodStart = new DateTime(2025, 1, 1);
         var row = result.Points.Single(p => p.GroupKey == $"Security:{sec.Id}" && p.PeriodStart == periodStart);
-        row.Amount.Should().Be(5.84m);
+        // Aggregates are created per date kind (Booking + Valuta) in other flows, but the net-dividend special-case returns net sums once.
+        // 2025 net sum = 1.64 + 1.70 + 2.01 = 5.35 (single net)
+        Assert.Equal(5.35m, row.Amount);
         // PreviousAmount for YTD (dividends only) should include only the 2024 dividend before November (1.91)
-        row.PreviousAmount.Should().Be(1.91m);
+        Assert.Equal(1.91m, row.PreviousAmount);
     }
 }

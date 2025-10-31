@@ -7,7 +7,6 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Reports;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -134,9 +133,9 @@ public sealed class SecurityDividendNetYtdSimpleTests
         var result = await sut.QueryAsync(query, ct);
 
         // Assert: one point for the security, YTD anchored to Jan 1st of current year, sum = 11.5
-        result.Interval.Should().Be(ReportInterval.Ytd);
+        Assert.Equal(ReportInterval.Ytd, result.Interval);
         var periodStart = new DateTime(year, 1, 1);
         var row = result.Points.Single(p => p.GroupKey == $"Security:{sec.Id}" && p.PeriodStart == periodStart);
-        row.Amount.Should().Be(11.5m);
+        Assert.Equal(11.5m, row.Amount);
     }
 }

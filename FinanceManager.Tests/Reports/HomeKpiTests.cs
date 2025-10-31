@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
 using FinanceManager.Domain.Reports;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -41,7 +40,7 @@ public sealed class HomeKpiTests
 
         // invalid: missing favorite id
         var act = () => { var invalid = new HomeKpi(user.Id, HomeKpiKind.ReportFavorite, HomeKpiDisplayMode.TotalOnly, sortOrder: 1, reportFavoriteId: null); };
-        act.Should().Throw<ArgumentException>();
+        Assert.Throws<ArgumentException>(act);
     }
 
     [Fact]
@@ -57,11 +56,11 @@ public sealed class HomeKpiTests
         db.HomeKpis.Add(new HomeKpi(user.Id, HomeKpiKind.ReportFavorite, HomeKpiDisplayMode.TotalWithComparisons, 1, fav.Id));
         await db.SaveChangesAsync();
 
-        (await db.HomeKpis.CountAsync()).Should().Be(2);
+        Assert.Equal(2, await db.HomeKpis.CountAsync());
 
         db.ReportFavorites.Remove(fav);
         await db.SaveChangesAsync();
 
-        (await db.HomeKpis.CountAsync()).Should().Be(0);
+        Assert.Equal(0, await db.HomeKpis.CountAsync());
     }
 }

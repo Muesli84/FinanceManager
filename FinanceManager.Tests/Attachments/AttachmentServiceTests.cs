@@ -2,7 +2,6 @@ using System.Text;
 using FinanceManager.Domain.Attachments;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Attachments;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -38,20 +37,20 @@ public sealed class AttachmentServiceTests
 
         var dto = await svc.UploadAsync(owner, AttachmentEntityKind.StatementDraft, entityId, ms, "hello.txt", "text/plain", null, CancellationToken.None);
 
-        dto.Should().NotBeNull();
-        dto.IsUrl.Should().BeFalse();
-        dto.FileName.Should().Be("hello.txt");
-        dto.ContentType.Should().Be("text/plain");
-        dto.SizeBytes.Should().Be(bytes.Length);
+        Assert.NotNull(dto);
+        Assert.False(dto.IsUrl);
+        Assert.Equal("hello.txt", dto.FileName);
+        Assert.Equal("text/plain", dto.ContentType);
+        Assert.Equal(bytes.Length, dto.SizeBytes);
 
         var stored = await db.Attachments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == dto.Id);
-        stored.Should().NotBeNull();
-        stored!.OwnerUserId.Should().Be(owner);
-        stored.EntityKind.Should().Be(AttachmentEntityKind.StatementDraft);
-        stored.EntityId.Should().Be(entityId);
-        stored.Content.Should().NotBeNull();
-        stored.Url.Should().BeNull();
-        stored.Content!.Length.Should().Be(bytes.Length);
+        Assert.NotNull(stored);
+        Assert.Equal(owner, stored!.OwnerUserId);
+        Assert.Equal(AttachmentEntityKind.StatementDraft, stored.EntityKind);
+        Assert.Equal(entityId, stored.EntityId);
+        Assert.NotNull(stored.Content);
+        Assert.Null(stored.Url);
+        Assert.Equal(bytes.Length, stored.Content!.Length);
 
         conn.Dispose();
     }
@@ -62,10 +61,10 @@ public sealed class AttachmentServiceTests
         var (svc, db, conn, owner) = Create();
         var dto = await svc.CreateUrlAsync(owner, AttachmentEntityKind.Contact, Guid.NewGuid(), "https://example.com/a.pdf", null, null, CancellationToken.None);
 
-        dto.IsUrl.Should().BeTrue();
+        Assert.True(dto.IsUrl);
         var stored = await db.Attachments.AsNoTracking().FirstAsync(a => a.Id == dto.Id);
-        stored.Url.Should().Be("https://example.com/a.pdf");
-        stored.Content.Should().BeNull();
+        Assert.Equal("https://example.com/a.pdf", stored.Url);
+        Assert.Null(stored.Content);
 
         conn.Dispose();
     }
@@ -86,13 +85,14 @@ public sealed class AttachmentServiceTests
         var id3 = await Upload("a3.txt");
 
         var list = await svc.ListAsync(owner, AttachmentEntityKind.StatementDraft, entityId, 0, 10, CancellationToken.None);
-        list.Select(x => x.Id).Should().ContainInOrder(new[] { id3, id2, id1 });
+        var ids = list.Select(x => x.Id).ToList();
+        Assert.Equal(new[] { id3, id2, id1 }, ids);
 
         // Different entity filtered out
         await using var s2 = new MemoryStream(Encoding.UTF8.GetBytes("x"));
         await svc.UploadAsync(owner, AttachmentEntityKind.StatementDraft, Guid.NewGuid(), s2, "x.txt", "text/plain", null, CancellationToken.None);
         var list2 = await svc.ListAsync(owner, AttachmentEntityKind.StatementDraft, entityId, 0, 10, CancellationToken.None);
-        list2.Should().HaveCount(3);
+        Assert.Equal(3, list2.Count);
 
         conn.Dispose();
     }
@@ -108,29 +108,29 @@ public sealed class AttachmentServiceTests
         var dto = await svc.UploadAsync(owner, AttachmentEntityKind.StatementDraft, entityId, ms, "c.txt", "text/plain", null, CancellationToken.None);
 
         var dl = await svc.DownloadAsync(owner, dto.Id, CancellationToken.None);
-        dl.Should().NotBeNull();
+        Assert.NotNull(dl);
         using (var reader = new StreamReader(dl!.Value.Content, Encoding.UTF8))
         {
             var txt = await reader.ReadToEndAsync();
-            txt.Should().Be("content");
+            Assert.Equal("content", txt);
         }
 
         // category
         var cat = new AttachmentCategory(owner, "Docs");
         db.AttachmentCategories.Add(cat);
         await db.SaveChangesAsync();
-        (await svc.UpdateCategoryAsync(owner, dto.Id, cat.Id, CancellationToken.None)).Should().BeTrue();
-        (await db.Attachments.AsNoTracking().FirstAsync(a => a.Id == dto.Id)).CategoryId.Should().Be(cat.Id);
+        Assert.True(await svc.UpdateCategoryAsync(owner, dto.Id, cat.Id, CancellationToken.None));
+        Assert.Equal(cat.Id, (await db.Attachments.AsNoTracking().FirstAsync(a => a.Id == dto.Id)).CategoryId);
 
         // reassign
         await svc.ReassignAsync(AttachmentEntityKind.StatementDraft, entityId, AttachmentEntityKind.StatementEntry, otherEntity, owner, CancellationToken.None);
         var moved = await db.Attachments.AsNoTracking().FirstAsync(a => a.Id == dto.Id);
-        moved.EntityKind.Should().Be(AttachmentEntityKind.StatementEntry);
-        moved.EntityId.Should().Be(otherEntity);
+        Assert.Equal(AttachmentEntityKind.StatementEntry, moved.EntityKind);
+        Assert.Equal(otherEntity, moved.EntityId);
 
         // delete
-        (await svc.DeleteAsync(owner, dto.Id, CancellationToken.None)).Should().BeTrue();
-        (await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == dto.Id)).Should().BeFalse();
+        Assert.True(await svc.DeleteAsync(owner, dto.Id, CancellationToken.None));
+        Assert.False(await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == dto.Id));
 
         conn.Dispose();
     }
@@ -147,11 +147,11 @@ public sealed class AttachmentServiceTests
         var reference = await svc.CreateReferenceAsync(owner, AttachmentEntityKind.StatementEntry, Guid.NewGuid(), master.Id, CancellationToken.None);
 
         var dl = await svc.DownloadAsync(owner, reference.Id, CancellationToken.None);
-        dl.Should().NotBeNull();
-        dl!.Value.FileName.Should().Be("m.txt");
+        Assert.NotNull(dl);
+        Assert.Equal("m.txt", dl!.Value.FileName);
         using var reader = new StreamReader(dl.Value.Content, Encoding.UTF8);
         var txt = await reader.ReadToEndAsync();
-        txt.Should().Be("master-content");
+        Assert.Equal("master-content", txt);
 
         conn.Dispose();
     }
@@ -169,11 +169,11 @@ public sealed class AttachmentServiceTests
         var ref2 = await svc.CreateReferenceAsync(owner, AttachmentEntityKind.Contact, Guid.NewGuid(), master.Id, CancellationToken.None);
 
         var ok = await svc.DeleteAsync(owner, ref1.Id, CancellationToken.None);
-        ok.Should().BeTrue();
+        Assert.True(ok);
 
-        (await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == master.Id)).Should().BeFalse();
-        (await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == ref1.Id)).Should().BeFalse();
-        (await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == ref2.Id)).Should().BeFalse();
+        Assert.False(await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == master.Id));
+        Assert.False(await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == ref1.Id));
+        Assert.False(await db.Attachments.AsNoTracking().AnyAsync(a => a.Id == ref2.Id));
 
         conn.Dispose();
     }

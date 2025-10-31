@@ -39,6 +39,7 @@ public sealed class PostingExportService : IPostingExportService
         await foreach (var row in ordered
             .Select(x => new PostingExportRow(
                 x.P.BookingDate,
+                x.P.ValutaDate,
                 x.P.Amount,
                 x.P.Kind,
                 x.Subject,
@@ -271,6 +272,7 @@ public sealed class PostingExportService : IPostingExportService
                 {
                     p.Id,
                     p.BookingDate,
+                    p.ValutaDate,
                     p.Amount,
                     p.Kind,
                     Subject = p.Subject ?? seOpt.Subject,
@@ -313,7 +315,7 @@ public sealed class PostingExportService : IPostingExportService
         {
             AutoFlush = false
         };
-        await writer.WriteLineAsync("BookingDate;Amount;Kind;Subject;RecipientName;Description;Account;Contact;SavingsPlan;Security;SecuritySubType;Quantity");
+        await writer.WriteLineAsync("BookingDate;ValutaDate;Amount;Kind;Subject;RecipientName;Description;Account;Contact;SavingsPlan;Security;SecuritySubType;Quantity");
 
         await foreach (var r in q.AsAsyncEnumerable().WithCancellation(ct))
         {
@@ -321,6 +323,7 @@ public sealed class PostingExportService : IPostingExportService
             string[] cols = new[]
             {
                 r.BookingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                r.ValutaDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 r.Amount.ToString(CultureInfo.InvariantCulture),
                 r.Kind.ToString(),
                 CsvEscape(r.Subject),
@@ -351,7 +354,7 @@ public sealed class PostingExportService : IPostingExportService
     {
         using var writer = new StreamWriter(output, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), 1024, leaveOpen: true);
         // Header
-        await writer.WriteLineAsync("BookingDate;Amount;Kind;Subject;RecipientName;Description;Account;Contact;SavingsPlan;Security;SecuritySubType;Quantity");
+        await writer.WriteLineAsync("BookingDate;ValutaDate;Amount;Kind;Subject;RecipientName;Description;Account;Contact;SavingsPlan;Security;SecuritySubType;Quantity");
         // Rows
         foreach (var r in rows)
         {
@@ -363,6 +366,7 @@ public sealed class PostingExportService : IPostingExportService
             string[] cols = new[]
             {
                 r.BookingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                r.ValutaDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 r.Amount.ToString(CultureInfo.InvariantCulture),
                 r.Kind.ToString(),
                 CsvEscape(r.Subject),
@@ -405,7 +409,7 @@ public sealed class PostingExportService : IPostingExportService
         sheets.Append(sheet);
 
         // Header
-        string[] headers = new[] { "BookingDate", "Amount", "Kind", "Subject", "RecipientName", "Description", "Account", "Contact", "SavingsPlan", "Security", "SecuritySubType", "Quantity" };
+        string[] headers = new[] { "BookingDate", "ValutaDate", "Amount", "Kind", "Subject", "RecipientName", "Description", "Account", "Contact", "SavingsPlan", "Security", "SecuritySubType", "Quantity" };
         sheetData.AppendChild(CreateRow(headers.Select(h => (object)h).ToArray()));
 
         foreach (var r in rows)
@@ -417,6 +421,7 @@ public sealed class PostingExportService : IPostingExportService
             sheetData.AppendChild(CreateRow(new object[]
             {
                 r.BookingDate,
+                r.ValutaDate,
                 r.Amount,
                 r.Kind.ToString(),
                 r.Subject ?? string.Empty,

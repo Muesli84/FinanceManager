@@ -5,7 +5,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FinanceManager.Application;
 using FinanceManager.Web.ViewModels;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Microsoft.Extensions.Localization;
@@ -70,10 +69,10 @@ public sealed class UsersViewModelTests
 
         await vm.InitializeAsync();
 
-        vm.Loaded.Should().BeTrue();
-        vm.Users.Should().HaveCount(1);
-        vm.Users[0].Username.Should().Be("u1");
-        vm.Error.Should().BeNull();
+        Assert.True(vm.Loaded);
+        Assert.Single(vm.Users);
+        Assert.Equal("u1", vm.Users[0].Username);
+        Assert.Null(vm.Error);
     }
 
     [Fact]
@@ -89,10 +88,10 @@ public sealed class UsersViewModelTests
 
         await vm.CreateAsync();
 
-        vm.Users.Should().ContainSingle(u => u.Username == "new");
-        vm.Create.Username.Should().BeEmpty();
-        vm.BusyCreate.Should().BeFalse();
-        vm.Error.Should().BeNull();
+        Assert.Single(vm.Users, u => u.Username == "new");
+        Assert.Equal(string.Empty, vm.Create.Username);
+        Assert.False(vm.BusyCreate);
+        Assert.Null(vm.Error);
     }
 
     [Fact]
@@ -110,9 +109,9 @@ public sealed class UsersViewModelTests
 
         await vm.SaveEditAsync(user.Id);
 
-        vm.Users.Single().Username.Should().Be("updated");
-        vm.Edit.Should().BeNull();
-        vm.BusyRow.Should().BeFalse();
+        Assert.Equal("updated", vm.Users.Single().Username);
+        Assert.Null(vm.Edit);
+        Assert.False(vm.BusyRow);
     }
 
     [Fact]
@@ -125,12 +124,12 @@ public sealed class UsersViewModelTests
         router.Map(HttpMethod.Delete, $"/api/admin/users/{id}$", _ => new HttpResponseMessage(HttpStatusCode.OK));
 
         await vm.InitializeAsync();
-        vm.Users.Should().HaveCount(1);
+        Assert.Single(vm.Users);
 
         await vm.DeleteAsync(id);
 
-        vm.Users.Should().BeEmpty();
-        vm.BusyRow.Should().BeFalse();
+        Assert.Empty(vm.Users);
+        Assert.False(vm.BusyRow);
     }
 
     [Fact]
@@ -144,13 +143,13 @@ public sealed class UsersViewModelTests
         await vm.InitializeAsync();
         await vm.ResetPasswordAsync(id);
 
-        vm.LastResetUserId.Should().Be(id);
-        vm.LastResetPassword.Should().NotBeNullOrEmpty();
-        vm.LastResetPassword!.Length.Should().Be(12);
+        Assert.Equal(id, vm.LastResetUserId);
+        Assert.False(string.IsNullOrEmpty(vm.LastResetPassword));
+        Assert.Equal(12, vm.LastResetPassword!.Length);
 
         vm.ClearLastPassword();
-        vm.LastResetUserId.Should().Be(Guid.Empty);
-        vm.LastResetPassword.Should().BeNull();
+        Assert.Equal(Guid.Empty, vm.LastResetUserId);
+        Assert.Null(vm.LastResetPassword);
     }
 
     [Fact]
@@ -163,11 +162,11 @@ public sealed class UsersViewModelTests
         router.Map(HttpMethod.Post, $"/api/admin/users/{id}/unlock$", _ => new HttpResponseMessage(HttpStatusCode.OK));
 
         await vm.InitializeAsync();
-        vm.Users.Single().LockoutEnd.Should().NotBeNull();
+        Assert.NotNull(vm.Users.Single().LockoutEnd);
 
         await vm.UnlockAsync(id);
 
-        vm.Users.Single().LockoutEnd.Should().BeNull();
+        Assert.Null(vm.Users.Single().LockoutEnd);
     }
 
     [Fact]
@@ -179,15 +178,15 @@ public sealed class UsersViewModelTests
 
         // base state
         var groups = vm.GetRibbon(loc);
-        groups.Should().HaveCount(2);
-        groups[0].Title.Should().Be("Ribbon_Group_Navigation");
-        groups[1].Title.Should().Be("Ribbon_Group_Actions");
-        groups[1].Items.Should().Contain(i => i.Label == "Ribbon_Reload");
+        Assert.Equal(2, groups.Count);
+        Assert.Equal("Ribbon_Group_Navigation", groups[0].Title);
+        Assert.Equal("Ribbon_Group_Actions", groups[1].Title);
+        Assert.Contains(groups[1].Items, i => i.Label == "Ribbon_Reload");
 
         // with edit
         vm.BeginEdit(new UsersViewModel.UserVm { Id = Guid.NewGuid(), Username = "x" });
         groups = vm.GetRibbon(loc);
-        groups[1].Items.Should().Contain(i => i.Label == "Ribbon_CancelEdit");
+        Assert.Contains(groups[1].Items, i => i.Label == "Ribbon_CancelEdit");
 
         // with last reset password
         vm.CancelEdit();
@@ -196,7 +195,7 @@ public sealed class UsersViewModelTests
         vm.GetType().GetProperty("LastResetUserId")!.SetValue(vm, Guid.NewGuid());
         vm.GetType().GetProperty("LastResetPassword")!.SetValue(vm, "abcdef123456");
         groups = vm.GetRibbon(loc);
-        groups[1].Items.Should().Contain(i => i.Label == "Ribbon_HidePassword");
+        Assert.Contains(groups[1].Items, i => i.Label == "Ribbon_HidePassword");
     }
 
     private sealed class FakeLocalizer : IStringLocalizer

@@ -217,7 +217,11 @@ public sealed class StatementDraftEntry : Entity
         SecurityFeeAmount = securityId == null ? null : fee;
         SecurityTaxAmount = securityId == null ? null : tax;
     }
-
+    public void OverrideValutaDate(DateTime? valutaDate)
+    {
+        ValutaDate = valutaDate;
+        Touch();
+    }
     public void MarkNeedsCheck()
     {
         Status = StatementDraftEntryStatus.Open;

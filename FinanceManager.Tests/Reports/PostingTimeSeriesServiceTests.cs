@@ -13,7 +13,6 @@ using FinanceManager.Infrastructure.Reports;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
-using FluentAssertions;
 
 namespace FinanceManager.Tests.Reports;
 
@@ -41,7 +40,7 @@ public sealed class PostingTimeSeriesServiceTests
         await db.SaveChangesAsync();
         var svc = new PostingTimeSeriesService(db);
         var res = await svc.GetAsync(userA.Id, PostingKind.Bank, acc.Id, AggregatePeriod.Month, 12, null, CancellationToken.None);
-        res.Should().BeNull();
+        Assert.Null(res);
     }
 
     [Fact]
@@ -62,7 +61,9 @@ public sealed class PostingTimeSeriesServiceTests
         await db.SaveChangesAsync();
         var svc = new PostingTimeSeriesService(db);
         var res = await svc.GetAsync(user.Id, PostingKind.Bank, acc.Id, AggregatePeriod.Month, 10, null, CancellationToken.None);
-        res!.Select(r=>r.PeriodStart).Should().ContainInOrder(new DateTime(2024,1,1), new DateTime(2024,2,1));
+        Assert.NotNull(res);
+        var starts = res!.Select(r => r.PeriodStart).ToArray();
+        Assert.Equal(new[] { new DateTime(2024,1,1), new DateTime(2024,2,1) }, starts);
     }
 
     [Fact]
@@ -85,7 +86,8 @@ public sealed class PostingTimeSeriesServiceTests
         await db.SaveChangesAsync();
         var svc = new PostingTimeSeriesService(db);
         var res = await svc.GetAsync(user.Id, PostingKind.Bank, acc.Id, AggregatePeriod.Month, 12, null, CancellationToken.None);
-        res!.Count.Should().Be(12);
+        Assert.NotNull(res);
+        Assert.Equal(12, res!.Count);
     }
 
     [Fact]
@@ -139,14 +141,25 @@ public sealed class PostingTimeSeriesServiceTests
         var planSeries = await svc.GetAsync(user.Id, PostingKind.SavingsPlan, plan1.Id, AggregatePeriod.Month, 10, null, CancellationToken.None);
         var securitySeries = await svc.GetAsync(user.Id, PostingKind.Security, sec1.Id, AggregatePeriod.Month, 10, null, CancellationToken.None);
 
-        bankSeries!.Should().HaveCount(2).And.OnlyContain(p => p.Amount < 999m);
-        contactSeries!.Should().HaveCount(2).And.OnlyContain(p => p.Amount < 999m);
-        planSeries!.Should().HaveCount(2).And.OnlyContain(p => p.Amount < 999m);
-        securitySeries!.Should().HaveCount(2).And.OnlyContain(p => p.Amount < 999m);
+        Assert.NotNull(bankSeries);
+        Assert.Equal(2, bankSeries!.Count);
+        Assert.All(bankSeries, p => Assert.True(p.Amount < 999m));
 
-        bankSeries.Select(p => p.Amount).Sum().Should().Be(100m + 110m);
-        contactSeries.Select(p => p.Amount).Sum().Should().Be(200m + 210m);
-        planSeries.Select(p => p.Amount).Sum().Should().Be(300m + 310m);
-        securitySeries.Select(p => p.Amount).Sum().Should().Be(400m + 410m);
+        Assert.NotNull(contactSeries);
+        Assert.Equal(2, contactSeries!.Count);
+        Assert.All(contactSeries, p => Assert.True(p.Amount < 999m));
+
+        Assert.NotNull(planSeries);
+        Assert.Equal(2, planSeries!.Count);
+        Assert.All(planSeries, p => Assert.True(p.Amount < 999m));
+
+        Assert.NotNull(securitySeries);
+        Assert.Equal(2, securitySeries!.Count);
+        Assert.All(securitySeries, p => Assert.True(p.Amount < 999m));
+
+        Assert.Equal(100m + 110m, bankSeries.Select(p => p.Amount).Sum());
+        Assert.Equal(200m + 210m, contactSeries.Select(p => p.Amount).Sum());
+        Assert.Equal(300m + 310m, planSeries.Select(p => p.Amount).Sum());
+        Assert.Equal(400m + 410m, securitySeries.Select(p => p.Amount).Sum());
     }
 }

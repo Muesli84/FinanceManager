@@ -93,7 +93,6 @@ Gruppiert; bei gemeinsamen Namespaces mit `*`.
   - itext.bouncy-castle-adapter — https://www.nuget.org/packages/itext.bouncy-castle-adapter/
   - Portable.BouncyCastle — https://www.nuget.org/packages/Portable.BouncyCastle/
 - Test-Tooling
-  - FluentAssertions — https://www.nuget.org/packages/FluentAssertions/
   - coverlet.collector — https://www.nuget.org/packages/coverlet.collector/
   - Microsoft.NET.Test.Sdk — https://www.nuget.org/packages/Microsoft.NET.Test.Sdk/
   - xunit — https://www.nuget.org/packages/xunit/

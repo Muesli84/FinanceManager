@@ -40,7 +40,8 @@ public sealed record ReportFavoriteDto(
     DateTime CreatedUtc,
     DateTime? ModifiedUtc,
     IReadOnlyCollection<int> PostingKinds, // multi support (at least one, falls back to single PostingKind if none stored)
-    ReportFavoriteFiltersDto? Filters
+    ReportFavoriteFiltersDto? Filters,
+    bool UseValutaDate
 );
 
 public sealed record ReportFavoriteCreateRequest(
@@ -54,13 +55,14 @@ public sealed record ReportFavoriteCreateRequest(
     bool ShowChart,
     bool Expandable,
     IReadOnlyCollection<int>? PostingKinds = null, // optional multi list
-    ReportFavoriteFiltersDto? Filters = null
+    ReportFavoriteFiltersDto? Filters = null,
+    bool UseValutaDate = false
 )
 {
     public ReportFavoriteCreateRequest(string name, int postingKind, bool includeCategory, ReportInterval interval,
         bool comparePrevious, bool compareYear, bool showChart, bool expandable,
-        IReadOnlyCollection<int>? postingKinds = null, ReportFavoriteFiltersDto? filters = null)
-        : this(name, postingKind, includeCategory, interval, 24, comparePrevious, compareYear, showChart, expandable, postingKinds, filters) { }
+        IReadOnlyCollection<int>? postingKinds = null, ReportFavoriteFiltersDto? filters = null, bool useValutaDate = false)
+        : this(name, postingKind, includeCategory, interval, 24, comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate) { }
 }
 
 public sealed record ReportFavoriteUpdateRequest(
@@ -74,11 +76,12 @@ public sealed record ReportFavoriteUpdateRequest(
     bool ShowChart,
     bool Expandable,
     IReadOnlyCollection<int>? PostingKinds = null, // optional multi list
-    ReportFavoriteFiltersDto? Filters = null
+    ReportFavoriteFiltersDto? Filters = null,
+    bool UseValutaDate = false
 )
 {
     public ReportFavoriteUpdateRequest(string name, int postingKind, bool includeCategory, ReportInterval interval,
         bool comparePrevious, bool compareYear, bool showChart, bool expandable,
-        IReadOnlyCollection<int>? postingKinds = null, ReportFavoriteFiltersDto? filters = null)
-        : this(name, postingKind, includeCategory, interval, 24, comparePrevious, compareYear, showChart, expandable, postingKinds, filters) { }
+        IReadOnlyCollection<int>? postingKinds = null, ReportFavoriteFiltersDto? filters = null, bool useValutaDate = false)
+        : this(name, postingKind, includeCategory, interval, 24, comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate) { }
 }

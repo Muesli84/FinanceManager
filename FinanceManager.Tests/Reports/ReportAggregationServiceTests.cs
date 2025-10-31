@@ -10,7 +10,6 @@ using FinanceManager.Domain.Postings;
 using FinanceManager.Domain.Reports;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -97,11 +96,11 @@ public sealed class ReportAggregationServiceTests
         var query = new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 40, IncludeCategory: true, ComparePrevious: true, CompareYear: true);
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
-        result.Should().NotBeNull();
-        result.Points.Should().NotBeEmpty();
-        result.Interval.Should().Be(ReportInterval.Month);
-        result.ComparedPrevious.Should().BeTrue();
-        result.ComparedYear.Should().BeTrue();
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.Points);
+        Assert.Equal(ReportInterval.Month, result.Interval);
+        Assert.True(result.ComparedPrevious);
+        Assert.True(result.ComparedYear);
 
         // Kategorie-Gruppen-Keys
         string CatKey(ContactCategory cat) => $"Category:{PostingKind.Contact}:{cat.Id}";
@@ -113,31 +112,31 @@ public sealed class ReportAggregationServiceTests
         var catCPoint = result.Points.Single(p => p.GroupKey == CatKey(catC) && p.PeriodStart == lastPeriod);
 
         // Erwartete Monatssummen (Basis 10/20/30 jeweils *2 Postings * Anzahl Kontakte je Kategorie)
-        catAPoint.Amount.Should().Be(20m);              // 1 * (10*2)
-        catBPoint.Amount.Should().Be(20m + 40m);        // (10*2) + (20*2) = 60
-        catCPoint.Amount.Should().Be(20m + 40m + 60m);  // 20 + 40 + 60 = 120
+        Assert.Equal(20m, catAPoint.Amount);              // 1 * (10*2)
+        Assert.Equal(20m + 40m, catBPoint.Amount);        // (10*2) + (20*2) = 60
+        Assert.Equal(20m + 40m + 60m, catCPoint.Amount);  // 20 + 40 + 60 = 120
 
         // Previous (Aug 2025) sollten identisch sein, da Beträge konstant
-        catAPoint.PreviousAmount.Should().Be(20m);
-        catBPoint.PreviousAmount.Should().Be(60m);
-        catCPoint.PreviousAmount.Should().Be(120m);
+        Assert.Equal(20m, catAPoint.PreviousAmount);
+        Assert.Equal(60m, catBPoint.PreviousAmount);
+        Assert.Equal(120m, catCPoint.PreviousAmount);
 
         // YearAgo (Sep 2024) ebenfalls identisch
-        catAPoint.YearAgoAmount.Should().Be(20m);
-        catBPoint.YearAgoAmount.Should().Be(60m);
-        catCPoint.YearAgoAmount.Should().Be(120m);
+        Assert.Equal(20m, catAPoint.YearAgoAmount);
+        Assert.Equal(60m, catBPoint.YearAgoAmount);
+        Assert.Equal(120m, catCPoint.YearAgoAmount);
 
         // Child-Entity Punkte: Prüfe, dass ParentGroupKey gesetzt ist und monatliche Summen korrekt (z.B. C3)
         var c3Point = result.Points.Single(p => p.GroupKey == $"Contact:{cC3.Id}" && p.PeriodStart == lastPeriod);
-        c3Point.Amount.Should().Be(60m); // 30 * 2
-        c3Point.ParentGroupKey.Should().Be(CatKey(catC));
-        c3Point.PreviousAmount.Should().Be(60m);
-        c3Point.YearAgoAmount.Should().Be(60m);
+        Assert.Equal(60m, c3Point.Amount); // 30 * 2
+        Assert.Equal(CatKey(catC), c3Point.ParentGroupKey);
+        Assert.Equal(60m, c3Point.PreviousAmount);
+        Assert.Equal(60m, c3Point.YearAgoAmount);
 
         // Frühester Monat (Jan 2023) darf keine Previous/Year Werte haben
         var firstCatA = result.Points.Single(p => p.GroupKey == CatKey(catA) && p.PeriodStart == months.First());
-        firstCatA.PreviousAmount.Should().BeNull();
-        firstCatA.YearAgoAmount.Should().BeNull();
+        Assert.Null(firstCatA.PreviousAmount);
+        Assert.Null(firstCatA.YearAgoAmount);
     }
 
     [Fact]
@@ -183,8 +182,8 @@ public sealed class ReportAggregationServiceTests
         var query = new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Ytd, 40, IncludeCategory: true, ComparePrevious: true, CompareYear: true);
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
-        result.Interval.Should().Be(ReportInterval.Ytd);
-        result.Points.Should().NotBeEmpty();
+        Assert.Equal(ReportInterval.Ytd, result.Interval);
+        Assert.NotEmpty(result.Points);
 
         string CatKey(ContactCategory cat) => $"Category:{PostingKind.Contact}:{cat.Id}";
 
@@ -202,35 +201,35 @@ public sealed class ReportAggregationServiceTests
         var a2023 = result.Points.Single(p => p.GroupKey == CatKey(catA) && p.PeriodStart == Y(2023));
         var a2024 = result.Points.Single(p => p.GroupKey == CatKey(catA) && p.PeriodStart == Y(2024));
         var a2025 = result.Points.Single(p => p.GroupKey == CatKey(catA) && p.PeriodStart == Y(2025));
-        a2023.Amount.Should().Be(catA_2023); a2024.Amount.Should().Be(catA_2024); a2025.Amount.Should().Be(catA_2025);
+        Assert.Equal(catA_2023, a2023.Amount); Assert.Equal(catA_2024, a2024.Amount); Assert.Equal(catA_2025, a2025.Amount);
 
         var b2023 = result.Points.Single(p => p.GroupKey == CatKey(catB) && p.PeriodStart == Y(2023));
         var b2024 = result.Points.Single(p => p.GroupKey == CatKey(catB) && p.PeriodStart == Y(2024));
         var b2025 = result.Points.Single(p => p.GroupKey == CatKey(catB) && p.PeriodStart == Y(2025));
-        b2023.Amount.Should().Be(catB_2023); b2024.Amount.Should().Be(catB_2024); b2025.Amount.Should().Be(catB_2025);
+        Assert.Equal(catB_2023, b2023.Amount); Assert.Equal(catB_2024, b2024.Amount); Assert.Equal(catB_2025, b2025.Amount);
 
         var c2023 = result.Points.Single(p => p.GroupKey == CatKey(catC) && p.PeriodStart == Y(2023));
         var c2024 = result.Points.Single(p => p.GroupKey == CatKey(catC) && p.PeriodStart == Y(2024));
         var c2025 = result.Points.Single(p => p.GroupKey == CatKey(catC) && p.PeriodStart == Y(2025));
-        c2023.Amount.Should().Be(catC_2023); c2024.Amount.Should().Be(catC_2024); c2025.Amount.Should().Be(catC_2025);
+        Assert.Equal(catC_2023, c2023.Amount); Assert.Equal(catC_2024, c2024.Amount); Assert.Equal(catC_2025, c2025.Amount);
 
         // Previous / YearAgo: 2023 keine Werte, 2024 und 2025 jeweils Vorjahr
-        a2023.PreviousAmount.Should().BeNull(); a2023.YearAgoAmount.Should().BeNull();
-        a2024.PreviousAmount.Should().Be(catA_2023); a2024.YearAgoAmount.Should().Be(catA_2023);
-        a2025.PreviousAmount.Should().Be(catA_2024); a2025.YearAgoAmount.Should().Be(catA_2024);
+        Assert.Null(a2023.PreviousAmount); Assert.Null(a2023.YearAgoAmount);
+        Assert.Equal(catA_2023, a2024.PreviousAmount); Assert.Equal(catA_2023, a2024.YearAgoAmount);
+        Assert.Equal(catA_2024, a2025.PreviousAmount); Assert.Equal(catA_2024, a2025.YearAgoAmount);
 
-        b2024.PreviousAmount.Should().Be(catB_2023); b2024.YearAgoAmount.Should().Be(catB_2023);
-        b2025.PreviousAmount.Should().Be(catB_2024); b2025.YearAgoAmount.Should().Be(catB_2024);
+        Assert.Equal(catB_2023, b2024.PreviousAmount); Assert.Equal(catB_2023, b2024.YearAgoAmount);
+        Assert.Equal(catB_2024, b2025.PreviousAmount); Assert.Equal(catB_2024, b2025.YearAgoAmount);
 
-        c2024.PreviousAmount.Should().Be(catC_2023); c2024.YearAgoAmount.Should().Be(catC_2023);
-        c2025.PreviousAmount.Should().Be(catC_2024); c2025.YearAgoAmount.Should().Be(catC_2024);
+        Assert.Equal(catC_2023, c2024.PreviousAmount); Assert.Equal(catC_2023, c2024.YearAgoAmount);
+        Assert.Equal(catC_2024, c2025.PreviousAmount); Assert.Equal(catC_2024, c2025.YearAgoAmount);
 
         // Child (z.B. C3) – YTD Summen: Basis 60 pro Monat => 60 * monthsYear2025
         var c3_2025 = result.Points.Single(p => p.GroupKey == $"Contact:{cC3.Id}" && p.PeriodStart == Y(2025));
-        c3_2025.Amount.Should().Be(60m * monthsYear2025);
-        c3_2025.PreviousAmount.Should().Be(60m * monthsPrevYears); // Vorjahr (gleicher cutoff)
-        c3_2025.YearAgoAmount.Should().Be(60m * monthsPrevYears);
-        c3_2025.ParentGroupKey.Should().Be(CatKey(catC));
+        Assert.Equal(60m * monthsYear2025, c3_2025.Amount);
+        Assert.Equal(60m * monthsPrevYears, c3_2025.PreviousAmount); // Vorjahr (gleicher cutoff)
+        Assert.Equal(60m * monthsPrevYears, c3_2025.YearAgoAmount);
+        Assert.Equal(CatKey(catC), c3_2025.ParentGroupKey);
     }
 
     [Fact]
@@ -309,30 +308,30 @@ public sealed class ReportAggregationServiceTests
         var rowsM2 = result.Points.Where(p => p.PeriodStart == m2).ToList();
 
         // Bank entity rows only for acc1 & acc2
-        rowsM2.Should().Contain(p => p.GroupKey == $"Account:{acc1.Id}");
-        rowsM2.Should().Contain(p => p.GroupKey == $"Account:{acc2.Id}");
-        rowsM2.Should().NotContain(p => p.GroupKey == $"Account:{acc3.Id}");
+        Assert.True(rowsM2.Any(p => p.GroupKey == $"Account:{acc1.Id}"));
+        Assert.True(rowsM2.Any(p => p.GroupKey == $"Account:{acc2.Id}"));
+        Assert.False(rowsM2.Any(p => p.GroupKey == $"Account:{acc3.Id}"));
 
         // Contact entity rows only for c1 & c2
-        rowsM2.Should().Contain(p => p.GroupKey == $"Contact:{c1.Id}");
-        rowsM2.Should().Contain(p => p.GroupKey == $"Contact:{c2.Id}");
-        rowsM2.Should().NotContain(p => p.GroupKey == $"Contact:{c3.Id}");
+        Assert.True(rowsM2.Any(p => p.GroupKey == $"Contact:{c1.Id}"));
+        Assert.True(rowsM2.Any(p => p.GroupKey == $"Contact:{c2.Id}"));
+        Assert.False(rowsM2.Any(p => p.GroupKey == $"Contact:{c3.Id}"));
 
         // ParentGroupKey should be Type:Kind in multi-mode
-        rowsM2.Single(p => p.GroupKey == $"Account:{acc1.Id}").ParentGroupKey.Should().Be("Type:Bank");
-        rowsM2.Single(p => p.GroupKey == $"Contact:{c1.Id}").ParentGroupKey.Should().Be("Type:Contact");
+        Assert.Equal("Type:Bank", rowsM2.Single(p => p.GroupKey == $"Account:{acc1.Id}").ParentGroupKey);
+        Assert.Equal("Type:Contact", rowsM2.Single(p => p.GroupKey == $"Contact:{c1.Id}").ParentGroupKey);
 
         // Amounts
-        rowsM2.Single(p => p.GroupKey == $"Account:{acc1.Id}").Amount.Should().Be(110m);
-        rowsM2.Single(p => p.GroupKey == $"Account:{acc2.Id}").Amount.Should().Be(210m);
-        rowsM2.Single(p => p.GroupKey == $"Contact:{c1.Id}").Amount.Should().Be(20m);
-        rowsM2.Single(p => p.GroupKey == $"Contact:{c2.Id}").Amount.Should().Be(30m);
+        Assert.Equal(110m, rowsM2.Single(p => p.GroupKey == $"Account:{acc1.Id}").Amount);
+        Assert.Equal(210m, rowsM2.Single(p => p.GroupKey == $"Account:{acc2.Id}").Amount);
+        Assert.Equal(20m, rowsM2.Single(p => p.GroupKey == $"Contact:{c1.Id}").Amount);
+        Assert.Equal(30m, rowsM2.Single(p => p.GroupKey == $"Contact:{c2.Id}").Amount);
 
         // Type aggregates exist for both kinds and equal the sum of their selected entities
         var typeBankM2 = rowsM2.Single(p => p.GroupKey == "Type:Bank");
         var typeContactM2 = rowsM2.Single(p => p.GroupKey == "Type:Contact");
-        typeBankM2.Amount.Should().Be(110m + 210m);
-        typeContactM2.Amount.Should().Be(20m + 30m);
+        Assert.Equal(110m + 210m, typeBankM2.Amount);
+        Assert.Equal(20m + 30m, typeContactM2.Amount);
     }
 
     [Fact]
@@ -388,21 +387,21 @@ public sealed class ReportAggregationServiceTests
 
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
-        result.Should().NotBeNull();
-        result.Interval.Should().Be(ReportInterval.Month);
-        result.ComparedPrevious.Should().BeTrue();
+        Assert.NotNull(result);
+        Assert.Equal(ReportInterval.Month, result.Interval);
+        Assert.True(result.ComparedPrevious);
 
         string CatKey(SecurityCategory cat) => $"Category:{PostingKind.Security}:{cat.Id}";
         var groupKey = CatKey(secCat);
 
         // Expect both rows: prev (1.4) and analysis (0) with PreviousAmount=1.4
         var prevRow = result.Points.Single(p => p.GroupKey == groupKey && p.PeriodStart == prev);
-        prevRow.Amount.Should().Be(1.4m);
-        prevRow.PreviousAmount.Should().BeNull(); // no data two months back
+        Assert.Equal(1.4m, prevRow.Amount);
+        Assert.Null(prevRow.PreviousAmount); // no data two months back
 
         var currRow = result.Points.Single(p => p.GroupKey == groupKey && p.PeriodStart == analysis);
-        currRow.Amount.Should().Be(0m);
-        currRow.PreviousAmount.Should().Be(1.4m);
+        Assert.Equal(0m, currRow.Amount);
+        Assert.Equal(1.4m, currRow.PreviousAmount);
     }
 
     [Fact]
@@ -455,23 +454,23 @@ public sealed class ReportAggregationServiceTests
 
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
-        result.Should().NotBeNull();
-        result.Interval.Should().Be(ReportInterval.Month);
-        result.ComparedPrevious.Should().BeFalse();
-        result.ComparedYear.Should().BeFalse();
+        Assert.NotNull(result);
+        Assert.Equal(ReportInterval.Month, result.Interval);
+        Assert.False(result.ComparedPrevious);
+        Assert.False(result.ComparedYear);
 
         string CatKey(SecurityCategory cat) => $"Category:{PostingKind.Security}:{cat.Id}";
         var groupKey = CatKey(secCat);
 
         // Only prev row should exist, current analysis month should not be injected without comparisons
         var prevRow = result.Points.Single(p => p.GroupKey == groupKey && p.PeriodStart == prev);
-        prevRow.Amount.Should().Be(1.4m);
-        prevRow.PreviousAmount.Should().BeNull();
-        prevRow.YearAgoAmount.Should().BeNull();
+        Assert.Equal(1.4m, prevRow.Amount);
+        Assert.Null(prevRow.PreviousAmount);
+        Assert.Null(prevRow.YearAgoAmount);
 
         var currRow = result.Points.Single(p => p.GroupKey == groupKey && p.PeriodStart == analysis);
-        currRow.Amount.Should().Be(0m);
-        currRow.PreviousAmount.Should().Be(null);
+        Assert.Equal(0m, currRow.Amount);
+        Assert.Null(currRow.PreviousAmount);
     }
 
     [Fact]
@@ -524,14 +523,14 @@ public sealed class ReportAggregationServiceTests
 
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
-        result.Should().NotBeNull();
-        result.ComparedPrevious.Should().BeTrue();
-        result.Interval.Should().Be(ReportInterval.Month);
+        Assert.NotNull(result);
+        Assert.True(result.ComparedPrevious);
+        Assert.Equal(ReportInterval.Month, result.Interval);
 
         string CatKey(SecurityCategory cat) => $"Category:{PostingKind.Security}:{cat.Id}";
         var groupKey = CatKey(secCat);
 
-        result.Points.Count().Should().Be(0);
+        Assert.Equal(0, result.Points.Count());
     }
 
     private sealed record SeedEntities(
@@ -703,9 +702,9 @@ public sealed class ReportAggregationServiceTests
         {
             var q = new ReportAggregationQuery(user.Id, (int)kind, ReportInterval.Month, 24, IncludeCategory: false, ComparePrevious: true, CompareYear: true, PostingKinds: null, AnalysisDate: analysis, Filters: null);
             var result = await sut.QueryAsync(q, CancellationToken.None);
-            result.Interval.Should().Be(ReportInterval.Month);
-            result.ComparedPrevious.Should().BeTrue();
-            result.ComparedYear.Should().BeTrue();
+            Assert.Equal(ReportInterval.Month, result.Interval);
+            Assert.True(result.ComparedPrevious);
+            Assert.True(result.ComparedYear);
 
             (Guid? acc, Guid? con, Guid? sav, Guid? sec) Map(Guid? id) => kind switch
             {
@@ -724,8 +723,8 @@ public sealed class ReportAggregationServiceTests
 
             var r1 = result.Points.Single(p => p.GroupKey == Key1 && p.PeriodStart == analysis);
             var r2 = result.Points.Single(p => p.GroupKey == Key2 && p.PeriodStart == analysis);
-            r1.Amount.Should().Be(c1); r1.PreviousAmount.Should().Be(p1); r1.YearAgoAmount.Should().Be(y1);
-            r2.Amount.Should().Be(c2); r2.PreviousAmount.Should().Be(p2); r2.YearAgoAmount.Should().Be(y2);
+            Assert.Equal(c1, r1.Amount); Assert.Equal(p1, r1.PreviousAmount); Assert.Equal(y1, r1.YearAgoAmount);
+            Assert.Equal(c2, r2.Amount); Assert.Equal(p2, r2.PreviousAmount); Assert.Equal(y2, r2.YearAgoAmount);
         }
 
         await AssertForKindAsync(PostingKind.Bank, seed.Entities.Acc1.Id, seed.Entities.Acc2.Id);
@@ -760,7 +759,7 @@ public sealed class ReportAggregationServiceTests
 
         var q = new ReportAggregationQuery(user.Id, (int)PostingKind.Bank, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: true, PostingKinds: null, AnalysisDate: analysis, Filters: filters);
         var result = await sut.QueryAsync(q, CancellationToken.None);
-        result.Points.Should().BeEmpty();
+        Assert.Empty(result.Points);
     }
 
     /// <summary>
@@ -845,7 +844,7 @@ public sealed class ReportAggregationServiceTests
                     seed.Sums[(PostingKind.Bank, seed.Entities.Acc1.Id, null, null, null, m)] +
                     seed.Sums[(PostingKind.Bank, seed.Entities.Acc2.Id, null, null, null, m)]);
             }
-            totalReturned.Should().Be(totalSeeded);
+            Assert.Equal(totalSeeded, totalReturned);
             return;
         }
 
@@ -874,8 +873,8 @@ public sealed class ReportAggregationServiceTests
         }
 
         var rowPoint = result.Points.SingleOrDefault(p => p.GroupKey == groupKey && p.PeriodStart == ps);
-        rowPoint.Should().NotBeNull();
-        rowPoint!.Amount.Should().Be(expected);
+        Assert.NotNull(rowPoint);
+        Assert.Equal(expected, rowPoint!.Amount);
 
         // Previous for exact previous interval should exist when months available
         DateTime prevStart = interval switch
@@ -889,11 +888,11 @@ public sealed class ReportAggregationServiceTests
         var prevRow = result.Points.SingleOrDefault(p => p.GroupKey == groupKey && p.PeriodStart == prevStart);
         if (prevRow == null)
         {
-            rowPoint.PreviousAmount.Should().BeNull();
+            Assert.Null(rowPoint.PreviousAmount);
         }
         else
         {
-            rowPoint.PreviousAmount.Should().Be(prevRow.Amount);
+            Assert.Equal(prevRow.Amount, rowPoint.PreviousAmount);
         }
      }
 }

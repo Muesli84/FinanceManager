@@ -225,4 +225,45 @@ public sealed class SavingsPlanEditViewModelTests
         save = groups.First(g => g.Title == "Ribbon_Group_Edit").Items.First(i => i.Action == "Save");
         Assert.False(save.Disabled);
     }
+
+    [Fact]
+    public async Task InitializeAsync_Loads_Analysis_For_OpenPlan_With_Postings()
+    {
+        var id = Guid.NewGuid();
+        var catId = Guid.NewGuid();
+        var plan = new SavingsPlanDto(id, "Plan Open", SavingsPlanType.Open, 0m, null, null, true, DateTime.UtcNow, null, catId, null);
+        // Postings: 100,100,100,-300,50,100 -> accumulated = 150
+        var analysis = new SavingsPlanAnalysisDto(id, true, 0m, null, 150m, 0m, 0);
+        var cats = new[] { new SavingsPlanCategoryDto { Id = catId, Name = "Sparen" } };
+
+        var client = CreateHttpClient(req =>
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/savings-plans/{id}")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(PlanJson(plan), Encoding.UTF8, "application/json") };
+            }
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/savings-plans/{id}/analysis")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(AnalysisJson(analysis), Encoding.UTF8, "application/json") };
+            }
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/savings-plan-categories")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(CategoriesJson(cats), Encoding.UTF8, "application/json") };
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+
+        var vm = new SavingsPlanEditViewModel(CreateSp(), new TestHttpClientFactory(client));
+        await vm.InitializeAsync(id, backNav: null, draftId: null, entryId: null, prefillName: null);
+
+        Assert.True(vm.IsEdit);
+        Assert.True(vm.Loaded);
+        Assert.NotNull(vm.Analysis);
+        Assert.Equal(150m, vm.Analysis!.AccumulatedAmount);
+        Assert.Equal(0m, vm.Analysis!.TargetAmount);
+        Assert.Null(vm.Analysis!.TargetDate);
+        Assert.True(vm.Analysis!.TargetReachable);
+        Assert.Single(vm.Categories);
+        Assert.Equal(catId, vm.Model.CategoryId);
+    }
 }

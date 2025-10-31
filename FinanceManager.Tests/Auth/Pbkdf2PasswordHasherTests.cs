@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using FinanceManager.Infrastructure.Auth;
-using FluentAssertions;
 using Xunit;
 using Microsoft.AspNetCore.Identity;
 using FinanceManager.Domain.Users;
@@ -24,9 +23,9 @@ public sealed class Pbkdf2PasswordHasherTests
         var h2 = _sut.HashPassword(user, password);
 
         // Assert
-        h1.Should().NotBe(h2, "salt must be random");
-        _sut.VerifyHashedPassword(user, h1, password).Should().Be(PasswordVerificationResult.Success);
-        _sut.VerifyHashedPassword(user, h2, password).Should().Be(PasswordVerificationResult.Success);
+        Assert.NotEqual(h1, h2);
+        Assert.Equal(PasswordVerificationResult.Success, _sut.VerifyHashedPassword(user, h1, password));
+        Assert.Equal(PasswordVerificationResult.Success, _sut.VerifyHashedPassword(user, h2, password));
     }
 
     [Fact]
@@ -34,7 +33,7 @@ public sealed class Pbkdf2PasswordHasherTests
     {
         var user = new User("u1", "initial", false);
         var hash = _sut.HashPassword(user, "secret");
-        _sut.VerifyHashedPassword(user, hash, "secret").Should().Be(PasswordVerificationResult.Success);
+        Assert.Equal(PasswordVerificationResult.Success, _sut.VerifyHashedPassword(user, hash, "secret"));
     }
 
     [Fact]
@@ -42,7 +41,7 @@ public sealed class Pbkdf2PasswordHasherTests
     {
         var user = new User("u2", "initial", false);
         var hash = _sut.HashPassword(user, "secret");
-        _sut.VerifyHashedPassword(user, hash, "other").Should().Be(PasswordVerificationResult.Failed);
+        Assert.Equal(PasswordVerificationResult.Failed, _sut.VerifyHashedPassword(user, hash, "other"));
     }
 
     [Theory]
@@ -53,7 +52,7 @@ public sealed class Pbkdf2PasswordHasherTests
     public void Verify_MalformedHash_False(string malformed)
     {
         var user = new User("u3", "initial", false);
-        _sut.VerifyHashedPassword(user, malformed, "pw").Should().Be(PasswordVerificationResult.Failed);
+        Assert.Equal(PasswordVerificationResult.Failed, _sut.VerifyHashedPassword(user, malformed, "pw"));
     }
 
     [Fact]
@@ -62,13 +61,13 @@ public sealed class Pbkdf2PasswordHasherTests
         var user = new User("u4", "initial", false);
         var hash = _sut.HashPassword(user, "pw");
         var parts = hash.Split('|');
-        parts.Length.Should().Be(4);
-        parts[0].Should().Be("pbkdf2");
+        Assert.Equal(4, parts.Length);
+        Assert.Equal("pbkdf2", parts[0]);
         int iterations = int.Parse(parts[1]);
-        iterations.Should().BeGreaterThan(50_000); // safety floor
+        Assert.True(iterations > 50_000, "iterations should be greater than safety floor");
         var salt = Convert.FromBase64String(parts[2]);
         var key = Convert.FromBase64String(parts[3]);
-        salt.Length.Should().Be(16);
-        key.Length.Should().Be(32);
+        Assert.Equal(16, salt.Length);
+        Assert.Equal(32, key.Length);
     }
 }

@@ -6,7 +6,6 @@ using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
-using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -91,7 +90,7 @@ public sealed class StatementDraftClassificationTests
 
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
-        draft.DetectedAccountId.Should().Be(account.Id);
+        Assert.Equal(account.Id, draft.DetectedAccountId);
         conn.Dispose();
     }
 
@@ -109,7 +108,7 @@ public sealed class StatementDraftClassificationTests
 
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
-        draft.DetectedAccountId.Should().Be(account.Id);
+        Assert.Equal(account.Id, draft.DetectedAccountId);
         conn.Dispose();
     }
 
@@ -130,7 +129,7 @@ public sealed class StatementDraftClassificationTests
         
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
-        draft.DetectedAccountId.Should().BeNull();
+        Assert.Null(draft.DetectedAccountId);
         conn.Dispose();
     }
 
@@ -147,7 +146,7 @@ public sealed class StatementDraftClassificationTests
 
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
-        draft.DetectedAccountId.Should().BeNull();
+        Assert.Null(draft.DetectedAccountId);
         conn.Dispose();
     }
 
@@ -164,7 +163,7 @@ public sealed class StatementDraftClassificationTests
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
-        entry.Status.Should().Be(StatementDraftEntryStatus.Announced);
+        Assert.Equal(StatementDraftEntryStatus.Announced, entry.Status);
         conn.Dispose();
     }
 
@@ -183,7 +182,7 @@ public sealed class StatementDraftClassificationTests
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
-        entry.Status.Should().Be(StatementDraftEntryStatus.AlreadyBooked);
+        Assert.Equal(StatementDraftEntryStatus.AlreadyBooked, entry.Status);
         conn.Dispose();
     }
 
@@ -201,11 +200,9 @@ public sealed class StatementDraftClassificationTests
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
-        entry.ContactId.Should().Be(contact.Id);
+        Assert.Equal(contact.Id, entry.ContactId);
         conn.Dispose();
     }
-
-    
 
     [Fact]
     public async Task Entry_BankContact_MatchesAccountBankContact()
@@ -221,7 +218,7 @@ public sealed class StatementDraftClassificationTests
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
-        entry.ContactId.Should().Be(contact.Id);
+        Assert.Equal(contact.Id, entry.ContactId);
         conn.Dispose();
     }
 
@@ -239,7 +236,7 @@ public sealed class StatementDraftClassificationTests
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
-        entry.ContactId.Should().Be(contact.Id);
+        Assert.Equal(contact.Id, entry.ContactId);
         conn.Dispose();
     }
 
@@ -259,8 +256,8 @@ public sealed class StatementDraftClassificationTests
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
-        entry.ContactId.Should().Be(ownerContact.Id);
-        entry.IsCostNeutral.Should().BeTrue();
+        Assert.Equal(ownerContact.Id, entry.ContactId);
+        Assert.True(entry.IsCostNeutral);
         conn.Dispose();
     }
 
@@ -280,7 +277,7 @@ public sealed class StatementDraftClassificationTests
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
-        entry.ContactId.Should().Be(recipient.Id);
+        Assert.Equal(recipient.Id, entry.ContactId);
         conn.Dispose();
     }
 
@@ -300,7 +297,7 @@ public sealed class StatementDraftClassificationTests
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
-        entry.ContactId.Should().Be(intermediary.Id);
+        Assert.Equal(intermediary.Id, entry.ContactId);
         conn.Dispose();
     }
 }

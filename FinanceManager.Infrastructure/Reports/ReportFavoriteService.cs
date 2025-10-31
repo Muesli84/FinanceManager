@@ -78,7 +78,8 @@ public sealed class ReportFavoriteService : IReportFavoriteService
                 r.SavingsPlanCategoryIdsCsv,
                 r.SecurityCategoryIdsCsv,
                 r.SecuritySubTypesCsv,
-                r.IncludeDividendRelated
+                r.IncludeDividendRelated,
+                r.UseValutaDate
             })
             .ToListAsync(ct);
 
@@ -87,6 +88,8 @@ public sealed class ReportFavoriteService : IReportFavoriteService
             var entity = new ReportFavorite(ownerUserId, r.Name, r.PostingKind, r.IncludeCategory, r.Interval, r.ComparePrevious, r.CompareYear, r.ShowChart, r.Expandable, r.Take);
             if (!string.IsNullOrWhiteSpace(r.PostingKindsCsv)) { entity.SetPostingKinds(ParseKinds(r.PostingKindsCsv, r.PostingKind)); }
             entity.SetFilters(ParseCsv(r.AccountIdsCsv), ParseCsv(r.ContactIdsCsv), ParseCsv(r.SavingsPlanIdsCsv), ParseCsv(r.SecurityIdsCsv), ParseCsv(r.ContactCategoryIdsCsv), ParseCsv(r.SavingsPlanCategoryIdsCsv), ParseCsv(r.SecurityCategoryIdsCsv), ParseCsvInt(r.SecuritySubTypesCsv), r.IncludeDividendRelated);
+            // apply persisted UseValutaDate onto entity state for DTO creation
+            if (r.UseValutaDate) { entity.Update(entity.PostingKind, entity.IncludeCategory, entity.Interval, entity.ComparePrevious, entity.CompareYear, entity.ShowChart, entity.Expandable, entity.Take, r.UseValutaDate); }
             return new ReportFavoriteDto(
                 r.Id,
                 r.Name,
@@ -102,6 +105,7 @@ public sealed class ReportFavoriteService : IReportFavoriteService
                 r.ModifiedUtc,
                 ParseKinds(r.PostingKindsCsv, r.PostingKind),
                 ToDtoFilters(entity)
+                , r.UseValutaDate
             );
         }).ToList();
     }
@@ -133,13 +137,15 @@ public sealed class ReportFavoriteService : IReportFavoriteService
                 r.SavingsPlanCategoryIdsCsv,
                 r.SecurityCategoryIdsCsv,
                 r.SecuritySubTypesCsv,
-                r.IncludeDividendRelated
+                r.IncludeDividendRelated,
+                r.UseValutaDate
             })
             .FirstOrDefaultAsync(ct);
         if (r == null) { return null; }
         var entity = new ReportFavorite(ownerUserId, r.Name, r.PostingKind, r.IncludeCategory, r.Interval, r.ComparePrevious, r.CompareYear, r.ShowChart, r.Expandable, r.Take);
         if (!string.IsNullOrWhiteSpace(r.PostingKindsCsv)) { entity.SetPostingKinds(ParseKinds(r.PostingKindsCsv, r.PostingKind)); }
         entity.SetFilters(ParseCsv(r.AccountIdsCsv), ParseCsv(r.ContactIdsCsv), ParseCsv(r.SavingsPlanIdsCsv), ParseCsv(r.SecurityIdsCsv), ParseCsv(r.ContactCategoryIdsCsv), ParseCsv(r.SavingsPlanCategoryIdsCsv), ParseCsv(r.SecurityCategoryIdsCsv), ParseCsvInt(r.SecuritySubTypesCsv), r.IncludeDividendRelated);
+        if (r.UseValutaDate) { entity.Update(entity.PostingKind, entity.IncludeCategory, entity.Interval, entity.ComparePrevious, entity.CompareYear, entity.ShowChart, entity.Expandable, entity.Take, r.UseValutaDate); }
         return new ReportFavoriteDto(
             r.Id,
             r.Name,
@@ -155,6 +161,7 @@ public sealed class ReportFavoriteService : IReportFavoriteService
             r.ModifiedUtc,
             ParseKinds(r.PostingKindsCsv, r.PostingKind),
             ToDtoFilters(entity)
+            , r.UseValutaDate
         );
     }
 
@@ -178,9 +185,11 @@ public sealed class ReportFavoriteService : IReportFavoriteService
             entity.SetPostingKinds(request.PostingKinds);
         }
         ApplyFilters(entity, request.Filters);
+        // persist UseValutaDate on entity state and touch
+        entity.Update(entity.PostingKind, entity.IncludeCategory, entity.Interval, entity.ComparePrevious, entity.CompareYear, entity.ShowChart, entity.Expandable, entity.Take, request.UseValutaDate);
         _db.ReportFavorites.Add(entity);
         await _db.SaveChangesAsync(ct);
-        return new ReportFavoriteDto(entity.Id, entity.Name, entity.PostingKind, entity.IncludeCategory, entity.Interval, entity.Take, entity.ComparePrevious, entity.CompareYear, entity.ShowChart, entity.Expandable, entity.CreatedUtc, entity.ModifiedUtc, EffectiveKinds(entity), ToDtoFilters(entity));
+        return new ReportFavoriteDto(entity.Id, entity.Name, entity.PostingKind, entity.IncludeCategory, entity.Interval, entity.Take, entity.ComparePrevious, entity.CompareYear, entity.ShowChart, entity.Expandable, entity.CreatedUtc, entity.ModifiedUtc, EffectiveKinds(entity), ToDtoFilters(entity), entity.UseValutaDate);
     }
 
     public async Task<ReportFavoriteDto?> UpdateAsync(Guid id, Guid ownerUserId, ReportFavoriteUpdateRequest request, CancellationToken ct)
@@ -203,7 +212,7 @@ public sealed class ReportFavoriteService : IReportFavoriteService
         }
 
         entity.Rename(name);
-        entity.Update(request.PostingKind, request.IncludeCategory, request.Interval, request.ComparePrevious, request.CompareYear, request.ShowChart, request.Expandable, request.Take);
+        entity.Update(request.PostingKind, request.IncludeCategory, request.Interval, request.ComparePrevious, request.CompareYear, request.ShowChart, request.Expandable, request.Take, request.UseValutaDate);
         if (request.PostingKinds is { Count: > 0 })
         {
             entity.SetPostingKinds(request.PostingKinds);
@@ -214,7 +223,7 @@ public sealed class ReportFavoriteService : IReportFavoriteService
         }
         ApplyFilters(entity, request.Filters);
         await _db.SaveChangesAsync(ct);
-        return new ReportFavoriteDto(entity.Id, entity.Name, entity.PostingKind, entity.IncludeCategory, entity.Interval, entity.Take, entity.ComparePrevious, entity.CompareYear, entity.ShowChart, entity.Expandable, entity.CreatedUtc, entity.ModifiedUtc, EffectiveKinds(entity), ToDtoFilters(entity));
+        return new ReportFavoriteDto(entity.Id, entity.Name, entity.PostingKind, entity.IncludeCategory, entity.Interval, entity.Take, entity.ComparePrevious, entity.CompareYear, entity.ShowChart, entity.Expandable, entity.CreatedUtc, entity.ModifiedUtc, EffectiveKinds(entity), ToDtoFilters(entity), entity.UseValutaDate);
     }
 
     public async Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct)

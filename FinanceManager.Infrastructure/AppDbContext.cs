@@ -120,6 +120,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
         modelBuilder.Entity<Posting>(b =>
         {
             b.HasIndex(x => new { x.AccountId, x.BookingDate });
+            b.Property(p => p.ParentId);
         });
 
         modelBuilder.Entity<StatementDraft>(b =>
@@ -208,18 +209,19 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             b.HasKey(x => x.Id);
             b.Property(x => x.Amount).HasPrecision(18,2);
             b.Property(x => x.SecuritySubType);
-            // broad unique index including subtype (only matters for security)
-            b.HasIndex(x => new { x.Kind, x.AccountId, x.ContactId, x.SavingsPlanId, x.SecurityId, x.SecuritySubType, x.Period, x.PeriodStart }).IsUnique();
-            b.HasIndex(x => new { x.Kind, x.AccountId, x.Period, x.PeriodStart })
+            b.Property(x => x.DateKind);
+            // broad unique index including subtype and date kind (only matters for security)
+            b.HasIndex(x => new { x.Kind, x.AccountId, x.ContactId, x.SavingsPlanId, x.SecurityId, x.SecuritySubType, x.Period, x.PeriodStart, x.DateKind }).IsUnique();
+            b.HasIndex(x => new { x.Kind, x.AccountId, x.Period, x.PeriodStart, x.DateKind })
                 .IsUnique()
                 .HasFilter("[AccountId] IS NOT NULL AND [ContactId] IS NULL AND [SavingsPlanId] IS NULL AND [SecurityId] IS NULL");
-            b.HasIndex(x => new { x.Kind, x.ContactId, x.Period, x.PeriodStart })
+            b.HasIndex(x => new { x.Kind, x.ContactId, x.Period, x.PeriodStart, x.DateKind })
                 .IsUnique()
                 .HasFilter("[ContactId] IS NOT NULL AND [AccountId] IS NULL AND [SavingsPlanId] IS NULL AND [SecurityId] IS NULL");
-            b.HasIndex(x => new { x.Kind, x.SavingsPlanId, x.Period, x.PeriodStart })
+            b.HasIndex(x => new { x.Kind, x.SavingsPlanId, x.Period, x.PeriodStart, x.DateKind })
                 .IsUnique()
                 .HasFilter("[SavingsPlanId] IS NOT NULL AND [AccountId] IS NULL AND [ContactId] IS NULL AND [SecurityId] IS NULL");
-            b.HasIndex(x => new { x.Kind, x.SecurityId, x.SecuritySubType, x.Period, x.PeriodStart })
+            b.HasIndex(x => new { x.Kind, x.SecurityId, x.SecuritySubType, x.Period, x.PeriodStart, x.DateKind })
                 .IsUnique()
                 .HasFilter("[SecurityId] IS NOT NULL AND [AccountId] IS NULL AND [ContactId] IS NULL AND [SavingsPlanId] IS NULL");
         });
