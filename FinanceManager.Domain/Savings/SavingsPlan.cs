@@ -18,6 +18,9 @@ public sealed class SavingsPlan
     public Guid? CategoryId { get; private set; }
     public string? ContractNumber { get; private set; }
 
+    // Optional reference to a symbol attachment
+    public Guid? SymbolAttachmentId { get; private set; }
+
     public SavingsPlan(Guid ownerUserId, string name, SavingsPlanType type, decimal? targetAmount, DateTime? targetDate, SavingsPlanInterval? interval, Guid? categoryId = null)
     {
         Id = Guid.NewGuid();
@@ -44,6 +47,11 @@ public sealed class SavingsPlan
     public void SetInterval(SavingsPlanInterval? interval) => Interval = interval;
     public void SetCategory(Guid? categoryId) => CategoryId = categoryId;
     public void SetContractNumber(string? contractNumber) => ContractNumber = string.IsNullOrWhiteSpace(contractNumber) ? null : contractNumber.Trim();
+
+    public void SetSymbolAttachment(Guid? attachmentId)
+    {
+        SymbolAttachmentId = attachmentId == Guid.Empty ? null : attachmentId;
+    }
 
     /// <summary>
     /// Advances the TargetDate for recurring plans while the due date is reached or passed.

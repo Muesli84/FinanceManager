@@ -8,6 +8,8 @@
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Contacts> Localizer
 @using FinanceManager.Web.ViewModels
 @inject IServiceProvider Services
+@using System
+@using FinanceManager.Domain.Attachments
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="Contacts.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -35,6 +37,7 @@ else
     <table class="fm-table contacts-table">
         <thead>
         <tr>
+            <th></th>
             <th>@Localizer["Th_Name"]</th>
             <th>@Localizer["Th_Group"]</th>
             <th>@Localizer["Th_Type"]</th>
@@ -44,6 +47,14 @@ else
         @foreach (var c in _vm.Contacts)
         {
             <tr style="cursor:pointer;" @onclick="() => OpenDetail(c.Id)">
+                <td style="width:56px;">
+                    @if (c.DisplaySymbolAttachmentId != null)
+                    {
+                        <div style="width:40px;height:40px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                            <img src="@($"/api/attachments/{c.DisplaySymbolAttachmentId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                        </div>
+                    }
+                </td>
                 <td>@c.Name</td>
                 <td>@(string.IsNullOrEmpty(c.CategoryName) ? "-" : c.CategoryName)</td>
                 <td>@c.Type</td>
@@ -51,7 +62,7 @@ else
         }
         @if (_vm.Contacts.Count == 0 && !_vm.IsLoading)
         {
-            <tr><td colspan="3" style="opacity:.6;">@Localizer["NoContacts"]</td></tr>
+            <tr><td colspan="4" style="opacity:.6;">@Localizer["NoContacts"]</td></tr>
         }
         </tbody>
     </table>
@@ -199,6 +210,9 @@ else
             case "ClearFilter":
                 _filter = string.Empty;
                 _ = _vm?.SetFilterAsync(_filter);
+                break;
+            case "Categories":
+                Navigation.NavigateTo("/contact-categories");
                 break;
         }
     }

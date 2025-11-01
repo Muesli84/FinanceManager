@@ -36,13 +36,15 @@ public sealed class AccountsController : ControllerBase
         AccountType Type,
         string? Iban,
         Guid? BankContactId,
-        string? NewBankContactName);
+        string? NewBankContactName,
+        Guid? SymbolAttachmentId);
 
     public sealed record AccountUpdateRequest([
         Required, MinLength(2)] string Name,
         string? Iban,
         Guid? BankContactId,
-        string? NewBankContactName);
+        string? NewBankContactName,
+        Guid? SymbolAttachmentId);
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AccountDto>), StatusCodes.Status200OK)]
@@ -106,6 +108,11 @@ public sealed class AccountsController : ControllerBase
             }
 
             var account = await _accounts.CreateAsync(_current.UserId, req.Name.Trim(), req.Type, req.Iban?.Trim(), bankContactId, ct);
+            if (req.SymbolAttachmentId.HasValue)
+            {
+                await _accounts.SetSymbolAttachmentAsync(account.Id, _current.UserId, req.SymbolAttachmentId.Value, ct);
+                account = await _accounts.GetAsync(account.Id, _current.UserId, ct) ?? account;
+            }
             return CreatedAtRoute("GetAccount", new { id = account.Id }, account);
         }
         catch (ArgumentException ex)
@@ -142,7 +149,13 @@ public sealed class AccountsController : ControllerBase
                 return BadRequest(new { error = "Bank contact required (existing or new)" });
             }
             var updated = await _accounts.UpdateAsync(id, _current.UserId, req.Name.Trim(), req.Iban?.Trim(), bankContactId, ct);
-            return updated is null ? NotFound() : Ok(updated);
+            if (updated is null) return NotFound();
+            if (req.SymbolAttachmentId.HasValue)
+            {
+                await _accounts.SetSymbolAttachmentAsync(id, _current.UserId, req.SymbolAttachmentId.Value, ct);
+                updated = await _accounts.GetAsync(id, _current.UserId, ct) ?? updated;
+            }
+            return Ok(updated);
         }
         catch (ArgumentException ex)
         {
@@ -168,6 +181,51 @@ public sealed class AccountsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Delete account {AccountId} failed", id);
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+
+    [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct)
+    {
+        try
+        {
+            // Will throw ArgumentException if account not found or not owned
+            await _accounts.SetSymbolAttachmentAsync(id, _current.UserId, attachmentId, ct);
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "SetSymbol failed for account {AccountId}", id);
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SetSymbol failed for account {AccountId}", id);
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+
+    [HttpDelete("{id:guid}/symbol")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearSymbolAsync(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await _accounts.SetSymbolAttachmentAsync(id, _current.UserId, null, ct);
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "ClearSymbol failed for account {AccountId}", id);
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ClearSymbol failed for account {AccountId}", id);
             return Problem("Unexpected error", statusCode: 500);
         }
     }

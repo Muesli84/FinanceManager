@@ -26,6 +26,7 @@ else
     <table class="fm-table wide">
         <thead>
             <tr>
+                <th></th>
                 <th>@Localizer["Th_Name"]</th>
                 <th>@Localizer["Th_Identifier"]</th>
                 <th>@Localizer["Th_AlphaVantage"]</th>
@@ -36,7 +37,22 @@ else
         <tbody>
             @foreach (var s in _vm!.Items)
             {
+                var symbolId = _vm!.GetDisplaySymbolAttachmentId(s);
                 <tr style="cursor:pointer;" @onclick="(()=>OpenDetail(s.Id))">
+                    <td style="width:56px;">
+                        @if (symbolId != null)
+                        {
+                            <div style="width:40px;height:40px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                <img src="@($"/api/attachments/{symbolId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div style="width:40px;height:40px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                <svg style="width:24px;height:24px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                            </div>
+                        }
+                    </td>
                     <td>@s.Name</td>
                     <td>@s.Identifier</td>
                     <td>@(string.IsNullOrWhiteSpace(s.AlphaVantageCode)?"-":s.AlphaVantageCode)</td>
@@ -46,7 +62,7 @@ else
             }
             @if(_vm!.Items.Count==0)
             {
-                <tr><td colspan="5" style="opacity:.6;">@Localizer["NoEntries"]</td></tr>
+                <tr><td colspan="6" style="opacity:.6;">@Localizer["NoEntries"]</td></tr>
             }
         </tbody>
     </table>

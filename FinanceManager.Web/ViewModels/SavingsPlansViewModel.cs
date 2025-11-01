@@ -22,6 +22,7 @@ public sealed class SavingsPlansViewModel : ViewModelBase
     public List<SavingsPlanDto> Plans { get; private set; } = new();
 
     private readonly Dictionary<Guid, SavingsPlanAnalysisDto> _analysisByPlan = new();
+    private readonly Dictionary<Guid, Guid?> _displaySymbolByPlan = new();
 
     public override IReadOnlyList<UiRibbonGroup> GetRibbon(IStringLocalizer localizer)
     {
@@ -55,6 +56,7 @@ public sealed class SavingsPlansViewModel : ViewModelBase
     {
         Plans.Clear();
         _analysisByPlan.Clear();
+        _displaySymbolByPlan.Clear();
 
         var resp = await _http.GetAsync($"/api/savings-plans?onlyActive={ShowActiveOnly}", ct);
         if (!resp.IsSuccessStatusCode)
@@ -62,6 +64,41 @@ public sealed class SavingsPlansViewModel : ViewModelBase
             return;
         }
         Plans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>(cancellationToken: ct) ?? new();
+
+        // Load category symbols to use as fallback
+        var categorySymbolMap = new Dictionary<Guid, Guid?>();
+        try
+        {
+            var creq = await _http.GetAsync("/api/savings-plan-categories", ct);
+            if (creq.IsSuccessStatusCode)
+            {
+                var clist = await creq.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? new();
+                foreach (var c in clist)
+                {
+                    if (c.Id != Guid.Empty)
+                    {
+                        categorySymbolMap[c.Id] = c.SymbolAttachmentId;
+                    }
+                }
+            }
+        }
+        catch { }
+
+        // Build display symbol mapping per plan (plan symbol -> contact/category fallback)
+        foreach (var p in Plans)
+        {
+            Guid? display = null;
+            if (p.SymbolAttachmentId.HasValue)
+            {
+                display = p.SymbolAttachmentId;
+            }
+            else if (p.CategoryId.HasValue && categorySymbolMap.TryGetValue(p.CategoryId.Value, out var catSym) && catSym.HasValue)
+            {
+                display = catSym;
+            }
+            _displaySymbolByPlan[p.Id] = display;
+        }
+
         await LoadAnalysesAsync(ct);
     }
 
@@ -112,4 +149,11 @@ public sealed class SavingsPlansViewModel : ViewModelBase
     }
 
     private enum PlanState { Normal, Done, Unreachable }
+
+    // Public helper for UI to get the display symbol attachment id (plan symbol or category fallback)
+    public Guid? GetDisplaySymbolAttachmentId(SavingsPlanDto plan)
+    {
+        if (plan == null) return null;
+        return _displaySymbolByPlan.TryGetValue(plan.Id, out var v) ? v : null;
+    }
 }

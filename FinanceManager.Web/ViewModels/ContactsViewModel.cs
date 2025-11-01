@@ -23,6 +23,7 @@ public sealed class ContactsViewModel : ViewModelBase
     public List<ContactItem> Contacts { get; } = new();
 
     private readonly Dictionary<Guid, string> _categoryNames = new();
+    private readonly Dictionary<Guid, Guid?> _categorySymbols = new();
 
     public override async ValueTask InitializeAsync(CancellationToken ct = default)
     {
@@ -46,9 +47,11 @@ public sealed class ContactsViewModel : ViewModelBase
             {
                 var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>(cancellationToken: ct) ?? new();
                 _categoryNames.Clear();
+                _categorySymbols.Clear();
                 foreach (var c in list)
                 {
                     _categoryNames[c.Id] = c.Name;
+                    _categorySymbols[c.Id] = c.SymbolAttachmentId;
                 }
             }
         }
@@ -78,14 +81,19 @@ public sealed class ContactsViewModel : ViewModelBase
                 }
                 foreach (var dto in more)
                 {
+                    Guid? categoryId = dto.CategoryId;
                     Contacts.Add(new ContactItem
                     {
                         Id = dto.Id,
                         Name = dto.Name,
                         Type = dto.Type.ToString(),
-                        CategoryName = dto.CategoryId.HasValue && _categoryNames.TryGetValue(dto.CategoryId.Value, out var cat)
+                        CategoryName = categoryId.HasValue && _categoryNames.TryGetValue(categoryId.Value, out var cat)
                             ? cat
-                            : string.Empty
+                            : string.Empty,
+                        SymbolAttachmentId = dto.SymbolAttachmentId,
+                        CategorySymbolAttachmentId = categoryId.HasValue && _categorySymbols.TryGetValue(categoryId.Value, out var cs)
+                            ? cs
+                            : null
                     });
                 }
             }
@@ -122,6 +130,8 @@ public sealed class ContactsViewModel : ViewModelBase
         {
             items.Add(new UiRibbonItem(localizer["Ribbon_ClearFilter"], "<svg><use href='/icons/sprite.svg#clear'/></svg>", UiRibbonItemSize.Small, false, "ClearFilter"));
         }
+        // Add link to contact categories management
+        items.Add(new UiRibbonItem(localizer["Ribbon_Categories"], "<svg><use href='/icons/sprite.svg#groups'/></svg>", UiRibbonItemSize.Small, false, "Categories"));
         return new List<UiRibbonGroup>
         {
             new UiRibbonGroup(localizer["Ribbon_Group_Actions"], items)
@@ -134,8 +144,11 @@ public sealed class ContactsViewModel : ViewModelBase
         public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
         public string CategoryName { get; set; } = string.Empty;
+        public Guid? SymbolAttachmentId { get; set; }
+        public Guid? CategorySymbolAttachmentId { get; set; }
+        public Guid? DisplaySymbolAttachmentId => SymbolAttachmentId ?? CategorySymbolAttachmentId;
     }
 
-    public sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, string? Description, bool IsPaymentIntermediary);
-    public sealed record ContactCategoryDto(Guid Id, string Name);
+    public sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, string? Description, bool IsPaymentIntermediary, Guid? SymbolAttachmentId);
+    public sealed record ContactCategoryDto(Guid Id, string Name, Guid? SymbolAttachmentId);
 }

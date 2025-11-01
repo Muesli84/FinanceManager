@@ -75,6 +75,16 @@
 
 @if (_vm?.IsEdit == true)
 {
+    <div style="margin-top:1rem;">
+        <label>@Localizer["LabelSymbol"]</label>
+        <div style="margin-top:.4rem;">
+            <SymbolPicker ParentKind="AttachmentEntityKind.SavingsPlan" ParentId="@_vm!.Id" CurrentAttachmentId="_vm!.Model.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
+        </div>
+    </div>
+}
+
+@if (_vm?.IsEdit == true)
+{
     <div style="margin-top:1.2rem;">
         <AggregateBarChart Endpoint="@_vm!.ChartEndpoint" Title="@Localizer["Chart_Title_SavingsPlan"]" />
     </div>
@@ -286,4 +296,7 @@
         }
     }
     private void OpenAttachments(){ if (_vm!.Id.HasValue){ _showAttachments = true; StateHasChanged(); } }
+
+    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/savings-plans/{_vm.Id}/symbol/{aid}", null); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
+    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/savings-plans/{_vm.Id}/symbol"); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
 }

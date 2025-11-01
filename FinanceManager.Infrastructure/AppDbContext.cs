@@ -71,6 +71,9 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             b.HasIndex(x => new { x.OwnerUserId, x.Name }).IsUnique();
             b.Property(x => x.Name).HasMaxLength(150).IsRequired();
             b.Property(x => x.Iban).HasMaxLength(34);
+            // Symbol: optional attachment reference
+            b.Property(x => x.SymbolAttachmentId);
+            b.HasIndex(x => x.SymbolAttachmentId);
         });
 
         modelBuilder.Entity<Contact>(b =>

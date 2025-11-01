@@ -75,6 +75,9 @@ public sealed partial class User : IdentityUser<Guid>, IAggregateRoot
     // Admin flag persisted in DB
     public bool IsAdmin { get; private set; }
 
+    // Optional user symbol
+    public Guid? SymbolAttachmentId { get; private set; }
+
     private void Touch() { /* marker for state change — intentionally no-op for now */ }
 
     public void SetAdmin(bool isAdmin)
@@ -139,4 +142,10 @@ public sealed partial class User : IdentityUser<Guid>, IAggregateRoot
     public void Activate() => Active = true;
     public void Rename(string newUsername) => base.UserName = Guards.NotNullOrWhiteSpace(newUsername, nameof(newUsername));
     public void SetPasswordHash(string passwordHash) => base.PasswordHash = Guards.NotNullOrWhiteSpace(passwordHash, nameof(passwordHash));
+
+    public void SetSymbolAttachment(Guid? attachmentId)
+    {
+        SymbolAttachmentId = attachmentId == Guid.Empty ? null : attachmentId;
+        Touch();
+    }
 }

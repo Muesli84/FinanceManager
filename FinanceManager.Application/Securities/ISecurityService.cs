@@ -11,4 +11,5 @@ public interface ISecurityService
     Task<bool> ArchiveAsync(Guid id, Guid ownerUserId, CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct);
     Task<int> CountAsync(Guid ownerUserId, bool onlyActive, CancellationToken ct);
+    Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct);
 }

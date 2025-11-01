@@ -34,6 +34,7 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
                 if (dto is not null)
                 {
                     Model.Name = dto.Name ?? string.Empty;
+                    Model.SymbolAttachmentId = dto.SymbolAttachmentId;
                 }
             }
             else
@@ -104,11 +105,13 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
     {
         [Required, MinLength(2)]
         public string Name { get; set; } = string.Empty;
+        public Guid? SymbolAttachmentId { get; set; }
     }
 
     public sealed class SecurityCategoryDto
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public Guid? SymbolAttachmentId { get; set; }
     }
 }

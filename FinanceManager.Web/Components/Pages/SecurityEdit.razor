@@ -85,6 +85,16 @@
     </div>
 }
 
+@if (_vm?.IsEdit == true)
+{
+    <div style="margin-top:1rem;">
+        <label>@Localizer["LabelSymbol"]</label>
+        <div style="margin-top:.4rem;">
+            <SymbolPicker ParentKind="AttachmentEntityKind.Security" ParentId="@_vm!.Id" CurrentAttachmentId="_vm!.Model.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public Guid? Id { get; set; }
     [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
@@ -284,4 +294,7 @@
         }
         return qs.Count > 0 ? "?" + string.Join("&", qs) : string.Empty;
     }
+
+    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/securities/{_vm.Id}/symbol/{aid}", null); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
+    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/securities/{_vm.Id}/symbol"); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
 }

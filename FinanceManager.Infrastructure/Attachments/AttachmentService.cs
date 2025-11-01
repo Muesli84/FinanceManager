@@ -18,7 +18,12 @@ public sealed class AttachmentService : IAttachmentService
         _db = db; _logger = logger;
     }
 
-    public async Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, CancellationToken ct)
+    // Backwards-compatible existing signature
+    public Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, CancellationToken ct)
+        => UploadAsync(ownerUserId, kind, entityId, content, fileName, contentType, categoryId, AttachmentRole.Regular, ct);
+
+    // New overload with role
+    public async Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, AttachmentRole role, CancellationToken ct)
     {
         using var ms = new MemoryStream();
         await content.CopyToAsync(ms, ct);
@@ -26,10 +31,10 @@ public sealed class AttachmentService : IAttachmentService
         var size = (long)bytes.Length;
         string sha = ComputeSha256(bytes);
 
-        var entity = new Attachment(ownerUserId, kind, entityId, fileName, contentType, size, sha, categoryId, bytes, null);
+        var entity = new Attachment(ownerUserId, kind, entityId, fileName, contentType, size, sha, categoryId, bytes, null, null, role);
         _db.Attachments.Add(entity);
         await _db.SaveChangesAsync(ct);
-        _logger.LogInformation("Attachment uploaded {AttachmentId} kind={Kind} entity={EntityId} size={Size}", entity.Id, kind, entityId, size);
+        _logger.LogInformation("Attachment uploaded {AttachmentId} kind={Kind} entity={EntityId} size={Size} role={Role}", entity.Id, kind, entityId, size, role);
         return Map(entity);
     }
 
@@ -77,7 +82,7 @@ public sealed class AttachmentService : IAttachmentService
             .ThenByDescending(a => a.Id)
             .Skip(skip)
             .Take(take)
-            .Select(a => new AttachmentDto(a.Id, (short)a.EntityKind, a.EntityId, a.FileName, a.ContentType, a.SizeBytes, a.CategoryId, a.UploadedUtc, a.Url != null))
+            .Select(a => new AttachmentDto(a.Id, (short)a.EntityKind, a.EntityId, a.FileName, a.ContentType, a.SizeBytes, a.CategoryId, a.UploadedUtc, a.Url != null, (short)a.Role))
             .ToListAsync(ct);
     }
 
@@ -186,61 +191,5 @@ public sealed class AttachmentService : IAttachmentService
     }
 
     private static AttachmentDto Map(Attachment a)
-        => new AttachmentDto(a.Id, (short)a.EntityKind, a.EntityId, a.FileName, a.ContentType, a.SizeBytes, a.CategoryId, a.UploadedUtc, a.Url != null);
-}
-
-public sealed class AttachmentCategoryService : IAttachmentCategoryService
-{
-    private readonly AppDbContext _db;
-
-    public AttachmentCategoryService(AppDbContext db) { _db = db; }
-
-    public async Task<IReadOnlyList<AttachmentCategoryDto>> ListAsync(Guid ownerUserId, CancellationToken ct)
-        => await _db.AttachmentCategories.AsNoTracking()
-            .Where(c => c.OwnerUserId == ownerUserId)
-            .OrderBy(c => c.Name)
-            .Select(c => new AttachmentCategoryDto(c.Id, c.Name, c.IsSystem,
-                _db.Attachments.AsNoTracking().Any(a => a.OwnerUserId == ownerUserId && a.CategoryId == c.Id)))
-            .ToListAsync(ct);
-
-    public async Task<AttachmentCategoryDto> CreateAsync(Guid ownerUserId, string name, CancellationToken ct)
-    {
-        var exists = await _db.AttachmentCategories.AnyAsync(c => c.OwnerUserId == ownerUserId && c.Name == name, ct);
-        if (exists) { throw new ArgumentException("Category name already exists"); }
-        var cat = new AttachmentCategory(ownerUserId, name);
-        _db.AttachmentCategories.Add(cat);
-        await _db.SaveChangesAsync(ct);
-        return new AttachmentCategoryDto(cat.Id, cat.Name, cat.IsSystem, false);
-    }
-
-    public async Task<bool> DeleteAsync(Guid ownerUserId, Guid id, CancellationToken ct)
-    {
-        var anyUse = await _db.Attachments.AsNoTracking().AnyAsync(a => a.OwnerUserId == ownerUserId && a.CategoryId == id, ct);
-        if (anyUse) { throw new InvalidOperationException("Category is in use"); }
-        var cat = await _db.AttachmentCategories.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
-        if (cat == null) { return false; }
-        _db.AttachmentCategories.Remove(cat);
-        await _db.SaveChangesAsync(ct);
-        return true;
-    }
-
-    public async Task<AttachmentCategoryDto?> UpdateAsync(Guid ownerUserId, Guid id, string name, CancellationToken ct)
-    {
-        name = name?.Trim() ?? string.Empty;
-        if (name.Length < 2) { throw new ArgumentException("Name too short"); }
-        var cat = await _db.AttachmentCategories.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
-        if (cat == null) { return null; }
-        if (cat.IsSystem)
-        {
-            throw new InvalidOperationException("System category cannot be renamed"); }
-        var exists = await _db.AttachmentCategories.AsNoTracking().AnyAsync(c => c.OwnerUserId == ownerUserId && c.Name == name && c.Id != id, ct);
-        if (exists)
-        {
-            throw new ArgumentException("Category name already exists");
-        }
-        cat.Rename(name);
-        await _db.SaveChangesAsync(ct);
-        var inUse = await _db.Attachments.AsNoTracking().AnyAsync(a => a.OwnerUserId == ownerUserId && a.CategoryId == id, ct);
-        return new AttachmentCategoryDto(cat.Id, cat.Name, cat.IsSystem, inUse);
-    }
+        => new AttachmentDto(a.Id, (short)a.EntityKind, a.EntityId, a.FileName, a.ContentType, a.SizeBytes, a.CategoryId, a.UploadedUtc, a.Url != null, (short)a.Role);
 }

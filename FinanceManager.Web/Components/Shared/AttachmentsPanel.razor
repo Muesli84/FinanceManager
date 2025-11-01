@@ -31,7 +31,7 @@ else
             </div>
         </div>
         <label class="icon-btn" style="padding:.35rem .7rem;cursor:pointer;">
-            <InputFile OnChange="OnFilesSelected" multiple style="display:none;" />
+            <InputFile OnChange="OnFilesSelected" multiple accept="@AcceptAttr" style="display:none;" />
             <svg class="icon"><use href="/icons/sprite.svg#upload" /></svg>
             <span style="margin-left:.35rem;">@Localizer["Btn_Upload"]</span>
         </label>
@@ -132,6 +132,8 @@ else
 @code {
     [Parameter, EditorRequired] public AttachmentEntityKind ParentKind { get; set; }
     [Parameter, EditorRequired] public Guid ParentId { get; set; }
+    [Parameter] public EventCallback<Guid> OnUploaded { get; set; }
+    [Parameter] public string[]? AllowedMimeTypes { get; set; }
 
     private readonly List<AttachmentDto> _items = new();
     private readonly List<CategoryDto> _categories = new();
@@ -153,6 +155,9 @@ else
     private Guid? _editingId;
     private string _editCategoryId = string.Empty;
     private string _editFileName = string.Empty;
+
+    // Accept attribute for InputFile
+    private string? AcceptAttr => AllowedMimeTypes == null || AllowedMimeTypes.Length == 0 ? null : string.Join(',', AllowedMimeTypes);
 
     // Lazy loading state
     private const int _pageSize = 50;
@@ -335,7 +340,11 @@ else
             {
                 try
                 {
-                    await UploadFileAsync(file);
+                    var id = await UploadFileAsync(file);
+                    if (id.HasValue && OnUploaded.HasDelegate)
+                    {
+                        await OnUploaded.InvokeAsync(id.Value);
+                    }
                     _uploadDone++;
                     StateHasChanged();
                 }
@@ -352,7 +361,7 @@ else
         await LoadAsync(reset: true);
     }
 
-    private async Task UploadFileAsync(IBrowserFile file)
+    private async Task<Guid?> UploadFileAsync(IBrowserFile file)
     {
         using var content = new MultipartFormDataContent();
         await using var stream = file.OpenReadStream(1024L * 1024L * 1024L); // 1 GB limit per file
@@ -372,6 +381,8 @@ else
             var msg = await resp.Content.ReadAsStringAsync();
             throw new InvalidOperationException(MapServerError(msg));
         }
+        var dto = await resp.Content.ReadFromJsonAsync<AttachmentDto>();
+        return dto?.Id;
     }
 
     private void BeginEdit(AttachmentDto a)

@@ -19,6 +19,9 @@ public sealed class SecuritiesListViewModel : ViewModelBase
     public List<SecurityDto> Items { get; private set; } = new();
     public bool OnlyActive { get; private set; } = true;
 
+    // mapping securityId -> display symbol attachment id (security symbol or category fallback)
+    private readonly Dictionary<Guid, Guid?> _displaySymbolBySecurity = new();
+
     public override async ValueTask InitializeAsync(CancellationToken ct = default)
     {
         if (!IsAuthenticated)
@@ -38,10 +41,46 @@ public sealed class SecuritiesListViewModel : ViewModelBase
         if (!resp.IsSuccessStatusCode)
         {
             Items = new();
+            _displaySymbolBySecurity.Clear();
             RaiseStateChanged();
             return;
         }
         Items = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>(cancellationToken: ct) ?? new();
+
+        // Load categories to get category symbol fallbacks
+        var categorySymbolMap = new Dictionary<Guid, Guid?>();
+        try
+        {
+            var creq = await _http.GetAsync("/api/security-categories", ct);
+            if (creq.IsSuccessStatusCode)
+            {
+                var clist = await creq.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>(cancellationToken: ct) ?? new();
+                foreach (var c in clist)
+                {
+                    if (c.Id != Guid.Empty)
+                    {
+                        categorySymbolMap[c.Id] = c.SymbolAttachmentId;
+                    }
+                }
+            }
+        }
+        catch { }
+
+        _displaySymbolBySecurity.Clear();
+        foreach (var s in Items)
+        {
+            Guid? display = null;
+            if (s.SymbolAttachmentId.HasValue)
+            {
+                display = s.SymbolAttachmentId;
+            }
+            else if (s.CategoryId.HasValue && categorySymbolMap.TryGetValue(s.CategoryId.Value, out var catSym) && catSym.HasValue)
+            {
+                display = catSym;
+            }
+            _displaySymbolBySecurity[s.Id] = display;
+        }
+
         RaiseStateChanged();
     }
 
@@ -64,5 +103,12 @@ public sealed class SecuritiesListViewModel : ViewModelBase
             new UiRibbonItem(localizer["Ribbon_ToggleActive"], "<svg><use href='/icons/sprite.svg#check'/></svg>", UiRibbonItemSize.Small, false, "ToggleActive")
         });
         return new List<UiRibbonGroup> { actions, filter };
+    }
+
+    // Public helper for UI to get display symbol attachment id (security symbol or category fallback)
+    public Guid? GetDisplaySymbolAttachmentId(SecurityDto security)
+    {
+        if (security == null) return null;
+        return _displaySymbolBySecurity.TryGetValue(security.Id, out var v) ? v : null;
     }
 }

@@ -13,9 +13,18 @@ public sealed class ContactCategory : Entity, IAggregateRoot
     public Guid OwnerUserId { get; private set; }
     public string Name { get; private set; } = null!;
 
+    // Optional symbol attachment for category
+    public Guid? SymbolAttachmentId { get; private set; }
+
     public void Rename(string name)
     {
         Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
+        Touch();
+    }
+
+    public void SetSymbolAttachment(Guid? attachmentId)
+    {
+        SymbolAttachmentId = attachmentId == Guid.Empty ? null : attachmentId;
         Touch();
     }
 }

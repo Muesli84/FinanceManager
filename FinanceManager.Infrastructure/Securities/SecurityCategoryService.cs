@@ -11,52 +11,53 @@ public sealed class SecurityCategoryService : ISecurityCategoryService
     public SecurityCategoryService(AppDbContext db) { _db = db; }
 
     public async Task<IReadOnlyList<SecurityCategoryDto>> ListAsync(Guid ownerUserId, CancellationToken ct)
-        => await _db.SecurityCategories
-            .AsNoTracking()
+    {
+        return await _db.SecurityCategories.AsNoTracking()
             .Where(c => c.OwnerUserId == ownerUserId)
             .OrderBy(c => c.Name)
-            .Select(c => new SecurityCategoryDto { Id = c.Id, Name = c.Name })
+            .Select(c => new SecurityCategoryDto { Id = c.Id, Name = c.Name, SymbolAttachmentId = c.SymbolAttachmentId })
             .ToListAsync(ct);
+    }
 
     public async Task<SecurityCategoryDto?> GetAsync(Guid id, Guid ownerUserId, CancellationToken ct)
     {
-        var cat = await _db.SecurityCategories.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
-        return cat == null ? null : new SecurityCategoryDto { Id = cat.Id, Name = cat.Name };
+        return await _db.SecurityCategories.AsNoTracking()
+            .Where(c => c.Id == id && c.OwnerUserId == ownerUserId)
+            .Select(c => new SecurityCategoryDto { Id = c.Id, Name = c.Name, SymbolAttachmentId = c.SymbolAttachmentId })
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<SecurityCategoryDto> CreateAsync(Guid ownerUserId, string name, CancellationToken ct)
     {
-        var exists = await _db.SecurityCategories.AnyAsync(c => c.OwnerUserId == ownerUserId && c.Name == name, ct);
-        if (exists) { throw new ArgumentException("Category name must be unique per user", nameof(name)); }
-        var entity = new SecurityCategory(ownerUserId, name);
-        _db.SecurityCategories.Add(entity);
+        var category = new SecurityCategory(ownerUserId, name);
+        _db.SecurityCategories.Add(category);
         await _db.SaveChangesAsync(ct);
-        return new SecurityCategoryDto { Id = entity.Id, Name = entity.Name };
+        return new SecurityCategoryDto { Id = category.Id, Name = category.Name, SymbolAttachmentId = category.SymbolAttachmentId };
     }
 
     public async Task<SecurityCategoryDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, CancellationToken ct)
     {
-        var entity = await _db.SecurityCategories.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
-        if (entity == null) { return null; }
-        if (!string.Equals(entity.Name, name, StringComparison.OrdinalIgnoreCase))
-        {
-            var exists = await _db.SecurityCategories.AnyAsync(c => c.OwnerUserId == ownerUserId && c.Name == name && c.Id != id, ct);
-            if (exists) { throw new ArgumentException("Category name must be unique per user", nameof(name)); }
-        }
-        entity.Rename(name);
+        var category = await _db.SecurityCategories.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
+        if (category == null) return null;
+        category.Rename(name);
         await _db.SaveChangesAsync(ct);
-        return new SecurityCategoryDto { Id = entity.Id, Name = entity.Name };
+        return new SecurityCategoryDto { Id = category.Id, Name = category.Name, SymbolAttachmentId = category.SymbolAttachmentId };
     }
 
     public async Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct)
     {
-        var entity = await _db.SecurityCategories.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
-        if (entity == null) { return false; }
-
-        // Optional: Prüfen ob Securities diese Kategorie benutzen (falls später Feld CategoryId in Security ergänzt wird).
-        _db.SecurityCategories.Remove(entity);
+        var category = await _db.SecurityCategories.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
+        if (category == null) return false;
+        _db.SecurityCategories.Remove(category);
         await _db.SaveChangesAsync(ct);
         return true;
+    }
+
+    public async Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct)
+    {
+        var cat = await _db.SecurityCategories.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
+        if (cat == null) throw new ArgumentException("Category not found", nameof(id));
+        cat.SetSymbolAttachment(attachmentId);
+        await _db.SaveChangesAsync(ct);
     }
 }

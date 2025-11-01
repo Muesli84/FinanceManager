@@ -21,7 +21,7 @@ public sealed class ContactService : IContactService
         var contact = new Contact(ownerUserId, name, type, categoryId, description, isPaymentIntermediary);
         _db.Contacts.Add(contact);
         await _db.SaveChangesAsync(ct);
-        return new ContactDto(contact.Id, contact.Name, contact.Type, contact.CategoryId, contact.Description, contact.IsPaymentIntermediary);
+        return new ContactDto(contact.Id, contact.Name, contact.Type, contact.CategoryId, contact.Description, contact.IsPaymentIntermediary, contact.SymbolAttachmentId);
     }
 
     public async Task<ContactDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, ContactType type, Guid? categoryId, string? description, bool? isPaymentIntermediary, CancellationToken ct)
@@ -48,7 +48,7 @@ public sealed class ContactService : IContactService
         contact.SetDescription(description);
         contact.SetPaymentIntermediary(isPaymentIntermediary ?? false);
         await _db.SaveChangesAsync(ct);
-        return new ContactDto(contact.Id, contact.Name, contact.Type, contact.CategoryId, contact.Description, contact.IsPaymentIntermediary);
+        return new ContactDto(contact.Id, contact.Name, contact.Type, contact.CategoryId, contact.Description, contact.IsPaymentIntermediary, contact.SymbolAttachmentId);
     }
 
     public async Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct)
@@ -101,7 +101,7 @@ public sealed class ContactService : IContactService
             .OrderBy(c => c.Name)
             .Skip(skip)
             .Take(take)
-            .Select(c => new ContactDto(c.Id, c.Name, c.Type, c.CategoryId, c.Description, c.IsPaymentIntermediary))
+            .Select(c => new ContactDto(c.Id, c.Name, c.Type, c.CategoryId, c.Description, c.IsPaymentIntermediary, c.SymbolAttachmentId))
             .ToListAsync(ct);
     }
 
@@ -109,7 +109,7 @@ public sealed class ContactService : IContactService
     {
         return await _db.Contacts.AsNoTracking()
             .Where(c => c.Id == id && c.OwnerUserId == ownerUserId)
-            .Select(c => new ContactDto(c.Id, c.Name, c.Type, c.CategoryId, c.Description, c.IsPaymentIntermediary))
+            .Select(c => new ContactDto(c.Id, c.Name, c.Type, c.CategoryId, c.Description, c.IsPaymentIntermediary, c.SymbolAttachmentId))
             .FirstOrDefaultAsync(ct);
     }
 
@@ -160,6 +160,15 @@ public sealed class ContactService : IContactService
             .OrderBy(c => c.Pattern)
             .Select(c => new AliasNameDto(c.Id, c.ContactId, c.Pattern))
             .ToListAsync(ct);
+    }
+
+    // new: set/clear symbol attachment for contact
+    public async Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct)
+    {
+        var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
+        if (contact == null) throw new ArgumentException("Contact not found", nameof(id));
+        contact.SetSymbolAttachment(attachmentId);
+        await _db.SaveChangesAsync(ct);
     }
 
     public async Task<ContactDto> MergeAsync(Guid ownerUserId, Guid sourceContactId, Guid targetContactId, CancellationToken ct)
@@ -316,7 +325,7 @@ public sealed class ContactService : IContactService
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
-        return new ContactDto(target.Id, target.Name, target.Type, target.CategoryId, target.Description, target.IsPaymentIntermediary);
+        return new ContactDto(target.Id, target.Name, target.Type, target.CategoryId, target.Description, target.IsPaymentIntermediary, target.SymbolAttachmentId);
     }
 
     public Task<int> CountAsync(Guid ownerUserId, CancellationToken ct)

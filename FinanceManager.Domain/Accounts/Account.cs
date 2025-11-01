@@ -18,6 +18,9 @@ public sealed class Account : Entity, IAggregateRoot
     public decimal CurrentBalance { get; private set; }
     public Guid BankContactId { get; private set; }
 
+    // Optional reference to an uploaded symbol attachment
+    public Guid? SymbolAttachmentId { get; private set; }
+
     public void Rename(string name)
     {
         Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
@@ -48,6 +51,12 @@ public sealed class Account : Entity, IAggregateRoot
     public void AdjustBalance(decimal delta)
     {
         CurrentBalance += delta;
+        Touch();
+    }
+
+    public void SetSymbolAttachment(Guid? attachmentId)
+    {
+        SymbolAttachmentId = attachmentId == Guid.Empty ? null : attachmentId;
         Touch();
     }
 }

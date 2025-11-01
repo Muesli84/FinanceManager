@@ -8,25 +8,43 @@
 @using FinanceManager.Web.ViewModels
 @using Microsoft.Extensions.DependencyInjection
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanCategoryDetail> Localizer
+@using FinanceManager.Domain.Attachments
+@using FinanceManager.Shared.Dtos
+@inject IHttpClientFactory ClientFactory
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SavingsPlanCategoryDetail.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 <h3>@((_vm?.IsEdit ?? false) ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
 
-<EditForm Model="_vm!.Model" OnValidSubmit="SaveAsync">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-    <div>
-        <label>@Localizer["LabelName"]</label>
-        <InputText @bind-Value="_vm!.Model.Name" />
-        <ValidationMessage For="()=>_vm!.Model.Name" />
+@if (!(_vm?.Loaded ?? false))
+{
+    <p>@Localizer["Loading"]</p>
+}
+else
+{
+
+    <EditForm Model="_vm!.Model" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div>
+            <label>@Localizer["LabelName"]</label>
+            <InputText @bind-Value="_vm!.Model.Name" />
+            <ValidationMessage For="()=>_vm!.Model.Name" />
+        </div>
+        @if (!string.IsNullOrWhiteSpace(_vm?.Error))
+        {
+            <div class="error" style="margin-top:.5rem;">@_vm!.Error</div>
+        }
+    </EditForm>
+
+    <div style="margin-top:1rem;">
+        <label>@Localizer["LabelSymbol"]</label>
+        <div style="margin-top:.4rem;">
+            <SymbolPicker ParentKind="AttachmentEntityKind.SavingsPlanCategory" ParentId="@_vm!.Id" CurrentAttachmentId="_vm!.Model.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
+        </div>
     </div>
-    @if (!string.IsNullOrWhiteSpace(_vm?.Error))
-    {
-        <div class="error" style="margin-top:.5rem;">@_vm!.Error</div>
-    }
-</EditForm>
+}
 
 @code {
     [Parameter] public Guid? Id { get; set; }
@@ -38,8 +56,19 @@
     private TabId _activeTab = TabId.SavingsPlanCategory;
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_vm is null)
+        {
+            _vm = ActivatorUtilities.CreateInstance<SavingsPlanCategoryDetailViewModel>(Services);
+            _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
+        }
+        await _vm.InitializeAsync(Id);
+        RebuildRibbon();
+    }
+
     private void RebuildRibbon()
-     {
+    {
         var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
         var groups = new List<Ribbon<TabId>.RibbonGroup>();
         foreach (var g in groupsDto)
@@ -69,17 +98,6 @@
             }
         };
         StateHasChanged();
-     }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (_vm is null)
-        {
-            _vm = ActivatorUtilities.CreateInstance<SavingsPlanCategoryDetailViewModel>(Services);
-            _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
-        }
-        await _vm.InitializeAsync(Id);
-        RebuildRibbon();
     }
 
     private async Task SaveAsync()
@@ -103,7 +121,7 @@
     }
 
     private void Back() => Navigation.NavigateTo("/savings-plan-categories");
-    
+
     private void HandleRibbonAction(string action)
     {
         switch (action)
@@ -119,4 +137,7 @@
                 break;
         }
     }
+
+    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/savings-plan-categories/{_vm.Id}/symbol/{aid}", null); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
+    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/savings-plan-categories/{_vm.Id}/symbol"); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
 }

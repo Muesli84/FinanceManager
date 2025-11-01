@@ -39,7 +39,7 @@ public sealed class SavingsPlanCategoriesViewModel : ViewModelBase
         }
         var list = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? new();
         Categories.Clear();
-        Categories.AddRange(list.Select(c => new CategoryItem { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name));
+        Categories.AddRange(list.Select(c => new CategoryItem { Id = c.Id, Name = c.Name, SymbolAttachmentId = c.SymbolAttachmentId }).OrderBy(c => c.Name));
         RaiseStateChanged();
     }
 
@@ -55,6 +55,6 @@ public sealed class SavingsPlanCategoriesViewModel : ViewModelBase
         };
     }
 
-    public sealed class CategoryItem { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    public sealed record SavingsPlanCategoryDto(Guid Id, string Name);
+    public sealed class CategoryItem { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid? SymbolAttachmentId { get; set; } }
+    public sealed record SavingsPlanCategoryDto(Guid Id, string Name, Guid? SymbolAttachmentId);
 }

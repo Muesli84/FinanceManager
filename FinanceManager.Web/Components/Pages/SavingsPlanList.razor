@@ -28,6 +28,7 @@ else if(_vm!.Plans.Count==0)
 <table class="fm-table wide" style="margin-top:1rem;">
     <thead>
         <tr>
+            <th></th>
             <th>@Localizer["LabelName"]</th>
             <th>@Localizer["LabelType"]</th>
             <th>@Localizer["LabelTargetAmount"]</th>
@@ -40,7 +41,16 @@ else if(_vm!.Plans.Count==0)
         @foreach (var plan in _vm!.Plans)
         {
             var status = _vm!.GetStatusFlags(plan);
+            var symbolId = _vm!.GetDisplaySymbolAttachmentId(plan);
             <tr style="cursor:pointer;" @onclick="() => OpenDetail(plan.Id)">
+                <td style="width:56px;">
+                    @if (symbolId != null)
+                    {
+                        <div style="width:40px;height:40px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                            <img src="@($"/api/attachments/{symbolId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                        </div>
+                    }
+                </td>
                 <td>@plan.Name</td>
                 <td>@Localizer[$"Type_{plan.Type}"]</td>
                 <td>@(plan.TargetAmount?.ToString("N2") ?? "-")</td>

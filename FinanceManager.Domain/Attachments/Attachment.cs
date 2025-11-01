@@ -3,6 +3,12 @@ using System.IO;
 
 namespace FinanceManager.Domain.Attachments;
 
+public enum AttachmentRole : short
+{
+    Regular = 0,
+    Symbol = 1
+}
+
 public sealed class Attachment
 {
     public Guid Id { get; private set; } = Guid.NewGuid();
@@ -25,6 +31,8 @@ public sealed class Attachment
 
     public string? Note { get; private set; }
 
+    public AttachmentRole Role { get; private set; } = AttachmentRole.Regular;
+
     private Attachment() { }
 
     public Attachment(
@@ -38,7 +46,8 @@ public sealed class Attachment
         Guid? categoryId,
         byte[]? content,
         string? url,
-        Guid? referenceAttachmentId = null)
+        Guid? referenceAttachmentId = null,
+        AttachmentRole role = AttachmentRole.Regular)
     {
         OwnerUserId = ownerUserId;
         EntityKind = kind;
@@ -51,6 +60,7 @@ public sealed class Attachment
         Content = content;
         Url = url;
         ReferenceAttachmentId = referenceAttachmentId;
+        Role = role;
         if (Content is null && string.IsNullOrWhiteSpace(Url) && ReferenceAttachmentId == null)
         {
             throw new ArgumentException("Either content, URL, or reference must be provided for an attachment.");
@@ -64,6 +74,8 @@ public sealed class Attachment
     {
         ReferenceAttachmentId = referenceId;
     }
+
+    public void SetRole(AttachmentRole role) => Role = role;
 
     public void Rename(string fileName)
     {

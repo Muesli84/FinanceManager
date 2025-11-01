@@ -8,6 +8,7 @@
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Web.ViewModels
 @inject IServiceProvider Services
+@using FinanceManager.Domain.Attachments
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="ContactCategories.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -37,19 +38,34 @@ else
         <table class="fm-table">
             <thead>
                 <tr>
+                    <th></th>
                     <th>@Localizer["Col_Name"]</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var c in _vm.Categories)
                 {
-                    <tr>
+                    <tr style="cursor:pointer;" @onclick="() => OpenDetail(c.Id)">
+                        <td style="width:56px;">
+                            @if (c.SymbolAttachmentId != null)
+                            {
+                                <div style="width:40px;height:40px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                    <img src="@($"/api/attachments/{c.SymbolAttachmentId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div style="width:40px;height:40px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                    <svg style="width:24px;height:24px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                </div>
+                            }
+                        </td>
                         <td>@c.Name</td>
                     </tr>
                 }
                 @if (_vm.Categories.Count == 0)
                 {
-                    <tr><td style="opacity:.7;">@Localizer["NoGroups"]</td></tr>
+                    <tr><td colspan="2" style="opacity:.7;">@Localizer["NoGroups"]</td></tr>
                 }
             </tbody>
         </table>
@@ -142,8 +158,10 @@ else
                 Navigation.NavigateTo("/contacts");
                 break;
             case "New":
-                _ = _vm!.CreateAsync();
+                Navigation.NavigateTo("/contact-categories/new");
                 break;
         }
     }
+
+    private void OpenDetail(Guid id) => Navigation.NavigateTo($"/contact-categories/{id}");
 }

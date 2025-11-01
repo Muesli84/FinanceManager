@@ -15,6 +15,7 @@ public sealed class SecurityDto
     public bool IsActive { get; set; }
     public DateTime CreatedUtc { get; set; }
     public DateTime? ArchivedUtc { get; set; }
+    public Guid? SymbolAttachmentId { get; set; }  // OPTIONAL
 }
 
 public enum SecurityTransactionType

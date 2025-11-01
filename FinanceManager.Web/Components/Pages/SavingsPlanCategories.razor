@@ -24,6 +24,7 @@ else
     <table class="fm-table">
         <thead>
             <tr>
+                <th></th>
                 <th>@Localizer["Col_Name"]</th>
             </tr>
         </thead>
@@ -31,12 +32,26 @@ else
             @foreach (var cat in _vm!.Categories)
             {
                 <tr style="cursor:pointer;" @onclick="() => EditCategory(cat.Id)">
+                    <td style="width:56px;">
+                        @if (cat.SymbolAttachmentId != null)
+                        {
+                            <div style="width:40px;height:40px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                <img src="@($"/api/attachments/{cat.SymbolAttachmentId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div style="width:40px;height:40px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                <svg style="width:24px;height:24px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                            </div>
+                        }
+                    </td>
                     <td>@cat.Name</td>
                 </tr>
             }
             @if(_vm!.Categories.Count==0)
             {
-                <tr><td style="opacity:.6;">@Localizer["Empty"]</td></tr>
+                <tr><td colspan="2" style="opacity:.6;">@Localizer["Empty"]</td></tr>
             }
         </tbody>
     </table>

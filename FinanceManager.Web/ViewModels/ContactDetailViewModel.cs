@@ -47,6 +47,10 @@ public sealed class ContactDetailViewModel : ViewModelBase
 
     public bool IsSelfContact => Type == ContactType.Self;
 
+    // Symbol attachment id
+    public Guid? SymbolAttachmentId { get => _symbolAttachmentId; set { if (_symbolAttachmentId != value) { _symbolAttachmentId = value; RaiseStateChanged(); } } }
+    private Guid? _symbolAttachmentId;
+
     // Related state
     private bool _showAttachments;
     public bool ShowAttachments { get => _showAttachments; set { if (_showAttachments != value) { _showAttachments = value; RaiseStateChanged(); } } }
@@ -117,6 +121,7 @@ public sealed class ContactDetailViewModel : ViewModelBase
                     CategoryId = dto.CategoryId?.ToString() ?? string.Empty;
                     IsPaymentIntermediary = dto.IsPaymentIntermediary;
                     Description = dto.Description;
+                    SymbolAttachmentId = dto.SymbolAttachmentId; // new
                 }
             }
             else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -142,7 +147,7 @@ public sealed class ContactDetailViewModel : ViewModelBase
             Guid? catId = Guid.TryParse(CategoryId, out var parsed) ? parsed : null;
             if (IsNew)
             {
-                var create = new { Name = Name.Trim(), Type, CategoryId = catId, Description, IsPaymentIntermediary };
+                var create = new { Name = Name.Trim(), Type, CategoryId = catId, Description, IsPaymentIntermediary, SymbolAttachmentId };
                 var resp = await _http.PostAsJsonAsync("/api/contacts", create, ct);
                 if (resp.IsSuccessStatusCode)
                 {
@@ -160,7 +165,7 @@ public sealed class ContactDetailViewModel : ViewModelBase
             }
             else
             {
-                var update = new { Name = Name.Trim(), Type, CategoryId = catId, Description, IsPaymentIntermediary };
+                var update = new { Name = Name.Trim(), Type, CategoryId = catId, Description, IsPaymentIntermediary, SymbolAttachmentId };
                 var resp = await _http.PutAsJsonAsync($"/api/contacts/{ContactId}", update, ct);
                 if (!resp.IsSuccessStatusCode)
                 {
@@ -373,7 +378,7 @@ public sealed class ContactDetailViewModel : ViewModelBase
     }
 
     // DTOs
-    public sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, string? Description, bool IsPaymentIntermediary);
+    public sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, string? Description, bool IsPaymentIntermediary, Guid? SymbolAttachmentId);
     public sealed record ContactCategoryDto(Guid Id, string Name);
     public sealed record AliasDto(Guid Id, string Pattern);
 

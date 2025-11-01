@@ -9,4 +9,5 @@ public interface ISecurityCategoryService
     Task<SecurityCategoryDto> CreateAsync(Guid ownerUserId, string name, CancellationToken ct);
     Task<SecurityCategoryDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct);
+    Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct);
 }

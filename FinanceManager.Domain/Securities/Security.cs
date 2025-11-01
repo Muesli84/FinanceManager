@@ -21,6 +21,9 @@ public sealed class Security
     public string? PriceErrorMessage { get; private set; }
     public DateTime? PriceErrorSinceUtc { get; private set; }
 
+    // Optional symbol attachment
+    public Guid? SymbolAttachmentId { get; private set; }
+
     private Security() { }
 
     public Security(Guid ownerUserId, string name, string identifier, string? description, string? alphaVantageCode, string currencyCode, Guid? categoryId)
@@ -66,5 +69,10 @@ public sealed class Security
         HasPriceError = false;
         PriceErrorMessage = null;
         PriceErrorSinceUtc = null;
+    }
+
+    public void SetSymbolAttachment(Guid? attachmentId)
+    {
+        SymbolAttachmentId = attachmentId == Guid.Empty ? null : attachmentId;
     }
 }

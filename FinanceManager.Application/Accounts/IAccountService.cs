@@ -9,6 +9,7 @@ public interface IAccountService
     Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct);
     Task<IReadOnlyList<AccountDto>> ListAsync(Guid ownerUserId, int skip, int take, CancellationToken ct);
     Task<AccountDto?> GetAsync(Guid id, Guid ownerUserId, CancellationToken ct);
+    Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct);
 }
 
-public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
+public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId, Guid? SymbolAttachmentId);

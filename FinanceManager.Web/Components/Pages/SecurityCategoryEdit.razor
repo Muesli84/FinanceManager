@@ -10,25 +10,42 @@
 @using FinanceManager.Web.ViewModels
 @using Microsoft.Extensions.DependencyInjection
 @inject IStringLocalizer<Components.Pages.SecurityCategoryEdit> Localizer
+@using FinanceManager.Domain.Attachments
+@using FinanceManager.Shared.Dtos
+@inject IHttpClientFactory ClientFactory
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SecurityCategoryEdit.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
 
 <h3>@((_vm?.IsEdit ?? false) ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
 
-<EditForm Model="_vm!.Model" OnValidSubmit="SaveAsync">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-    <div style="max-width:400px;">
-        <label>@Localizer["Label_Name"]</label>
-        <InputText @bind-Value="_vm!.Model.Name" @bind-Value:after="(()=>RebuildRibbon())" />
-        <ValidationMessage For="()=>_vm!.Model.Name" />
+@if (!(_vm?.Loaded ?? false))
+{
+    <p>@Localizer["Loading"]</p>
+}
+else
+{
+    <EditForm Model="_vm!.Model" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div style="max-width:400px;">
+            <label>@Localizer["Label_Name"]</label>
+            <InputText @bind-Value="_vm!.Model.Name" @bind-Value:after="(()=>RebuildRibbon())" />
+            <ValidationMessage For="()=>_vm!.Model.Name" />
+        </div>
+        @if(!string.IsNullOrEmpty(_vm?.Error))
+        {
+            <div style="margin-top:.5rem;color:#e66;font-size:.8rem;">@_vm!.Error</div>
+        }
+    </EditForm>
+
+    <div style="margin-top:1rem;">
+        <label>@Localizer["LabelSymbol"]</label>
+        <div style="margin-top:.4rem;">
+            <SymbolPicker ParentKind="AttachmentEntityKind.SecurityCategory" ParentId="@_vm!.Id" CurrentAttachmentId="_vm!.Model.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
+        </div>
     </div>
-    @if(!string.IsNullOrEmpty(_vm?.Error))
-    {
-        <div style="margin-top:.5rem;color:#e66;font-size:.8rem;">@_vm!.Error</div>
-    }
-</EditForm>
+}
 
 @code {
     [Parameter] public Guid? Id { get; set; }
@@ -121,4 +138,7 @@
                 break;
         }
     }
+
+    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/security-categories/{_vm.Id}/symbol/{aid}", null); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
+    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/security-categories/{_vm.Id}/symbol"); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
 }

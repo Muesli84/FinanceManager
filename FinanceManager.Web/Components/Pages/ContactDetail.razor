@@ -13,6 +13,7 @@
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ContactDetail> Localizer
 @using FinanceManager.Web.ViewModels
 @inject IServiceProvider Services
+@using System.Net.Http
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="ContactDetail.TabId"
@@ -35,38 +36,51 @@ else
     <EditForm Model="_vm" OnValidSubmit="OnSaveAsync">
         <DataAnnotationsValidator />
         <ValidationSummary />
+
         <div>
-            <label>@Localizer["LabelName"]</label>
-            <InputText @bind-Value="_vm!.Name" @bind-Value:after="(()=>RebuildRibbon())" />
-            <ValidationMessage For="()=>_vm!.Name" />
+            <div>
+                <label>@Localizer["LabelName"]</label>
+                <InputText @bind-Value="_vm!.Name" @bind-Value:after="(()=>RebuildRibbon())" />
+                <ValidationMessage For="()=>_vm!.Name" />
+            </div>
+
+            <div>
+                <label>@Localizer["LabelType"]</label>
+                <InputSelect @bind-Value="_vm!.Type" @bind-Value:after="(()=>RebuildRibbon())">
+                    @foreach (var t in Enum.GetValues<ContactType>())
+                    {
+                        <option value="@t">@t</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div>
+                <label>@Localizer["LabelGroup"]</label>
+                <InputSelect @bind-Value="_vm!.CategoryId" @bind-Value:after="(()=>RebuildRibbon())">
+                    <option value="">-- @Localizer["None"] --</option>
+                    @foreach (var g in _vm!.Categories)
+                    {
+                        <option value="@g.Id">@g.Name</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div>
+                <label>@Localizer["LabelDescription"]</label>
+                <textarea @bind="_vm!.Description" rows="4" style="width:100%;max-width:520px;"></textarea>
+            </div>
+
+            <div>
+                <label><input type="checkbox" @bind="_vm!.IsPaymentIntermediary" @bind:after="(()=>RebuildRibbon())" /> @Localizer["LabelIntermediary"]</label>
+            </div>
+
+            <div style="margin-top:.75rem;width:220px;">
+                <label style="display:block;margin-bottom:.35rem;">@Localizer["LabelSymbol"]</label>
+                <SymbolPicker ParentKind="AttachmentEntityKind.Contact" ParentId="@Id" CurrentAttachmentId="_vm?.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
+            </div>
         </div>
-        <div>
-            <label>@Localizer["LabelType"]</label>
-            <InputSelect @bind-Value="_vm!.Type" @bind-Value:after="(()=>RebuildRibbon())">
-                @foreach (var t in Enum.GetValues<ContactType>())
-                {
-                    <option value="@t">@t</option>
-                }
-            </InputSelect>
-        </div>
-        <div>
-            <label>@Localizer["LabelGroup"]</label>
-            <InputSelect @bind-Value="_vm!.CategoryId" @bind-Value:after="(()=>RebuildRibbon())">
-                <option value="">-- @Localizer["None"] --</option>
-                @foreach (var g in _vm!.Categories)
-                {
-                    <option value="@g.Id">@g.Name</option>
-                }
-            </InputSelect>
-        </div>
-        <div>
-            <label>@Localizer["LabelDescription"]</label>
-            <textarea @bind="_vm!.Description" rows="4" style="width:100%;max-width:520px;"></textarea>
-        </div>
-        <div>
-            <label><input type="checkbox" @bind="_vm!.IsPaymentIntermediary" @bind:after="(()=>RebuildRibbon())" /> @Localizer["LabelIntermediary"]</label>
-        </div>
-        <div>
+
+        <div style="margin-top:1rem;">
             <label>@Localizer["LabelAliases"]</label>
             <ul style="margin-bottom:.5rem;">
                 @foreach (var alias in _vm!.Aliases)
@@ -90,6 +104,7 @@ else
                 <div class="error" style="margin-top:.3rem;">@_vm.AliasError</div>
             }
         </div>
+
         @if (!string.IsNullOrWhiteSpace(_vm!.Error))
         {
             <div class="error" style="margin-top:.75rem;">@Localizer[_vm.Error]</div>
@@ -330,5 +345,41 @@ else
         if (Guid.TryParse(query.Get("draftId"), out var did)) { _prefillDraftId = did; }
         if (Guid.TryParse(query.Get("entryId"), out var eid)) { _prefillEntryId = eid; }
         BackNav = query.Get("back");
+    }
+
+    private async Task OnSymbolUploaded(Guid attachmentId)
+    {
+        if (Id == null) { return; }
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.PostAsync($"/api/contacts/{Id}/symbol/{attachmentId}", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                if (_vm != null)
+                {
+                    _vm.SymbolAttachmentId = attachmentId;
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task OnSymbolCleared()
+    {
+        if (Id == null) { return; }
+        try
+        {
+            var http = ClientFactory.CreateClient("Api");
+            var resp = await http.DeleteAsync($"/api/contacts/{Id}/symbol");
+            if (resp.IsSuccessStatusCode)
+            {
+                if (_vm != null)
+                {
+                    _vm.SymbolAttachmentId = null;
+                }
+            }
+        }
+        catch { }
     }
 }
