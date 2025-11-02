@@ -59,6 +59,8 @@
   <data name="LabelTargetAmount" xml:space="preserve"><value>Zielbetrag</value></data>
   <data name="LabelTargetDate" xml:space="preserve"><value>Zieldatum</value></data>
   <data name="LabelInterval" xml:space="preserve"><value>Intervall</value></data>
+  <data name="LabelBalance" xml:space="preserve"><value>Saldo</value></data>
+  <data name="LabelRemaining" xml:space="preserve"><value>Restbetrag</value></data>
   <data name="LabelStatus" xml:space="preserve"><value>Status</value></data>
   <data name="Type_Open" xml:space="preserve"><value>Offen</value></data>
   <data name="Type_Recurring" xml:space="preserve"><value>Wiederkehrend</value></data>

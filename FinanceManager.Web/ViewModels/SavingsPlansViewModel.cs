@@ -35,7 +35,7 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         {
             new UiRibbonItem(ShowActiveOnly ? localizer["OnlyActive"] : localizer["StatusArchived"], "<svg><use href='/icons/sprite.svg#refresh'/></svg>", UiRibbonItemSize.Small, false, "ToggleActive")
         });
-        return new List<UiRibbonGroup>{ actions, filter };
+        return new List<UiRibbonGroup> { actions, filter };
     }
 
     public void ToggleActiveOnly()
@@ -155,5 +155,23 @@ public sealed class SavingsPlansViewModel : ViewModelBase
     {
         if (plan == null) return null;
         return _displaySymbolByPlan.TryGetValue(plan.Id, out var v) ? v : null;
+    }
+
+    // Public helpers to expose analysis values for the UI
+    public decimal? GetAccumulatedAmount(SavingsPlanDto plan)
+    {
+        if (plan == null) return null;
+        return _analysisByPlan.TryGetValue(plan.Id, out var a) ? a.AccumulatedAmount : (decimal?)null;
+    }
+
+    public decimal? GetRemainingAmount(SavingsPlanDto plan)
+    {        
+        if (plan == null) return null;
+        if (plan.Type == SavingsPlanType.Open) return null;
+        if (!_analysisByPlan.TryGetValue(plan.Id, out var a)) return null;
+        if (a.TargetAmount is null) return null;
+        var remainingAmount = a.TargetAmount.Value - a.AccumulatedAmount;
+        if (remainingAmount == 0) return null;
+        return remainingAmount;
     }
 }
