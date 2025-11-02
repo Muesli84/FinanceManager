@@ -4,6 +4,7 @@
 @using System.Web
 @using FinanceManager.Domain
 @using FinanceManager.Domain.Reports
+@using FinanceManager.Shared.Dtos
 @inject NavigationManager Nav
 @inject HttpClient Http
 @inject IServiceProvider Services
@@ -139,7 +140,24 @@ else
                                     </button>
                                 }
                             </td>
-                            <td>@GetDisplayName(top)</td>
+                            <td>
+                                @{ var symTop = GetSymbolForPoint(top); }
+                                <div style="display:flex;align-items:center;gap:.5rem;">
+                                    @if (symTop != null)
+                                    {
+                                        <div style="width:24px;height:24px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                            <img src="@($"/api/attachments/{symTop}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div style="width:24px;height:24px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                            <svg style="width:16px;height:16px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                        </div>
+                                    }
+                                    <span>@GetDisplayName(top)</span>
+                                </div>
+                            </td>
                             @if(ShowCategoryColumn){<td>@(string.IsNullOrWhiteSpace(top.CategoryName)?"-":top.CategoryName)</td>}
                             @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(top.PreviousAmount.HasValue? top.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(top.Amount, top.PreviousAmount)</td>}
                             @if(_compareYear){<td class="amt-year" style="text-align:right;">@(top.YearAgoAmount.HasValue? top.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(top.Amount, top.YearAgoAmount)</td>}
@@ -161,7 +179,24 @@ else
                                             </button>
                                         }
                                     </td>
-                                    <td class="child-label">@GetDisplayName(child)</td>
+                                    <td class="child-label">
+                                        @{ var symChild = GetSymbolForPoint(child); }
+                                        <div style="display:flex;align-items:center;gap:.5rem;">
+                                            @if (symChild != null)
+                                            {
+                                                <div style="width:20px;height:20px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                                    <img src="@($"/api/attachments/{symChild}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div style="width:20px;height:20px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                                    <svg style="width:14px;height:14px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                                </div>
+                                            }
+                                            <span>@GetDisplayName(child)</span>
+                                        </div>
+                                    </td>
                                     @if(ShowCategoryColumn){<td>@(string.IsNullOrWhiteSpace(child.CategoryName)?"-":child.CategoryName)</td>}
                                     @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(child.PreviousAmount.HasValue? child.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(child.Amount, child.PreviousAmount)</td>}
                                     @if(_compareYear){<td class="amt-year" style="text-align:right;">@(child.YearAgoAmount.HasValue? child.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(child.Amount, child.YearAgoAmount)</td>}
@@ -174,7 +209,24 @@ else
                                         var gCls = ReportDashboardViewModel.IsNegative(grand) ? "neg" : string.Empty;
                                         <tr class="child-row entity-row @gCls">
                                             <td></td>
-                                            <td class="child-label">@GetDisplayName(grand)</td>
+                                            <td class="child-label">
+                                                @{ var symGrand = GetSymbolForPoint(grand); }
+                                                <div style="display:flex;align-items:center;gap:.5rem;">
+                                                    @if (symGrand != null)
+                                                    {
+                                                        <div style="width:20px;height:20px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                                            <img src="@($"/api/attachments/{symGrand}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div style="width:20px;height:20px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                                            <svg style="width:14px;height:14px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                                        </div>
+                                                    }
+                                                    <span>@GetDisplayName(grand)</span>
+                                                </div>
+                                            </td>
                                             @if(ShowCategoryColumn){<td></td>}
                                             @if(ShowPreviousColumns){<td class="amt-prev" style="text-align:right;">@(grand.PreviousAmount.HasValue? grand.PreviousAmount.Value.ToString("N2") : "-")</td><td class="delta amt-prev" style="text-align:right;">@FormatDelta(grand.Amount, grand.PreviousAmount)</td>}
                                             @if(_compareYear){<td class="amt-year" style="text-align:right;">@(grand.YearAgoAmount.HasValue? grand.YearAgoAmount.Value.ToString("N2") : "-")</td><td class="delta amt-year" style="text-align:right;">@FormatDelta(grand.Amount, grand.YearAgoAmount)</td>}
@@ -300,6 +352,17 @@ else
     // State
     private bool _loaded;
     private bool _editMode;
+
+    // Symbol mappings for report rows
+    private readonly Dictionary<Guid, Guid?> _contactDisplaySymbolById = new();
+    private readonly Dictionary<Guid, Guid?> _savingsDisplaySymbolById = new();
+    private readonly Dictionary<Guid, Guid?> _securityDisplaySymbolById = new();
+    private readonly Dictionary<Guid, Guid?> _contactCategorySymbolById = new();
+    private readonly Dictionary<Guid, Guid?> _savingsCategorySymbolById = new();
+    private readonly Dictionary<Guid, Guid?> _securityCategorySymbolById = new();
+    private readonly Dictionary<string, Guid?> _contactCategorySymbolByName = new();
+    private readonly Dictionary<string, Guid?> _savingsCategorySymbolByName = new();
+    private readonly Dictionary<string, Guid?> _securityCategorySymbolByName = new();
 
     private List<int> _selectedKinds = new(){ (int)PostingKind.Bank }; // multi selection
     private ReportInterval _interval = ReportInterval.Month;
@@ -518,11 +581,9 @@ else
             _vm.UseValutaDate = _useValutaDate; // new: propagate date kind to VM
 
             await _vm.ReloadAsync(_analysisMonth, default);
-
-            if (!IsCategoryGroupingSingle && !IsMulti)
-            {
-                _vm.Expanded.Clear();
-            }
+            
+            // After loading points, load symbol mappings for entities shown in the report
+            await LoadSymbolsForPointsAsync();
         }
         catch (Exception)
         {
@@ -533,6 +594,175 @@ else
             RebuildRibbon();
             StateHasChanged();
         }
+    }
+
+    private static bool TryExtractGuidFromGroupKey(string groupKey, out Guid id)
+    {
+        id = Guid.Empty;
+        if (string.IsNullOrWhiteSpace(groupKey)) return false;
+        var parts = groupKey.Split(':');
+        // try last segment
+        if (parts.Length == 0) return false;
+        var candidate = parts.Last();
+        return Guid.TryParse(candidate, out id);
+    }
+
+    private async Task LoadSymbolsForPointsAsync()
+    {
+        _contactDisplaySymbolById.Clear(); _savingsDisplaySymbolById.Clear(); _securityDisplaySymbolById.Clear();
+        _contactCategorySymbolById.Clear(); _savingsCategorySymbolById.Clear(); _securityCategorySymbolById.Clear();
+        _contactCategorySymbolByName.Clear(); _savingsCategorySymbolByName.Clear(); _securityCategorySymbolByName.Clear();
+
+        if (_vm == null || _vm.Points == null || _vm.Points.Count == 0) return;
+
+        var contactIds = new HashSet<Guid>();
+        var savingsIds = new HashSet<Guid>();
+        var securityIds = new HashSet<Guid>();
+        var categoryNames = new HashSet<string>();
+
+        foreach (var p in _vm.Points)
+        {
+            if (p.GroupKey.StartsWith("Contact:") && TryExtractGuidFromGroupKey(p.GroupKey, out var cid)) contactIds.Add(cid);
+            if (p.GroupKey.StartsWith("SavingsPlan:") && TryExtractGuidFromGroupKey(p.GroupKey, out var spid)) savingsIds.Add(spid);
+            if (p.GroupKey.StartsWith("Security:") && TryExtractGuidFromGroupKey(p.GroupKey, out var sid)) securityIds.Add(sid);
+            if (p.GroupKey.StartsWith("Category:") && !string.IsNullOrWhiteSpace(p.CategoryName)) categoryNames.Add(p.CategoryName!);
+        }
+
+        // Load contact categories (map id->symbol and name->symbol)
+        try
+        {
+            var resp = await Http.GetAsync("/api/contact-categories");
+            if (resp.IsSuccessStatusCode)
+            {
+                var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new List<ContactCategoryDto>();
+                foreach (var c in list)
+                {
+                    _contactCategorySymbolById[c.Id] = c.SymbolAttachmentId;
+                    if (!string.IsNullOrWhiteSpace(c.Name)) _contactCategorySymbolByName[c.Name!] = c.SymbolAttachmentId;
+                }
+            }
+        }
+        catch { }
+
+        // Load savings plan categories
+        try
+        {
+            var resp = await Http.GetAsync("/api/savings-plan-categories");
+            if (resp.IsSuccessStatusCode)
+            {
+                var list = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>() ?? new List<SavingsPlanCategoryDto>();
+                foreach (var c in list)
+                {
+                    _savingsCategorySymbolById[c.Id] = c.SymbolAttachmentId;
+                    if (!string.IsNullOrWhiteSpace(c.Name)) _savingsCategorySymbolByName[c.Name!] = c.SymbolAttachmentId;
+                }
+            }
+        }
+        catch { }
+
+        // Load security categories
+        try
+        {
+            var resp = await Http.GetAsync("/api/security-categories");
+            if (resp.IsSuccessStatusCode)
+            {
+                var list = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>() ?? new List<SecurityCategoryDto>();
+                foreach (var c in list)
+                {
+                    _securityCategorySymbolById[c.Id] = c.SymbolAttachmentId;
+                    if (!string.IsNullOrWhiteSpace(c.Name)) _securityCategorySymbolByName[c.Name!] = c.SymbolAttachmentId;
+                }
+            }
+        }
+        catch { }
+
+        // Load entities in bulk where needed
+        if (contactIds.Count > 0)
+        {
+            try
+            {
+                var resp = await Http.GetAsync("/api/contacts?all=true");
+                if (resp.IsSuccessStatusCode)
+                {
+                    var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new List<ContactDto>();
+                    foreach (var c in list)
+                    {
+                        if (contactIds.Contains(c.Id))
+                        {
+                            Guid? display = c.SymbolAttachmentId;
+                            if (!display.HasValue && c.CategoryId.HasValue && _contactCategorySymbolById.TryGetValue(c.CategoryId.Value, out var catSym)) display = catSym;
+                            _contactDisplaySymbolById[c.Id] = display;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        if (savingsIds.Count > 0)
+        {
+            try
+            {
+                var resp = await Http.GetAsync("/api/savings-plans?onlyActive=false");
+                if (resp.IsSuccessStatusCode)
+                {
+                    var list = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new List<SavingsPlanDto>();
+                    foreach (var p in list)
+                    {
+                        if (savingsIds.Contains(p.Id))
+                        {
+                            Guid? display = p.SymbolAttachmentId;
+                            if (!display.HasValue && p.CategoryId.HasValue && _savingsCategorySymbolById.TryGetValue(p.CategoryId.Value, out var catSym)) display = catSym;
+                            _savingsDisplaySymbolById[p.Id] = display;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        if (securityIds.Count > 0)
+        {
+            try
+            {
+                var resp = await Http.GetAsync("/api/securities?onlyActive=false");
+                if (resp.IsSuccessStatusCode)
+                {
+                    var list = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>() ?? new List<SecurityDto>();
+                    foreach (var s in list)
+                    {
+                        if (securityIds.Contains(s.Id))
+                        {
+                            Guid? display = s.SymbolAttachmentId;
+                            if (!display.HasValue && s.CategoryId.HasValue && _securityCategorySymbolById.TryGetValue(s.CategoryId.Value, out var catSym)) display = catSym;
+                            _securityDisplaySymbolById[s.Id] = display;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+
+    private Guid? GetSymbolForPoint(ReportDashboardViewModel.PointDto p)
+    {
+        if (p == null) return null;
+        try
+        {
+            if (p.GroupKey.StartsWith("Contact:") && TryExtractGuidFromGroupKey(p.GroupKey, out var cid)) return _contactDisplaySymbolById.TryGetValue(cid, out var v) ? v : null;
+            if (p.GroupKey.StartsWith("SavingsPlan:") && TryExtractGuidFromGroupKey(p.GroupKey, out var spid)) return _savingsDisplaySymbolById.TryGetValue(spid, out var v2) ? v2 : null;
+            if (p.GroupKey.StartsWith("Security:") && TryExtractGuidFromGroupKey(p.GroupKey, out var sid)) return _securityDisplaySymbolById.TryGetValue(sid, out var v3) ? v3 : null;
+            // category rows: try lookup by category name
+            if (p.GroupKey.StartsWith("Category:") && !string.IsNullOrWhiteSpace(p.CategoryName))
+            {
+                var name = p.CategoryName!;
+                if (_contactCategorySymbolByName.TryGetValue(name, out var s)) return s;
+                if (_savingsCategorySymbolByName.TryGetValue(name, out var s2)) return s2;
+                if (_securityCategorySymbolByName.TryGetValue(name, out var s3)) return s3;
+            }
+        }
+        catch { }
+        return null;
     }
 
     private void ToggleEditMode()
