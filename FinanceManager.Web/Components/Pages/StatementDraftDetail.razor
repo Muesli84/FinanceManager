@@ -24,6 +24,10 @@
     private bool _hasFile; private bool _showViewer; private string? _fileUrl;
     private DraftValidationResultDto? _validation; private bool _booking; private bool _pendingWarningConfirmation; private DraftValidationResultDto? _lastValidation; private string? _bookingError;
 
+    // symbol mappings
+    private readonly Dictionary<Guid, Guid?> _contactDisplaySymbolById = new();
+    private readonly Dictionary<Guid, Guid?> _savingsPlanDisplaySymbolById = new();
+
     // Ribbon state
     private enum TabId { Statement }
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
@@ -38,12 +42,75 @@
         await LoadAccountsAsync();
         _selectedAccountId = _draft?.DetectedAccountId;
         await LoadSavingsPlansAsync();
+        await LoadCategorySymbolMappingsAsync();
         if (_showViewer && _hasFile)
         {
             _fileUrl = $"/api/statement-drafts/{Id}/file";
         }
         BuildRibbon();
     }
+
+    private async Task LoadCategorySymbolMappingsAsync()
+    {
+        _contactDisplaySymbolById.Clear();
+        _savingsPlanDisplaySymbolById.Clear();
+
+        // load contact categories
+        var contactCategoryMap = new Dictionary<Guid, Guid?>();
+        try
+        {
+            var creq = await Http.GetAsync("/api/contact-categories");
+            if (creq.IsSuccessStatusCode)
+            {
+                var clist = await creq.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new();
+                foreach (var c in clist)
+                {
+                    contactCategoryMap[c.Id] = c.SymbolAttachmentId;
+                }
+            }
+        }
+        catch { }
+
+        // load savings plan categories
+        var savingsPlanCategoryMap = new Dictionary<Guid, Guid?>();
+        try
+        {
+            var sreq = await Http.GetAsync("/api/savings-plan-categories");
+            if (sreq.IsSuccessStatusCode)
+            {
+                var slist = await sreq.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>() ?? new();
+                foreach (var s in slist)
+                {
+                    savingsPlanCategoryMap[s.Id] = s.SymbolAttachmentId;
+                }
+            }
+        }
+        catch { }
+
+        // build contact display symbols (contact symbol or category fallback)
+        foreach (var c in _contacts)
+        {
+            Guid? display = null;
+            if (c.SymbolAttachmentId.HasValue) display = c.SymbolAttachmentId;
+            else if (c.CategoryId.HasValue && contactCategoryMap.TryGetValue(c.CategoryId.Value, out var catSym) && catSym.HasValue) display = catSym;
+            _contactDisplaySymbolById[c.Id] = display;
+        }
+
+        // build savings plan display symbols
+        foreach (var p in _savingsPlans)
+        {
+            Guid? display = null;
+            if (p.SymbolAttachmentId.HasValue) display = p.SymbolAttachmentId;
+            else if (p.CategoryId.HasValue && savingsPlanCategoryMap.TryGetValue(p.CategoryId.Value, out var catSym) && catSym.HasValue) display = catSym;
+            _savingsPlanDisplaySymbolById[p.Id] = display;
+        }
+    }
+
+    private Guid? GetContactDisplaySymbol(Guid contactId)
+        => _contactDisplaySymbolById.TryGetValue(contactId, out var v) ? v : null;
+
+    private Guid? GetSavingsPlanDisplaySymbol(Guid planId)
+        => _savingsPlanDisplaySymbolById.TryGetValue(planId, out var v) ? v : null;
 
     private void BuildRibbon()
     {
@@ -403,9 +470,9 @@
     private sealed record DraftValidationMessageDto(string Code, string Severity, string Message, Guid DraftId, Guid? EntryId);
     private sealed record DraftValidationResultDto(Guid DraftId, bool IsValid, IReadOnlyList<DraftValidationMessageDto> Messages);
     private sealed record AccountDto(Guid Id, string Name, int Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
-    private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
+    private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, Guid? SymbolAttachmentId);
     private enum ContactType { Self, Bank, Person, Organization, Other }
-    private sealed record SavingsPlanDto(Guid Id, string Name);
+    private sealed record SavingsPlanDto(Guid Id, string Name, SavingsPlanType? Type = null, decimal? TargetAmount = null, DateTime? TargetDate = null, SavingsPlanInterval? Interval = null, bool IsActive = true, DateTime? CreatedUtc = null, DateTime? ArchivedUtc = null, Guid? CategoryId = null, string? ContractNumber = null, Guid? SymbolAttachmentId = null);
     private sealed class AccountVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid BankContactId { get; set; } }
 }
 
@@ -456,7 +523,7 @@ else
         if(globalMessages.Any())
         {
             <div style="margin:.5rem 0 1rem 0;padding:.6rem .75rem;border:1px solid #444;border-radius:4px;background:#181818;max-width:960px;">
-                <h4 style="margin:.1rem 0 .4rem 0;font-size:.75rem;">@Localizer["GlobalMessages"]</h4>
+                <h4 style="margin:0.1rem 0 .4rem 0;font-size:.75rem;">@Localizer["GlobalMessages"]</h4>
                 <ul style="margin:0;padding-left:1.1rem;font-size:.65rem;">
                     @foreach(var gm in globalMessages)
                     {
@@ -523,7 +590,24 @@ else
                             @if (e.ContactId != null)
                             {
                                 var contact = _contacts.FirstOrDefault(a => a.Id == e.ContactId);
-                                @contact?.Name
+                                <div style="display:flex;gap:.5rem;align-items:center;">
+                                    @{
+                                        var symbolId = contact != null ? GetContactDisplaySymbol(contact.Id) : null;
+                                    }
+                                    @if (symbolId != null)
+                                    {
+                                        <div style="width:28px;height:28px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                            <img src="@($"/api/attachments/{symbolId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div style="width:28px;height:28px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                            <svg style="width:18px;height:18px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                        </div>
+                                    }
+                                    <span>@contact?.Name</span>
+                                </div>
                             }
                             else
                             {
@@ -534,7 +618,24 @@ else
                             @if (e.SavingsPlanId != null)
                             {
                                 var plan = _savingsPlans.FirstOrDefault(p => p.Id == e.SavingsPlanId);
-                                @plan?.Name
+                                <div style="display:flex;gap:.5rem;align-items:center;">
+                                    @{
+                                        var sId = plan != null ? GetSavingsPlanDisplaySymbol(plan.Id) : null;
+                                    }
+                                    @if (sId != null)
+                                    {
+                                        <div style="width:28px;height:28px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                            <img src="@($"/api/attachments/{sId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div style="width:28px;height:28px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                            <svg style="width:18px;height:18px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                        </div>
+                                    }
+                                    <span>@plan?.Name</span>
+                                </div>
                             }
                             else
                             {
