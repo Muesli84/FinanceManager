@@ -18,7 +18,7 @@ public sealed class SavingsPlanService : ISavingsPlanService
         if (onlyActive) { query = query.Where(p => p.IsActive); }
         return await query
             .OrderBy(p => p.Name)
-            .Select(p => new SavingsPlanDto(p.Id, p.Name, p.Type, p.TargetAmount, p.TargetDate, p.Interval, p.IsActive, p.CreatedUtc, p.ArchivedUtc, p.CategoryId, p.ContractNumber, p.SymbolAttachmentId))
+            .Select(p => new SavingsPlanDto(p.Id, p.Name, p.Type, p.Type == SavingsPlanType.Open ? null : p.TargetAmount, p.TargetDate, p.Interval, p.IsActive, p.CreatedUtc, p.ArchivedUtc, p.CategoryId, p.ContractNumber, p.SymbolAttachmentId))
             .ToListAsync(ct);
     }
 
