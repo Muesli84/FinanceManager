@@ -277,4 +277,13 @@ public sealed class UserAdminService : IUserAdminService
         _logger.LogInformation("Deleted user {UserId}", id);
         return true;
     }
+
+    public async Task SetSymbolAttachmentAsync(Guid userId, Guid targetUserId, Guid? attachmentId, CancellationToken ct)
+    {
+        _logger.LogInformation("Setting symbol for user {TargetUserId} by admin {AdminId}", targetUserId, userId);
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == targetUserId, ct);
+        if (user == null) throw new ArgumentException("User not found", nameof(targetUserId));
+        user.SetSymbolAttachment(attachmentId);
+        await _db.SaveChangesAsync(ct);
+    }
 }

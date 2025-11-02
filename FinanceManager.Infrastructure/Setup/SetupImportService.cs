@@ -51,6 +51,10 @@ public sealed class SetupImportService : ISetupImportService
         public Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, CancellationToken ct)
             => Task.FromResult(new AttachmentDto(Guid.Empty, (short)kind, entityId, fileName, contentType ?? "application/octet-stream", 0L, categoryId, DateTime.UtcNow, false));
 
+        // New overload with role to satisfy IAttachmentService
+        public Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, AttachmentRole role, CancellationToken ct)
+            => UploadAsync(ownerUserId, kind, entityId, content, fileName, contentType, categoryId, ct);
+
         public Task<AttachmentDto> CreateUrlAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, string url, string? fileName, Guid? categoryId, CancellationToken ct)
         {
             var name = string.IsNullOrWhiteSpace(fileName) ? url : fileName!;

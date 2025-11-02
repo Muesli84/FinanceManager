@@ -32,7 +32,7 @@ public sealed class AccountService : IAccountService
         var account = new Account(ownerUserId, type, name, iban, bankContactId);
         _db.Accounts.Add(account);
         await _db.SaveChangesAsync(ct);
-        return new AccountDto(account.Id, account.Name, account.Type, account.Iban, account.CurrentBalance, account.BankContactId);
+        return new AccountDto(account.Id, account.Name, account.Type, account.Iban, account.CurrentBalance, account.BankContactId, account.SymbolAttachmentId);
     }
 
     public async Task<AccountDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, string? iban, Guid bankContactId, CancellationToken ct)
@@ -53,7 +53,7 @@ public sealed class AccountService : IAccountService
         account.SetIban(iban);
         account.SetBankContact(bankContactId);
         await _db.SaveChangesAsync(ct);
-        return new AccountDto(account.Id, account.Name, account.Type, account.Iban, account.CurrentBalance, account.BankContactId);
+        return new AccountDto(account.Id, account.Name, account.Type, account.Iban, account.CurrentBalance, account.BankContactId, account.SymbolAttachmentId);
     }
 
     public async Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct)
@@ -110,7 +110,7 @@ public sealed class AccountService : IAccountService
             .Where(a => a.OwnerUserId == ownerUserId)
             .OrderBy(a => a.Name)
             .Skip(skip).Take(take)
-            .Select(a => new AccountDto(a.Id, a.Name, a.Type, a.Iban, a.CurrentBalance, a.BankContactId))
+            .Select(a => new AccountDto(a.Id, a.Name, a.Type, a.Iban, a.CurrentBalance, a.BankContactId, a.SymbolAttachmentId))
             .ToListAsync(ct);
     }
 
@@ -118,7 +118,15 @@ public sealed class AccountService : IAccountService
     {
         return await _db.Accounts.AsNoTracking()
             .Where(a => a.Id == id && a.OwnerUserId == ownerUserId)
-            .Select(a => new AccountDto(a.Id, a.Name, a.Type, a.Iban, a.CurrentBalance, a.BankContactId))
+            .Select(a => new AccountDto(a.Id, a.Name, a.Type, a.Iban, a.CurrentBalance, a.BankContactId, a.SymbolAttachmentId))
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct)
+    {
+        var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == id && a.OwnerUserId == ownerUserId, ct);
+        if (account == null) throw new ArgumentException("Account not found", nameof(id));
+        account.SetSymbolAttachment(attachmentId);
+        await _db.SaveChangesAsync(ct);
     }
 }

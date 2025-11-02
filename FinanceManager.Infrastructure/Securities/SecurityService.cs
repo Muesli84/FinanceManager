@@ -32,7 +32,8 @@ public sealed class SecurityService : ISecurityService
                     : _db.SecurityCategories.Where(c => c.Id == s.CategoryId).Select(c => c.Name).FirstOrDefault(),
                 IsActive = s.IsActive,
                 CreatedUtc = s.CreatedUtc,
-                ArchivedUtc = s.ArchivedUtc
+                ArchivedUtc = s.ArchivedUtc,
+                SymbolAttachmentId = s.SymbolAttachmentId // include in projection
             })
             .ToListAsync(ct);
     }
@@ -55,7 +56,8 @@ public sealed class SecurityService : ISecurityService
                     : _db.SecurityCategories.Where(c => c.Id == s.CategoryId).Select(c => c.Name).FirstOrDefault(),
                 IsActive = s.IsActive,
                 CreatedUtc = s.CreatedUtc,
-                ArchivedUtc = s.ArchivedUtc
+                ArchivedUtc = s.ArchivedUtc,
+                SymbolAttachmentId = s.SymbolAttachmentId // include in projection
             })
             .FirstOrDefaultAsync(ct);
     }
@@ -164,5 +166,14 @@ public sealed class SecurityService : ISecurityService
         var q = _db.Securities.AsNoTracking().Where(s => s.OwnerUserId == ownerUserId);
         if (onlyActive) { q = q.Where(s => s.IsActive); }
         return q.CountAsync(ct);
+    }
+
+    // New: set/clear symbol attachment for security
+    public async Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct)
+    {
+        var sec = await _db.Securities.FirstOrDefaultAsync(s => s.Id == id && s.OwnerUserId == ownerUserId, ct);
+        if (sec == null) throw new ArgumentException("Security not found", nameof(id));
+        sec.SetSymbolAttachment(attachmentId);
+        await _db.SaveChangesAsync(ct);
     }
 }

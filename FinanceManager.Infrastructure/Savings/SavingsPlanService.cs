@@ -18,14 +18,14 @@ public sealed class SavingsPlanService : ISavingsPlanService
         if (onlyActive) { query = query.Where(p => p.IsActive); }
         return await query
             .OrderBy(p => p.Name)
-            .Select(p => new SavingsPlanDto(p.Id, p.Name, p.Type, p.TargetAmount, p.TargetDate, p.Interval, p.IsActive, p.CreatedUtc, p.ArchivedUtc, p.CategoryId, p.ContractNumber))
+            .Select(p => new SavingsPlanDto(p.Id, p.Name, p.Type, p.TargetAmount, p.TargetDate, p.Interval, p.IsActive, p.CreatedUtc, p.ArchivedUtc, p.CategoryId, p.ContractNumber, p.SymbolAttachmentId))
             .ToListAsync(ct);
     }
 
     public async Task<SavingsPlanDto?> GetAsync(Guid id, Guid ownerUserId, CancellationToken ct)
     {
         var plan = await _db.SavingsPlans.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id && p.OwnerUserId == ownerUserId, ct);
-        return plan == null ? null : new SavingsPlanDto(plan.Id, plan.Name, plan.Type, plan.TargetAmount, plan.TargetDate, plan.Interval, plan.IsActive, plan.CreatedUtc, plan.ArchivedUtc, plan.CategoryId, plan.ContractNumber);
+        return plan == null ? null : new SavingsPlanDto(plan.Id, plan.Name, plan.Type, plan.TargetAmount, plan.TargetDate, plan.Interval, plan.IsActive, plan.CreatedUtc, plan.ArchivedUtc, plan.CategoryId, plan.ContractNumber, plan.SymbolAttachmentId);
     }
 
     public async Task<SavingsPlanDto> CreateAsync(Guid ownerUserId, string name, SavingsPlanType type, decimal? targetAmount, DateTime? targetDate, SavingsPlanInterval? interval, Guid? categoryId, string? contractNumber, CancellationToken ct)
@@ -39,7 +39,7 @@ public sealed class SavingsPlanService : ISavingsPlanService
         plan.SetContractNumber(contractNumber);
         _db.SavingsPlans.Add(plan);
         await _db.SaveChangesAsync(ct);
-        return new SavingsPlanDto(plan.Id, plan.Name, plan.Type, plan.TargetAmount, plan.TargetDate, plan.Interval, plan.IsActive, plan.CreatedUtc, plan.ArchivedUtc, plan.CategoryId, plan.ContractNumber);
+        return new SavingsPlanDto(plan.Id, plan.Name, plan.Type, plan.TargetAmount, plan.TargetDate, plan.Interval, plan.IsActive, plan.CreatedUtc, plan.ArchivedUtc, plan.CategoryId, plan.ContractNumber, plan.SymbolAttachmentId);
     }
 
     public async Task<SavingsPlanDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, SavingsPlanType type, decimal? targetAmount, DateTime? targetDate, SavingsPlanInterval? interval, Guid? categoryId, string? contractNumber, CancellationToken ct)
@@ -58,7 +58,7 @@ public sealed class SavingsPlanService : ISavingsPlanService
         plan.SetCategory(categoryId);
         plan.SetContractNumber(contractNumber);
         await _db.SaveChangesAsync(ct);
-        return new SavingsPlanDto(plan.Id, plan.Name, plan.Type, plan.TargetAmount, plan.TargetDate, plan.Interval, plan.IsActive, plan.CreatedUtc, plan.ArchivedUtc, plan.CategoryId, plan.ContractNumber);
+        return new SavingsPlanDto(plan.Id, plan.Name, plan.Type, plan.TargetAmount, plan.TargetDate, plan.Interval, plan.IsActive, plan.CreatedUtc, plan.ArchivedUtc, plan.CategoryId, plan.ContractNumber, plan.SymbolAttachmentId);
     }
 
     public async Task<bool> ArchiveAsync(Guid id, Guid ownerUserId, CancellationToken ct)
@@ -158,5 +158,14 @@ public sealed class SavingsPlanService : ISavingsPlanService
         var q = _db.SavingsPlans.AsNoTracking().Where(p => p.OwnerUserId == ownerUserId);
         if (onlyActive) { q = q.Where(p => p.IsActive); }
         return q.CountAsync(ct);
+    }
+
+    // New: set/clear symbol attachment for savings plan
+    public async Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct)
+    {
+        var plan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Id == id && p.OwnerUserId == ownerUserId, ct);
+        if (plan == null) throw new ArgumentException("Savings plan not found", nameof(id));
+        plan.SetSymbolAttachment(attachmentId);
+        await _db.SaveChangesAsync(ct);
     }
 }

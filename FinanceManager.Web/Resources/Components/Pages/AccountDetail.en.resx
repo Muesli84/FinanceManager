@@ -231,4 +231,10 @@
   <data name="Btn_Close" xml:space="preserve">
     <value>Close</value>
   </data>
+  <data name="UploadSymbol" xml:space="preserve">
+    <value>Upload symbol</value>
+  </data>
+  <data name="Btn_UploadSymbol" xml:space="preserve">
+    <value>Upload symbol</value>
+  </data>
 </root>

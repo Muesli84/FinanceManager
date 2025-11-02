@@ -8,6 +8,9 @@ public sealed class SavingsPlanCategory
     public Guid OwnerUserId { get; private set; }
     public string Name { get; private set; }
 
+    // Optional symbol attachment for category
+    public Guid? SymbolAttachmentId { get; private set; }
+
     public SavingsPlanCategory(Guid ownerUserId, string name)
     {
         Id = Guid.NewGuid();
@@ -16,4 +19,9 @@ public sealed class SavingsPlanCategory
     }
 
     public void Rename(string name) => Name = name;
+
+    public void SetSymbolAttachment(Guid? attachmentId)
+    {
+        SymbolAttachmentId = attachmentId == Guid.Empty ? null : attachmentId;
+    }
 }

@@ -58,6 +58,7 @@ public sealed class SavingsPlanEditViewModel : ViewModelBase
                     Model.Interval = dto.Interval;
                     Model.CategoryId = dto.CategoryId;
                     Model.ContractNumber = dto.ContractNumber;
+                    Model.SymbolAttachmentId = dto.SymbolAttachmentId;
                     await LoadAnalysisAsync(ct);
                 }
             }
@@ -191,5 +192,7 @@ public sealed class SavingsPlanEditViewModel : ViewModelBase
         public SavingsPlanInterval? Interval { get; set; }
         public Guid? CategoryId { get; set; }
         public string? ContractNumber { get; set; }
+        // Optional symbol attachment id for UI binding
+        public Guid? SymbolAttachmentId { get; set; }
     }
 }

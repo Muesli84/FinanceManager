@@ -32,6 +32,7 @@ else
         <table class="fm-table">
             <thead>
                 <tr>
+                    <th></th>
                     <th>@Localizer["Col_Name"]</th>
                     <th>@Localizer["Col_Type"]</th>
                     <th>@Localizer["Col_Iban"]</th>
@@ -42,6 +43,18 @@ else
                 @foreach (var a in _vm.Accounts)
                 {
                     <tr style="cursor:pointer;" @onclick="() => OpenDetail(a.Id)">
+                        <td style="width:48px;">
+                            @if (a.DisplaySymbolAttachmentId != null)
+                            {
+                                <img src="@($"/api/attachments/{a.DisplaySymbolAttachmentId}/download")" alt="symbol" style="width:36px;height:36px;object-fit:contain;border-radius:6px;border:1px solid var(--border);" />
+                            }
+                            else
+                            {
+                                <div style="width:36px;height:36px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                    <svg style="width:18px;height:18px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                </div>
+                            }
+                        </td>
                         <td>@a.Name</td>
                         <td>@a.Type</td>
                         <td>@a.Iban</td>
@@ -50,7 +63,7 @@ else
                 }
                 @if (_vm.Accounts.Count == 0)
                 {
-                    <tr><td colspan="4" style="opacity:.6;">@Localizer["NoAccounts"]</td></tr>
+                    <tr><td colspan="5" style="opacity:.6;">@Localizer["NoAccounts"]</td></tr>
                 }
             </tbody>
         </table>

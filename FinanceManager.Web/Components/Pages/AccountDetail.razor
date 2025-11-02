@@ -9,6 +9,7 @@
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.AccountDetail> Localizer
 @using FinanceManager.Domain.Attachments
 @using FinanceManager.Web.ViewModels
+@using System.Text.Json
 @inject IServiceProvider Services
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -62,6 +63,15 @@ else
                     <InputText @bind-Value="_vm!.NewBankContactName" />
                 </div>
             }
+
+            <!-- Symbol upload / preview -->
+            <div>
+                <SymbolPicker ParentKind="AttachmentEntityKind.Account" ParentId="@Id" CurrentAttachmentId="_vm.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
+                @if (!string.IsNullOrEmpty(_symbolError))
+                {
+                    <div style="color:#e66;margin-top:.5rem;">@Localizer[_symbolError]</div>
+                }
+            </div>
         </div>
         @if (!string.IsNullOrEmpty(_vm!.Error))
         {
@@ -90,6 +100,19 @@ else
     </div>
 }
 
+@if (_attachmentsPanelVisible && Id != null)
+{
+    <div class="split-center" @onclick="(()=> _attachmentsPanelVisible = false)">
+        <div class="split-dialog" style="max-width:90vH;" @onclick:stopPropagation="true">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+                <h3 style="margin:0;font-size:1rem;">@Localizer["UploadSymbol"]</h3>
+                <button class="icon-btn" title='@Localizer["Btn_Close"]' @onclick="(()=> _attachmentsPanelVisible=false)"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+            </div>
+            <AttachmentsPanel ParentKind="@AttachmentEntityKind.Account" ParentId="@Id!.Value" OnUploaded="OnSymbolUploaded" AllowedMimeTypes="@(new[] { "image/png", "image/jpeg", "image/svg+xml" })" />
+        </div>
+    </div>
+}
+
 @code {
     [Parameter] public Guid? Id { get; set; }
     [SupplyParameterFromQuery(Name="back")] public string? BackNav { get; set; }
@@ -101,6 +124,9 @@ else
     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
     private AccountDetailViewModel? _vm;
+    private bool _attachmentsPanelVisible;
+    private string? _symbolError;
+    private string? _symbolPreviewUrl;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -120,6 +146,7 @@ else
             if (_vm.IsAuthenticated)
             {
                 await _vm.InitializeAsync();
+                await EnsureSymbolPreviewAsync();
             }
             else
             {
@@ -180,6 +207,38 @@ else
         StateHasChanged();
     }
 
+    private async Task EnsureSymbolPreviewAsync()
+    {
+        _symbolPreviewUrl = null;
+        try
+        {
+            if (_vm?.SymbolAttachmentId != null)
+            {
+                // Request a short-lived token for the attachment so the browser can fetch it anonymously
+                var attachId = _vm.SymbolAttachmentId.Value;
+                var resp = await Http.PostAsync($"/api/attachments/{attachId}/download-token?validSeconds=300", content: null);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var obj = await resp.Content.ReadFromJsonAsync<JsonElement>();
+                    if (obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty("token", out var t) && t.ValueKind == JsonValueKind.String)
+                    {
+                        var token = t.GetString();
+                        if (!string.IsNullOrWhiteSpace(token))
+                        {
+                            _symbolPreviewUrl = $"/api/attachments/{attachId}/download?token={Uri.EscapeDataString(token)}";
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignore preview failures; use direct download fallback
+            _symbolPreviewUrl = null;
+        }
+        StateHasChanged();
+    }
+
     private async Task OnSaveClickedAsync()
     {
         if (_vm is null) { return; }
@@ -237,4 +296,42 @@ else
     }
     private void OpenBankContact(){ if (_vm?.BankContactId is Guid id) { Nav.NavigateTo($"/contacts/{id}"); } }
     private void OpenPostings(){ if (Id != null) { Nav.NavigateTo($"/postings/account/{Id}"); } }
+
+    private void OpenAttachmentsPanel()
+    {
+        _attachmentsPanelVisible = true;
+        _symbolError = null;
+    }
+
+    private async Task OnSymbolUploaded(Guid attachmentId)
+    {
+        _symbolError = null;
+        if (_vm is null || Id == null) { return; }
+        // Call API to set symbol reference for this account
+        var resp = await Http.PostAsync($"/api/accounts/{Id}/symbol/{attachmentId}", null);
+        if (resp.IsSuccessStatusCode)
+        {
+            // reload account and preview
+            await _vm!.InitializeAsync();
+            await EnsureSymbolPreviewAsync();
+        }
+        else
+        {
+            // keep panel closed but show small error
+            _symbolError = "Error_SetSymbolFailed";
+        }
+    }
+
+    private async Task OnSymbolCleared()
+    {
+        if (Id == null) { return; }
+        var resp = await Http.DeleteAsync($"/api/accounts/{Id}/symbol");
+        if (resp.IsSuccessStatusCode)
+        {
+            await _vm!.InitializeAsync();
+            _symbolPreviewUrl = null;
+            StateHasChanged();
+        }
+    }
+
 }

@@ -7,4 +7,5 @@ public interface ISavingsPlanCategoryService
     Task<SavingsPlanCategoryDto> CreateAsync(Guid ownerUserId, string name, CancellationToken ct);
     Task<SavingsPlanCategoryDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct);
+    Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct);
 }

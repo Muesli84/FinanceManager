@@ -47,10 +47,15 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("SymbolAttachmentId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SymbolAttachmentId");
 
                     b.HasIndex("OwnerUserId", "Name")
                         .IsUnique();
@@ -127,6 +132,9 @@ namespace FinanceManager.Infrastructure.Migrations
 
                     b.Property<Guid?>("ReferenceAttachmentId")
                         .HasColumnType("TEXT");
+
+                    b.Property<short>("Role")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Sha256")
                         .HasMaxLength(64)
@@ -237,6 +245,9 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("SymbolAttachmentId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
@@ -271,6 +282,9 @@ namespace FinanceManager.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("SymbolAttachmentId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -627,6 +641,9 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("SymbolAttachmentId")
+                        .HasColumnType("TEXT");
+
                     b.Property<decimal?>("TargetAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
@@ -659,6 +676,9 @@ namespace FinanceManager.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("SymbolAttachmentId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -718,6 +738,9 @@ namespace FinanceManager.Infrastructure.Migrations
                     b.Property<DateTime?>("PriceErrorSinceUtc")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("SymbolAttachmentId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
@@ -742,6 +765,9 @@ namespace FinanceManager.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("SymbolAttachmentId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -1159,6 +1185,9 @@ namespace FinanceManager.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
+
+                    b.Property<Guid?>("SymbolAttachmentId")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("TimeZoneId")
                         .HasColumnType("TEXT");

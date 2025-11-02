@@ -1,0 +1,141 @@
+@page "/contact-categories/new"
+@page "/contact-categories/{Id:guid}"
+@rendermode InteractiveServer
+@inject NavigationManager Nav
+@inject IServiceProvider Services
+@inject IHttpClientFactory ClientFactory
+@using FinanceManager.Web.Components.Shared
+@using FinanceManager.Web.ViewModels
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Localization
+@using System.ComponentModel.DataAnnotations
+@inject IStringLocalizer<Components.Pages.ContactCategoryEdit> Localizer
+@using FinanceManager.Domain.Attachments
+@using FinanceManager.Shared.Dtos
+<PageTitle>@Localizer["PageTitle"]</PageTitle>
+
+<Ribbon TTabEnum="ContactCategoryEdit.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
+
+<h3>@((_vm?.IsEdit ?? false) ? Localizer["TitleEdit"] : Localizer["TitleNew"])</h3>
+
+@if (_vm == null || !_vm.Loaded)
+{
+    <p>@Localizer["Loading"]</p>
+}
+else
+{
+    <EditForm Model="_vm!.Model" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div style="max-width:520px;">
+            <label>@Localizer["Label_Name"]</label>
+            <InputText @bind-Value="_vm!.Model.Name" @bind-Value:after="(()=>RebuildRibbon())" />
+            <ValidationMessage For="()=>_vm!.Model.Name" />
+        </div>
+        @if(!string.IsNullOrEmpty(_vm?.Error))
+        {
+            <div style="margin-top:.5rem;color:#e66;font-size:.8rem;">@_vm!.Error</div>
+        }
+    </EditForm>
+
+    <div style="margin-top:1rem;">
+        <SymbolPicker ParentKind="AttachmentEntityKind.ContactCategory" ParentId="@_vm!.Id" CurrentAttachmentId="_vm!.Model.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
+    </div>
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private ContactCategoryDetailViewModel? _vm;
+
+    // Ribbon state
+    private enum TabId { Category }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.Category;
+    private Task OnActiveTabChanged(TabId id) { _activeTab = id; return Task.CompletedTask; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_vm is null)
+        {
+            _vm = ActivatorUtilities.CreateInstance<ContactCategoryDetailViewModel>(Services);
+            _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
+        }
+        await _vm.InitializeAsync(Id);
+        RebuildRibbon();
+    }
+
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
+        {
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
+            {
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
+                {
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
+            }
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.Category,
+                Title = Localizer["Ribbon_Tab_Category"],
+                Groups = groups
+            }
+        };
+        StateHasChanged();
+    }
+
+    private async Task SaveAsync()
+    {
+        var ok = await _vm!.SaveAsync();
+        if (ok)
+        {
+            Nav.NavigateTo("/contact-categories", true);
+        }
+        RebuildRibbon();
+    }
+
+    private async Task DeleteAsync()
+    {
+        var ok = await _vm!.DeleteAsync();
+        if (ok)
+        {
+            Nav.NavigateTo("/contact-categories", true);
+        }
+        RebuildRibbon();
+    }
+
+    private void Back() => Nav.NavigateTo("/contact-categories");
+
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "Back":
+                Back();
+                break;
+            case "Save":
+                _ = SaveAsync();
+                break;
+            case "Delete":
+                _ = DeleteAsync();
+                break;
+        }
+    }
+
+    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/contact-categories/{_vm.Id}/symbol/{aid}", null); _vm.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
+    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/contact-categories/{_vm.Id}/symbol"); _vm.Model.SymbolAttachmentId = null; StateHasChanged(); } }
+}

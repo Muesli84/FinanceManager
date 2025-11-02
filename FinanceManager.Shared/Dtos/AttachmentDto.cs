@@ -11,5 +11,6 @@ public sealed record AttachmentDto(
     long SizeBytes,
     Guid? CategoryId,
     DateTime UploadedUtc,
-    bool IsUrl
+    bool IsUrl,
+    short Role = 0
 );

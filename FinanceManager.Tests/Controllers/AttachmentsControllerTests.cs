@@ -16,6 +16,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 using Microsoft.Extensions.Localization;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace FinanceManager.Tests.Controllers;
 
@@ -61,7 +62,8 @@ public sealed class AttachmentsControllerTests
                _ => L(key, key)
            });
 
-        var controller = new AttachmentsController(svc.Object, cats.Object, current, NullLogger<AttachmentsController>.Instance, opts, loc.Object);
+        var dp = DataProtectionProvider.Create("tests");
+        var controller = new AttachmentsController(svc.Object, cats.Object, current, NullLogger<AttachmentsController>.Instance, opts, loc.Object, dp);
         return (controller, svc, cats, current);
     }
 
@@ -206,8 +208,7 @@ public sealed class AttachmentsControllerTests
         var entityId = Guid.NewGuid();
         var categoryId = Guid.NewGuid();
 
-        service.Setup(s => s.CreateUrlAsync(current.UserId, AttachmentEntityKind.Contact, entityId, "http://example", null, categoryId, It.IsAny<CancellationToken>()))
-               .ReturnsAsync(new AttachmentDto(Guid.NewGuid(), (short)AttachmentEntityKind.Contact, entityId, "http://example", "text/plain", 0, categoryId, DateTime.UtcNow, true));
+        service.Setup(s => s.CreateUrlAsync(current.UserId, AttachmentEntityKind.Contact, entityId, "http://example", null, categoryId, It.IsAny<CancellationToken>())).ReturnsAsync(new AttachmentDto(Guid.NewGuid(), (short)AttachmentEntityKind.Contact, entityId, "http://example", "text/plain", 0, categoryId, DateTime.UtcNow, true));
 
         var resp = await controller.UploadAsync((short)AttachmentEntityKind.Contact, entityId, null, categoryId, "http://example", CancellationToken.None);
         Assert.IsType<OkObjectResult>(resp);
@@ -222,7 +223,7 @@ public sealed class AttachmentsControllerTests
         service.Setup(s => s.DownloadAsync(current.UserId, id, It.IsAny<CancellationToken>()))
                .ReturnsAsync(((Stream, string, string)?)null);
 
-        var resp = await controller.DownloadAsync(id, CancellationToken.None);
+        var resp = await controller.DownloadAsync(id, null, CancellationToken.None);
         Assert.IsType<NotFoundResult>(resp);
         service.VerifyAll();
     }
@@ -236,7 +237,7 @@ public sealed class AttachmentsControllerTests
         service.Setup(s => s.DownloadAsync(current.UserId, id, It.IsAny<CancellationToken>()))
                .ReturnsAsync((content, "file.bin", "application/octet-stream"));
 
-        var resp = await controller.DownloadAsync(id, CancellationToken.None);
+        var resp = await controller.DownloadAsync(id, null, CancellationToken.None);
         var file = Assert.IsType<FileStreamResult>(resp);
         Assert.Equal("file.bin", file.FileDownloadName);
         Assert.Equal("application/octet-stream", file.ContentType);

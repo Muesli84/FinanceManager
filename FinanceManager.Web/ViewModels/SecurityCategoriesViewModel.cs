@@ -42,7 +42,7 @@ public sealed class SecurityCategoriesViewModel : ViewModelBase
         }
         var list = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>(cancellationToken: ct) ?? new();
         Categories.Clear();
-        Categories.AddRange(list.Select(c => new CategoryItem { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name));
+        Categories.AddRange(list.Select(c => new CategoryItem { Id = c.Id, Name = c.Name, SymbolAttachmentId = c.SymbolAttachmentId }).OrderBy(c => c.Name));
         RaiseStateChanged();
     }
 
@@ -58,5 +58,5 @@ public sealed class SecurityCategoriesViewModel : ViewModelBase
         };
     }
 
-    public sealed class CategoryItem { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
+    public sealed class CategoryItem { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid? SymbolAttachmentId { get; set; } }
 }

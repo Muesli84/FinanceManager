@@ -21,5 +21,6 @@
   <data name="Ribbon_New" xml:space="preserve"><value>New</value></data>
   <data name="Ribbon_Reload" xml:space="preserve"><value>Reload</value></data>
   <data name="Ribbon_ClearFilter" xml:space="preserve"><value>Clear filter</value></data>
+  <data name="Ribbon_Categories" xml:space="preserve"><value>Categories</value></data>
   <data name="Ribbon_Tab_Contacts" xml:space="preserve"><value>Contacts</value></data>
 </root>

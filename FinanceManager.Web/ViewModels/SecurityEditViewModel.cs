@@ -49,6 +49,7 @@ public sealed class SecurityEditViewModel : ViewModelBase
                     Model.AlphaVantageCode = dto.AlphaVantageCode;
                     Model.CurrencyCode = dto.CurrencyCode;
                     Model.CategoryId = dto.CategoryId;
+                    Model.SymbolAttachmentId = dto.SymbolAttachmentId;
                     Loaded = true;
                 }
             }
@@ -165,6 +166,7 @@ public sealed class SecurityEditViewModel : ViewModelBase
         public string? AlphaVantageCode { get; set; }
         public string CurrencyCode { get; set; } = "EUR";
         public Guid? CategoryId { get; set; }
+        public Guid? SymbolAttachmentId { get; set; }
     }
     public sealed class DisplayModel
     {

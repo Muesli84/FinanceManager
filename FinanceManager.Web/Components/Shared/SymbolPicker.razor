@@ -1,0 +1,175 @@
+@using FinanceManager.Domain.Attachments
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Collections.Concurrent
+@inject HttpClient Http
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.SymbolPicker> Localizer
+
+<div>
+    <label>@Localizer["LabelSymbol"]</label><br />
+    <div style="display:flex;align-items:center;gap:.6rem;">
+        @if (CurrentAttachmentId != null)
+        {
+            <div style="width:48px;height:48px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                <img src="@(_previewUrl ?? $"/api/attachments/{CurrentAttachmentId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+            </div>
+            <button class="icon-btn" title="@Localizer["Btn_ClearSymbol"]" @onclick="OnClearClicked"><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+        }
+        else
+        {
+            <div style="width:48px;height:48px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--muted);">
+                <svg style="width:24px;height:24px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+            </div>
+        }
+
+        <!-- Hidden file input; label used as button to open picker -->
+        <InputFile id="@_inputId" OnChange="OnInputFileChange" accept="@(_accept)" style="display:none" />
+        <label for="@_inputId" class="icon-btn">@Localizer["Btn_UploadSymbol"]</label>
+    </div>
+    @if (!string.IsNullOrEmpty(_errorKey))
+    {
+        <div style="color:#e66;margin-top:.5rem;">@Localizer[_errorKey]</div>
+    }
+</div>
+
+@code {
+    private readonly string _inputId = $"symbolpicker_{Guid.NewGuid():N}";
+    private string? _accept => AllowedMimeTypes != null && AllowedMimeTypes.Length > 0 ? string.Join(',', AllowedMimeTypes) : null;
+    private string? _previewUrl;
+    private string? _errorKey;
+
+    private const int TokenValidSeconds = 300; // requested validity
+    private const int TokenRefreshBufferSeconds = 10; // refresh before this many seconds remain
+
+    // Simple in-memory cache shared across component instances for token reuse
+    private static readonly ConcurrentDictionary<Guid, (string Token, DateTime ExpiresUtc)> _tokenCache = new();
+
+    [Parameter] public AttachmentEntityKind ParentKind { get; set; }
+    [Parameter] public Guid? ParentId { get; set; }
+    [Parameter] public Guid? CurrentAttachmentId { get; set; }
+    // Include common ICO MIME types so .ico files can be uploaded and previewed
+    [Parameter] public string[]? AllowedMimeTypes { get; set; } = new[] { "image/png", "image/jpeg", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon" };
+    [Parameter] public EventCallback<Guid> OnUploaded { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        await EnsurePreviewAsync();
+    }
+
+    private async Task EnsurePreviewAsync()
+    {
+        _previewUrl = null;
+        _errorKey = null;
+        try
+        {
+            if (CurrentAttachmentId != null)
+            {
+                var attachId = CurrentAttachmentId.Value;
+
+                // Check cache first
+                if (_tokenCache.TryGetValue(attachId, out var cached))
+                {
+                    var now = DateTime.UtcNow;
+                    if (cached.ExpiresUtc > now.AddSeconds(TokenRefreshBufferSeconds))
+                    {
+                        _previewUrl = $"/api/attachments/{attachId}/download?token={Uri.EscapeDataString(cached.Token)}";
+                        StateHasChanged();
+                        return;
+                    }
+                }
+
+                // Fetch new token and cache it
+                var resp = await Http.PostAsync($"/api/attachments/{attachId}/download-token?validSeconds={TokenValidSeconds}", null);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var obj = await resp.Content.ReadFromJsonAsync<JsonElement>();
+                    if (obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty("token", out var t) && t.ValueKind == JsonValueKind.String)
+                    {
+                        var token = t.GetString();
+                        if (!string.IsNullOrWhiteSpace(token))
+                        {
+                            var expires = DateTime.UtcNow.AddSeconds(TokenValidSeconds);
+                            _tokenCache[attachId] = (token!, expires);
+                            _previewUrl = $"/api/attachments/{attachId}/download?token={Uri.EscapeDataString(token)}";
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            _previewUrl = null;
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        _errorKey = null;
+        if (ParentId == null)
+        {
+            _errorKey = "Error_NoParent";
+            return;
+        }
+        var file = e.File;
+        if (file == null) { return; }
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            var streamContent = new StreamContent(stream);
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
+            content.Add(streamContent, "file", file.Name);
+
+            // Upload as symbol role
+            var url = $"/api/attachments/{(short)ParentKind}/{ParentId}?role=Symbol";
+            var resp = await Http.PostAsync(url, content);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _errorKey = "Error_UploadFailed";
+                return;
+            }
+
+            var obj = await resp.Content.ReadFromJsonAsync<JsonElement>();
+            Guid? newId = null;
+            if (obj.ValueKind == JsonValueKind.Object)
+            {
+                if (obj.TryGetProperty("id", out var pid) && pid.ValueKind == JsonValueKind.String)
+                {
+                    newId = pid.GetGuid();
+                }
+                else if (obj.TryGetProperty("Id", out var pId2) && pId2.ValueKind == JsonValueKind.String)
+                {
+                    newId = pId2.GetGuid();
+                }
+            }
+
+            if (newId.HasValue)
+            {
+                // Clear any cached token for the new attachment id to force fetching a fresh token
+                _tokenCache.TryRemove(newId.Value, out _);
+                await EnsurePreviewAsync();
+                await OnUploaded.InvokeAsync(newId.Value);
+            }
+            else
+            {
+                _errorKey = "Error_ParseResponse";
+            }
+        }
+        catch
+        {
+            _errorKey = "Error_UploadFailed";
+        }
+    }
+
+    private async Task OnClearClicked()
+    {
+        if (OnClear.HasDelegate)
+        {
+            await OnClear.InvokeAsync();
+        }
+    }
+}

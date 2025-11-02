@@ -11,6 +11,10 @@ public sealed class AttachmentUploadOptions
         "application/pdf",
         "image/png",
         "image/jpeg",
+        "image/svg+xml",
+        // support Windows icon formats
+        "image/x-icon",
+        "image/vnd.microsoft.icon",
         "text/plain",
         "text/csv",
         "application/zip"

@@ -229,4 +229,49 @@ public sealed class ContactsController : ControllerBase
             return Problem("Unexpected error", statusCode: 500);
         }
     }
+
+    [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct)
+    {
+        try
+        {
+            await _contacts.SetSymbolAttachmentAsync(id, _current.UserId, attachmentId, ct);
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "SetSymbol failed for contact {ContactId}", id);
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SetSymbol failed for contact {ContactId}", id);
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+
+    [HttpDelete("{id:guid}/symbol")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ClearSymbolAsync(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await _contacts.SetSymbolAttachmentAsync(id, _current.UserId, null, ct);
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "ClearSymbol failed for contact {ContactId}", id);
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "ClearSymbol failed for contact {ContactId}", id);
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+
 }

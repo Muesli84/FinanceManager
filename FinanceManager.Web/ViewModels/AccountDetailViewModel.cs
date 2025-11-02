@@ -47,6 +47,10 @@ public sealed class AccountDetailViewModel : ViewModelBase
     public string? NewBankContactName { get => _newBankContactName; set { if (_newBankContactName != value) { _newBankContactName = value; RaiseStateChanged(); } } }
     private string? _newBankContactName;
 
+    // New: SymbolAttachmentId field
+    public Guid? SymbolAttachmentId { get => _symbolAttachmentId; set { if (_symbolAttachmentId != value) { _symbolAttachmentId = value; RaiseStateChanged(); } } }
+    private Guid? _symbolAttachmentId;
+
     // Related state
     private bool _showAttachments;
     public bool ShowAttachments { get => _showAttachments; set { if (_showAttachments != value) { _showAttachments = value; RaiseStateChanged(); } } }
@@ -99,6 +103,7 @@ public sealed class AccountDetailViewModel : ViewModelBase
                     Type = dto.Type;
                     Iban = dto.Iban;
                     BankContactId = dto.BankContactId;
+                    SymbolAttachmentId = dto.SymbolAttachmentId; // new
                 }
             }
             else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -129,7 +134,8 @@ public sealed class AccountDetailViewModel : ViewModelBase
                 Type,
                 Iban,
                 BankContactId,
-                NewBankContactName
+                NewBankContactName,
+                SymbolAttachmentId // include symbol attachment id
             };
             if (IsNew)
             {
@@ -150,7 +156,7 @@ public sealed class AccountDetailViewModel : ViewModelBase
             }
             else
             {
-                var resp = await _http.PutAsJsonAsync($"/api/accounts/{AccountId}", new { Name, Iban, BankContactId, NewBankContactName }, ct);
+                var resp = await _http.PutAsJsonAsync($"/api/accounts/{AccountId}", new { Name, Iban, BankContactId, NewBankContactName, SymbolAttachmentId }, ct);
                 if (!resp.IsSuccessStatusCode)
                 {
                     Error = await resp.Content.ReadAsStringAsync(ct);
@@ -227,7 +233,7 @@ public sealed class AccountDetailViewModel : ViewModelBase
     }
 
     // DTOs / VMs used by VM
-    public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid? BankContactId);
+    public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid? BankContactId, Guid? SymbolAttachmentId);
     public sealed record ContactDto(Guid Id, string Name);
     public sealed class BankContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 }

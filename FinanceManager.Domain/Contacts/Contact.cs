@@ -21,6 +21,9 @@ public sealed class Contact : Entity, IAggregateRoot
     public string? Description { get; private set; }
     public bool IsPaymentIntermediary { get; private set; }
 
+    // Optional reference to an uploaded symbol attachment
+    public Guid? SymbolAttachmentId { get; private set; }
+
     public void Rename(string name)
     {
         Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
@@ -48,6 +51,12 @@ public sealed class Contact : Entity, IAggregateRoot
     public void SetPaymentIntermediary(bool value)
     {
         IsPaymentIntermediary = value;
+        Touch();
+    }
+
+    public void SetSymbolAttachment(Guid? attachmentId)
+    {
+        SymbolAttachmentId = attachmentId == Guid.Empty ? null : attachmentId;
         Touch();
     }
 }

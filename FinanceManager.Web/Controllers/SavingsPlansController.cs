@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using FinanceManager.Application.Attachments;
+using FinanceManager.Domain.Attachments;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -15,11 +17,13 @@ public sealed class SavingsPlansController : ControllerBase
 {
     private readonly ISavingsPlanService _service;
     private readonly FinanceManager.Application.ICurrentUserService _current;
+    private readonly IAttachmentService _attachments;
 
-    public SavingsPlansController(ISavingsPlanService service, FinanceManager.Application.ICurrentUserService current)
+    public SavingsPlansController(ISavingsPlanService service, FinanceManager.Application.ICurrentUserService current, IAttachmentService attachments)
     {
         _service = service;
         _current = current;
+        _attachments = attachments;
     }
 
     public sealed record SavingsPlanCreateRequest(
@@ -85,5 +89,55 @@ public sealed class SavingsPlansController : ControllerBase
     {
         var ok = await _service.DeleteAsync(id, _current.UserId, ct);
         return ok ? NoContent() : NotFound();
+    }
+
+    [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
+    public async Task<IActionResult> SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct)
+    {
+        try
+        {
+            await _service.SetSymbolAttachmentAsync(id, _current.UserId, attachmentId, ct);
+            return NoContent();
+        }
+        catch (ArgumentException)
+        {
+            return NotFound();
+        }
+    }
+
+    [HttpDelete("{id:guid}/symbol")]
+    public async Task<IActionResult> ClearSymbolAsync(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await _service.SetSymbolAttachmentAsync(id, _current.UserId, null, ct);
+            return NoContent();
+        }
+        catch (ArgumentException)
+        {
+            return NotFound();
+        }
+    }
+
+    [HttpPost("{id:guid}/symbol")]
+    [RequestSizeLimit(long.MaxValue)]
+    public async Task<IActionResult> UploadSymbolAsync(Guid id, [FromForm] IFormFile? file, [FromForm] Guid? categoryId, CancellationToken ct)
+    {
+        if (file == null) { return BadRequest(new { error = "File required" }); }
+        try
+        {
+            using var stream = file.OpenReadStream();
+            var dto = await _attachments.UploadAsync(_current.UserId, AttachmentEntityKind.SavingsPlan, id, stream, file.FileName, file.ContentType ?? "application/octet-stream", categoryId, AttachmentRole.Symbol, ct);
+            await _service.SetSymbolAttachmentAsync(id, _current.UserId, dto.Id, ct);
+            return Ok(dto);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception)
+        {
+            return Problem("Unexpected error", statusCode: 500);
+        }
     }
 }
