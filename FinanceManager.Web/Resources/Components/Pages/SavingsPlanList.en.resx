@@ -13,6 +13,8 @@
   <data name="LabelTargetAmount" xml:space="preserve"><value>Target amount</value></data>
   <data name="LabelTargetDate" xml:space="preserve"><value>Target date</value></data>
   <data name="LabelInterval" xml:space="preserve"><value>Interval</value></data>
+  <data name="LabelBalance" xml:space="preserve"><value>Balance</value></data>
+  <data name="LabelRemaining" xml:space="preserve"><value>Remaining</value></data>
   <data name="LabelStatus" xml:space="preserve"><value>Status</value></data>
   <data name="Type_Open" xml:space="preserve"><value>Open</value></data>
   <data name="Type_Recurring" xml:space="preserve"><value>Recurring</value></data>
