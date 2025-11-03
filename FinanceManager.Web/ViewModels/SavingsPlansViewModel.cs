@@ -167,6 +167,7 @@ public sealed class SavingsPlansViewModel : ViewModelBase
     public decimal? GetRemainingAmount(SavingsPlanDto plan)
     {
         if (plan == null) return null;
+        if (plan.Type == SavingsPlanType.Open) return null;
         if (!_analysisByPlan.TryGetValue(plan.Id, out var a)) return null;
         if (a.TargetAmount is null) return null;
         return a.TargetAmount.Value - a.AccumulatedAmount;
