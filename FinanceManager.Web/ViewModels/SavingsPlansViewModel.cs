@@ -165,13 +165,50 @@ public sealed class SavingsPlansViewModel : ViewModelBase
     }
 
     public decimal? GetRemainingAmount(SavingsPlanDto plan)
-    {        
+    {
         if (plan == null) return null;
         if (plan.Type == SavingsPlanType.Open) return null;
         if (!_analysisByPlan.TryGetValue(plan.Id, out var a)) return null;
         if (a.TargetAmount is null) return null;
-        var remainingAmount = a.TargetAmount.Value - a.AccumulatedAmount;
-        if (remainingAmount == 0) return null;
-        return remainingAmount;
+        return a.TargetAmount.Value - a.AccumulatedAmount;
+    }
+
+    // New: determine completed / reachable / unreachable semantics for UI
+    public bool IsCompleted(SavingsPlanDto plan)
+    {
+        if (plan == null) return false;
+        if (plan.Type == SavingsPlanType.Open) return false;
+        if (!_analysisByPlan.TryGetValue(plan.Id, out var a)) return false;
+        if (a.TargetAmount is null) return false;        
+        // completed when accumulated already reached or exceeded target
+        return a.AccumulatedAmount >= a.TargetAmount.Value;
+    }
+
+    public bool IsReachableButNotCompleted(SavingsPlanDto plan)
+    {
+        if (plan == null) return false;
+        if (!_analysisByPlan.TryGetValue(plan.Id, out var a)) return false;
+        if (a.TargetAmount is null) return false;
+        return a.TargetReachable && a.AccumulatedAmount < a.TargetAmount.Value;
+    }
+
+    public bool IsUnreachable(SavingsPlanDto plan)
+    {
+        if (plan == null) return false;
+        if (!_analysisByPlan.TryGetValue(plan.Id, out var a)) return false;
+        if (a.TargetAmount is null) return false;
+        return !a.TargetReachable && a.AccumulatedAmount < a.TargetAmount.Value;
+    }
+
+    public bool IsOverdue(SavingsPlanDto plan)
+    {
+        if (plan == null) return false;
+        if (!_analysisByPlan.TryGetValue(plan.Id, out var a)) return false;
+        if (plan.TargetDate is null) return false;
+        if (plan.TargetDate == DateTime.MinValue) return false;
+        if (plan.TargetDate > DateTime.Now) return false;
+        var remainingAmount = GetRemainingAmount(plan) ?? 0;
+        if (remainingAmount <= 0) return false;        
+        return true;
     }
 }

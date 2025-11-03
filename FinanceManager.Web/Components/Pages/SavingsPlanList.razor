@@ -6,6 +6,7 @@
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Web.ViewModels
+@using System.Linq
 @inject IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanList> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
@@ -30,7 +31,6 @@ else if(_vm!.Plans.Count==0)
         <tr>
             <th></th>
             <th>@Localizer["LabelName"]</th>
-            <th>@Localizer["LabelType"]</th>
             <th>@Localizer["LabelTargetAmount"]</th>
             <th>@Localizer["LabelBalance"]</th>
             <th>@Localizer["LabelRemaining"]</th>
@@ -39,7 +39,14 @@ else if(_vm!.Plans.Count==0)
         </tr>
     </thead>
     <tbody>
-        @foreach (var plan in _vm!.Plans)
+        @{
+            // Sort plans: overdue (first), others (middle), completed (last). Within groups sort by name.
+            var orderedPlans = (_vm?.Plans ?? new List<SavingsPlanDto>())
+                .OrderBy(p => _vm!.IsOverdue(p) ? 0 : _vm.IsCompleted(p) ? 2 : 1)
+                .ThenBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+        @foreach (var plan in orderedPlans)
         {
             var status = _vm!.GetStatusFlags(plan);
             var symbolId = _vm!.GetDisplaySymbolAttachmentId(plan);
@@ -55,7 +62,6 @@ else if(_vm!.Plans.Count==0)
                     }
                 </td>
                 <td>@plan.Name</td>
-                <td>@Localizer[$"Type_{plan.Type}"]</td>
                 <td>@(plan.TargetAmount?.ToString("N2") ?? "")</td>
                 <td>@(acc.HasValue ? acc.Value.ToString("N2") : "")</td>
                 <td style="@(rem.HasValue && rem.Value < 0 ? "color:#e66;" : string.Empty)">@(rem.HasValue ? rem.Value.ToString("N2") : "")</td>
@@ -128,96 +134,104 @@ else if(_vm!.Plans.Count==0)
                         }
                     </div>
                 </td>
-                 <td>
-                     @if(status.Reachable)
-                     {
-                         <span title="Ziel erreichbar" style="color:#6c6;display:inline-flex;align-items:center;gap:.25rem;"><svg class="icon" style="width:16px;height:16px;"><use href="/icons/sprite.svg#check" /></svg></span>
-                     }
-                     else if(status.Unreachable)
-                     {
-                         <span title="Ziel nicht erreichbar" style="color:#cc6;display:inline-flex;align-items:center;gap:.25rem;"><svg class="icon" style="width:16px;height:16px;"><use href="/icons/sprite.svg#warning" /></svg></span>
-                     }
-                     else
-                     {
-                         @_vm!.GetStatusLabel(Localizer, plan)
-                     }
-                 </td>
-             </tr>
-         }
-     </tbody>
- </table>
- 
- <style>
- .interval-badge { display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); padding:2px; }
- .interval-badge svg { display:block; }
- </style>
- 
- @code {
-     // Ribbon state
-     private enum TabId { SavingsPlans }
-     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
-     private TabId _activeTab = TabId.SavingsPlans;
-     private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
+                <td style="width:64px; text-align:center;">
+                    @* No status for Open plans *@
+                    @{
+                        var isCompleted = _vm!.IsCompleted(plan);
+                        var isReachable = _vm.IsReachableButNotCompleted(plan);
+                        var isUnreachable = _vm.IsUnreachable(plan);
+                        var isOverdue = _vm.IsOverdue(plan);
+                    }
 
-     private SavingsPlansViewModel? _vm;
+                    @if (plan.Type == SavingsPlanType.Open || (!isCompleted && !isReachable && !isUnreachable))
+                    {
+                        <span aria-hidden="true"></span>
+                    }
+                    else
+                    {
+                        <SavingsPlanStatus IsCompleted="@isCompleted" IsOverdue="@isOverdue" IsUnreachable="@isUnreachable" IsReachable="@isReachable" Title="@(isCompleted? Localizer["StatusDone"] : isOverdue? Localizer["StatusOverdue"] : isReachable? Localizer["StatusReachable"] : Localizer["StatusUnreachable"])" />
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
 
-     protected override async Task OnInitializedAsync()
-     {
-         _vm = ActivatorUtilities.CreateInstance<SavingsPlansViewModel>(Services);
-         _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
-         await _vm.InitializeAsync();
-         RebuildRibbon();
-     }
+<style>
+.interval-badge { display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); padding:2px; }
+.interval-badge svg { display:block; }
+.status-item { display:inline-flex;align-items:center;justify-content:center;gap:.25rem;font-size:.875rem;color:#333; }
+.bag-icon { width:1.6em;height:1.6em;fill:none;stroke-width:1.5; }
+.closed { stroke-linecap:round; }
+.open-warning { stroke-linecap:square; }
+</style>
 
-     private void RebuildRibbon()
-     {
-         var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
-         var groups = new List<Ribbon<TabId>.RibbonGroup>();
-         foreach (var g in groupsDto)
-         {
-             var items = new List<Ribbon<TabId>.RibbonItem>();
-             foreach (var it in g.Items)
-             {
-                 var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
-                 items.Add(new Ribbon<TabId>.RibbonItem
-                 {
-                     Label = it.Label,
-                     IconSvg = it.IconSvg,
-                     Size = size,
-                     Disabled = it.Disabled,
-                     Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
-                 });
-             }
-             groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
-         }
-         _tabs = new()
-         {
-             new Ribbon<TabId>.RibbonTab<TabId>
-             {
-                 Id = TabId.SavingsPlans,
-                 Title = Localizer["PageTitle"],
-                 Groups = groups
-             }
-         };
-         StateHasChanged();
-     }
+@code {
+    // Ribbon state
+    private enum TabId { SavingsPlans }
+    private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
+    private TabId _activeTab = TabId.SavingsPlans;
+    private Task OnActiveTabChanged(TabId id){ _activeTab = id; return Task.CompletedTask; }
 
-     private void HandleRibbonAction(string action)
-     {
-         switch (action)
-         {
-             case "New":
-                 NewPlan();
-                 break;
-             case "Categories":
-                 Nav.NavigateTo("/savings-plan-categories");
-                 break;
-             case "ToggleActive":
-                 _vm!.ToggleActiveOnly();
-                 break;
-         }
-     }
+    private SavingsPlansViewModel? _vm;
 
-     private void NewPlan() => Nav.NavigateTo("/savings-plans/new");
-     private void OpenDetail(Guid id) => Nav.NavigateTo($"/savings-plans/{id}");
- }
+    protected override async Task OnInitializedAsync()
+    {
+        _vm = ActivatorUtilities.CreateInstance<SavingsPlansViewModel>(Services);
+        _vm.StateChanged += (_, __) => { RebuildRibbon(); _ = InvokeAsync(StateHasChanged); };
+        await _vm.InitializeAsync();
+        RebuildRibbon();
+    }
+
+    private void RebuildRibbon()
+    {
+        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        foreach (var g in groupsDto)
+        {
+            var items = new List<Ribbon<TabId>.RibbonItem>();
+            foreach (var it in g.Items)
+            {
+                var size = it.Size == UiRibbonItemSize.Large ? Ribbon<TabId>.RibbonItemSize.Large : Ribbon<TabId>.RibbonItemSize.Small;
+                items.Add(new Ribbon<TabId>.RibbonItem
+                {
+                    Label = it.Label,
+                    IconSvg = it.IconSvg,
+                    Size = size,
+                    Disabled = it.Disabled,
+                    Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
+                });
+            }
+            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+        }
+        _tabs = new()
+        {
+            new Ribbon<TabId>.RibbonTab<TabId>
+            {
+                Id = TabId.SavingsPlans,
+                Title = Localizer["PageTitle"],
+                Groups = groups
+            }
+        };
+        StateHasChanged();
+    }
+
+    private void HandleRibbonAction(string action)
+    {
+        switch (action)
+        {
+            case "New":
+                NewPlan();
+                break;
+            case "Categories":
+                Nav.NavigateTo("/savings-plan-categories");
+                break;
+            case "ToggleActive":
+                _vm!.ToggleActiveOnly();
+                break;
+        }
+    }
+
+    private void NewPlan() => Nav.NavigateTo("/savings-plans/new");
+    private void OpenDetail(Guid id) => Nav.NavigateTo($"/savings-plans/{id}");
+}
