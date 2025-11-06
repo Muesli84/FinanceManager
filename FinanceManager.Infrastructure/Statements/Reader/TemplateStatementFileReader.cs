@@ -28,9 +28,8 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     EntryNo = 0;
                     foreach (var line in fileContent)
                     {
-                        var record = ParseNextLine(line);
-                        if (record is null) continue;
-                        resultList.Add(record);
+                        foreach (var record in ParseNextLine(line).Where(rec => rec is not null))
+                            resultList.Add(record);
                     }
                     CurrentMode = ParseMode.None;
                     ErrorList.Clear();
@@ -66,7 +65,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
 
 ;
 
-        private enum VariableMode
+        protected enum VariableMode
         {
 
             Always,
@@ -96,14 +95,14 @@ namespace FinanceManager.Infrastructure.Statements.Reader
         private int TableRecordLength = 0;
         private string[] IgnoreRecordKeywords = null;
         private bool StopOnError = true;
-        private XmlNode CurrentSection = null;
+        protected XmlNode CurrentSection = null;
         private StatementHeader GlobalDraftData;
         private StatementMovement GlobalLineData;
         private StatementMovement RecordLineData = null;
         private XmlDocument XmlDoc;
         private int EntryNo = 0;
 
-        private StatementMovement ParseNextLine(string line)
+        private IEnumerable<StatementMovement> ParseNextLine(string line)
         {
             switch (CurrentMode)
             {
@@ -113,21 +112,26 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     else
                         CurrentSection = CurrentSection.NextSibling;
                     InitSection();
-                    return ParseNextLine(line);
-                case ParseMode.Ignore:
+                    foreach (var record in ParseNextLine(line))
+                        yield return record;
+                    break;
+                 case ParseMode.Ignore:
                     if (line.Length == 0)
                         CurrentMode = ParseMode.None;
                     else if (EndKeywords is null)
-                        return null;
+                        yield return null;
                     else if (!EndKeywords.Any(kw => line.Contains(kw)))
-                        return null;
-                    CurrentMode = ParseMode.None;
+                        yield return null;
+                    else
+                        CurrentMode = ParseMode.None;
                     break;
                 case ParseMode.KeyValue:
                     if (line.Length == 0)
                         CurrentMode = ParseMode.None;
+                    else if (EndKeywords is not null && EndKeywords.Any(kw => line.Contains(kw)))
+                        CurrentMode = ParseMode.None;
                     else
-                        ParseKeyValue(line);
+                        ParseKeyValue(line, CurrentSection);
                     break;
                 case ParseMode.TableHeader:
                     CurrentMode = ParseMode.Table;
@@ -135,10 +139,12 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                 case ParseMode.Table:
                     if (line.Length == 0)
                         CurrentMode = ParseMode.None;
-                    else if ((EndKeywords is not null) && EndKeywords.Any(kw => line.Contains(kw)))
+                    else if ((EndKeywords is not null) && EndKeywords.Where(ek => !string.IsNullOrWhiteSpace(ek)).Any(kw => line.Contains(kw)))
                     {
+                        yield return OnTableFinished();
                         CurrentMode = ParseMode.None;
-                        return ParseNextLine(line);
+                        foreach (var record in ParseNextLine(line))
+                            yield return record;
                     }
                     else
                     {
@@ -146,26 +152,37 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                         if (record is not null && record.IsError)
                         {
                             CurrentMode = ParseMode.None;
-                            return ParseNextLine(line);
+                            foreach (var record2 in ParseNextLine(line))
+                                yield return record2;
                         }
                         else
-                            return record;
+                            yield return record;
                     }
                     break;
                 case ParseMode.DynamicTable:
                     if ((EndKeywords is not null) && EndKeywords.Any(kw => line.Contains(kw)))
                     {
                         CurrentMode = ParseMode.None;
-                        return ParseNextLine(line);
+                        foreach (var record in ParseNextLine(line))
+                            yield return record;
                     }
                     else
-                        return ParseDynamicTableRecord(line);
+                        yield return ParseDynamicTableRecord(line);
+                    break;
             }
+        }
+        protected virtual StatementMovement OnTableFinished()
+        {
             return null;
         }
-
         private void InitSection()
         {
+            if (CurrentSection is null)
+            {
+                CurrentMode = ParseMode.Ignore;
+                EndKeywords = null;
+                return;
+            }
             switch (CurrentSection.Attributes["type"].Value)
             {
                 case "ignore":
@@ -214,19 +231,19 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             EndKeywords = CurrentSection.Attributes["endKeyword"]?.Value?.Split('|');
         }
 
-        private void ParseKeyValue(string line)
+        private void ParseKeyValue(string line, XmlNode currentSection)
         {
-            string[] Values = line.Split(';');
+            var separator = currentSection.Attributes.GetNamedItem("separator")?.Value ?? ";";
+            string[] Values = line.Split(separator);
             foreach (XmlNode Key in CurrentSection.ChildNodes)
-                if (Key.Attributes["name"].Value == Values[0])
+                if (Values[0].EndsWith(Key.Attributes["name"].Value))
                 {
                     string VariableName = Key.Attributes["variable"].Value;
                     ParseVariable(VariableName, Values[1], true, GetVariableMode(Key.Attributes["mode"].Value), 1);
                 }
         }
-        private void ParseVariable(string Name, string Value, bool global, VariableMode mode, int multiplier)
+        protected void ParseVariable(StatementMovement line, string Name, string Value, VariableMode mode, int multiplier)
         {
-            StatementMovement line = global ? GlobalLineData : RecordLineData;
             switch (Name)
             {
                 case "BankAccountNo":
@@ -239,7 +256,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     line.ValutaDate = DateTime.Parse(Value, new CultureInfo("de-DE"));
                     break;
                 case "SourceName":
-                    line.Counterparty = Value;
+                    line.Counterparty = $"{line.Counterparty} {Value}".Trim();
                     break;
                 case "PostingDescription":
                     line.PostingDescription = Value;
@@ -251,9 +268,14 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     line.CurrencyCode = Value;
                     break;
                 case "Amount":
-                    line.Amount = decimal.Parse(Value, new CultureInfo("de-DE")) * multiplier;
+                    line.Amount = decimal.Parse(Value.Replace(" ", ""), new CultureInfo("de-DE")) * multiplier;
                     break;
             }
+        }
+        protected void ParseVariable(string Name, string Value, bool global, VariableMode mode, int multiplier)
+        {
+            StatementMovement line = global ? GlobalLineData : RecordLineData;
+            ParseVariable(line, Name, Value, mode, multiplier);
         }
 
         private StatementMovement ParseDynamicTableRecord(string line)
@@ -267,7 +289,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             catch (FormatException) { return null; }
         }
 
-        private StatementMovement ParseTableRecord(string line)
+        protected virtual StatementMovement ParseTableRecord(string line)
         {
             if ((IgnoreRecordKeywords is not null) && IgnoreRecordKeywords.Any(kw => line.Contains(kw)))
                 return null;
@@ -298,9 +320,10 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             return FinishRecord();
         }
 
-        private void ParseRegularExpression(string input, XmlNode field)
+        protected virtual void ParseRegularExpression(string input, XmlNode field)
         {
             var pattern = field.Attributes["pattern"].Value;
+            var type = field.Attributes.GetNamedItem("type")?.Value;
             var regex = new Regex(pattern, RegexOptions.IgnorePatternWhitespace);
             var match = regex.Match(input);
             if (!int.TryParse(field.Attributes["multiplier"]?.Value, out int multiplier))
@@ -343,11 +366,18 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             return FieldIdx;
         }
 
+        protected bool IsRecordSet()
+        {
+            if (RecordLineData.Amount == 0 && string.IsNullOrWhiteSpace(RecordLineData.Subject) && RecordLineData.BookingDate == DateTime.MinValue)
+                return false;
+            return true;
+        }
+
         private StatementMovement FinishRecord()
         {
             try
             {
-                if (RecordLineData.Amount == 0 && string.IsNullOrWhiteSpace(RecordLineData.Subject) && RecordLineData.BookingDate == DateTime.MinValue)
+                if (!IsRecordSet())
                     return null;
 
                 RecordLineData.IsPreview = (RecordLineData.BookingDate == DateTime.MinValue)

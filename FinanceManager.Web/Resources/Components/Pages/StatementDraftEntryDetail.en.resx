@@ -381,4 +381,7 @@
   <data name="Msg_ReadOnlyAnnounced" xml:space="preserve">
     <value>This entry is just announced and is read-only.</value>
   </data>
+  <data name="Ribbon_AccountDetails" xml:space="preserve">
+    <value>Bank Account</value>
+  </data>
 </root>

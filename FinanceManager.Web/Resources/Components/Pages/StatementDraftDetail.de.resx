@@ -294,4 +294,10 @@
   <data name="Ribbon_Book" xml:space="preserve">
     <value>Buchen</value>
   </data>
+  <data name="Ribbon_AccountDetails" xml:space="preserve">
+    <value>Bankkonto</value>
+  </data>
+  <data name="Ribbon_Group_Related" xml:space="preserve">
+    <value>Verknüpfungen</value>
+  </data>
 </root>

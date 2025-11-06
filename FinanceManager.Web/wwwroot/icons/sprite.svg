@@ -49,6 +49,10 @@
     <path d="M3 20h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     <path d="M12 4L4 8h16l-8-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
   </symbol>
+  <symbol id="account" viewBox="0 0 24 24">
+    <circle cx="12" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M4 20c0-4 4-6 8-6s8 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
 
   <!-- Info -->
   <symbol id="info" viewBox="0 0 24 24">

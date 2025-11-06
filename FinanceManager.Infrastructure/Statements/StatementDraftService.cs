@@ -69,6 +69,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         {
             new ING_PDfReader(),
             new ING_StatementFileReader(),
+            new Wuestenrot_StatementFileReader(),
             new Barclays_StatementFileReader(),
             new BackupStatementFileReader()
         };
