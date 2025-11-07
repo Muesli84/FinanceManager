@@ -13,7 +13,7 @@ public sealed class AccountService : IAccountService
     private readonly AppDbContext _db;
     public AccountService(AppDbContext db) => _db = db;
 
-    public async Task<AccountDto> CreateAsync(Guid ownerUserId, string name, AccountType type, string? iban, Guid bankContactId, CancellationToken ct)
+    public async Task<AccountDto> CreateAsync(Guid ownerUserId, string name, AccountType type, string? iban, Guid bankContactId, SavingsPlanExpectation expectation, CancellationToken ct)
     {
         if (!await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == bankContactId && c.OwnerUserId == ownerUserId && c.Type == ContactType.Bank, ct))
         {
@@ -30,12 +30,13 @@ public sealed class AccountService : IAccountService
             iban = norm;
         }
         var account = new Account(ownerUserId, type, name, iban, bankContactId);
+        account.SetSavingsPlanExpectation(expectation);
         _db.Accounts.Add(account);
         await _db.SaveChangesAsync(ct);
-        return new AccountDto(account.Id, account.Name, account.Type, account.Iban, account.CurrentBalance, account.BankContactId, account.SymbolAttachmentId);
+        return new AccountDto(account.Id, account.Name, account.Type, account.Iban, account.CurrentBalance, account.BankContactId, account.SymbolAttachmentId, account.SavingsPlanExpectation);
     }
 
-    public async Task<AccountDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, string? iban, Guid bankContactId, CancellationToken ct)
+    public async Task<AccountDto?> UpdateAsync(Guid id, Guid ownerUserId, string name, string? iban, Guid bankContactId, SavingsPlanExpectation expectation, CancellationToken ct)
     {
         var account = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == id && a.OwnerUserId == ownerUserId, ct);
         if (account == null) return null;
@@ -52,8 +53,9 @@ public sealed class AccountService : IAccountService
         account.Rename(name);
         account.SetIban(iban);
         account.SetBankContact(bankContactId);
+        account.SetSavingsPlanExpectation(expectation);
         await _db.SaveChangesAsync(ct);
-        return new AccountDto(account.Id, account.Name, account.Type, account.Iban, account.CurrentBalance, account.BankContactId, account.SymbolAttachmentId);
+        return new AccountDto(account.Id, account.Name, account.Type, account.Iban, account.CurrentBalance, account.BankContactId, account.SymbolAttachmentId, account.SavingsPlanExpectation);
     }
 
     public async Task<bool> DeleteAsync(Guid id, Guid ownerUserId, CancellationToken ct)
@@ -110,7 +112,7 @@ public sealed class AccountService : IAccountService
             .Where(a => a.OwnerUserId == ownerUserId)
             .OrderBy(a => a.Name)
             .Skip(skip).Take(take)
-            .Select(a => new AccountDto(a.Id, a.Name, a.Type, a.Iban, a.CurrentBalance, a.BankContactId, a.SymbolAttachmentId))
+            .Select(a => new AccountDto(a.Id, a.Name, a.Type, a.Iban, a.CurrentBalance, a.BankContactId, a.SymbolAttachmentId, a.SavingsPlanExpectation))
             .ToListAsync(ct);
     }
 
@@ -118,7 +120,7 @@ public sealed class AccountService : IAccountService
     {
         return await _db.Accounts.AsNoTracking()
             .Where(a => a.Id == id && a.OwnerUserId == ownerUserId)
-            .Select(a => new AccountDto(a.Id, a.Name, a.Type, a.Iban, a.CurrentBalance, a.BankContactId, a.SymbolAttachmentId))
+            .Select(a => new AccountDto(a.Id, a.Name, a.Type, a.Iban, a.CurrentBalance, a.BankContactId, a.SymbolAttachmentId, a.SavingsPlanExpectation))
             .FirstOrDefaultAsync(ct);
     }
 

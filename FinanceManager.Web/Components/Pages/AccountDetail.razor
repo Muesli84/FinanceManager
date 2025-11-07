@@ -64,6 +64,15 @@ else
                 </div>
             }
 
+            <div>
+                <label>@Localizer["LabelSavingsPlanExpectation"]</label><br />
+                <InputSelect TValue="FinanceManager.Domain.Accounts.SavingsPlanExpectation" @bind-Value="_vm!.SavingsPlanExpectation">
+                    <option value="@(FinanceManager.Domain.Accounts.SavingsPlanExpectation.None.ToString())">@Localizer["Expectation_None"]</option>
+                    <option value="@(FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional.ToString())">@Localizer["Expectation_Optional"]</option>
+                    <option value="@(FinanceManager.Domain.Accounts.SavingsPlanExpectation.Required.ToString())">@Localizer["Expectation_Required"]</option>
+                </InputSelect>
+            </div>
+
             <!-- Symbol upload / preview -->
             <div>
                 <SymbolPicker ParentKind="AttachmentEntityKind.Account" ParentId="@Id" CurrentAttachmentId="_vm.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
