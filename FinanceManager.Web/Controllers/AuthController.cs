@@ -28,14 +28,18 @@ public sealed class AuthController : ControllerBase
         {
             return Unauthorized(new { error = result.Error });
         }
+
+        // Set cookie with explicit expiry that matches token expiry
         Response.Cookies.Append("fm_auth", result.Value!.Token, new CookieOptions
         {
             HttpOnly = true,
             Secure = Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Path = "/",
-            IsEssential = true
+            IsEssential = true,
+            Expires = new DateTimeOffset(result.Value.ExpiresUtc)
         });
+
         return Ok(new { user = result.Value.Username, isAdmin = result.Value.IsAdmin, exp = result.Value.ExpiresUtc });
     }
 
@@ -51,14 +55,17 @@ public sealed class AuthController : ControllerBase
         {
             return Conflict(new { error = result.Error });
         }
+
         Response.Cookies.Append("fm_auth", result.Value!.Token, new CookieOptions
         {
             HttpOnly = true,
             Secure = Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Path = "/",
-            IsEssential = true
+            IsEssential = true,
+            Expires = new DateTimeOffset(result.Value.ExpiresUtc)
         });
+
         return Ok(new { user = result.Value.Username, isAdmin = result.Value.IsAdmin, exp = result.Value.ExpiresUtc });
     }
 

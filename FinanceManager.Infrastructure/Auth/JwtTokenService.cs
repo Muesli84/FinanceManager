@@ -8,7 +8,7 @@ namespace FinanceManager.Infrastructure.Auth;
 
 public interface IJwtTokenService
 {
-    string CreateToken(Guid userId, string username, bool isAdmin, DateTime expiresUtc, string? preferredLanguage = null, string? timeZoneId = null);
+    string CreateToken(Guid userId, string username, bool isAdmin, out DateTime expiresUtc, string? preferredLanguage = null, string? timeZoneId = null);
 }
 
 public sealed class JwtTokenService : IJwtTokenService
@@ -16,11 +16,13 @@ public sealed class JwtTokenService : IJwtTokenService
     private readonly IConfiguration _config;
     public JwtTokenService(IConfiguration config) => _config = config;
 
-    public string CreateToken(Guid userId, string username, bool isAdmin, DateTime expiresUtc, string? preferredLanguage = null, string? timeZoneId = null)
+    public string CreateToken(Guid userId, string username, bool isAdmin, out DateTime expiresUtc, string? preferredLanguage = null, string? timeZoneId = null)
     {
         var key = _config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
         var issuer = _config["Jwt:Issuer"] ?? "financemanager";
         var audience = _config["Jwt:Audience"] ?? issuer;
+        var lifetimeMinutes = int.TryParse(_config["Jwt:LifetimeMinutes"], out var lm) ? lm : 30;
+        expiresUtc = DateTime.UtcNow.AddMinutes(lifetimeMinutes);
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
