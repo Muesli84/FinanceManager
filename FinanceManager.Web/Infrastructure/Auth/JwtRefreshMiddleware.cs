@@ -65,8 +65,6 @@ namespace FinanceManager.Web.Infrastructure.Auth
                     return;
                 }
 
-                var newExpiry = DateTimeOffset.UtcNow.AddMinutes(lifetimeMinutes);
-
                 var userIdStr = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
                                   ?? context.User.FindFirstValue(JwtRegisteredClaimNames.Sub);
                 var username = context.User.Identity?.Name
@@ -81,22 +79,22 @@ namespace FinanceManager.Web.Infrastructure.Auth
                 }
 
                 var jts = context.RequestServices.GetRequiredService<IJwtTokenService>();
-                var newToken = jts.CreateToken(userId, username, isAdmin, newExpiry.UtcDateTime);
+                var newToken = jts.CreateToken(userId, username, isAdmin, out var newExpiry);
 
                 if (!context.Response.HasStarted)
                 {
                     context.Response.Cookies.Append("fm_auth", newToken, new CookieOptions
                     {
                         HttpOnly = true,
-                        Secure = true,
+                        Secure = context.Request.IsHttps, // vorher: true
                         SameSite = SameSiteMode.Lax,
-                        Expires = newExpiry,
+                        Expires = new DateTimeOffset(newExpiry),
                         Path = "/"
                     });
                 }
 
                 context.Response.Headers[RefreshHeaderName] = newToken;
-                context.Response.Headers[RefreshExpiresHeaderName] = newExpiry.UtcDateTime.ToString("o");
+                context.Response.Headers[RefreshExpiresHeaderName] = newExpiry.ToString("o");
             }
             finally
             {

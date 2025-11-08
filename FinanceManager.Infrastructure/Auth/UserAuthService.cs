@@ -28,7 +28,16 @@ public sealed class UserAuthService : IUserAuthService
         : this(db, userManager, signInManager, jwt, passwordHasher, clock, logger, new NoopIpBlockService(), null)
     { }
 
-    public UserAuthService(AppDbContext db, UserManager<User> userManager, SignInManager<User> signInManager, IJwtTokenService jwt, IPasswordHashingService passwordHasher, IDateTimeProvider clock, ILogger<UserAuthService> logger, IIpBlockService ipBlocks, RoleManager<IdentityRole<Guid>>? roleManager = null)
+    public UserAuthService(
+        AppDbContext db, 
+        UserManager<User> userManager, 
+        SignInManager<User> signInManager, 
+        IJwtTokenService jwt, 
+        IPasswordHashingService passwordHasher, 
+        IDateTimeProvider clock, 
+        ILogger<UserAuthService> logger, 
+        IIpBlockService ipBlocks, 
+        RoleManager<IdentityRole<Guid>>? roleManager = null)
     {
         _db = db;
         _userManager = userManager;
@@ -133,12 +142,10 @@ public sealed class UserAuthService : IUserAuthService
             await _db.SaveChangesAsync(ct);
         }
 
-        var expires = _clock.UtcNow.AddMinutes(30);
-        var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
-        var token = _jwt.CreateToken(user.Id, user.UserName, isAdmin, expires, user.PreferredLanguage, user.TimeZoneId);
-
         await new DemoDataService(_db).CreateDemoDataForUserAsync(user.Id, ct);
-
+        
+        var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
+        var token = _jwt.CreateToken(user.Id, user.UserName, isAdmin, out var expires, user.PreferredLanguage, user.TimeZoneId);
         _logger.LogInformation("User {UserId} ({Username}) registered (IsAdmin={IsAdmin})", user.Id, user.UserName, isAdmin);
         return Result<AuthResult>.Ok(new AuthResult(user.Id, user.UserName, isAdmin, token, expires));
     }
@@ -190,9 +197,8 @@ public sealed class UserAuthService : IUserAuthService
 
         await _db.SaveChangesAsync(ct);
 
-        var expires = _clock.UtcNow.AddMinutes(30);
         var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
-        var token = _jwt.CreateToken(user.Id, user.UserName, isAdmin, expires, user.PreferredLanguage, user.TimeZoneId);
+        var token = _jwt.CreateToken(user.Id, user.UserName, isAdmin, out var expires, user.PreferredLanguage, user.TimeZoneId);
 
         _logger.LogInformation("Login success for {UserId} ({Username}) from {Ip}", user.Id, user.UserName, command.IpAddress);
         return Result<AuthResult>.Ok(new AuthResult(user.Id, user.UserName, isAdmin, token, expires));

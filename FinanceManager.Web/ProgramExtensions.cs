@@ -167,7 +167,10 @@ namespace FinanceManager.Web
                 options.LoginPath = "/Login";
                 options.AccessDeniedPath = "/AccessDenied";
                 options.SlidingExpiration = true;
-                options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+
+                // Use JWT lifetime configured in appsettings so Identity cookie does not expire earlier than JWT
+                var jwtLifetimeMinutes = builder.Configuration.GetValue<int?>("Jwt:LifetimeMinutes") ?? 30;
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(jwtLifetimeMinutes);
             });
 
             builder.Services.AddAuthorization();
