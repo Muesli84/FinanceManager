@@ -225,6 +225,10 @@ public sealed class AccountImportService : IAccountImportService
 - Copy-Paste Mapping.
 - Übermäßiges Logging jeder Kleinigkeit.
 - Direktes Binden von EF Entities an UI.
+- Verwendung von `async void` außer bei Event-Handlern.
+- Verwendung von `.Result` oder `.Wait()` auf asynchronen Methoden.
+- Kein manuelles Erstellen der EF-Datenbankmigrationsklasse. Benutze stets die Developer Powershell mit dem Befehl `dotnet ef migrations add <MigrationName>` um Migrationsklassen zu erstellen.
+- Verwendung von `Thread.Sleep` in produktivem Code.
 
 ## 14. Offene Erweiterungen (künftige Ergänzungen)
 - OpenTelemetry Tracing.
