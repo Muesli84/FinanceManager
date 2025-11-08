@@ -132,6 +132,7 @@
             Size = Ribbon<TabId>.RibbonItemSize.Large,
             Callback = () => { BackGeneric(); return Task.CompletedTask; }
         });
+
         navItems.Add(new Ribbon<TabId>.RibbonItem
         {
             Label = Localizer["Ribbon_Prev"],
@@ -180,6 +181,7 @@
             }
         };
 
+
         if (_draft != null && _draft.Status == FinanceManager.Domain.StatementDraftStatus.Draft)
         {
             manageItems.Insert(0, new Ribbon<TabId>.RibbonItem
@@ -191,6 +193,26 @@
                 Callback = () => { _ = BookDraft(); return Task.CompletedTask; }
             });
         }
+
+        // New: account details action - opens the detected account's detail page
+        var refItems = new List<Ribbon<TabId>.RibbonItem>();
+        refItems.Add(new Ribbon<TabId>.RibbonItem
+        {
+            Label = Localizer["Ribbon_AccountDetails"],
+            IconSvg = "<svg><use href='/icons/sprite.svg#account'/></svg>",
+            Disabled = _draft?.DetectedAccountId == null,
+            Size = Ribbon<TabId>.RibbonItemSize.Large,
+            Callback = () =>
+            {
+                var accId = _draft?.DetectedAccountId;
+                if (accId != null)
+                {
+                    Nav.NavigateTo($"/accounts/{accId}");
+                }
+                return Task.CompletedTask;
+            }
+        });
+
 
         var manageGroup = new Ribbon<TabId>.RibbonGroup
         {
@@ -222,13 +244,19 @@
             }
         };
 
+        var refGroup =  new Ribbon<TabId>.RibbonGroup
+        {
+            Title = Localizer["Ribbon_Group_Related"],
+            Items = refItems
+        };
+
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
             {
                 Id = TabId.Statement,
                 Title = Localizer["Ribbon_Tab_Statement"],
-                Groups = new() { navGroup, manageGroup, fileGroup }
+                Groups = new() { navGroup, manageGroup, fileGroup, refGroup }
             }
         };
     }

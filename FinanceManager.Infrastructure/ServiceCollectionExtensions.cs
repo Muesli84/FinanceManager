@@ -60,7 +60,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISetupImportService, SetupImportService>();
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<ISecurityCategoryService, SecurityCategoryService>();
-        services.AddScoped< IAutoInitializationService , AutoInitializationService>();
+        services.AddScoped<IAutoInitializationService , AutoInitializationService>();
         services.AddScoped<IBackupService, BackupService>();
         services.AddScoped<IPostingAggregateService, PostingAggregateService>();
         services.AddScoped<IPostingTimeSeriesService, PostingTimeSeriesService>();

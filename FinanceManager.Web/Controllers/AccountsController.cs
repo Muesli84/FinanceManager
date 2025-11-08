@@ -37,14 +37,16 @@ public sealed class AccountsController : ControllerBase
         string? Iban,
         Guid? BankContactId,
         string? NewBankContactName,
-        Guid? SymbolAttachmentId);
+        Guid? SymbolAttachmentId,
+        FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation);
 
     public sealed record AccountUpdateRequest([
         Required, MinLength(2)] string Name,
         string? Iban,
         Guid? BankContactId,
         string? NewBankContactName,
-        Guid? SymbolAttachmentId);
+        Guid? SymbolAttachmentId,
+        FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation);
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AccountDto>), StatusCodes.Status200OK)]
@@ -107,7 +109,7 @@ public sealed class AccountsController : ControllerBase
                 return BadRequest(new { error = "Bank contact required (existing or new)" });
             }
 
-            var account = await _accounts.CreateAsync(_current.UserId, req.Name.Trim(), req.Type, req.Iban?.Trim(), bankContactId, ct);
+            var account = await _accounts.CreateAsync(_current.UserId, req.Name.Trim(), req.Type, req.Iban?.Trim(), bankContactId, req.SavingsPlanExpectation, ct);
             if (req.SymbolAttachmentId.HasValue)
             {
                 await _accounts.SetSymbolAttachmentAsync(account.Id, _current.UserId, req.SymbolAttachmentId.Value, ct);
@@ -148,7 +150,7 @@ public sealed class AccountsController : ControllerBase
             {
                 return BadRequest(new { error = "Bank contact required (existing or new)" });
             }
-            var updated = await _accounts.UpdateAsync(id, _current.UserId, req.Name.Trim(), req.Iban?.Trim(), bankContactId, ct);
+            var updated = await _accounts.UpdateAsync(id, _current.UserId, req.Name.Trim(), req.Iban?.Trim(), bankContactId, req.SavingsPlanExpectation, ct);
             if (updated is null) return NotFound();
             if (req.SymbolAttachmentId.HasValue)
             {

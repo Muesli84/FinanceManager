@@ -74,6 +74,9 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             // Symbol: optional attachment reference
             b.Property(x => x.SymbolAttachmentId);
             b.HasIndex(x => x.SymbolAttachmentId);
+
+            // SavingsPlanExpectation mapping
+            b.Property(x => x.SavingsPlanExpectation).HasConversion<short>().IsRequired();
         });
 
         modelBuilder.Entity<Contact>(b =>

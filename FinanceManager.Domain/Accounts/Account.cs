@@ -1,5 +1,12 @@
 namespace FinanceManager.Domain.Accounts;
 
+public enum SavingsPlanExpectation : short
+{
+    None = 0,
+    Optional = 1,
+    Required = 2
+}
+
 public sealed class Account : Entity, IAggregateRoot
 {
     private Account() { }
@@ -10,6 +17,8 @@ public sealed class Account : Entity, IAggregateRoot
         Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
         Iban = iban?.Trim();
         BankContactId = Guards.NotEmpty(bankContactId, nameof(bankContactId));
+        // default expectation to Optional to preserve previous behavior
+        SavingsPlanExpectation = SavingsPlanExpectation.Optional;
     }
     public Guid OwnerUserId { get; private set; }
     public AccountType Type { get; private set; }
@@ -20,6 +29,9 @@ public sealed class Account : Entity, IAggregateRoot
 
     // Optional reference to an uploaded symbol attachment
     public Guid? SymbolAttachmentId { get; private set; }
+
+    // New: whether a savings plan is expected for transfers on this account
+    public SavingsPlanExpectation SavingsPlanExpectation { get; private set; }
 
     public void Rename(string name)
     {
@@ -58,5 +70,14 @@ public sealed class Account : Entity, IAggregateRoot
     {
         SymbolAttachmentId = attachmentId == Guid.Empty ? null : attachmentId;
         Touch();
+    }
+
+    public void SetSavingsPlanExpectation(SavingsPlanExpectation expectation)
+    {
+        if (SavingsPlanExpectation != expectation)
+        {
+            SavingsPlanExpectation = expectation;
+            Touch();
+        }
     }
 }

@@ -237,4 +237,19 @@
   <data name="Btn_UploadSymbol" xml:space="preserve">
     <value>Symbol hochladen</value>
   </data>
+  <data name="LabelSavingsPlanExpectation" xml:space="preserve">
+    <value>Sparplanabgabe</value>
+  </data>
+  <data name="Expectation_None" xml:space="preserve">
+    <value>Keine</value>
+  </data>
+  <data name="Expectation_Optional" xml:space="preserve">
+    <value>Optional</value>
+  </data>
+  <data name="Expectation_Required" xml:space="preserve">
+    <value>Pflicht</value>
+  </data>
+  <data name="Error_SetSymbolFailed" xml:space="preserve">
+    <value>Symbol konnte nicht gesetzt werden.</value>
+  </data>
 </root>

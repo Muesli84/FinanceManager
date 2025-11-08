@@ -69,6 +69,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         {
             new ING_PDfReader(),
             new ING_StatementFileReader(),
+            new Wuestenrot_StatementFileReader(),
             new Barclays_StatementFileReader(),
             new BackupStatementFileReader()
         };
@@ -1299,7 +1300,25 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 }
                 if (self != null && ce.ContactId == self.Id && ce.SavingsPlanId == null)
                 {
-                    Add("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", prefix + "Für Eigentransfer ist ein Sparplan sinnvoll.", ce.DraftId, ce.Id);
+                    // Determine severity based on parent account setting; default to Warning when account unknown
+                    if (account == null)
+                    {
+                        Add("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", prefix + "Für Eigentransfer ist ein Sparplan sinnvoll.", ce.DraftId, ce.Id);
+                    }
+                    else
+                    {
+                        var sev = account.SavingsPlanExpectation switch
+                        {
+                            FinanceManager.Domain.Accounts.SavingsPlanExpectation.Required => "Error",
+                            FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional => "Warning",
+                            FinanceManager.Domain.Accounts.SavingsPlanExpectation.None => null,
+                            _ => "Warning"
+                        };
+                        if (sev != null)
+                        {
+                            Add("SAVINGSPLAN_MISSING_FOR_SELF", sev, prefix + "Für Eigentransfer ist ein Sparplan sinnvoll.", ce.DraftId, ce.Id);
+                        }
+                    }
                 }
                 if (ce.SecurityId != null && account != null)
                 {
@@ -1364,7 +1383,25 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 {
                     if (e.SavingsPlanId == null)
                     {
-                        Add("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", "Für Eigentransfer ist ein Sparplan sinnvoll.", null, e.Id);
+                        // Use account setting to decide severity; default to Warning
+                        if (account == null)
+                        {
+                            Add("SAVINGSPLAN_MISSING_FOR_SELF", "Warning", "Für Eigentransfer ist ein Sparplan sinnvoll.", null, e.Id);
+                        }
+                        else
+                        {
+                            var sev = account.SavingsPlanExpectation switch
+                            {
+                                FinanceManager.Domain.Accounts.SavingsPlanExpectation.Required => "Error",
+                                FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional => "Warning",
+                                FinanceManager.Domain.Accounts.SavingsPlanExpectation.None => null,
+                                _ => "Warning"
+                            };
+                            if (sev != null)
+                            {
+                                Add("SAVINGSPLAN_MISSING_FOR_SELF", sev, "Für Eigentransfer ist ein Sparplan sinnvoll.", null, e.Id);
+                            }
+                        }
                     }
                     else if (account != null && account.Type == AccountType.Savings)
                     {

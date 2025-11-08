@@ -381,4 +381,7 @@
   <data name="Msg_ReadOnlyAnnounced" xml:space="preserve">
     <value>Dieser Eintrag ist aktuell nur angekündigt und kann nicht bearbeitet werden.</value>
   </data>
+  <data name="Ribbon_AccountDetails" xml:space="preserve">
+    <value>Bankkonto</value>
+  </data>
 </root>

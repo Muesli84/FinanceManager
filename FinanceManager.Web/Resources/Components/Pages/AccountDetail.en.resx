@@ -171,6 +171,18 @@
   <data name="LabelCreateNewBankContact" xml:space="preserve">
     <value>Create new bank contact</value>
   </data>
+  <data name="LabelSavingsPlanExpectation" xml:space="preserve">
+    <value>Savings plan expectation</value>
+  </data>
+  <data name="Expectation_None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Expectation_Optional" xml:space="preserve">
+    <value>Optional</value>
+  </data>
+  <data name="Expectation_Required" xml:space="preserve">
+    <value>Required</value>
+  </data>
   <data name="LabelInterval" xml:space="preserve">
     <value>Interval</value>
   </data>
@@ -236,5 +248,8 @@
   </data>
   <data name="Btn_UploadSymbol" xml:space="preserve">
     <value>Upload symbol</value>
+  </data>
+  <data name="Error_SetSymbolFailed" xml:space="preserve">
+    <value>Failed to set symbol.</value>
   </data>
 </root>
