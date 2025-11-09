@@ -1,6 +1,7 @@
 ﻿using FinanceManager.Application.Statements;
 using Org.BouncyCastle.Math.EC.Multiplier;
 using System.Globalization;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -44,7 +45,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             return null;
         }
 
-        public StatementParseResult? ParseDetails(string originalFileName, byte[] fileBytes)
+        public virtual StatementParseResult? ParseDetails(string originalFileName, byte[] fileBytes)
         {
             return Parse(originalFileName, fileBytes);
         }
@@ -236,11 +237,15 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             var separator = currentSection.Attributes.GetNamedItem("separator")?.Value ?? ";";
             string[] Values = line.Split(separator);
             foreach (XmlNode Key in CurrentSection.ChildNodes)
-                if (Values[0].EndsWith(Key.Attributes["name"].Value))
+            {
+                var fieldCount = Key.Attributes["name"].Value.Split(separator).Length;
+                var name = string.Join(separator, Values.Take(fieldCount));
+                if (name.EndsWith(Key.Attributes["name"].Value))
                 {
                     string VariableName = Key.Attributes["variable"].Value;
-                    ParseVariable(VariableName, Values[1], true, GetVariableMode(Key.Attributes["mode"].Value), 1);
+                    ParseVariable(VariableName, Values.Skip(fieldCount).FirstOrDefault(), true, GetVariableMode(Key.Attributes["mode"].Value), 1);
                 }
+            }
         }
         protected void ParseVariable(StatementMovement line, string Name, string Value, VariableMode mode, int multiplier)
         {
@@ -256,13 +261,13 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     line.ValutaDate = DateTime.Parse(Value, new CultureInfo("de-DE"));
                     break;
                 case "SourceName":
-                    line.Counterparty = $"{line.Counterparty} {Value}".Trim();
+                    line.Counterparty = ApplyTextReplacements($"{line.Counterparty} {Value}".Trim());
                     break;
                 case "PostingDescription":
-                    line.PostingDescription = Value;
+                    line.PostingDescription = ApplyTextReplacements(Value);
                     break;
                 case "Description":
-                    line.Subject = Value;
+                    line.Subject = ApplyTextReplacements(Value);
                     break;
                 case "CurrencyCode":
                     line.CurrencyCode = Value;
@@ -272,6 +277,25 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     break;
             }
         }
+
+        private string? ApplyTextReplacements(string inputText)
+        {
+            var node = XmlDoc.DocumentElement.ChildNodes.OfType<XmlNode>().FirstOrDefault(node => node.Name == "replacements");
+            if (node is null)
+                return inputText;
+            foreach (var subNode in node.ChildNodes.OfType<XmlNode>())
+            {
+                if (string.Compare(subNode.Name, "replace", true) != 0)
+                    continue;
+                var search = subNode.Attributes.GetNamedItem("from")?.Value;
+                var replace = subNode.Attributes.GetNamedItem("to")?.Value;
+                if (string.IsNullOrWhiteSpace(search))
+                    continue;
+                inputText = inputText.Replace(search, replace);
+            }
+            return inputText;
+        }
+
         protected void ParseVariable(string Name, string Value, bool global, VariableMode mode, int multiplier)
         {
             StatementMovement line = global ? GlobalLineData : RecordLineData;

@@ -1,51 +1,45 @@
 ﻿using FinanceManager.Application.Statements;
+using FinanceManager.Shared.Dtos;
+using FinanceManager.Shared.Extensions;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using System.Globalization;
 using System.Text.RegularExpressions;
-using FinanceManager.Shared.Dtos;
+using System.Xml;
 
 namespace FinanceManager.Infrastructure.Statements.Reader
 {
-    public class ING_PDfReader : IStatementFileReader
+    public class ING_PDfReader : PDFStatementFilereader, IStatementFileReader
     {
-        protected IEnumerable<string> ReadContent(byte[] fileBytes)
+        public ING_PDfReader()
         {
-            using var ms = new MemoryStream(fileBytes, false);
-            PdfReader iTextReader = new PdfReader(ms);
-            try
-            {
-                PdfDocument pdfDoc = new PdfDocument(iTextReader);
-                int numberofpages = pdfDoc.GetNumberOfPages();
-                ITextExtractionStrategy strategy = new SimpleTextExtractionStrategy();
-                var lastContent = "";
-                for (int pageNo = 1; pageNo <= numberofpages; pageNo++)
-                {
-                    var page = pdfDoc.GetPage(pageNo);
-                    var pageContent = PdfTextExtractor.GetTextFromPage(page, strategy).Replace("\r\n", "\n").Replace("\r", "\n");
-                    var currentContent = pageContent;
-                    if (!string.IsNullOrWhiteSpace(lastContent) && pageContent.StartsWith(lastContent))
-                        pageContent = pageContent.Remove(0, lastContent.Length).TrimStart('\n');
-                    lastContent = currentContent;
-
-                    var pageLines = pageContent.TrimEnd('\n').Split('\n');
-                    foreach (var line in pageLines)
-                        yield return line;
-                }
-            }
-            finally
-            {
-                iTextReader.Close();
-            }
         }
 
-        public StatementParseResult? Parse(string fileName, byte[] fileBytes)
+        private string[] _Templates = new string[]
         {
-            return null;
-        }
+            @"
+<template>
+  <section name='AccountInfo' type='keyvalue' separator=' ' endKeyword='Buchung Buchung'>
+    <key name='Extra-Konto Nummer' variable='BankAccountNo' mode='always'/>
+  </section>
+  <section name='table' type='table' containsheader='false' fieldSeparator='#None#' endKeyword='Abschluss für Konto'>
+    <regExp pattern='^(?&lt;PostingDate&gt;\d{2}\.\d{2}\.\d{4})\s+(?&lt;PostingDescription&gt;\S+)(?:\s+(?&lt;SourceName&gt;.*?))?(?:\s+(?&lt;Amount&gt;[+-]?\d{1,3}(?:\.\d{3})*,\d{2}))?$' multiplier='1'/>
+    <regExp type='additional' pattern='^(?&lt;ValutaDate&gt;\d{2}\.\d{2}\.\d{4})\s+(?&lt;Description&gt;.+)$' />
+  </section>
+  <section name='BlockEnd' type='ignore'/>
+  <replacements>
+    <replace from='Ueberweisung' to='Überweisung'/>
+  </replacements>
+</template>"
+        };
 
-        public StatementParseResult? ParseDetails(string originalFileName, byte[] fileBytes)
+        string xmlRegExp = "";
+
+        Regex regex = new Regex(@"^(?<Datum>\d{2}\.\d{2}\.\d{4})\s+(?<Beschreibung>.*?)(?:\s+(?<Betrag>[+-]?\d{1,3}(?:\.\d{3})*,\d{2}))?$");
+        protected override string[] Templates => _Templates;
+
+        public override StatementParseResult? ParseDetails(string originalFileName, byte[] fileBytes)
         {
             try
             {
@@ -304,6 +298,89 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             {
                 return null;
             }
+        }
+
+        private StatementMovement _RecordDelay = null;
+        private int _additionalRecordInformationCount = 0;
+        protected override StatementMovement ParseTableRecord(string line)
+        {
+            if (_RecordDelay is null)
+            {
+                var record = base.ParseTableRecord(line);
+                if (record is null || record.BookingDate == DateTime.MinValue)
+                    return record;
+                _RecordDelay = record;
+                return null;
+            }
+            else
+            {
+                return ParseSecondRow(line);
+            }
+        }
+        private StatementMovement ParseSecondRow(string line)
+        {
+            var isNextRecord = false;
+            foreach (XmlNode Field in CurrentSection.ChildNodes)
+            {
+                switch (Field.Name)
+                {
+                    case "regExp":
+                        isNextRecord = isNextRecord || OwnParseRegularExpression(line, Field);
+                        break;
+                }
+            }
+            if (!isNextRecord) return null;
+            var outputRecord = ReturnCurrentDelayedRecord();
+            _ = ParseTableRecord(line);
+            return outputRecord;
+
+        }
+        private StatementMovement ReturnCurrentDelayedRecord()
+        {
+            var outputRecord = _RecordDelay;
+            _RecordDelay = null;
+            _additionalRecordInformationCount = 0;
+            return outputRecord;
+        }
+        protected override void ParseRegularExpression(string input, XmlNode field)
+        {
+            var type = field.Attributes.GetNamedItem("type")?.Value;
+            if (type != "additional")
+                base.ParseRegularExpression(input, field);
+        }
+        private bool OwnParseRegularExpression(string input, XmlNode field)
+        {
+            var pattern = field.Attributes["pattern"].Value;
+            var type = field.Attributes.GetNamedItem("type")?.Value;
+            var maxoccur = (field.Attributes.GetNamedItem("maxoccur")?.Value ?? "-").ToInt32();
+            if (type != "additional")
+            {
+                var record = base.ParseTableRecord(input);
+                if (record is not null && record.Amount != 0)
+                    return true;
+                return false;
+            }
+            var regex = new Regex(pattern, RegexOptions.IgnorePatternWhitespace);
+            var match = regex.Match(input);
+            if (!int.TryParse(field.Attributes["multiplier"]?.Value, out int multiplier))
+                multiplier = 1;
+            if (match.Success)
+            {
+                foreach (var groupName in regex.GetGroupNames())
+                {
+                    if (int.TryParse(groupName, out _))
+                        continue;
+
+                    var value = match.Groups[groupName].Value;
+                    if (string.IsNullOrEmpty(value))
+                        continue;
+                    ParseVariable(_RecordDelay, groupName, value, VariableMode.Always, multiplier);
+                }
+                _additionalRecordInformationCount++;
+                if (maxoccur > 0 && _additionalRecordInformationCount >= maxoccur)
+                    return true;
+            }
+            return false;
         }
     }
 }

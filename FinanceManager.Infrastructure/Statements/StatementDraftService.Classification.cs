@@ -244,12 +244,20 @@ public sealed partial class StatementDraftService
 
     private async Task ClassifyHeader(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
     {
-        if ((draft.DetectedAccountId == null) && (draft.AccountName != null))
+        if ((draft.DetectedAccountId == null) && (!string.IsNullOrWhiteSpace(draft.AccountName)))
         {
             var account = await _db.Accounts.AsNoTracking()
                 .Where(a => a.OwnerUserId == ownerUserId && (a.Iban == draft.AccountName))
                 .Select(a => new { a.Id })
                 .FirstOrDefaultAsync(ct);
+            if (account is null)
+            {
+                var simAccounts = await _db.Accounts.AsNoTracking()
+                    .Where(a => a.OwnerUserId == ownerUserId && (a.Iban.EndsWith(draft.AccountName)))
+                    .Select(a => new { a.Id })
+                    .ToListAsync(ct);
+                account = simAccounts.Count == 1 ? simAccounts.First() : null;
+            }
             if (account != null)
             {
                 draft.SetDetectedAccount(account.Id);
