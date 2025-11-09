@@ -30,6 +30,8 @@ namespace FinanceManager.Infrastructure.Statements.Reader
   <section name='BlockEnd' type='ignore'/>
   <replacements>
     <replace from='Ueberweisung' to='Überweisung'/>
+    <replace from='Terminueberw.' to='Terminüberweisung'/>
+
   </replacements>
 </template>"
         };

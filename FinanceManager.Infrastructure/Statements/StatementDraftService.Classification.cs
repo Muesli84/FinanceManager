@@ -129,14 +129,15 @@ public sealed partial class StatementDraftService
                 .ToListAsync(ct);
             existing.AddRange(histEntries.Select(x => (x.BookingDate.Date, x.Amount, x.Subject)));
         }
+                
 
+        Domain.Accounts.Account? bankAccount = null;
         Guid? bankContactId = null;
         if (draft.DetectedAccountId != null)
         {
-            bankContactId = await _db.Accounts
-                .Where(a => a.Id == draft.DetectedAccountId)
-                .Select(a => (Guid?)a.BankContactId)
-                .FirstOrDefaultAsync(ct);
+            bankAccount = await _db.Accounts
+                .FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId, ct);
+            bankContactId = bankAccount.BankContactId;
         }
 
         foreach (var entry in entries)
@@ -159,7 +160,8 @@ public sealed partial class StatementDraftService
             }
 
             TryAutoAssignContact(contacts, aliasLookup, bankContactId, selfContact, entry);
-            TryAutoAssignSavingsPlan(entry, savingPlans, selfContact);
+            if (bankAccount.SavingsPlanExpectation != Domain.Accounts.SavingsPlanExpectation.None)
+                TryAutoAssignSavingsPlan(entry, savingPlans, selfContact);
             TryAutoAssignSecurity(securities, contacts, bankContactId, entry);
         }
 

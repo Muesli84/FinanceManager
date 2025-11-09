@@ -1479,7 +1479,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 }
             }
         }
-        if (entries.Length > 0 && entryId is null)
+        if (entries.Length > 0 && entryId is null && account is not null && account.SavingsPlanExpectation != SavingsPlanExpectation.None)
         {
             DateTime latestBookingDate = entries.Max(e => e.BookingDate).Date;
             var monthStart = new DateTime(latestBookingDate.Year, latestBookingDate.Month, 1);
