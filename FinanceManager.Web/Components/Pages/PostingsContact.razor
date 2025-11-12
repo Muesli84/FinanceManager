@@ -28,11 +28,12 @@ else
     <table class="fm-table wide">
         <thead>
             <tr>
+                <th>&nbsp;</th>
                 <th style="width:7rem;">@Localizer["Th_Date"]</th>
                 <th style="width:7rem;">@Localizer["Th_Valuta"]</th>
                 <th style="width:7rem;text-align:right;">@Localizer["Th_Amount"]</th>
                 <th style="width:6rem;">@Localizer["Th_Kind"]</th>
-                <th style="width:18%;">@Localizer["Th_Recipient"]</th>
+                <th style="width:18%">@Localizer["Th_Recipient"]</th>
                 <th style="width:22%">@Localizer["Th_Subject"]</th>
                 <th>@Localizer["Th_Description"]</th>
             </tr>
@@ -41,6 +42,32 @@ else
             @foreach(var p in _vm!.Items)
             {
                 <tr style="cursor:pointer;" @onclick="(()=> OpenDetail(p.Id))">
+                    <td class="wrap">
+                        <div style="display:flex;gap:.4rem;align-items:center;">
+                            @* primary bank account symbol for this posting's group *@
+                            @if (p.BankPostingAccountSymbolAttachmentId != null)
+                            {
+                                <div title="@p.BankPostingAccountName" style="width:28px;height:28px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                    <img src="@($"/api/attachments/{p.BankPostingAccountSymbolAttachmentId}/download")" alt="@(p.BankPostingAccountName ?? "bank")" style="max-width:100%;max-height:100%;display:block;" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div title="@p.BankPostingAccountName" style="width:28px;height:28px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
+                                    <svg style="width:18px;height:18px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                </div>
+                            }
+
+                            @* if linked contact posting exists, show separator and its bank symbol *@
+                            @if (p.LinkedPostingId != null && p.LinkedPostingAccountSymbolAttachmentId != null)
+                            {
+                                <svg style="width:16px;height:16px;opacity:.6;margin:0 .2rem;"><use href="/icons/sprite.svg#link" /></svg>
+                                <div title="@p.LinkedPostingAccountName" style="width:28px;height:28px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
+                                    <img src="@($"/api/attachments/{p.LinkedPostingAccountSymbolAttachmentId}/download")" alt="@(p.LinkedPostingAccountName ?? "bank")" style="max-width:100%;max-height:100%;display:block;" />
+                                </div>
+                            }
+                        </div>
+                    </td>
                     <td>@p.BookingDate.ToShortDateString()</td>
                     <td>@p.ValutaDate.ToShortDateString()</td>
                     <td style="text-align:right;">@p.Amount</td>
@@ -52,7 +79,7 @@ else
             }
             @if(_vm.Loading)
             {
-                <tr><td colspan="7" style="opacity:.6;">@Localizer["Loading"]</td></tr>
+                <tr><td colspan="8" style="opacity:.6;">@Localizer["Loading"]</td></tr>
             }
         </tbody>
     </table>

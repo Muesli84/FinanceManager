@@ -78,6 +78,8 @@ namespace FinanceManager.Web
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<INotificationWriter, NotificationWriter>();
 
+            builder.Services.AddScoped<IPostingsQueryService, PostingsQueryService>();
+
             // Monthly reminder scheduler
             builder.Services.AddScoped<MonthlyReminderJob>();
             builder.Services.AddHostedService<MonthlyReminderScheduler>();

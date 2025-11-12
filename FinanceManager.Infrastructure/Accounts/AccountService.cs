@@ -13,6 +13,12 @@ public sealed class AccountService : IAccountService
     private readonly AppDbContext _db;
     public AccountService(AppDbContext db) => _db = db;
 
+    public async Task<AccountDto> CreateAsync(Guid ownerUserId, string name, AccountType type, string? iban, Guid bankContactId, CancellationToken ct)
+    {
+        // default expectation for older callers
+        return await CreateAsync(ownerUserId, name, type, iban, bankContactId, FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional, ct);
+    }
+
     public async Task<AccountDto> CreateAsync(Guid ownerUserId, string name, AccountType type, string? iban, Guid bankContactId, SavingsPlanExpectation expectation, CancellationToken ct)
     {
         if (!await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == bankContactId && c.OwnerUserId == ownerUserId && c.Type == ContactType.Bank, ct))

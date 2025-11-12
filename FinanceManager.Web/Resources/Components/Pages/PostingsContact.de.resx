@@ -16,26 +16,23 @@
   <data name="Th_Recipient" xml:space="preserve"><value>Empfänger</value></data>
   <data name="Th_Subject" xml:space="preserve"><value>Verwendungszweck</value></data>
   <data name="Th_Description" xml:space="preserve"><value>Beschreibung</value></data>
+  <data name="Th_BankAccount" xml:space="preserve"><value>Bankkonto</value></data>
   <data name="NoItems" xml:space="preserve"><value>Keine Einträge</value></data>
   <data name="EndOfList" xml:space="preserve"><value>Ende der Liste</value></data>
-  <!-- Ribbon -->
   <data name="Ribbon_Group_Navigation" xml:space="preserve"><value>Navigation</value></data>
   <data name="Ribbon_Group_Filter" xml:space="preserve"><value>Filter</value></data>
   <data name="Ribbon_Back" xml:space="preserve"><value>Zurück</value></data>
   <data name="Ribbon_ClearSearch" xml:space="preserve"><value>Suche leeren</value></data>
   <data name="Ribbon_Tab_Postings" xml:space="preserve"><value>Buchungen</value></data>
-  <!-- Related & Attachments -->
   <data name="Ribbon_Group_Related" xml:space="preserve"><value>Zugehörig</value></data>
   <data name="Ribbon_Attachments" xml:space="preserve"><value>Anhänge</value></data>
   <data name="Attachments_Title" xml:space="preserve"><value>Anhänge</value></data>
   <data name="Btn_Close" xml:space="preserve"><value>Schließen</value></data>
-  <!-- Linked group -->
   <data name="Ribbon_Group_Linked" xml:space="preserve"><value>Verknüpfte Informationen</value></data>
   <data name="Ribbon_OpenAccount" xml:space="preserve"><value>Konto öffnen</value></data>
   <data name="Ribbon_OpenContact" xml:space="preserve"><value>Kontakt öffnen</value></data>
   <data name="Ribbon_OpenSavingsPlan" xml:space="preserve"><value>Sparplan öffnen</value></data>
   <data name="Ribbon_OpenSecurity" xml:space="preserve"><value>Wertpapier öffnen</value></data>
-  <!-- Export -->
   <data name="Ribbon_Group_Export" xml:space="preserve"><value>Export</value></data>
   <data name="Ribbon_ExportCsv" xml:space="preserve"><value>CSV exportieren</value></data>
   <data name="Ribbon_ExportExcel" xml:space="preserve"><value>Excel exportieren</value></data>

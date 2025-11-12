@@ -118,6 +118,9 @@ public sealed class Posting : Entity, IAggregateRoot
     // New: reference to parent posting (used for split/linked postings)
     public Guid? ParentId { get; private set; }
 
+    // New: optional link to counterpart posting for self-transfers
+    public Guid? LinkedPostingId { get; private set; }
+
     public Posting SetGroup(Guid groupId)
     {
         if (groupId == Guid.Empty) { throw new ArgumentException("Group id must not be empty", nameof(groupId)); }
@@ -134,6 +137,16 @@ public sealed class Posting : Entity, IAggregateRoot
         if (ParentId == null)
         {
             ParentId = parentId;
+        }
+        return this;
+    }
+
+    public Posting SetLinkedPosting(Guid linkedPostingId)
+    {
+        if (linkedPostingId == Guid.Empty) throw new ArgumentException("Linked posting id must not be empty", nameof(linkedPostingId));
+        if (LinkedPostingId == null)
+        {
+            LinkedPostingId = linkedPostingId;
         }
         return this;
     }
