@@ -82,7 +82,9 @@
   <data name="Label_TestsOnly" xml:space="preserve"><value>tests only</value></data>
 
   <data name="Section_Privacy" xml:space="preserve"><value>Privacy</value></data>
-  <data name="Privacy_SessionCookie" xml:space="preserve"><value>This application uses a session/auth cookie (fm_auth) to manage signed-in sessions. The cookie contains a JWT token used solely for authentication.</value></data>
+  <data name="Privacy_SessionCookie" xml:space="preserve"><value>This application uses a session/auth cookie (FinanceManager.Auth) to manage signed-in sessions. The cookie contains a JWT token used solely for authentication.</value></data>
+  <data name="Privacy_IdentityCookie" xml:space="preserve"><value>ASP.NET Core Identity uses a cookie (by default "FinanceManager.Identity") to manage the user's sign-in session for Identity features. This cookie is separate from the JWT auth cookie and may contain identity-related session information.</value></data>
+  <data name="Privacy_AntiforgeryCookie" xml:space="preserve"><value>An anti-forgery cookie (name starts with "FinanceManager.Antiforgery") is used to protect forms and interactive requests from CSRF attacks. This cookie does not contain user credentials and is used for request verification.</value></data>
   <data name="Privacy_ThirdParty" xml:space="preserve"><value>When using external services (e.g., price lookups), data (IP address, request timestamp) may be transmitted to those providers. Please refer to their privacy policies.</value></data>
 
   <data name="Section_Other" xml:space="preserve"><value>Other information</value></data>

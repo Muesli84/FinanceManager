@@ -1,6 +1,8 @@
 @page "/legal"
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Legal> L
 
+<PageTitle>@L["Title"]</PageTitle>
+
 <h2>@L["Title"]</h2>
 
 <p>@L["Intro"]</p>
@@ -61,6 +63,8 @@
 
 <h3>@L["Section_Privacy"]</h3>
 <p>@L["Privacy_SessionCookie"]</p>
+<p>@L["Privacy_IdentityCookie"]</p>
+<p>@L["Privacy_AntiforgeryCookie"]</p>
 <p>@L["Privacy_ThirdParty"]</p>
 
 <h3>@L["Section_Other"]</h3>

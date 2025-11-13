@@ -163,7 +163,13 @@
     <value>Datenschutz</value>
   </data>
   <data name="Privacy_SessionCookie" xml:space="preserve">
-    <value>Diese Anwendung verwendet ein Session-/Auth-Cookie (fm_auth), um angemeldete Sitzungen zu verwalten. Das Cookie enthält ein JWT-Token, das ausschließlich zur Authentifizierung genutzt wird.</value>
+    <value>Diese Anwendung verwendet ein Session-/Auth-Cookie (FinanceManager.Auth), um angemeldete Sitzungen zu verwalten. Das Cookie enthält ein JWT-Token, das ausschließlich zur Authentifizierung genutzt wird.</value>
+  </data>
+  <data name="Privacy_IdentityCookie" xml:space="preserve">
+    <value>ASP.NET Core Identity verwendet ein Cookie (standardmäßig "FinanceManager.Identity"), um die Anmeldung für Identity‑Funktionen zu verwalten. Dieses Cookie ist getrennt vom JWT‑Auth‑Cookie und kann Identity‑bezogene Sitzungsinformationen enthalten.</value>
+  </data>
+  <data name="Privacy_AntiforgeryCookie" xml:space="preserve">
+    <value>Ein Anti‑Forgery‑Cookie (Name beginnt mit "FinanceManager.Antiforgery") wird verwendet, um Formulare und interaktive Anfragen gegen CSRF‑Angriffe zu schützen. Dieses Cookie enthält keine Zugangsdaten und dient der Anfragen‑Verifikation.</value>
   </data>
   <data name="Privacy_ThirdParty" xml:space="preserve">
     <value>Bei Nutzung externer Dienste (z. B. Kursabrufe) können Daten (IP-Adresse, Anfragezeitpunkt) an Anbieter übertragen werden. Bitte prüfen Sie die Datenschutzhinweise der jeweiligen Dienste.</value>

@@ -14,6 +14,7 @@ namespace FinanceManager.Web.Infrastructure.Auth
 
         private const string RefreshHeaderName = "X-Auth-Token";
         private const string RefreshExpiresHeaderName = "X-Auth-Token-Expires";
+        private const string AuthCookieName = "FinanceManager.Auth";
 
         public JwtRefreshMiddleware(RequestDelegate next, IConfiguration configuration)
         {
@@ -83,7 +84,7 @@ namespace FinanceManager.Web.Infrastructure.Auth
 
                 if (!context.Response.HasStarted)
                 {
-                    context.Response.Cookies.Append("fm_auth", newToken, new CookieOptions
+                    context.Response.Cookies.Append(AuthCookieName, newToken, new CookieOptions
                     {
                         HttpOnly = true,
                         Secure = context.Request.IsHttps, // vorher: true
@@ -113,7 +114,7 @@ namespace FinanceManager.Web.Infrastructure.Auth
                 }
             }
 
-            if (context.Request.Cookies.TryGetValue("fm_auth", out var cookie) && !string.IsNullOrWhiteSpace(cookie))
+            if (context.Request.Cookies.TryGetValue(AuthCookieName, out var cookie) && !string.IsNullOrWhiteSpace(cookie))
             {
                 return cookie;
             }

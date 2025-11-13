@@ -133,7 +133,7 @@ namespace FinanceManager.Web
                         {
                             if (string.IsNullOrEmpty(ctx.Token))
                             {
-                                var cookie = ctx.Request.Cookies["fm_auth"];
+                                var cookie = ctx.Request.Cookies["FinanceManager.Auth"];
                                 if (!string.IsNullOrEmpty(cookie))
                                 {
                                     ctx.Token = cookie;
@@ -166,13 +166,27 @@ namespace FinanceManager.Web
 
             builder.Services.ConfigureApplicationCookie(options =>
             {
+                // Unique cookie name for this app (prevents collision with other apps on same domain)
+                options.Cookie.Name = "FinanceManager.Identity";
+                options.Cookie.Path = "/"; // keep app-wide; could be app-specific path if you host under same domain/path
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // or Always in prod
+
                 options.LoginPath = "/Login";
                 options.AccessDeniedPath = "/AccessDenied";
                 options.SlidingExpiration = true;
 
-                // Use JWT lifetime configured in appsettings so Identity cookie does not expire earlier than JWT
                 var jwtLifetimeMinutes = builder.Configuration.GetValue<int?>("Jwt:LifetimeMinutes") ?? 30;
                 options.ExpireTimeSpan = TimeSpan.FromMinutes(jwtLifetimeMinutes);
+            });
+
+            builder.Services.AddAntiforgery(options =>
+            {
+                options.Cookie.Name = "FinanceManager.Antiforgery";
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Lax;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             });
 
             builder.Services.AddAuthorization();
