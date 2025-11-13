@@ -164,5 +164,231 @@ namespace FinanceManager.Web.Services
 
             return result;
         }
+
+        public async Task<IReadOnlyList<PostingServiceDto>> GetAccountPostingsAsync(Guid accountId, int skip, int take, string? q, DateTime? from, DateTime? to, Guid currentUserId, CancellationToken ct = default)
+        {
+            take = Math.Clamp(take, 1, 250);
+            bool owned = await _db.Accounts.AsNoTracking().AnyAsync(a => a.Id == accountId && a.OwnerUserId == currentUserId, ct);
+            if (!owned) return Array.Empty<PostingServiceDto>();
+
+            var postings = _db.Postings.AsNoTracking().Where(p => p.AccountId == accountId && p.Kind == PostingKind.Bank);
+
+            if (from.HasValue)
+            {
+                var f = from.Value.Date; postings = postings.Where(p => p.BookingDate >= f);
+            }
+            if (to.HasValue)
+            {
+                var t = to.Value.Date.AddDays(1); postings = postings.Where(p => p.BookingDate < t);
+            }
+
+            var joined = from p in postings
+                         join se in _db.StatementEntries.AsNoTracking() on p.SourceId equals se.Id into seJoin
+                         from seOpt in seJoin.DefaultIfEmpty()
+                         join acc in _db.Accounts.AsNoTracking() on p.AccountId equals acc.Id into accJoin
+                         from accOpt in accJoin.DefaultIfEmpty()
+                         join cont in _db.Contacts.AsNoTracking() on accOpt.BankContactId equals cont.Id into contJoin
+                         from contOpt in contJoin.DefaultIfEmpty()
+                         select new
+                         {
+                             P = p,
+                             Subject = p.Subject ?? seOpt.Subject,
+                             Recipient = p.RecipientName ?? seOpt.RecipientName,
+                             Description = p.Description ?? seOpt.BookingDescription,
+                             AccountSymbolFromAccount = accOpt != null ? accOpt.SymbolAttachmentId : (Guid?)null,
+                             AccountSymbolFromContact = contOpt != null ? contOpt.SymbolAttachmentId : (Guid?)null,
+                             AccountName = accOpt != null ? accOpt.Name : null
+                         };
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                string term = q.Trim();
+                string termLower = term.ToLowerInvariant();
+                DateTime? dateFilter = TryParseDate(term);
+                decimal? amountFilter = TryParseAmount(term);
+
+                joined = joined.Where(x =>
+                    (x.Subject != null && EF.Functions.Like(x.Subject.ToLower(), "%" + termLower + "%")) ||
+                    (x.Recipient != null && EF.Functions.Like(x.Recipient.ToLower(), "%" + termLower + "%")) ||
+                    (x.Description != null && EF.Functions.Like(x.Description.ToLower(), "%" + termLower + "%")) ||
+                    (dateFilter != null && x.P.BookingDate >= dateFilter && x.P.BookingDate < dateFilter.Value.AddDays(1)) ||
+                    (amountFilter != null && (x.P.Amount == amountFilter || x.P.Amount == -amountFilter))
+                );
+            }
+
+            var ordered = joined.OrderByDescending(x => x.P.ValutaDate).ThenByDescending(x => x.P.BookingDate).ThenByDescending(x => x.P.Id).Skip(skip).Take(take);
+
+            var rows = await ordered.ToListAsync(ct);
+
+            var result = rows.Select(r =>
+            {
+                Guid? bankSymbol = r.AccountSymbolFromAccount ?? r.AccountSymbolFromContact;
+                return new PostingServiceDto(
+                    r.P.Id,
+                    r.P.BookingDate,
+                    r.P.ValutaDate,
+                    r.P.Amount,
+                    (int)r.P.Kind,
+                    r.P.AccountId,
+                    r.P.ContactId,
+                    r.P.SavingsPlanId,
+                    r.P.SecurityId,
+                    r.P.SourceId,
+                    r.Subject,
+                    r.Recipient,
+                    r.Description,
+                    r.P.SecuritySubType != null ? (int?)r.P.SecuritySubType : null,
+                    r.P.Quantity,
+                    r.P.GroupId,
+                    (Guid?)null,
+                    (int?)null,
+                    (Guid?)null,
+                    (Guid?)null,
+                    (string?)null,
+                    r.P.AccountId,
+                    bankSymbol,
+                    r.AccountName);
+            }).ToList();
+
+            return result;
+        }
+
+        public async Task<IReadOnlyList<PostingServiceDto>> GetSavingsPlanPostingsAsync(Guid planId, int skip, int take, string? q, DateTime? from, DateTime? to, Guid currentUserId, CancellationToken ct = default)
+        {
+            take = Math.Clamp(take, 1, 250);
+            bool owned = await _db.SavingsPlans.AsNoTracking().AnyAsync(s => s.Id == planId && s.OwnerUserId == currentUserId, ct);
+            if (!owned) return Array.Empty<PostingServiceDto>();
+
+            var query = _db.Postings.AsNoTracking().Where(p => p.SavingsPlanId == planId && p.Kind == PostingKind.SavingsPlan);
+
+            if (from.HasValue)
+            {
+                var f = from.Value.Date; query = query.Where(p => p.BookingDate >= f);
+            }
+            if (to.HasValue)
+            {
+                var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
+            }
+
+            var joined = from p in query
+                         join se in _db.StatementEntries.AsNoTracking() on p.SourceId equals se.Id into seJoin
+                         from seOpt in seJoin.DefaultIfEmpty()
+                         select new
+                         {
+                             P = p,
+                             Subject = p.Subject ?? seOpt.Subject,
+                             Recipient = p.RecipientName ?? seOpt.RecipientName,
+                             Description = p.Description ?? seOpt.BookingDescription
+                         };
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                string term = q.Trim();
+                string termLower = term.ToLowerInvariant();
+                DateTime? dateFilter = TryParseDate(term);
+                decimal? amountFilter = TryParseAmount(term);
+
+                joined = joined.Where(x =>
+                    (x.Subject != null && EF.Functions.Like(x.Subject.ToLower(), "%" + termLower + "%")) ||
+                    (x.Recipient != null && EF.Functions.Like(x.Recipient.ToLower(), "%" + termLower + "%")) ||
+                    (x.Description != null && EF.Functions.Like(x.Description.ToLower(), "%" + termLower + "%")) ||
+                    (dateFilter != null && x.P.BookingDate >= dateFilter && x.P.BookingDate < dateFilter.Value.AddDays(1)) ||
+                    (amountFilter != null && (x.P.Amount == amountFilter || x.P.Amount == -amountFilter))
+                );
+            }
+
+            var ordered = joined.OrderByDescending(x => x.P.ValutaDate).ThenByDescending(x => x.P.BookingDate).ThenByDescending(x => x.P.Id).Skip(skip).Take(take);
+
+            var rows = await ordered.ToListAsync(ct);
+
+            var result = rows.Select(r => new PostingServiceDto(
+                r.P.Id,
+                r.P.BookingDate,
+                r.P.ValutaDate,
+                r.P.Amount,
+                (int)r.P.Kind,
+                r.P.AccountId,
+                r.P.ContactId,
+                r.P.SavingsPlanId,
+                r.P.SecurityId,
+                r.P.SourceId,
+                r.Subject,
+                r.Recipient,
+                r.Description,
+                r.P.SecuritySubType != null ? (int?)r.P.SecuritySubType : null,
+                r.P.Quantity,
+                r.P.GroupId,
+                (Guid?)null,
+                (int?)null,
+                (Guid?)null,
+                (Guid?)null,
+                (string?)null,
+                (Guid?)null,
+                (Guid?)null,
+                (string?)null)).ToList();
+
+            return result;
+        }
+
+        public async Task<IReadOnlyList<PostingServiceDto>> GetSecurityPostingsAsync(Guid securityId, int skip, int take, DateTime? from, DateTime? to, Guid currentUserId, CancellationToken ct = default)
+        {
+            take = Math.Clamp(take, 1, 250);
+            bool owned = await _db.Securities.AsNoTracking().AnyAsync(s => s.Id == securityId && s.OwnerUserId == currentUserId, ct);
+            if (!owned) return Array.Empty<PostingServiceDto>();
+
+            var query = _db.Postings.AsNoTracking().Where(p => p.SecurityId == securityId && p.Kind == PostingKind.Security);
+
+            if (from.HasValue)
+            {
+                var f = from.Value.Date; query = query.Where(p => p.BookingDate >= f);
+            }
+            if (to.HasValue)
+            {
+                var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
+            }
+
+            var joined = from p in query
+                         join se in _db.StatementEntries.AsNoTracking() on p.SourceId equals se.Id into seJoin
+                         from seOpt in seJoin.DefaultIfEmpty()
+                         select new
+                         {
+                             P = p,
+                             Subject = p.Subject ?? seOpt.Subject,
+                             Recipient = p.RecipientName ?? seOpt.RecipientName,
+                             Description = p.Description ?? seOpt.BookingDescription
+                         };
+
+            var ordered = joined.OrderByDescending(x => x.P.ValutaDate).ThenByDescending(x => x.P.BookingDate).ThenByDescending(x => x.P.Id).Skip(skip).Take(take);
+
+            var rows = await ordered.ToListAsync(ct);
+
+            var result = rows.Select(r => new PostingServiceDto(
+                r.P.Id,
+                r.P.BookingDate,
+                r.P.ValutaDate,
+                r.P.Amount,
+                (int)r.P.Kind,
+                r.P.AccountId,
+                r.P.ContactId,
+                r.P.SavingsPlanId,
+                r.P.SecurityId,
+                r.P.SourceId,
+                r.Subject,
+                r.Recipient,
+                r.Description,
+                r.P.SecuritySubType != null ? (int?)r.P.SecuritySubType : null,
+                r.P.Quantity,
+                r.P.GroupId,
+                (Guid?)null,
+                (int?)null,
+                (Guid?)null,
+                (Guid?)null,
+                (string?)null,
+                (Guid?)null,
+                (Guid?)null,
+                (string?)null)).ToList();
+
+            return result;
+        }
     }
 }
