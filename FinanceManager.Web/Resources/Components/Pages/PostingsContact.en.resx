@@ -16,6 +16,7 @@
   <data name="Th_Recipient" xml:space="preserve"><value>Recipient</value></data>
   <data name="Th_Subject" xml:space="preserve"><value>Subject</value></data>
   <data name="Th_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Th_BankAccount" xml:space="preserve"><value>Bank Account</value></data>
   <data name="NoItems" xml:space="preserve"><value>No items</value></data>
   <data name="EndOfList" xml:space="preserve"><value>End of list</value></data>
   <!-- Ribbon -->

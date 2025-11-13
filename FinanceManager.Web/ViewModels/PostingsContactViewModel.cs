@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Linq;
 using FinanceManager.Domain;
 using FinanceManager.Shared.Dtos;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +16,7 @@ public sealed class PostingsContactViewModel : ViewModelBase
         _http = httpFactory.CreateClient("Api");
     }
 
-    public Guid ContactId { get; private set; }
+    public Guid SecurityId { get; private set; }
     public bool Loaded { get; private set; }
 
     public string Search { get; private set; } = string.Empty;
@@ -32,9 +33,9 @@ public sealed class PostingsContactViewModel : ViewModelBase
 
     public List<PostingItem> Items { get; } = new();
 
-    public void Configure(Guid contactId)
+    public void Configure(Guid securityId)
     {
-        ContactId = contactId;
+        SecurityId = securityId;
     }
 
     public override async ValueTask InitializeAsync(CancellationToken ct = default)
@@ -74,8 +75,9 @@ public sealed class PostingsContactViewModel : ViewModelBase
             var firstPage = Skip == 0;
             var parts = new List<string> { $"skip={Skip}", "take=50" };
             if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
-            var url = $"/api/postings/contact/{ContactId}?{string.Join('&', parts)}";
-            var chunk = await _http.GetFromJsonAsync<List<PostingDto>>(url, ct) ?? new();
+            var url = $"/api/postings/contact/{SecurityId}?{string.Join('&', parts)}";
+            // Use shared PostingServiceDto from shared project
+            var chunk = await _http.GetFromJsonAsync<List<PostingServiceDto>>(url, ct) ?? new();
             Items.AddRange(chunk.Select(Map));
             Skip += chunk.Count;
             if (chunk.Count == 0 || (!firstPage && chunk.Count < 50)) { CanLoadMore = false; }
@@ -126,7 +128,7 @@ public sealed class PostingsContactViewModel : ViewModelBase
         var parts = new List<string> { $"format={Uri.EscapeDataString(format)}" };
         if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
         var qs = parts.Count > 0 ? ("?" + string.Join('&', parts)) : string.Empty;
-        return $"/api/postings/contact/{ContactId}/export{qs}";
+        return $"/api/postings/security/{SecurityId}/export{qs}";
     }
 
     public override IReadOnlyList<UiRibbonGroup> GetRibbon(IStringLocalizer localizer)
@@ -148,13 +150,14 @@ public sealed class PostingsContactViewModel : ViewModelBase
         return new List<UiRibbonGroup> { nav, filter, export };
     }
 
-    private static PostingItem Map(PostingDto p) => new()
+    private static PostingItem Map(PostingServiceDto p) => new()
     {
         Id = p.Id,
         BookingDate = p.BookingDate,
         ValutaDate = p.ValutaDate,
         Amount = p.Amount,
-        Kind = p.Kind,
+        // convert numeric kind back to domain enum
+        Kind = (PostingKind)p.Kind,
         AccountId = p.AccountId,
         ContactId = p.ContactId,
         SavingsPlanId = p.SavingsPlanId,
@@ -164,11 +167,20 @@ public sealed class PostingsContactViewModel : ViewModelBase
         Subject = p.Subject,
         RecipientName = p.RecipientName,
         Description = p.Description,
-        SecuritySubType = p.SecuritySubType,
-        Quantity = p.Quantity
+        SecuritySubType = p.SecuritySubType.HasValue ? (SecurityPostingSubType?)p.SecuritySubType.Value : null,
+        Quantity = p.Quantity,
+        // linked posting fields
+        LinkedPostingId = p.LinkedPostingId,
+        LinkedPostingKind = p.LinkedPostingKind.HasValue ? (PostingKind?)p.LinkedPostingKind.Value : null,
+        LinkedPostingAccountId = p.LinkedPostingAccountId,
+        LinkedPostingAccountSymbolAttachmentId = p.LinkedPostingAccountSymbolAttachmentId,
+        LinkedPostingAccountName = p.LinkedPostingAccountName,
+        // bank posting for this posting
+        BankPostingAccountId = p.BankPostingAccountId,
+        BankPostingAccountSymbolAttachmentId = p.BankPostingAccountSymbolAttachmentId,
+        BankPostingAccountName = p.BankPostingAccountName
     };
 
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId);
     public sealed record GroupLinksResponse(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
     public sealed class PostingItem
@@ -189,5 +201,17 @@ public sealed class PostingsContactViewModel : ViewModelBase
         public string? Description { get; set; }
         public SecurityPostingSubType? SecuritySubType { get; set; }
         public decimal? Quantity { get; set; }
+
+        // linked posting metadata
+        public Guid? LinkedPostingId { get; set; }
+        public PostingKind? LinkedPostingKind { get; set; }
+        public Guid? LinkedPostingAccountId { get; set; }
+        public Guid? LinkedPostingAccountSymbolAttachmentId { get; set; }
+        public string? LinkedPostingAccountName { get; set; }
+
+        // bank posting for this posting
+        public Guid? BankPostingAccountId { get; set; }
+        public Guid? BankPostingAccountSymbolAttachmentId { get; set; }
+        public string? BankPostingAccountName { get; set; }
     }
 }

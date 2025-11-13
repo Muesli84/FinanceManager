@@ -1,8 +1,10 @@
 using FinanceManager.Application;
 using FinanceManager.Domain;
+using FinanceManager.Domain.Attachments;
 using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Shared.Dtos;
+using FinanceManager.Web.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,15 +22,16 @@ public sealed class PostingsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _current;
+    private readonly IPostingsQueryService _postingsQuery;
     private const int MaxTake = 250;
 
-    public PostingsController(AppDbContext db, ICurrentUserService current)
+    public PostingsController(AppDbContext db, ICurrentUserService current, IPostingsQueryService postingsQuery)
     {
-        _db = db; _current = current;
+        _db = db; _current = current; _postingsQuery = postingsQuery;
     }
 
     // Added ValutaDate to DTO
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId);
+    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId, Guid? LinkedPostingId, PostingKind? LinkedPostingKind, Guid? LinkedPostingAccountId, Guid? LinkedPostingAccountSymbolAttachmentId, string? LinkedPostingAccountName, Guid? BankPostingAccountId, Guid? BankPostingAccountSymbolAttachmentId, string? BankPostingAccountName);
 
     public sealed record GroupLinksDto(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
@@ -58,6 +61,54 @@ public sealed class PostingsController : ControllerBase
         if (!owned) { return NotFound(); }
 
         var se = await _db.StatementEntries.AsNoTracking().FirstOrDefaultAsync(se => se.Id == p.SourceId, ct);
+
+        // linked posting metadata
+        Guid? linkedId = p.LinkedPostingId;
+        PostingKind? lkind = null; Guid? lacc = null; Guid? laccSym = null; string? laccName = null;
+        if (linkedId != null)
+        {
+            var lp = await _db.Postings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == linkedId, ct);
+            if (lp != null)
+            {
+                lkind = lp.Kind;
+                lacc = lp.AccountId;
+                if (lp.AccountId != null)
+                {
+                    var acc = await _db.Accounts.AsNoTracking().FirstOrDefaultAsync(a => a.Id == lp.AccountId.Value, ct);
+                    if (acc != null)
+                    {
+                        laccSym = acc.SymbolAttachmentId;
+                        laccName = acc.Name;
+                    }
+                }
+            }
+        }
+
+        // bank posting for this posting's group
+        Guid? bankAccId = null; Guid? bankAccSym = null; string? bankAccName = null;
+        if (p.GroupId != Guid.Empty)
+        {
+            var bp = await _db.Postings.AsNoTracking().Where(x => x.GroupId == p.GroupId && x.Kind == PostingKind.Bank).FirstOrDefaultAsync(ct);
+            if (bp != null && bp.AccountId != null)
+            {
+                bankAccId = bp.AccountId;
+                var acc2 = await _db.Accounts.AsNoTracking().FirstOrDefaultAsync(a => a.Id == bp.AccountId.Value, ct);
+                if (acc2 != null)
+                {
+                    bankAccSym = acc2.SymbolAttachmentId;
+                    bankAccName = acc2.Name;
+                    if (bankAccSym is null)
+                    {
+                        var cont = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == p.ContactId, ct);
+                        if (cont != null)
+                        {
+                            bankAccSym = cont.SymbolAttachmentId;
+                        }
+                    }
+                }
+            }
+        }
+
         var dto = new PostingDto(
             p.Id,
             p.BookingDate,
@@ -74,97 +125,27 @@ public sealed class PostingsController : ControllerBase
             p.Description ?? se?.BookingDescription,
             p.SecuritySubType,
             p.Quantity,
-            p.GroupId);
+            p.GroupId,
+            linkedId,
+            lkind,
+            lacc,
+            laccSym,
+            laccName,
+            bankAccId,
+            bankAccSym,
+            bankAccName);
         return Ok(dto);
     }
 
     [HttpGet("account/{accountId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
+    public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
-        try
-        {
-            take = Math.Clamp(take, 1, MaxTake);
-            bool owned = await _db.Accounts.AsNoTracking().AnyAsync(a => a.Id == accountId && a.OwnerUserId == _current.UserId, ct);
-            if (!owned) { return NotFound(); }
+        take = Math.Clamp(take, 1, MaxTake);
+        bool owned = await _db.Accounts.AsNoTracking().AnyAsync(a => a.Id == accountId && a.OwnerUserId == _current.UserId, ct);
+        if (!owned) { return NotFound(); }
 
-            // Base postings (bank) for account
-            var postings = _db.Postings.AsNoTracking()
-                .Where(p => p.AccountId == accountId && p.Kind == PostingKind.Bank);
-
-            // Filter by date range if specified
-            if (from.HasValue)
-            {
-                var f = from.Value.Date;
-                postings = postings.Where(p => p.BookingDate >= f);
-            }
-            if (to.HasValue)
-            {
-                var t = to.Value.Date.AddDays(1); // inclusive upper bound
-                postings = postings.Where(p => p.BookingDate < t);
-            }
-
-            // Left join statement entries for enrichment BEFORE projection
-            var joined = from p in postings
-                         join se in _db.StatementEntries.AsNoTracking() on p.SourceId equals se.Id into seJoin
-                         from seOpt in seJoin.DefaultIfEmpty()
-                         select new
-                         {
-                             P = p,
-                             Subject = p.Subject ?? seOpt.Subject,
-                             Recipient = p.RecipientName ?? seOpt.RecipientName,
-                             Description = p.Description ?? seOpt.BookingDescription
-                         };
-
-            if (!string.IsNullOrWhiteSpace(q))
-            {
-                string term = q.Trim();
-                string termLower = term.ToLowerInvariant();
-                DateTime? dateFilter = TryParseDate(term);
-                decimal? amountFilter = TryParseAmount(term);
-
-                joined = joined.Where(x =>
-                    (x.Subject != null && EF.Functions.Like(x.Subject.ToLower(), "%" + termLower + "%")) ||
-                    (x.Recipient != null && EF.Functions.Like(x.Recipient.ToLower(), "%" + termLower + "%")) ||
-                    (x.Description != null && EF.Functions.Like(x.Description.ToLower(), "%" + termLower + "%")) ||
-                    (dateFilter != null && x.P.BookingDate >= dateFilter && x.P.BookingDate < dateFilter.Value.AddDays(1)) ||
-                    (amountFilter != null && (x.P.Amount == amountFilter || x.P.Amount == -amountFilter))
-                );
-            }
-
-            // Order by ValutaDate desc, then BookingDate desc, then Id desc
-            var ordered = joined
-                .OrderByDescending(x => x.P.ValutaDate)
-                .ThenByDescending(x => x.P.BookingDate)
-                .ThenByDescending(x => x.P.Id)
-                .Skip(skip)
-                .Take(take);
-
-            var result = await ordered
-                .Select(x => new PostingDto(
-                    x.P.Id,
-                    x.P.BookingDate,
-                    x.P.ValutaDate, // <- include valuta
-                    x.P.Amount,
-                    x.P.Kind,
-                    x.P.AccountId,
-                    x.P.ContactId,
-                    x.P.SavingsPlanId,
-                    x.P.SecurityId,
-                    x.P.SourceId,
-                    x.Subject,
-                    x.Recipient,
-                    x.Description,
-                    x.P.SecuritySubType,
-                    x.P.Quantity,
-                    x.P.GroupId))
-                .ToListAsync(ct);
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(ex);
-        }
+        var rows = await _postingsQuery.GetAccountPostingsAsync(accountId, skip, take, q, from, to, _current.UserId, ct);
+        return Ok(rows);
     }
 
     private static DateTime? TryParseDate(string input)
@@ -184,141 +165,37 @@ public sealed class PostingsController : ControllerBase
     }
 
     [HttpGet("contact/{contactId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetContactPostings(Guid contactId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
+    public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetContactPostings(Guid contactId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
         bool owned = await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == contactId && c.OwnerUserId == _current.UserId, ct);
         if (!owned) { return NotFound(); }
-        var query = _db.Postings.AsNoTracking()
-            .Where(p => p.ContactId == contactId && p.Kind == PostingKind.Contact);
 
-        if (from.HasValue)
-        {
-            var f = from.Value.Date; query = query.Where(p => p.BookingDate >= f);
-        }
-        if (to.HasValue)
-        {
-            var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
-        }
-
-        // Order by ValutaDate desc, then BookingDate desc, then Id desc
-        query = query.OrderByDescending(p => p.ValutaDate).ThenByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
-            .Skip(skip).Take(take);
-
-        var result = await (from p in query
-                            join se in _db.StatementEntries.AsNoTracking() on p.SourceId equals se.Id into seJoin
-                            from seOpt in seJoin.DefaultIfEmpty()
-                            select new PostingDto(
-                                p.Id,
-                                p.BookingDate,
-                                p.ValutaDate,
-                                p.Amount,
-                                p.Kind,
-                                p.AccountId,
-                                p.ContactId,
-                                p.SavingsPlanId,
-                                p.SecurityId,
-                                p.SourceId,
-                                p.Subject ?? seOpt.Subject,
-                                p.RecipientName ?? seOpt.RecipientName,
-                                p.Description ?? seOpt.BookingDescription,
-                                p.SecuritySubType,
-                                p.Quantity,
-                                p.GroupId))
-            .ToListAsync(ct);
-        return Ok(result);
+        // Use postings query service to load contact postings (shared DTO)
+        var rows = await _postingsQuery.GetContactPostingsAsync(contactId, skip, take, q, from, to, _current.UserId, ct);
+        return Ok(rows);
     }
 
     [HttpGet("savings-plan/{planId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetSavingsPlanPostings(Guid planId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
+    public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetSavingsPlanPostings(Guid planId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
         bool owned = await _db.SavingsPlans.AsNoTracking().AnyAsync(s => s.Id == planId && s.OwnerUserId == _current.UserId, ct);
         if (!owned) { return NotFound(); }
-        var query = _db.Postings.AsNoTracking()
-            .Where(p => p.SavingsPlanId == planId && p.Kind == PostingKind.SavingsPlan);
 
-        if (from.HasValue)
-        {
-            var f = from.Value.Date; query = query.Where(p => p.BookingDate >= f);
-        }
-        if (to.HasValue)
-        {
-            var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
-        }
-
-        // Order by ValutaDate desc, then BookingDate desc, then Id desc
-        query = query.OrderByDescending(p => p.ValutaDate).ThenByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
-            .Skip(skip).Take(take);
-
-        var result = await (from p in query
-                            join se in _db.StatementEntries.AsNoTracking() on p.SourceId equals se.Id into seJoin
-                            from seOpt in seJoin.DefaultIfEmpty()
-                            select new PostingDto(
-                                p.Id,
-                                p.BookingDate,
-                                p.ValutaDate,
-                                p.Amount,
-                                p.Kind,
-                                p.AccountId,
-                                p.ContactId,
-                                p.SavingsPlanId,
-                                p.SecurityId,
-                                p.SourceId,
-                                p.Subject ?? seOpt.Subject,
-                                p.RecipientName ?? seOpt.RecipientName,
-                                p.Description ?? seOpt.BookingDescription,
-                                p.SecuritySubType,
-                                p.Quantity,
-                                p.GroupId))
-            .ToListAsync(ct);
-        return Ok(result);
+        var rows = await _postingsQuery.GetSavingsPlanPostingsAsync(planId, skip, take, q, from, to, _current.UserId, ct);
+        return Ok(rows);
     }
 
     [HttpGet("security/{securityId:guid}")]
-    public async Task<ActionResult<IReadOnlyList<PostingDto>>> GetSecurityPostings(Guid securityId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
+    public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetSecurityPostings(Guid securityId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
         bool owned = await _db.Securities.AsNoTracking().AnyAsync(s => s.Id == securityId && s.OwnerUserId == _current.UserId, ct);
         if (!owned) { return NotFound(); }
-        var query = _db.Postings.AsNoTracking()
-            .Where(p => p.SecurityId == securityId && p.Kind == PostingKind.Security);
 
-        if (from.HasValue)
-        {
-            var f = from.Value.Date; query = query.Where(p => p.BookingDate >= f);
-        }
-        if (to.HasValue)
-        {
-            var t = to.Value.Date.AddDays(1); query = query.Where(p => p.BookingDate < t);
-        }
-
-        // Order by ValutaDate desc, then BookingDate desc, then Id desc
-        query = query.OrderByDescending(p => p.ValutaDate).ThenByDescending(p => p.BookingDate).ThenByDescending(p => p.Id)
-            .Skip(skip).Take(take);
-
-        var result = await (from p in query
-                            join se in _db.StatementEntries.AsNoTracking() on p.SourceId equals se.Id into seJoin
-                            from seOpt in seJoin.DefaultIfEmpty()
-                            select new PostingDto(
-                                p.Id,
-                                p.BookingDate,
-                                p.ValutaDate,
-                                p.Amount,
-                                p.Kind,
-                                p.AccountId,
-                                p.ContactId,
-                                p.SavingsPlanId,
-                                p.SecurityId,
-                                p.SourceId,
-                                p.Subject ?? seOpt.Subject,
-                                p.RecipientName ?? seOpt.RecipientName,
-                                p.Description ?? seOpt.BookingDescription,
-                                p.SecuritySubType,
-                                p.Quantity,
-                                p.GroupId))
-            .ToListAsync(ct);
-        return Ok(result);
+        var rows = await _postingsQuery.GetSecurityPostingsAsync(securityId, skip, take, from, to, _current.UserId, ct);
+        return Ok(rows);
     }
 
     [HttpGet("group/{groupId:guid}")]

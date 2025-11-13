@@ -129,14 +129,15 @@ public sealed partial class StatementDraftService
                 .ToListAsync(ct);
             existing.AddRange(histEntries.Select(x => (x.BookingDate.Date, x.Amount, x.Subject)));
         }
+                
 
+        Domain.Accounts.Account? bankAccount = null;
         Guid? bankContactId = null;
         if (draft.DetectedAccountId != null)
         {
-            bankContactId = await _db.Accounts
-                .Where(a => a.Id == draft.DetectedAccountId)
-                .Select(a => (Guid?)a.BankContactId)
-                .FirstOrDefaultAsync(ct);
+            bankAccount = await _db.Accounts
+                .FirstOrDefaultAsync(a => a.Id == draft.DetectedAccountId, ct);
+            bankContactId = bankAccount.BankContactId;
         }
 
         foreach (var entry in entries)
@@ -159,7 +160,8 @@ public sealed partial class StatementDraftService
             }
 
             TryAutoAssignContact(contacts, aliasLookup, bankContactId, selfContact, entry);
-            TryAutoAssignSavingsPlan(entry, savingPlans, selfContact);
+            if (bankAccount is not null && bankAccount.SavingsPlanExpectation != Domain.Accounts.SavingsPlanExpectation.None)
+                TryAutoAssignSavingsPlan(entry, savingPlans, selfContact);
             TryAutoAssignSecurity(securities, contacts, bankContactId, entry);
         }
 
@@ -244,12 +246,20 @@ public sealed partial class StatementDraftService
 
     private async Task ClassifyHeader(StatementDraft draft, Guid ownerUserId, CancellationToken ct)
     {
-        if ((draft.DetectedAccountId == null) && (draft.AccountName != null))
+        if ((draft.DetectedAccountId == null) && (!string.IsNullOrWhiteSpace(draft.AccountName)))
         {
             var account = await _db.Accounts.AsNoTracking()
                 .Where(a => a.OwnerUserId == ownerUserId && (a.Iban == draft.AccountName))
                 .Select(a => new { a.Id })
                 .FirstOrDefaultAsync(ct);
+            if (account is null)
+            {
+                var simAccounts = await _db.Accounts.AsNoTracking()
+                    .Where(a => a.OwnerUserId == ownerUserId && (a.Iban.EndsWith(draft.AccountName)))
+                    .Select(a => new { a.Id })
+                    .ToListAsync(ct);
+                account = simAccounts.Count == 1 ? simAccounts.First() : null;
+            }
             if (account != null)
             {
                 draft.SetDetectedAccount(account.Id);

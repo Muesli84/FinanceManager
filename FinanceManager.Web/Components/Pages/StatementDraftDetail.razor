@@ -610,7 +610,7 @@ else
                             }
                         </td>
                         <td>@e.BookingDate.ToShortDateString()</td>
-                        <td>@(e.ValutaDate?.ToShortDateString() ?? "-")</td>
+                        <td>@(e.ValutaDate?.ToShortDateString() ?? "")</td>
                         <td style="text-align:right;">@e.Amount</td>
                         <td>@e.CurrencyCode</td>
                         <td class="wrap">@e.Subject</td>
@@ -639,7 +639,7 @@ else
                             }
                             else
                             {
-                                <span>@(string.IsNullOrWhiteSpace(e.RecipientName) ? "-" : e.RecipientName)</span>
+                                <span>@(string.IsNullOrWhiteSpace(e.RecipientName) ? "" : e.RecipientName)</span>
                             }
                         </td>
                         <td>
@@ -667,10 +667,10 @@ else
                             }
                             else
                             {
-                                <span>-</span>
+                                <span></span>
                             }
                         </td>
-                        <td class="wrap">@(string.IsNullOrWhiteSpace(e.BookingDescription) ? "-" : e.BookingDescription)</td>
+                        <td class="wrap">@(string.IsNullOrWhiteSpace(e.BookingDescription) ? "" : e.BookingDescription)</td>
                         <td>@(e.IsAnnounced ? "✓" : "")</td>
                         <td>@e.Status</td>
                     </tr>

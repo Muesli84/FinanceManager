@@ -1479,7 +1479,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 }
             }
         }
-        if (entries.Length > 0 && entryId is null)
+        if (entries.Length > 0 && entryId is null && account is not null && account.SavingsPlanExpectation != SavingsPlanExpectation.None)
         {
             DateTime latestBookingDate = entries.Max(e => e.BookingDate).Date;
             var monthStart = new DateTime(latestBookingDate.Year, latestBookingDate.Month, 1);
@@ -1530,7 +1530,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             return new BookingResult(false, true, validation, null, null, null);
         }
 
-        var draft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
+        var draft = await _db.StatementDrafts.FirstAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
         if (draft == null || draft.DetectedAccountId == null)
         {
             return new BookingResult(false, false, validation, null, null, null);
@@ -1668,6 +1668,49 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     {
                         await PropagateEntryAttachmentsAsync(ownerUserId, e, bank.Id, others, ct);
                     }
+                }
+
+                // Attempt to link contact postings for self-transfers
+                try
+                {
+                    var newContactPost = _db.Postings.Local.FirstOrDefault(p => p.SourceId == e.Id && p.Kind == PostingKind.Contact && p.GroupId == gid);
+                    if (newContactPost != null && newContactPost.LinkedPostingId == null && newContactPost.ContactId == self.Id)
+                    {
+                        // Find candidates in DB, then pick the one with the closest booking date to the new posting
+                        var candidates = await _db.Postings
+                            .Where(p => p.Kind == PostingKind.Contact
+                                        && p.ContactId == newContactPost.ContactId
+                                        && p.Amount == -newContactPost.Amount
+                                        && p.LinkedPostingId == null
+                                        && p.SourceId != newContactPost.SourceId
+                                        && p.Subject == newContactPost.Subject)
+                            .ToListAsync(ct);
+                        Domain.Postings.Posting? match = null;
+                        if (candidates.Any())
+                        {
+                            match = candidates
+                                .OrderBy(p => Math.Abs((p.BookingDate - newContactPost.BookingDate).Days))
+                                .First();
+                        }
+
+                        if (match != null)
+                        {
+                            var bankMatch = await _db.Postings.FirstOrDefaultAsync(p => p.GroupId == match.GroupId && p.Kind == PostingKind.Bank, ct);
+                            var bankNew = _db.Postings.Local.FirstOrDefault(p => p.GroupId == gid && p.Kind == PostingKind.Bank);
+                            if (bankMatch != null && bankNew != null && bankMatch.AccountId != bankNew.AccountId)
+                            {
+                                if (match.SavingsPlanId == null && newContactPost.SavingsPlanId == null)
+                                {
+                                    match.SetLinkedPosting(newContactPost.Id);
+                                    newContactPost.SetLinkedPosting(match.Id);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to attempt linking self-transfer posting for entry {EntryId}", e.Id);
                 }
             }
         }
@@ -1878,6 +1921,48 @@ public sealed partial class StatementDraftService : IStatementDraftService
                         {
                             await PropagateEntryAttachmentsAsync(ownerUserId, ce, bank.Id, others, ct);
                         }
+                    }
+
+                    // Attempt to link contact postings for self-transfers (split branch)
+                    try
+                    {
+                        var newContactPost = _db.Postings.Local.FirstOrDefault(p => p.SourceId == ce.Id && p.Kind == PostingKind.Contact && p.GroupId == gid);
+                        if (newContactPost != null && newContactPost.LinkedPostingId == null && newContactPost.ContactId == self.Id)
+                        {
+                            var candidates = await _db.Postings
+                                .Where(p => p.Kind == PostingKind.Contact
+                                            && p.ContactId == newContactPost.ContactId
+                                            && p.Amount == -newContactPost.Amount
+                                            && p.LinkedPostingId == null
+                                            && p.SourceId != newContactPost.SourceId
+                                            && p.Subject == newContactPost.Subject)
+                                 .ToListAsync(ct);
+                            Domain.Postings.Posting? match = null;
+                            if (candidates.Any())
+                            {
+                                match = candidates
+                                    .OrderBy(p => Math.Abs((p.BookingDate - newContactPost.BookingDate).Days))
+                                    .First();
+                            }
+
+                            if (match != null)
+                            {
+                                var bankMatch = await _db.Postings.FirstOrDefaultAsync(p => p.GroupId == match.GroupId && p.Kind == PostingKind.Bank, ct);
+                                var bankNew = _db.Postings.Local.FirstOrDefault(p => p.GroupId == gid && p.Kind == PostingKind.Bank);
+                                if (bankMatch != null && bankNew != null && bankMatch.AccountId != bankNew.AccountId)
+                                {
+                                    if (match.SavingsPlanId == null && newContactPost.SavingsPlanId == null)
+                                    {
+                                        match.SetLinkedPosting(newContactPost.Id);
+                                        newContactPost.SetLinkedPosting(match.Id);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to attempt linking self-transfer posting for split entry {EntryId}", ce.Id);
                     }
                 }
             }

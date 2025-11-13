@@ -58,7 +58,7 @@ public sealed class UserAuthServiceTests
         var jwt = new Mock<IJwtTokenService>();
         var clock = new TestClock();
 
-        jwt.Setup(j => j.CreateToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<DateTime>(), It.IsAny<string?>(), It.IsAny<string?>()))
+        jwt.Setup(j => j.CreateToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<bool>(), out It.Ref<DateTime>.IsAny, It.IsAny<string?>(), It.IsAny<string?>()))
             .Returns("token");
 
         var logger = new Mock<ILogger<UserAuthService>>();
