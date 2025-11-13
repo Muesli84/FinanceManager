@@ -11,6 +11,7 @@ public sealed class AuthController : ControllerBase
 {
     private readonly IUserAuthService _auth;
     private readonly IAuthTokenProvider _tokenProvider;
+    private const string AuthCookieName = "FinanceManager.Auth";
 
     public AuthController(IUserAuthService auth, IAuthTokenProvider tokenProvider)
     { _auth = auth; _tokenProvider = tokenProvider; }
@@ -30,7 +31,7 @@ public sealed class AuthController : ControllerBase
         }
 
         // Set cookie with explicit expiry that matches token expiry
-        Response.Cookies.Append("fm_auth", result.Value!.Token, new CookieOptions
+        Response.Cookies.Append(AuthCookieName, result.Value!.Token, new CookieOptions
         {
             HttpOnly = true,
             Secure = Request.IsHttps,
@@ -56,7 +57,7 @@ public sealed class AuthController : ControllerBase
             return Conflict(new { error = result.Error });
         }
 
-        Response.Cookies.Append("fm_auth", result.Value!.Token, new CookieOptions
+        Response.Cookies.Append(AuthCookieName, result.Value!.Token, new CookieOptions
         {
             HttpOnly = true,
             Secure = Request.IsHttps,
@@ -72,9 +73,9 @@ public sealed class AuthController : ControllerBase
     [HttpPost("logout")]
     public IActionResult Logout()
     {
-        if (Request.Cookies.ContainsKey("fm_auth"))
+        if (Request.Cookies.ContainsKey(AuthCookieName))
         {
-            Response.Cookies.Delete("fm_auth", new CookieOptions
+            Response.Cookies.Delete(AuthCookieName, new CookieOptions
             {
                 Path = "/",
                 Secure = Request.IsHttps,

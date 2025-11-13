@@ -18,6 +18,7 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
     private DateTimeOffset _cachedExpiry;
 
     private static readonly TimeSpan MinRenewalWindow = TimeSpan.FromMinutes(5);
+    private const string AuthCookieName = "FinanceManager.Auth"; // <- zentraler Name
 
     public JwtCookieAuthTokenProvider(IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
     {
@@ -45,7 +46,8 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
             return Task.FromResult<string?>(_cachedToken);
         }
 
-        var cookie = ctx.Request.Cookies["fm_auth"];
+        // read cookie by new name
+        var cookie = ctx.Request.Cookies[AuthCookieName];
         if (string.IsNullOrEmpty(cookie))
         {
             // Kein Token vorhanden
@@ -131,10 +133,10 @@ public sealed class JwtCookieAuthTokenProvider : IAuthTokenProvider
 
     private void SetCookie(HttpContext ctx, string token, DateTimeOffset expiry)
     {
-        ctx.Response.Cookies.Append("fm_auth", token, new CookieOptions
+        ctx.Response.Cookies.Append(AuthCookieName, token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = ctx.Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Expires = expiry,
             Path = "/"
