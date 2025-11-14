@@ -3,7 +3,7 @@ using System.Security.Claims;
 using FinanceManager.Application.Users;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FinanceManager.Web.Controllers.Api;
+namespace FinanceManager.Web.Controllers.UserAccount;
 
 /// <summary>
 /// Authentication endpoints: login, register and logout. Sets auth cookie on successful login/register.

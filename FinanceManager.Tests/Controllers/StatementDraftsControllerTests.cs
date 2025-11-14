@@ -5,7 +5,6 @@ using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using FinanceManager.Shared.Dtos;
-using FinanceManager.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
@@ -23,6 +22,7 @@ using FinanceManager.Application;
 using System.Collections.Generic;
 using FinanceManager.Application.Attachments;
 using FinanceManager.Infrastructure.Attachments;
+using FinanceManager.Web.Controllers.StatementDrafts;
 
 namespace FinanceManager.Tests.Controllers;
 

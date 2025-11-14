@@ -10,7 +10,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
-namespace FinanceManager.Web.Controllers // moved from .Shared to Controllers for test compatibility
+namespace FinanceManager.Web.Controllers.BackgroundProcessings // moved from .Shared to Controllers for test compatibility
 {
     /// <summary>
     /// Endpoints to enqueue and inspect background tasks for the current user.

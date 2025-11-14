@@ -8,7 +8,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace FinanceManager.Web.Controllers.Shared
+namespace FinanceManager.Web.Controllers.BackgroundProcessings
 {
     /// <summary>
     /// Endpoints to manage and inspect background aggregate rebuild tasks for the current user.

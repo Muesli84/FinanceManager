@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 
-namespace FinanceManager.Web.Controllers; // moved from .Shared to Controllers for test compatibility
+namespace FinanceManager.Web.Controllers.Reports; // moved from .Shared to Controllers for test compatibility
 
 /// <summary>
 /// Provides dynamic report aggregation queries for configurable reports.

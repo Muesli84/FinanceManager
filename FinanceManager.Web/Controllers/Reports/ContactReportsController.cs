@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FinanceManager.Web.Controllers.Contacts;
+namespace FinanceManager.Web.Controllers.Reports;
 
 /// <summary>
 /// Provides aggregated time series for a single contact (postings related to a contact).

@@ -2,11 +2,12 @@ using FinanceManager.Application;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
+using FinanceManager.Web.Controllers.Reports;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FinanceManager.Web.Controllers; // moved from .Shared to Controllers for test compatibility
+namespace FinanceManager.Web.Controllers.SavingsPlan; // moved from .Shared to Controllers for test compatibility
 
 /// <summary>
 /// Controller providing aggregated time series across all savings plans owned by the current user.

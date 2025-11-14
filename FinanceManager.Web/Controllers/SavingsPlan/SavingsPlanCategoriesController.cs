@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FinanceManager.Web.Controllers; // moved from .Shared to Controllers for test compatibility
+namespace FinanceManager.Web.Controllers.SavingsPlan; // moved from .Shared to Controllers for test compatibility
 
 /// <summary>
 /// Manages savings plan categories for the current user (CRUD and symbol attachments).

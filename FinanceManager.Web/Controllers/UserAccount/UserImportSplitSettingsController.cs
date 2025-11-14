@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 
-namespace FinanceManager.Web.Controllers; // moved from .Shared to Controllers for test compatibility
+namespace FinanceManager.Web.Controllers.UserAccount; // moved from .Shared to Controllers for test compatibility
 
 /// <summary>
 /// User import split settings management endpoints.

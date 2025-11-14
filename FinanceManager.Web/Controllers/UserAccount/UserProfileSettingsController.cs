@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace FinanceManager.Web.Controllers; // moved from .Shared to Controllers for test compatibility
+namespace FinanceManager.Web.Controllers.UserAccount; // moved from .Shared to Controllers for test compatibility
 
 /// <summary>
 /// Manages user profile settings (language, timezone, AlphaVantage key and sharing).

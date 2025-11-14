@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Shared.Dtos;
-using FinanceManager.Web.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +12,7 @@ using FinanceManager.Infrastructure;
 using FinanceManager.Domain.Users;
 using FinanceManager.Domain;
 using FinanceManager.Tests.TestHelpers;
+using FinanceManager.Web.Controllers.SavingsPlan;
 
 namespace FinanceManager.Tests.Controllers;
 

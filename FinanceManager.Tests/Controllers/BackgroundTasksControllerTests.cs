@@ -4,7 +4,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Shared.Dtos;
-using FinanceManager.Web.Controllers;
+using FinanceManager.Web.Controllers.BackgroundProcessings;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;

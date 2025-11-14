@@ -21,7 +21,7 @@ using System.Linq;
 using System.Net.Mime;
 using System.Text.Json;
 
-namespace FinanceManager.Web.Controllers; // moved from .Shared to Controllers for test compatibility
+namespace FinanceManager.Web.Controllers.StatementDrafts; // moved from .Shared to Controllers for test compatibility
 
 /// <summary>
 /// Endpoints to manage statement drafts: upload, inspect, classify, book and manipulate draft entries.

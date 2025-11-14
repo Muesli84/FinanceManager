@@ -4,7 +4,7 @@ using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FinanceManager.Web.Controllers;
+namespace FinanceManager.Web.Controllers.Reports;
 
 /// <summary>
 /// Base controller for posting aggregate time series endpoints.

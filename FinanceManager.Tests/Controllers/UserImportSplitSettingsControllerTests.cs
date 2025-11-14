@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Domain.Users;
 using FinanceManager.Shared.Dtos;
-using FinanceManager.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +17,7 @@ using FinanceManager.Domain.Users; // User entity
 using FinanceManager.Domain; // Entity base
 using System.Reflection;
 using FinanceManager.Tests.TestHelpers;
+using FinanceManager.Web.Controllers.UserAccount;
 
 namespace FinanceManager.Tests.Controllers;
 

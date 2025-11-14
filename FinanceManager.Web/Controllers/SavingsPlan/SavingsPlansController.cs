@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations;
 using FinanceManager.Application.Attachments;
 using FinanceManager.Domain.Attachments;
 
-namespace FinanceManager.Web.Controllers; // moved from .Shared to Controllers for test compatibility
+namespace FinanceManager.Web.Controllers.SavingsPlan; // moved from .Shared to Controllers for test compatibility
 
 /// <summary>
 /// Manages savings plans for the current user (list, create, update, archive, delete and symbol attachments).
@@ -20,7 +20,7 @@ namespace FinanceManager.Web.Controllers; // moved from .Shared to Controllers f
 public sealed class SavingsPlansController : ControllerBase
 {
     private readonly ISavingsPlanService _service;
-    private readonly FinanceManager.Application.ICurrentUserService _current;
+    private readonly Application.ICurrentUserService _current;
     private readonly IAttachmentService _attachments;
 
     /// <summary>
@@ -29,7 +29,7 @@ public sealed class SavingsPlansController : ControllerBase
     /// <param name="service">Savings plan service.</param>
     /// <param name="current">Current user service.</param>
     /// <param name="attachments">Attachment service.</param>
-    public SavingsPlansController(ISavingsPlanService service, FinanceManager.Application.ICurrentUserService current, IAttachmentService attachments)
+    public SavingsPlansController(ISavingsPlanService service, Application.ICurrentUserService current, IAttachmentService attachments)
     {
         _service = service;
         _current = current;
