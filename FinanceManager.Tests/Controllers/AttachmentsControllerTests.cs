@@ -7,7 +7,7 @@ using FinanceManager.Application;
 using FinanceManager.Application.Attachments;
 using FinanceManager.Domain.Attachments;
 using FinanceManager.Shared.Dtos;
-using FinanceManager.Web.Controllers;
+using FinanceManager.Web.Controllers.Shared;
 using FinanceManager.Web.Infrastructure.Attachments;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
