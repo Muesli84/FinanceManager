@@ -12,6 +12,10 @@ using System.Threading.Tasks;
 
 namespace FinanceManager.Web.Controllers
 {
+    /// <summary>
+    /// Endpoints to enqueue and inspect background tasks for the current user.
+    /// Thin controller delegating work to <see cref="IBackgroundTaskManager"/>.
+    /// </summary>
     [ApiController]
     [Route("api/background-tasks")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -20,6 +24,11 @@ namespace FinanceManager.Web.Controllers
         private readonly IBackgroundTaskManager _taskManager;
         private readonly ILogger<BackgroundTasksController> _logger;
 
+        /// <summary>
+        /// Creates a new instance of <see cref="BackgroundTasksController"/>.
+        /// </summary>
+        /// <param name="taskManager">Background task manager used to enqueue and manage tasks.</param>
+        /// <param name="logger">Logger instance.</param>
         public BackgroundTasksController(IBackgroundTaskManager taskManager, ILogger<BackgroundTasksController> logger)
         {
             _taskManager = taskManager;
@@ -28,6 +37,12 @@ namespace FinanceManager.Web.Controllers
 
         private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+        /// <summary>
+        /// Enqueues a background task of the specified type for the current user.
+        /// </summary>
+        /// <param name="type">Background task type to enqueue.</param>
+        /// <param name="allowDuplicate">If true, allow enqueueing a duplicate task even if one exists.</param>
+        /// <returns>Information about the enqueued task.</returns>
         [HttpPost("{type}")]
         public ActionResult<BackgroundTaskInfo> Enqueue([FromRoute] BackgroundTaskType type, [FromQuery] bool allowDuplicate = false)
         {
@@ -37,6 +52,10 @@ namespace FinanceManager.Web.Controllers
             return Ok(info);
         }
 
+        /// <summary>
+        /// Returns active and queued background tasks for the current user.
+        /// </summary>
+        /// <returns>Enumerable of <see cref="BackgroundTaskInfo"/> representing running or queued tasks.</returns>
         [HttpGet("active")]
         public ActionResult<IEnumerable<BackgroundTaskInfo>> GetActiveAndQueued()
         {
@@ -45,6 +64,11 @@ namespace FinanceManager.Web.Controllers
             return Ok(all);
         }
 
+        /// <summary>
+        /// Returns details for a specific background task owned by the current user.
+        /// </summary>
+        /// <param name="id">Identifier of the background task.</param>
+        /// <returns>Background task info or 404 when not found or not owned.</returns>
         [HttpGet("{id}")]
         public ActionResult<BackgroundTaskInfo> GetDetail([FromRoute] Guid id)
         {
@@ -54,6 +78,11 @@ namespace FinanceManager.Web.Controllers
             return Ok(info);
         }
 
+        /// <summary>
+        /// Cancels a running task or removes a queued task for the current user.
+        /// </summary>
+        /// <param name="id">Identifier of the background task to cancel or remove.</param>
+        /// <returns>NoContent on success, NotFound when missing, BadRequest on invalid state.</returns>
         [HttpDelete("{id}")]
         public IActionResult CancelOrRemove([FromRoute] Guid id)
         {

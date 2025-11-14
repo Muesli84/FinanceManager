@@ -8,21 +8,32 @@ namespace FinanceManager.Web.Controllers;
 
 /// <summary>
 /// Base controller for posting aggregate time series endpoints.
-/// Derived controllers only supply route + PostingKind mapping.
+/// Derived controllers only supply route and the <see cref="PostingKind"/> mapping (Kind property).
 /// </summary>
 public abstract class PostingReportsControllerBase : ControllerBase
 {
     private readonly ICurrentUserService _currentUser;
     private readonly IPostingTimeSeriesService _seriesService;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="PostingReportsControllerBase"/>.
+    /// </summary>
+    /// <param name="currentUser">Current user service used to determine ownership context.</param>
+    /// <param name="seriesService">Service providing aggregated time series data.</param>
     protected PostingReportsControllerBase(ICurrentUserService currentUser, IPostingTimeSeriesService seriesService)
     {
         _currentUser = currentUser;
         _seriesService = seriesService;
     }
 
+    /// <summary>
+    /// Posting kind supplied by derived controllers.
+    /// </summary>
     protected abstract PostingKind Kind { get; }
 
+    /// <summary>
+    /// DTO representing a single aggregate point returned to the client.
+    /// </summary>
     public sealed record TimeSeriesPointDto(DateTime PeriodStart, decimal Amount);
 
     private static int? NormalizeYears(int? maxYearsBack)
@@ -32,8 +43,14 @@ public abstract class PostingReportsControllerBase : ControllerBase
     }
 
     /// <summary>
-    /// Shared internal handler used by specific controllers.
+    /// Shared internal handler used by specific controllers to return aggregates for a single entity.
     /// </summary>
+    /// <param name="entityId">Entity identifier to retrieve aggregates for (account/contact/... depending on Kind).</param>
+    /// <param name="period">Aggregation period name (Month/Quarter/HalfYear/Year).</param>
+    /// <param name="take">Maximum number of points to return.</param>
+    /// <param name="maxYearsBack">Optional limit in years for how far back to consider data.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>ActionResult with an ordered list of <see cref="TimeSeriesPointDto"/>, or NotFound when entity not owned by user.</returns>
     protected async Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetInternalAsync(Guid entityId, string period, int take, int? maxYearsBack, CancellationToken ct)
     {
         if (!Enum.TryParse<AggregatePeriod>(period, true, out var p))
@@ -54,6 +71,14 @@ public abstract class PostingReportsControllerBase : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Shared internal handler used by derived controllers to return aggregates across all owned entities of the Kind.
+    /// </summary>
+    /// <param name="period">Aggregation period name.</param>
+    /// <param name="take">Maximum number of points to return.</param>
+    /// <param name="maxYearsBack">Optional limit in years for how far back to consider data.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>ActionResult with an ordered list of <see cref="TimeSeriesPointDto"/>.</returns>
     protected async Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAllInternalAsync(string period, int take, int? maxYearsBack, CancellationToken ct)
     {
         if (!Enum.TryParse<AggregatePeriod>(period, true, out var p))

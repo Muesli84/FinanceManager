@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Authentication endpoints: login, register and logout. Sets auth cookie on successful login/register.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public sealed class AuthController : ControllerBase
@@ -13,9 +16,20 @@ public sealed class AuthController : ControllerBase
     private readonly IAuthTokenProvider _tokenProvider;
     private const string AuthCookieName = "FinanceManager.Auth";
 
+    /// <summary>
+    /// Creates a new instance of <see cref="AuthController"/>.
+    /// </summary>
+    /// <param name="auth">User authentication service.</param>
+    /// <param name="tokenProvider">Token provider used for cookie-based token management.</param>
     public AuthController(IUserAuthService auth, IAuthTokenProvider tokenProvider)
     { _auth = auth; _tokenProvider = tokenProvider; }
 
+    /// <summary>
+    /// Authenticates a user and sets an authentication cookie on success.
+    /// </summary>
+    /// <param name="request">Login request containing username and password.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with user info and token expiry on success; 401 Unauthorized on failure; 400 for validation errors.</returns>
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)
     {
@@ -44,6 +58,12 @@ public sealed class AuthController : ControllerBase
         return Ok(new { user = result.Value.Username, isAdmin = result.Value.IsAdmin, exp = result.Value.ExpiresUtc });
     }
 
+    /// <summary>
+    /// Registers a new user and sets authentication cookie on success.
+    /// </summary>
+    /// <param name="request">Registration request containing username and password.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with user info and token expiry on success; 409 Conflict on business errors; 400 for validation errors.</returns>
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct)
     {
@@ -70,6 +90,10 @@ public sealed class AuthController : ControllerBase
         return Ok(new { user = result.Value.Username, isAdmin = result.Value.IsAdmin, exp = result.Value.ExpiresUtc });
     }
 
+    /// <summary>
+    /// Logs out the current user by deleting the auth cookie and clearing token provider state if applicable.
+    /// </summary>
+    /// <returns>200 OK.</returns>
     [HttpPost("logout")]
     public IActionResult Logout()
     {
@@ -90,6 +114,9 @@ public sealed class AuthController : ControllerBase
         return Ok();
     }
 
+    /// <summary>
+    /// Login request payload.
+    /// </summary>
     public sealed class LoginRequest
     {
         [Required, MinLength(3)]
@@ -100,6 +127,9 @@ public sealed class AuthController : ControllerBase
         public string? TimeZoneId { get; set; }
     }
 
+    /// <summary>
+    /// Registration request payload.
+    /// </summary>
     public sealed class RegisterRequest
     {
         [Required, MinLength(3)]

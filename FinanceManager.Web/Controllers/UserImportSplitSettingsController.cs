@@ -11,6 +11,9 @@ using System.Linq;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// User import split settings management endpoints.
+/// </summary>
 [ApiController]
 [Route("api/user/import-split-settings")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -19,11 +22,17 @@ public sealed class UserImportSplitSettingsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="UserImportSplitSettingsController"/>.
+    /// </summary>
     public UserImportSplitSettingsController(AppDbContext db, ICurrentUserService currentUser)
     {
         _db = db; _currentUser = currentUser;
     }
 
+    /// <summary>
+    /// Returns current user's import split settings.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(ImportSplitSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAsync(CancellationToken ct)
@@ -44,6 +53,9 @@ public sealed class UserImportSplitSettingsController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Update request payload.
+    /// </summary>
     public sealed class UpdateRequest
     {
         [Required]
@@ -55,6 +67,9 @@ public sealed class UserImportSplitSettingsController : ControllerBase
         public int MinEntriesPerDraft { get; set; } = 8;
     }
 
+    /// <summary>
+    /// Updates import split settings for the current user.
+    /// </summary>
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

@@ -10,6 +10,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// CRUD endpoints for securities and related symbol uploads.
+/// Delegates business logic to <see cref="ISecurityService"/> and <see cref="IAttachmentService"/>.
+/// </summary>
 [ApiController]
 [Route("api/securities")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -19,11 +23,19 @@ public sealed class SecuritiesController : ControllerBase
     private readonly ICurrentUserService _current;
     private readonly IAttachmentService _attachments;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="SecuritiesController"/>.
+    /// </summary>
     public SecuritiesController(ISecurityService service, ICurrentUserService current, IAttachmentService attachments)
     {
-        _service = service; _current = current; _attachments = attachments;
+        _service = service;
+        _current = current;
+        _attachments = attachments;
     }
 
+    /// <summary>
+    /// Request payload for creating or updating securities.
+    /// </summary>
     public sealed class SecurityRequest
     {
         [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
@@ -31,17 +43,26 @@ public sealed class SecuritiesController : ControllerBase
         [Required, MinLength(3)] public string CurrencyCode { get; set; } = "EUR";
         public string? Description { get; set; }
         public string? AlphaVantageCode { get; set; }
-        public Guid? CategoryId { get; set; }            // NEW
+        public Guid? CategoryId { get; set; }
     }
 
+    /// <summary>
+    /// Lists securities for the current user.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> ListAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
         => Ok(await _service.ListAsync(_current.UserId, onlyActive, ct));
 
+    /// <summary>
+    /// Returns count of securities for the current user.
+    /// </summary>
     [HttpGet("count")]
     public async Task<IActionResult> CountAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
         => Ok(new { count = await _service.CountAsync(_current.UserId, onlyActive, ct) });
 
+    /// <summary>
+    /// Gets a security by id.
+    /// </summary>
     [HttpGet("{id:guid}", Name = "GetSecurityAsync")]
     public async Task<IActionResult> GetAsync(Guid id, CancellationToken ct = default)
     {
@@ -49,6 +70,9 @@ public sealed class SecuritiesController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
+    /// <summary>
+    /// Creates a new security.
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> CreateAsync([FromBody] SecurityRequest req, CancellationToken ct)
     {
@@ -58,6 +82,9 @@ public sealed class SecuritiesController : ControllerBase
         return CreatedAtRoute("GetSecurityAsync", new { id = dto.Id }, dto);
     }
 
+    /// <summary>
+    /// Updates an existing security.
+    /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] SecurityRequest req, CancellationToken ct)
     {
@@ -66,6 +93,9 @@ public sealed class SecuritiesController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
+    /// <summary>
+    /// Archives the security.
+    /// </summary>
     [HttpPost("{id:guid}/archive")]
     public async Task<IActionResult> ArchiveAsync(Guid id, CancellationToken ct)
     {
@@ -73,6 +103,9 @@ public sealed class SecuritiesController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Deletes a security.
+    /// </summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteAsync(Guid id, CancellationToken ct)
     {
@@ -80,6 +113,9 @@ public sealed class SecuritiesController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Sets a symbol attachment for the security.
+    /// </summary>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     public async Task<IActionResult> SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct)
     {
@@ -94,6 +130,9 @@ public sealed class SecuritiesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Clears the symbol attachment for the security.
+    /// </summary>
     [HttpDelete("{id:guid}/symbol")]
     public async Task<IActionResult> ClearSymbolAsync(Guid id, CancellationToken ct)
     {
@@ -108,7 +147,9 @@ public sealed class SecuritiesController : ControllerBase
         }
     }
 
-    // New: upload symbol directly for security (multipart/form-data)
+    /// <summary>
+    /// Uploads a symbol file for the security and assigns it.
+    /// </summary>
     [HttpPost("{id:guid}/symbol")]
     [RequestSizeLimit(long.MaxValue)]
     public async Task<IActionResult> UploadSymbolAsync(Guid id, [FromForm] IFormFile? file, [FromForm] Guid? categoryId, CancellationToken ct)
@@ -126,7 +167,7 @@ public sealed class SecuritiesController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // avoid leaking details
             return Problem("Unexpected error", statusCode: 500);

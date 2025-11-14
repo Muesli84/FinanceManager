@@ -10,6 +10,10 @@ using Microsoft.Data.Sqlite;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Provides dynamic report aggregation queries for configurable reports.
+/// Accepts a rich query payload and returns aggregation results.
+/// </summary>
 [ApiController]
 [Route("api/report-aggregates")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -21,11 +25,17 @@ public sealed class ReportAggregatesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly ILoggerFactory _loggerFactory;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="ReportAggregatesController"/>.
+    /// </summary>
     public ReportAggregatesController(IReportAggregationService agg, ICurrentUserService current, ILogger<ReportAggregatesController> logger, AppDbContext db, ILoggerFactory loggerFactory)
     {
         _agg = agg; _current = current; _logger = logger; _db = db; _loggerFactory = loggerFactory;
     }
 
+    /// <summary>
+    /// Request payload used for aggregation filters.
+    /// </summary>
     public sealed record FiltersRequest(
         IReadOnlyCollection<Guid>? AccountIds,
         IReadOnlyCollection<Guid>? ContactIds,
@@ -51,6 +61,9 @@ public sealed class ReportAggregatesController : ControllerBase
         );
     }
 
+    /// <summary>
+    /// Query request payload for report aggregation.
+    /// </summary>
     public sealed record QueryRequest(
         int PostingKind,
         ReportInterval Interval,
@@ -64,6 +77,9 @@ public sealed class ReportAggregatesController : ControllerBase
         FiltersRequest? Filters = null // neu: optionale Entitäts-/Kategorie-Filter
     );
 
+    /// <summary>
+    /// Executes a dynamic aggregation query and returns the result.
+    /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(ReportAggregationResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> QueryAsync([FromBody] QueryRequest req, CancellationToken ct)

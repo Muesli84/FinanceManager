@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Returns subdivisions/regions for a given holiday provider and country.
+/// </summary>
 [ApiController]
 [Route("api/meta/holiday-subdivisions")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -13,11 +16,17 @@ public sealed class MetaHolidaySubdivisionsController : ControllerBase
 {
     private readonly IHolidaySubdivisionService _service;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="MetaHolidaySubdivisionsController"/>.
+    /// </summary>
     public MetaHolidaySubdivisionsController(IHolidaySubdivisionService service)
     {
         _service = service;
     }
 
+    /// <summary>
+    /// Returns subdivisions for the requested provider and country code. If provider or country is missing or invalid, returns an empty list.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(string[]), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get([FromQuery] string provider, [FromQuery] string country, CancellationToken ct)

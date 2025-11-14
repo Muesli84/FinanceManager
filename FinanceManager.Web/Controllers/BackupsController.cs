@@ -9,6 +9,10 @@ using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Endpoints to manage backups for the current user (list, create, upload, download, restore).
+/// The controller delegates actual operations to <see cref="IBackupService"/> and enqueues restore tasks via <see cref="IBackgroundTaskManager"/>.
+/// </summary>
 [ApiController]
 [Route("api/setup/backups")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -18,19 +22,41 @@ public sealed class BackupsController : ControllerBase
     private readonly ICurrentUserService _current;
     private readonly IBackgroundTaskManager _taskManager;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="BackupsController"/>.
+    /// </summary>
+    /// <param name="svc">Backup service.</param>
+    /// <param name="current">Current user service.</param>
+    /// <param name="taskManager">Background task manager used for restore tasks.</param>
     public BackupsController(IBackupService svc, ICurrentUserService current, IBackgroundTaskManager taskManager)
     { _svc = svc; _current = current; _taskManager = taskManager; }
 
+    /// <summary>
+    /// Lists available backups for the current user.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with a list of <see cref="BackupDto"/>.</returns>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<BackupDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
         => Ok(await _svc.ListAsync(_current.UserId, ct));
 
+    /// <summary>
+    /// Creates a new backup for the current user.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with created <see cref="BackupDto"/>.</returns>
     [HttpPost]
     [ProducesResponseType(typeof(BackupDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> CreateAsync(CancellationToken ct)
         => Ok(await _svc.CreateAsync(_current.UserId, ct));
 
+    /// <summary>
+    /// Uploads a backup file for the current user.
+    /// </summary>
+    /// <param name="file">Multipart backup file.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with created <see cref="BackupDto"/> or 400 on validation/duplicate filename.</returns>
     [HttpPost("upload")]
     [RequestSizeLimit(1_024_000_000)]
     [RequestFormLimits(MultipartBodyLengthLimit = 1_024_000_000)]
@@ -50,6 +76,12 @@ public sealed class BackupsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Downloads a backup file stream for the current user.
+    /// </summary>
+    /// <param name="id">Backup identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>File stream result or 404 if not found.</returns>
     [HttpGet("{id:guid}/download")]
     public async Task<IActionResult> DownloadAsync(Guid id, CancellationToken ct)
     {
@@ -59,7 +91,12 @@ public sealed class BackupsController : ControllerBase
         return File(stream, MediaTypeNames.Application.Octet, fileDownloadName: entry?.FileName ?? "backup", enableRangeProcessing: true);
     }
 
-    // Legacy immediate apply (kept for compatibility)
+    /// <summary>
+    /// Applies a backup immediately (legacy immediate apply). Kept for compatibility.
+    /// </summary>
+    /// <param name="id">Backup identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>NoContent on success, NotFound when not found.</returns>
     [HttpPost("{id:guid}/apply")]
     public async Task<IActionResult> ApplyAsync(Guid id, CancellationToken ct)
     {
@@ -67,7 +104,11 @@ public sealed class BackupsController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
-    // Background restore via generic background task queue
+    /// <summary>
+    /// Starts a background restore task for a backup. If a restore is already queued or running, returns its status.
+    /// </summary>
+    /// <param name="id">Backup identifier.</param>
+    /// <returns>200 OK with status payload.</returns>
     [HttpPost("{id:guid}/apply/start")]
     public IActionResult StartApplyAsync(Guid id)
     {
@@ -85,6 +126,10 @@ public sealed class BackupsController : ControllerBase
         return Ok(MapStatus(info));
     }
 
+    /// <summary>
+    /// Returns the status of the latest restore task for the current user.
+    /// </summary>
+    /// <returns>200 OK with status payload.</returns>
     [HttpGet("restore/status")]
     public IActionResult GetStatus()
     {
@@ -100,6 +145,10 @@ public sealed class BackupsController : ControllerBase
         return Ok(MapStatus(active));
     }
 
+    /// <summary>
+    /// Cancels an active restore task if running.
+    /// </summary>
+    /// <returns>204 NoContent.</returns>
     [HttpPost("restore/cancel")]
     public IActionResult Cancel()
     {
@@ -111,6 +160,12 @@ public sealed class BackupsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Deletes a backup belonging to the current user.
+    /// </summary>
+    /// <param name="id">Backup identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>NoContent on success or NotFound when missing.</returns>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteAsync(Guid id, CancellationToken ct)
     {
@@ -118,6 +173,9 @@ public sealed class BackupsController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Maps <see cref="BackgroundTaskInfo"/> into a serializable status payload returned by API endpoints.
+    /// </summary>
     private static object MapStatus(BackgroundTaskInfo info)
     {
         var running = info.Status == BackgroundTaskStatus.Running || info.Status == BackgroundTaskStatus.Queued;

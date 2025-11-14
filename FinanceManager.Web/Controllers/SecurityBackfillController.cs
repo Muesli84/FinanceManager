@@ -7,6 +7,9 @@ using System.Text.Json;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Enqueues background backfill tasks for securities (price history backfill).
+/// </summary>
 [ApiController]
 [Route("api/securities/backfill")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -15,13 +18,22 @@ public sealed class SecurityBackfillController : ControllerBase
     private readonly IBackgroundTaskManager _tasks;
     private readonly ICurrentUserService _current;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="SecurityBackfillController"/>.
+    /// </summary>
     public SecurityBackfillController(IBackgroundTaskManager tasks, ICurrentUserService current)
     {
         _tasks = tasks; _current = current;
     }
 
+    /// <summary>
+    /// Backfill request payload parameters.
+    /// </summary>
     public sealed record BackfillRequest(Guid? SecurityId, DateTime? FromDateUtc, DateTime? ToDateUtc);
 
+    /// <summary>
+    /// Enqueues a background task to backfill security prices for given security or all securities when null.
+    /// </summary>
     [HttpPost]
     public ActionResult<BackgroundTaskInfo> Enqueue([FromBody] BackfillRequest req)
     {

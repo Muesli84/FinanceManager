@@ -10,6 +10,10 @@ using FinanceManager.Domain.Attachments;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Manages savings plans for the current user (list, create, update, archive, delete and symbol attachments).
+/// Controller is intentionally thin and delegates business logic to <see cref="ISavingsPlanService"/>.
+/// </summary>
 [ApiController]
 [Route("api/savings-plans")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -19,6 +23,12 @@ public sealed class SavingsPlansController : ControllerBase
     private readonly FinanceManager.Application.ICurrentUserService _current;
     private readonly IAttachmentService _attachments;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="SavingsPlansController"/>.
+    /// </summary>
+    /// <param name="service">Savings plan service.</param>
+    /// <param name="current">Current user service.</param>
+    /// <param name="attachments">Attachment service.</param>
     public SavingsPlansController(ISavingsPlanService service, FinanceManager.Application.ICurrentUserService current, IAttachmentService attachments)
     {
         _service = service;
@@ -26,6 +36,9 @@ public sealed class SavingsPlansController : ControllerBase
         _attachments = attachments;
     }
 
+    /// <summary>
+    /// Request payload for creating or updating a savings plan.
+    /// </summary>
     public sealed record SavingsPlanCreateRequest(
         [Required, MinLength(2)] string Name,
         SavingsPlanType Type,
@@ -36,6 +49,12 @@ public sealed class SavingsPlansController : ControllerBase
         string? ContractNumber
     );
 
+    /// <summary>
+    /// Lists savings plans for the current user.
+    /// </summary>
+    /// <param name="onlyActive">If true, only active plans are returned.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with a list of <see cref="SavingsPlanDto"/>.</returns>
     [HttpGet]
     public async Task<IActionResult> ListAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
     {
@@ -43,10 +62,19 @@ public sealed class SavingsPlansController : ControllerBase
         return Ok(list);
     }
 
+    /// <summary>
+    /// Returns the count of savings plans for the current user.
+    /// </summary>
     [HttpGet("count")]
     public async Task<IActionResult> CountAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
         => Ok(new { count = await _service.CountAsync(_current.UserId, onlyActive, ct) });
 
+    /// <summary>
+    /// Gets a specific savings plan by id if owned by the current user.
+    /// </summary>
+    /// <param name="id">Savings plan id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with <see cref="SavingsPlanDto"/> or 404 when not found.</returns>
     [HttpGet("{id:guid}", Name = "GetSavingsPlans")]
     public async Task<IActionResult> GetAsync(Guid id, CancellationToken ct)
     {
@@ -54,6 +82,9 @@ public sealed class SavingsPlansController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
+    /// <summary>
+    /// Returns analysis information for a savings plan.
+    /// </summary>
     [HttpGet("{id:guid}/analysis")]
     public async Task<IActionResult> AnalyzeAsync(Guid id, CancellationToken ct)
     {
@@ -61,6 +92,12 @@ public sealed class SavingsPlansController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Creates a new savings plan for the current user.
+    /// </summary>
+    /// <param name="req">Create request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>201 Created with created <see cref="SavingsPlanDto"/>.</returns>
     [HttpPost]
     public async Task<IActionResult> CreateAsync([FromBody] SavingsPlanCreateRequest req, CancellationToken ct)
     {
@@ -69,6 +106,9 @@ public sealed class SavingsPlansController : ControllerBase
         return CreatedAtRoute("GetSavingsPlans", new { id = dto.Id }, dto);
     }
 
+    /// <summary>
+    /// Updates an existing savings plan owned by the current user.
+    /// </summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] SavingsPlanCreateRequest req, CancellationToken ct)
     {
@@ -77,6 +117,9 @@ public sealed class SavingsPlansController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
+    /// <summary>
+    /// Archives the specified savings plan.
+    /// </summary>
     [HttpPost("{id:guid}/archive")]
     public async Task<IActionResult> ArchiveAsync(Guid id, CancellationToken ct)
     {
@@ -84,6 +127,9 @@ public sealed class SavingsPlansController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Deletes the specified savings plan.
+    /// </summary>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteAsync(Guid id, CancellationToken ct)
     {
@@ -91,7 +137,12 @@ public sealed class SavingsPlansController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Sets a symbol attachment for the savings plan.
+    /// </summary>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct)
     {
         try
@@ -105,7 +156,12 @@ public sealed class SavingsPlansController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Clears the symbol attachment for the savings plan.
+    /// </summary>
     [HttpDelete("{id:guid}/symbol")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ClearSymbolAsync(Guid id, CancellationToken ct)
     {
         try
@@ -119,6 +175,9 @@ public sealed class SavingsPlansController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Uploads a symbol file for the savings plan and assigns it.
+    /// </summary>
     [HttpPost("{id:guid}/symbol")]
     [RequestSizeLimit(long.MaxValue)]
     public async Task<IActionResult> UploadSymbolAsync(Guid id, [FromForm] IFormFile? file, [FromForm] Guid? categoryId, CancellationToken ct)

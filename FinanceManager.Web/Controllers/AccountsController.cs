@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Manages user accounts (CRUD). Thin controller that delegates to application services.
+/// </summary>
 [ApiController]
 [Route("api/accounts")]
 [Produces(MediaTypeNames.Application.Json)]
@@ -23,6 +26,9 @@ public sealed class AccountsController : ControllerBase
     private readonly ICurrentUserService _current;
     private readonly ILogger<AccountsController> _logger;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="AccountsController"/>.
+    /// </summary>
     public AccountsController(IAccountService accounts, IContactService contacts, ICurrentUserService current, ILogger<AccountsController> logger)
     {
         _accounts = accounts;
@@ -31,6 +37,9 @@ public sealed class AccountsController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Request DTO for account creation.
+    /// </summary>
     public sealed record AccountCreateRequest([
         Required, MinLength(2)] string Name,
         AccountType Type,
@@ -40,6 +49,9 @@ public sealed class AccountsController : ControllerBase
         Guid? SymbolAttachmentId,
         FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation);
 
+    /// <summary>
+    /// Request DTO for account update.
+    /// </summary>
     public sealed record AccountUpdateRequest([
         Required, MinLength(2)] string Name,
         string? Iban,
@@ -48,6 +60,9 @@ public sealed class AccountsController : ControllerBase
         Guid? SymbolAttachmentId,
         FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation);
 
+    /// <summary>
+    /// Lists accounts for current user with optional bank contact filter.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AccountDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? bankContactId = null, CancellationToken ct = default)
@@ -69,6 +84,9 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Gets a single account by id if owned by current user.
+    /// </summary>
     [HttpGet("{id:guid}", Name = "GetAccount")]
     [ProducesResponseType(typeof(AccountDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -86,6 +104,9 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Creates a new account for the current user.
+    /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(AccountDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -128,6 +149,9 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Updates an existing account owned by current user.
+    /// </summary>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(AccountDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -170,6 +194,9 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deletes an account owned by current user.
+    /// </summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -187,6 +214,9 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Sets an attachment as symbol for the account.
+    /// </summary>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -210,6 +240,9 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Clears the symbol attachment for the account.
+    /// </summary>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

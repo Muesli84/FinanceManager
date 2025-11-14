@@ -23,6 +23,10 @@ using System.Text.Json;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Endpoints to manage statement drafts: upload, inspect, classify, book and manipulate draft entries.
+/// Delegates business logic to <see cref="IStatementDraftService"/> and coordinates background tasks via <see cref="IBackgroundTaskManager"/>.
+/// </summary>
 [ApiController]
 [Route("api/statement-drafts")]
 [Produces(MediaTypeNames.Application.Json)]
@@ -35,6 +39,9 @@ public sealed class StatementDraftsController : ControllerBase
     private readonly IBackgroundTaskManager _taskManager; // unified background task system
     private readonly IAttachmentService _attachments; // new
 
+    /// <summary>
+    /// Creates a new instance of <see cref="StatementDraftsController"/>.
+    /// </summary>
     public StatementDraftsController(
         IStatementDraftService drafts,
         ICurrentUserService current,
@@ -49,10 +56,19 @@ public sealed class StatementDraftsController : ControllerBase
         _attachments = attachments;
     }
 
+    /// <summary>
+    /// Payload for upload requests containing the original file name.
+    /// </summary>
     public sealed record UploadRequest([Required] string FileName);
 
+    /// <summary>
+    /// Result returned after upload: first draft and optional split info.
+    /// </summary>
     public sealed record UploadResult(StatementDraftDto? FirstDraft, object? SplitInfo);
 
+    /// <summary>
+    /// Returns a page of open statement drafts for the current user.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetOpenAsync([FromQuery] int skip = 0, [FromQuery] int take = 3, CancellationToken ct = default)
     {
@@ -61,6 +77,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(drafts);
     }
 
+    /// <summary>
+    /// Returns the count of open drafts for the current user.
+    /// </summary>
     [HttpGet("count")]
     public async Task<IActionResult> GetOpenCountAsync(CancellationToken ct)
     {
@@ -68,7 +87,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(new { count });
     }
 
-    // NEW: delete all open drafts
+    /// <summary>
+    /// Deletes all open drafts for the current user.
+    /// </summary>
     [HttpDelete("all")]
     public async Task<IActionResult> DeleteAllAsync(CancellationToken ct)
     {
@@ -77,6 +98,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(new { deleted = removed });
     }
 
+    /// <summary>
+    /// Uploads a statement file and creates drafts. Returns the first draft and optional split information.
+    /// </summary>
     [HttpPost("upload")]
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> UploadAsync([FromForm] IFormFile file, CancellationToken ct)
@@ -108,7 +132,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(new UploadResult(firstDraft, splitInfo));
     }
 
-    // Classification status via background task queue
+    /// <summary>
+    /// Returns status of classification background task for drafts.
+    /// </summary>
     [HttpGet("classify/status")]
     public IActionResult GetClassifyStatus()
     {
@@ -131,6 +157,9 @@ public sealed class StatementDraftsController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Enqueues classification of all drafts if none is running; otherwise returns existing status.
+    /// </summary>
     [HttpPost("classify")]
     public IActionResult ClassifyAllAsync()
     {
@@ -146,6 +175,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Accepted(new { running = true, processed = 0, total = 0, message = "Queued" });
     }
 
+    /// <summary>
+    /// Returns booking-all status for background mass booking task.
+    /// </summary>
     [HttpGet("book-all/status")]
     public IActionResult GetBookAllStatus()
     {
@@ -160,8 +192,14 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(new { running = task.Status == BackgroundTaskStatus.Running, processed = task.Processed ?? 0, failed = 0, total = task.Total ?? 0, warnings = task.Warnings, errors = task.Errors, message = task.Message, issues = Array.Empty<object>() });
     }
 
+    /// <summary>
+    /// Request to initiate mass booking of all drafts.
+    /// </summary>
     public sealed record MassBookRequest(bool IgnoreWarnings, bool AbortOnFirstIssue, bool BookEntriesIndividually);
 
+    /// <summary>
+    /// Enqueues a mass booking background task for the current user.
+    /// </summary>
     [HttpPost("book-all")]
     public IActionResult BookAllAsync([FromBody] MassBookRequest req)
     {
@@ -177,6 +215,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Accepted(new { running = true, processed = 0, failed = 0, total = 0, warnings = 0, errors = 0, message = "Queued", issues = Array.Empty<object>() });
     }
 
+    /// <summary>
+    /// Cancels a running book-all task if present.
+    /// </summary>
     [HttpPost("book-all/cancel")]
     public IActionResult CancelBookAll()
     {
@@ -186,6 +227,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Accepted();
     }
 
+    /// <summary>
+    /// Retrieves a draft by id; supports headerOnly and neighbor info.
+    /// </summary>
     [HttpGet("{draftId:guid}")]
     public async Task<IActionResult> GetAsync(Guid draftId, [FromQuery] bool headerOnly = false, [FromQuery] string? src = null, [FromQuery] Guid? fromEntryDraftId = null, [FromQuery] Guid? fromEntryId = null, CancellationToken ct = default)
     {
@@ -216,6 +260,9 @@ public sealed class StatementDraftsController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Returns a single entry within a draft along with navigation and split info.
+    /// </summary>
     [HttpGet("{draftId:guid}/entries/{entryId:guid}")]
     public async Task<IActionResult> GetEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
@@ -262,6 +309,9 @@ public sealed class StatementDraftsController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Adds an entry to a draft.
+    /// </summary>
     [HttpPost("{draftId:guid}/entries")]
     public async Task<IActionResult> AddEntryAsync(Guid draftId, [FromBody] AddEntryRequest req, CancellationToken ct)
     {
@@ -270,6 +320,9 @@ public sealed class StatementDraftsController : ControllerBase
         return draft is null ? NotFound() : Ok(draft);
     }
 
+    /// <summary>
+    /// Classifies draft entries using automated rules.
+    /// </summary>
     [HttpPost("{draftId:guid}/classify")]
     public async Task<IActionResult> ClassifyAsync(Guid draftId, CancellationToken ct)
     {
@@ -284,6 +337,9 @@ public sealed class StatementDraftsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Classifies a single entry in a draft.
+    /// </summary>
     [HttpPost("{draftId:guid}/classify/{entryId:guid}")]
     public async Task<IActionResult> ClassifyEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
@@ -298,6 +354,9 @@ public sealed class StatementDraftsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Assigns an account to a draft (detection correction).
+    /// </summary>
     [HttpPost("{draftId:guid}/account/{accountId:guid}")]
     public async Task<IActionResult> SetAccountAsync(Guid draftId, Guid accountId, CancellationToken ct)
     {
@@ -305,6 +364,9 @@ public sealed class StatementDraftsController : ControllerBase
         return draft is null ? NotFound() : Ok(draft);
     }
 
+    /// <summary>
+    /// Commits a draft to bookings.
+    /// </summary>
     [HttpPost("{draftId:guid}/commit")]
     public async Task<IActionResult> CommitAsync(Guid draftId, [FromBody] CommitRequest req, CancellationToken ct)
     {
@@ -312,6 +374,9 @@ public sealed class StatementDraftsController : ControllerBase
         return result is null ? NotFound() : Ok(result);
     }
 
+    /// <summary>
+    /// Sets contact of an entry in a draft.
+    /// </summary>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/contact")]
     public async Task<IActionResult> SetEntryContactAsync(Guid draftId, Guid entryId, [FromBody] SetContactRequest body, CancellationToken ct)
     {
@@ -321,6 +386,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(entry);
     }
 
+    /// <summary>
+    /// Toggles cost-neutral flag on a draft entry.
+    /// </summary>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/costneutral")]
     public async Task<IActionResult> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, [FromBody] SetCostNeutralRequest body, CancellationToken ct)
     {
@@ -330,6 +398,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(entry);
     }
 
+    /// <summary>
+    /// Assigns a savings plan to a draft entry.
+    /// </summary>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/savingsplan")]
     public async Task<IActionResult> SetEntrySavingPlanAsync(Guid draftId, Guid entryId, [FromBody] SetSavingsPlanRequest body, CancellationToken ct)
     {
@@ -339,8 +410,14 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(entry);
     }
 
+    /// <summary>
+    /// Request to set/clear split draft association.
+    /// </summary>
     public sealed record SetSplitDraftRequest(Guid? SplitDraftId);
 
+    /// <summary>
+    /// Sets or clears split draft assignment for an entry.
+    /// </summary>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/split")]
     public async Task<IActionResult> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, [FromBody] SetSplitDraftRequest body, CancellationToken ct)
     {
@@ -367,6 +444,9 @@ public sealed class StatementDraftsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Cancels (deletes) a draft.
+    /// </summary>
     [HttpDelete("{draftId:guid}")]
     public async Task<IActionResult> CancelAsync(Guid draftId, CancellationToken ct)
     {
@@ -374,6 +454,9 @@ public sealed class StatementDraftsController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Downloads the original uploaded file for a draft.
+    /// </summary>
     [HttpGet("{draftId:guid}/file")]
     public async Task<IActionResult> DownloadOriginalAsync(Guid draftId, CancellationToken ct)
     {
@@ -405,8 +488,7 @@ public sealed class StatementDraftsController : ControllerBase
 
     public sealed record SetEntrySecurityRequest(Guid? SecurityId, SecurityTransactionType? TransactionType, decimal? Quantity, decimal? FeeAmount, decimal? TaxAmount);
 
-    [HttpPost("{draftId:guid}/entries/{entryId:guid}/security")
-    ]
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/security")]
     public async Task<IActionResult> SetEntrySecurityAsync(Guid draftId, Guid entryId, [FromBody] SetEntrySecurityRequest body, CancellationToken ct)
     {
         var draft = await _drafts.SetEntrySecurityAsync(draftId, entryId, body.SecurityId, body.TransactionType, body.Quantity, body.FeeAmount, body.TaxAmount, _current.UserId, ct);

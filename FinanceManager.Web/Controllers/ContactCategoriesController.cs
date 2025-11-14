@@ -8,6 +8,10 @@ using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Manages contact categories for the current user (list, create, read, update, delete and symbol attachments).
+/// Delegates business logic to <see cref="IContactCategoryService"/>.
+/// </summary>
 [ApiController]
 [Route("api/contact-categories")]
 [Produces(MediaTypeNames.Application.Json)]
@@ -18,6 +22,12 @@ public sealed class ContactCategoriesController : ControllerBase
     private readonly ICurrentUserService _current;
     private readonly ILogger<ContactCategoriesController> _logger;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="ContactCategoriesController"/>.
+    /// </summary>
+    /// <param name="svc">Service for contact category operations.</param>
+    /// <param name="current">Current user context.</param>
+    /// <param name="logger">Logger instance.</param>
     public ContactCategoriesController(IContactCategoryService svc, ICurrentUserService current, ILogger<ContactCategoriesController> logger)
     {
         _svc = svc;
@@ -25,9 +35,21 @@ public sealed class ContactCategoriesController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Request payload to create a contact category.
+    /// </summary>
     public sealed record CreateCategoryRequest([Required, MinLength(2)] string Name);
+
+    /// <summary>
+    /// Request payload to update a contact category.
+    /// </summary>
     public sealed record UpdateCategoryRequest([Required, MinLength(2)] string Name);
 
+    /// <summary>
+    /// Lists contact categories for the current user.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with a list of <see cref="ContactCategoryDto"/>.</returns>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactCategoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
@@ -44,6 +66,12 @@ public sealed class ContactCategoriesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Creates a new contact category for the current user.
+    /// </summary>
+    /// <param name="req">Create request containing the category name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>201 Created with created <see cref="ContactCategoryDto"/>, or 400 on validation error.</returns>
     [HttpPost]
     [ProducesResponseType(typeof(ContactCategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -66,6 +94,12 @@ public sealed class ContactCategoriesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Gets a contact category by id for the current user.
+    /// </summary>
+    /// <param name="id">Category id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with <see cref="ContactCategoryDto"/> or 404 when not found.</returns>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ContactCategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -84,6 +118,13 @@ public sealed class ContactCategoriesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Updates the name of a contact category owned by the current user.
+    /// </summary>
+    /// <param name="id">Category id.</param>
+    /// <param name="req">Update request containing the new name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>204 No Content on success or 404 when not found.</returns>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -107,6 +148,12 @@ public sealed class ContactCategoriesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deletes a contact category owned by the current user.
+    /// </summary>
+    /// <param name="id">Category id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>204 No Content on success or 404 when not found.</returns>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -129,6 +176,9 @@ public sealed class ContactCategoriesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Sets a symbol attachment for the contact category.
+    /// </summary>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -151,6 +201,9 @@ public sealed class ContactCategoriesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Clears the symbol attachment for the contact category.
+    /// </summary>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

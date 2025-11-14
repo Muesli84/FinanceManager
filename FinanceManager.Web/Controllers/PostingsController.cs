@@ -15,6 +15,10 @@ using System.Threading.Tasks;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Controller exposing posting read endpoints for accounts, contacts, savings plans, securities and group links.
+/// This controller is read-only and delegates query work to <see cref="IPostingsQueryService"/> and EF DbContext for ownership checks.
+/// </summary>
 [ApiController]
 [Route("api/postings")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -25,16 +29,30 @@ public sealed class PostingsController : ControllerBase
     private readonly IPostingsQueryService _postingsQuery;
     private const int MaxTake = 250;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="PostingsController"/>.
+    /// </summary>
     public PostingsController(AppDbContext db, ICurrentUserService current, IPostingsQueryService postingsQuery)
     {
         _db = db; _current = current; _postingsQuery = postingsQuery;
     }
 
-    // Added ValutaDate to DTO
+    /// <summary>
+    /// DTO for posting details returned by GetById.
+    /// </summary>
     public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId, Guid? LinkedPostingId, PostingKind? LinkedPostingKind, Guid? LinkedPostingAccountId, Guid? LinkedPostingAccountSymbolAttachmentId, string? LinkedPostingAccountName, Guid? BankPostingAccountId, Guid? BankPostingAccountSymbolAttachmentId, string? BankPostingAccountName);
 
+    /// <summary>
+    /// DTO describing linked entity ids present in a posting group.
+    /// </summary>
     public sealed record GroupLinksDto(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
+    /// <summary>
+    /// Returns a posting by id if the posting belongs to any entity owned by the current user.
+    /// </summary>
+    /// <param name="id">Posting Id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Posting details or 404 when not found/unauthorized.</returns>
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PostingDto>> GetById(Guid id, CancellationToken ct)
     {
@@ -137,6 +155,9 @@ public sealed class PostingsController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Returns postings for an account with optional pagination and filtering.
+    /// </summary>
     [HttpGet("account/{accountId:guid}")]
     public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
@@ -164,6 +185,9 @@ public sealed class PostingsController : ControllerBase
         return null;
     }
 
+    /// <summary>
+    /// Returns postings related to a contact.
+    /// </summary>
     [HttpGet("contact/{contactId:guid}")]
     public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetContactPostings(Guid contactId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
@@ -176,6 +200,9 @@ public sealed class PostingsController : ControllerBase
         return Ok(rows);
     }
 
+    /// <summary>
+    /// Returns postings related to a savings plan.
+    /// </summary>
     [HttpGet("savings-plan/{planId:guid}")]
     public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetSavingsPlanPostings(Guid planId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default)
     {
@@ -187,6 +214,9 @@ public sealed class PostingsController : ControllerBase
         return Ok(rows);
     }
 
+    /// <summary>
+    /// Returns postings related to a security.
+    /// </summary>
     [HttpGet("security/{securityId:guid}")]
     public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetSecurityPostings(Guid securityId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
@@ -198,6 +228,9 @@ public sealed class PostingsController : ControllerBase
         return Ok(rows);
     }
 
+    /// <summary>
+    /// Provides a lightweight summary of links for a posting group (first encountered entity ids of each type).
+    /// </summary>
     [HttpGet("group/{groupId:guid}")]
     public async Task<ActionResult<GroupLinksDto>> GetGroupLinksAsync(Guid groupId, CancellationToken ct)
     {

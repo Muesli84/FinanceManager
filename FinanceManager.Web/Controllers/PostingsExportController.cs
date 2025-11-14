@@ -11,6 +11,10 @@ using System.Globalization;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Endpoints to export postings for various contexts (account, contact, savings plan, security) in CSV or XLSX format.
+/// Delegates export generation to <see cref="IPostingExportService"/>.
+/// </summary>
 [ApiController]
 [Route("api/postings")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -23,6 +27,9 @@ public sealed class PostingsExportController : ControllerBase
 
     private const int DefaultMaxRows = 50_000;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="PostingsExportController"/>.
+    /// </summary>
     public PostingsExportController(AppDbContext db, IPostingExportService exportService, ICurrentUserService current, IConfiguration config)
     {
         _db = db;
@@ -47,6 +54,9 @@ public sealed class PostingsExportController : ControllerBase
     public Task<IActionResult> ExportSecurityAsync(Guid securityId, string format = "csv", DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default)
         => ExportAsync(PostingKind.Security, securityId, format, from, to, q, ct);
 
+    /// <summary>
+    /// Exports postings for the given context and format.
+    /// </summary>
     private async Task<IActionResult> ExportAsync(PostingKind kind, Guid contextId, string format, DateTime? from, DateTime? to, string? q, CancellationToken ct)
     {
         if (!TryParseFormat(format, out var exportFormat))
@@ -146,6 +156,9 @@ public sealed class PostingsExportController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Parses format string into PostingExportFormat.
+    /// </summary>
     private static bool TryParseFormat(string? format, out PostingExportFormat result)
     {
         result = PostingExportFormat.Csv;
@@ -156,6 +169,9 @@ public sealed class PostingsExportController : ControllerBase
         return false;
     }
 
+    /// <summary>
+    /// Sanitizes a string for use in file names.
+    /// </summary>
     private static string SanitizeFileName(string value)
     {
         var invalid = Path.GetInvalidFileNameChars();

@@ -11,6 +11,10 @@ using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Provides CRUD endpoints for contacts owned by the current user and related operations (aliases, merge, symbols).
+/// The controller delegates business logic to <see cref="IContactService"/>.
+/// </summary>
 [ApiController]
 [Route("api/contacts")]
 [Produces(MediaTypeNames.Application.Json)]
@@ -21,6 +25,12 @@ public sealed class ContactsController : ControllerBase
     private readonly ICurrentUserService _current;
     private readonly ILogger<ContactsController> _logger;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="ContactsController"/>.
+    /// </summary>
+    /// <param name="contacts">Contact service.</param>
+    /// <param name="current">Current user service.</param>
+    /// <param name="logger">Logger.</param>
     public ContactsController(IContactService contacts, ICurrentUserService current, ILogger<ContactsController> logger)
     {
         _contacts = contacts;
@@ -28,11 +38,36 @@ public sealed class ContactsController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Request payload to create a contact.
+    /// </summary>
     public sealed record ContactCreateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
+
+    /// <summary>
+    /// Request payload to update a contact.
+    /// </summary>
     public sealed record ContactUpdateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
+
+    /// <summary>
+    /// Request payload to add an alias to a contact.
+    /// </summary>
     public sealed record AliasCreateRequest([Required, MinLength(1)] string Pattern);
+
+    /// <summary>
+    /// Request payload to merge contacts.
+    /// </summary>
     public sealed record ContactMergeRequest([Required] Guid TargetContactId);
 
+    /// <summary>
+    /// Lists contacts for the current user with optional filtering and pagination.
+    /// </summary>
+    /// <param name="skip">Number of items to skip.</param>
+    /// <param name="take">Number of items to take.</param>
+    /// <param name="type">Optional contact type filter.</param>
+    /// <param name="all">If true, ignore pagination and return all items.</param>
+    /// <param name="nameFilter">Optional name filter (query param 'q').</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>List of <see cref="ContactDto"/>.</returns>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(
@@ -64,6 +99,12 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Retrieves a single contact by id if it belongs to the current user.
+    /// </summary>
+    /// <param name="id">Contact identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Contact DTO or 404.</returns>
     [HttpGet("{id:guid}", Name = "GetContact")]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -81,6 +122,12 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Creates a new contact for the current user.
+    /// </summary>
+    /// <param name="req">Creation request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>201 Created with created contact or 400 on validation errors.</returns>
     [HttpPost]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -103,6 +150,13 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Updates an existing contact owned by the current user.
+    /// </summary>
+    /// <param name="id">Contact identifier.</param>
+    /// <param name="req">Update request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>200 OK with updated contact or 404 if not found.</returns>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -125,6 +179,12 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deletes a contact owned by the current user.
+    /// </summary>
+    /// <param name="id">Contact identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>NoContent on success or NotFound when missing.</returns>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -142,6 +202,9 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Returns alias list for a contact.
+    /// </summary>
     [HttpGet("{id:guid}/aliases")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> GetAliasAsync(Guid id, CancellationToken ct)
@@ -158,6 +221,9 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Adds an alias to a contact.
+    /// </summary>
     [HttpPost("{id:guid}/aliases")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> AddAliasAsync(Guid id, [FromBody] AliasCreateRequest req, CancellationToken ct)
@@ -174,6 +240,9 @@ public sealed class ContactsController : ControllerBase
         }   
     }
 
+    /// <summary>
+    /// Deletes an alias from a contact.
+    /// </summary>
     [HttpDelete("{id:guid}/aliases/{aliasId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteAliasAsync(Guid id, Guid aliasId, CancellationToken ct)
@@ -190,6 +259,9 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Merges a contact into another contact owned by the same user.
+    /// </summary>
     [HttpPost("{id:guid}/merge")]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -215,6 +287,9 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Returns count of contacts for the current user.
+    /// </summary>
     [HttpGet("count")]
     public async Task<IActionResult> CountAsync(CancellationToken ct = default)
     {
@@ -230,6 +305,9 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Sets a symbol attachment for the contact.
+    /// </summary>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -252,6 +330,9 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Clears the symbol attachment for the contact.
+    /// </summary>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

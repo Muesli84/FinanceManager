@@ -15,6 +15,9 @@ public sealed class UsersController : ControllerBase
     private readonly IUserReadService _userReadService;
     private readonly ILogger<UsersController> _logger;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="UsersController"/>.
+    /// </summary>
     public UsersController(IUserReadService userReadService, ILogger<UsersController> logger)
     {
         _userReadService = userReadService;
@@ -50,5 +53,8 @@ public sealed class UsersController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Response payload for HasAnyUsersAsync.
+    /// </summary>
     public sealed record AnyUsersResponse(bool Any);
 }

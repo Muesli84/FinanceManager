@@ -9,6 +9,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Manages user profile settings (language, timezone, AlphaVantage key and sharing).
+/// </summary>
 [ApiController]
 [Route("api/user/profile-settings")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -21,6 +24,9 @@ public sealed class UserProfileSettingsController : ControllerBase
     public UserProfileSettingsController(AppDbContext db, ICurrentUserService current, ILogger<UserProfileSettingsController> logger)
     { _db = db; _current = current; _logger = logger; }
 
+    /// <summary>
+    /// Returns profile settings for the current user.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(UserProfileSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAsync(CancellationToken ct)
@@ -40,17 +46,23 @@ public sealed class UserProfileSettingsController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Update request payload for profile settings.
+    /// </summary>
     public sealed class UpdateRequest
     {
         [MaxLength(10)] public string? PreferredLanguage { get; set; }
         [MaxLength(100)] public string? TimeZoneId { get; set; }
 
-        // New: AlphaVantage key controls
-        [MaxLength(120)] public string? AlphaVantageApiKey { get; set; }  // optional: set/replace
-        public bool? ClearAlphaVantageApiKey { get; set; }                // optional: clear
-        public bool? ShareAlphaVantageApiKey { get; set; }                // optional: admin-only
+        // AlphaVantage key controls
+        [MaxLength(120)] public string? AlphaVantageApiKey { get; set; }
+        public bool? ClearAlphaVantageApiKey { get; set; }
+        public bool? ShareAlphaVantageApiKey { get; set; }
     }
 
+    /// <summary>
+    /// Updates profile settings for the current user.
+    /// </summary>
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

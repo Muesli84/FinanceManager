@@ -9,6 +9,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// User-specific notification settings management.
+/// </summary>
 [ApiController]
 [Route("api/user/notification-settings")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -17,11 +20,17 @@ public sealed class UserNotificationSettingsController : ControllerBase
     private readonly FinanceManager.Infrastructure.AppDbContext _db;
     private readonly ICurrentUserService _current;
 
+    /// <summary>
+    /// Creates a new instance of <see cref="UserNotificationSettingsController"/>.
+    /// </summary>
     public UserNotificationSettingsController(FinanceManager.Infrastructure.AppDbContext db, ICurrentUserService current)
     {
         _db = db; _current = current;
     }
 
+    /// <summary>
+    /// Returns the current user's notification settings.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(NotificationSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAsync(CancellationToken ct)
@@ -41,6 +50,9 @@ public sealed class UserNotificationSettingsController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Request payload to update notification settings.
+    /// </summary>
     public sealed class UpdateRequest
     {
         public bool MonthlyReminderEnabled { get; set; }
@@ -51,6 +63,9 @@ public sealed class UserNotificationSettingsController : ControllerBase
         [StringLength(20, MinimumLength = 2)] public string? HolidaySubdivisionCode { get; set; }
     }
 
+    /// <summary>
+    /// Updates the user's notification settings.
+    /// </summary>
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
