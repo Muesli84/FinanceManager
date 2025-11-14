@@ -164,7 +164,7 @@ else
 
     private void RebuildRibbon()
     {
-        var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
+        var groupsDto = (_vm?.GetRibbon(Localizer).ToList()) ?? new List<UiRibbonGroup>();
         var groups = new List<Ribbon<TabId>.RibbonGroup>();
         foreach (var g in groupsDto)
         {

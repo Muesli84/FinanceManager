@@ -239,7 +239,7 @@ public sealed class AttachmentsController : ControllerBase
     public async Task<IActionResult> DownloadAsync(Guid id, [FromQuery] string? token, CancellationToken ct)
     {
         // If user is authenticated, allow normal path (attachment owner check happens in service.DownloadAsync)
-        if (User?.Identity?.IsAuthenticated == true)
+        if (_current.IsAuthenticated || (User?.Identity?.IsAuthenticated == true))
         {
             var payload = await _service.DownloadAsync(_current.UserId, id, ct);
             if (payload == null) { return NotFound(); }
