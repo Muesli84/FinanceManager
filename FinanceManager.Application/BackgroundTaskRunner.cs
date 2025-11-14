@@ -3,6 +3,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using FinanceManager.Shared.Background;
+using System.Collections.Generic;
+using System.Linq;
 using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Application
@@ -28,20 +32,21 @@ namespace FinanceManager.Application
         Task ExecuteAsync(BackgroundTaskContext context, CancellationToken ct);
     }
 
-    public sealed class BackgroundTaskRunner : BackgroundService
+    public sealed class BackgroundTaskRunner : ConditionalBackgroundService
     {
         private readonly IBackgroundTaskManager _manager;
         private readonly ILogger<BackgroundTaskRunner> _logger;
         private readonly IEnumerable<IBackgroundTaskExecutor> _executors;
 
-        public BackgroundTaskRunner(IBackgroundTaskManager manager, ILogger<BackgroundTaskRunner> logger, IEnumerable<IBackgroundTaskExecutor> executors)
+        public BackgroundTaskRunner(IConfiguration config, IBackgroundTaskManager manager, ILogger<BackgroundTaskRunner> logger, IEnumerable<IBackgroundTaskExecutor> executors)
+            : base(config, logger)
         {
             _manager = manager;
             _logger = logger;
             _executors = executors;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task RunAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {

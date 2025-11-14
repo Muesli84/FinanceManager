@@ -10,20 +10,17 @@ namespace FinanceManager.Infrastructure.Data.Migrations.Identity
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "UseValutaDate",
-                table: "ReportFavorites",
-                type: "INTEGER",
-                nullable: false,
-                defaultValue: false);
+            // This migration previously added the 'UseValutaDate' column to 'ReportFavorites'.
+            // The column is already added by an earlier migration in another migration set
+            // (20250927090829_AddReportFavoriteSettings). To avoid duplicate-column errors
+            // when running migrations against existing databases (or during testing with
+            // EnsureCreated/other migration sets), keep this migration as a no-op.
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "UseValutaDate",
-                table: "ReportFavorites");
+            // No-op because Up is a no-op to keep migrations idempotent.
         }
     }
 }

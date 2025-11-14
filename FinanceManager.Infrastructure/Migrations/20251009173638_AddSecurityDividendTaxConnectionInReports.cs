@@ -4,25 +4,19 @@
 
 namespace FinanceManager.Infrastructure.Migrations
 {
-    /// <inheritdoc />
     public partial class AddSecurityDividendTaxConnectionInReports : Migration
     {
-        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "IncludeDividendRelated",
-                table: "ReportFavorites",
-                type: "INTEGER",
-                nullable: true);
+            // Column 'IncludeDividendRelated' is already added by
+            // 20250927090829_AddReportFavoriteSettings. This migration previously
+            // duplicated that AddColumn call and caused SQLite 'duplicate column' errors.
+            // Intentionally left empty to avoid applying the same column twice.
         }
 
-        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "IncludeDividendRelated",
-                table: "ReportFavorites");
+            // No-op because Up is a no-op to keep migrations idempotent.
         }
     }
 }

@@ -1,23 +1,33 @@
-﻿using FinanceManager.Infrastructure;
-using Microsoft.EntityFrameworkCore;
+﻿using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using FinanceManager.Infrastructure;
 using FinanceManager.Application.Notifications; // NEW
 using FinanceManager.Domain.Notifications;    // NEW
+using FinanceManager.Shared.Background;
 
 namespace FinanceManager.Web.Services;
 
-public sealed class SecurityPriceWorker : BackgroundService
+public sealed class SecurityPriceWorker : ConditionalBackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SecurityPriceWorker> _logger;
     private readonly IOptions<AlphaVantageQuotaOptions> _quota;
 
-    public SecurityPriceWorker(IServiceScopeFactory scopeFactory, ILogger<SecurityPriceWorker> logger, IOptions<AlphaVantageQuotaOptions> quota)
+    public SecurityPriceWorker(IConfiguration config, IServiceScopeFactory scopeFactory, ILogger<SecurityPriceWorker> logger, IOptions<AlphaVantageQuotaOptions> quota)
+        : base(config, logger)
     {
         _scopeFactory = scopeFactory; _logger = logger; _quota = quota;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task RunAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -108,8 +118,10 @@ public sealed class SecurityPriceWorker : BackgroundService
                     continue;
                 }
 
-                foreach (var (date, close) in pricesList)
+                foreach (var tuple in pricesList)
                 {
+                    var date = tuple.Item1;
+                    var close = tuple.Item2;
                     if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                     {
                         continue;

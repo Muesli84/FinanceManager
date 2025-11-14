@@ -3,19 +3,27 @@ using FinanceManager.Infrastructure;
 using FinanceManager.Domain.Users;
 using Microsoft.AspNetCore.Identity;
 
-var builder = WebApplication.CreateBuilder(args);
+public class Program
+{
 
-// configure logging and services moved to extensions
-builder.ConfigureLogging();
-builder.RegisterAppServices();
+    public static void Main(string[] args)
+    {
 
-var app = builder.Build();
+        var builder = WebApplication.CreateBuilder(args);
 
-// apply migrations and seeding
-app.ApplyMigrationsAndSeed();
+        // configure logging and services moved to extensions
+        builder.ConfigureLogging();
+        builder.RegisterAppServices();
 
-// configure localization and middleware
-app.ConfigureLocalization();
-app.ConfigureMiddleware();
+        var app = builder.Build();
 
-app.Run();
+        // apply migrations and seeding
+        app.ApplyMigrationsAndSeed();
+
+        // configure localization and middleware
+        app.ConfigureLocalization();
+        app.ConfigureMiddleware();
+
+        app.Run();
+    }
+}
