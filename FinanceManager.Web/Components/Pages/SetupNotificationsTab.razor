@@ -31,8 +31,13 @@
           <div class="form-row" style="align-items:center;gap:.4rem;">
               <label>@Localizer["Notifications_Holidays_Provider"]</label>
               <select @bind="_vm!.Model.HolidayProvider" @bind:after="(()=> _vm!.OnProviderChanged())" style="width:12rem;">
-                <option value="Memory">Memory</option>
-                <option value="NagerDate">Nager.Date</option>
+                @if (_vm!.Providers != null)
+                {
+                    @foreach (var p in _vm!.Providers)
+                    {
+                        <option value="@p">@p</option>
+                    }
+                }
               </select>
               <span style="opacity:.7;">@Localizer["Notifications_Holidays_Provider_Help"]</span>
           </div>
@@ -45,7 +50,16 @@
           </div>
           <div class="form-row" style="align-items:center;gap:.4rem;">
               <label>@Localizer["Notifications_Holidays_Region"]</label>
-              <input placeholder="DE" style="width:6rem;" @bind="_vm!.Model.HolidayCountryCode" @bind:after="(()=> _vm!.OnCountryChanged())" />
+              <select @bind="_vm!.Model.HolidayCountryCode" @bind:after="(()=> _vm!.OnCountryChanged())" style="width:6rem;">
+                  <option value="">--</option>
+                  @if (_vm!.Countries != null)
+                  {
+                      @foreach (var c in _vm!.Countries)
+                      {
+                          <option value="@c">@c</option>
+                      }
+                  }
+              </select>
               @if (_vm!.Model.HolidayProvider != "Memory")
               {
                   <select style="width:10rem;" @bind="_vm!.Model.HolidaySubdivisionCode" @bind:after="(()=> _vm!.OnChanged())">

@@ -1,12 +1,14 @@
+using FinanceManager.Application;
+using FinanceManager.Domain.Notifications;
+using FinanceManager.Shared.Dtos;
+using FinanceManager.Web.Services;
+using FinanceManager.Web.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
-using FinanceManager.Web.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace FinanceManager.Tests.ViewModels;
@@ -54,11 +56,21 @@ public sealed class SetupNotificationsViewModelTests
     {
         var dto = new NotificationSettingsDto { MonthlyReminderEnabled = true, MonthlyReminderHour = 8, MonthlyReminderMinute = 30, HolidayProvider = "NagerDate", HolidayCountryCode = "DE" };
         var subs = new[] { "BW", "BY" };
+        var providers= Enum.GetNames(typeof(HolidayProviderKind));
+        var countries = new string[] { "DE", "GB" };
         var client = CreateHttpClient(req =>
         {
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/notification-settings")
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(SettingsJson(dto), Encoding.UTF8, "application/json") };
+            }
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/meta/holiday-countries")
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ArrayJson(countries), Encoding.UTF8, "application/json") };
+            }
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/meta/holiday-providers")
+            {                
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ArrayJson(providers), Encoding.UTF8, "application/json") };
             }
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/meta/holiday-subdivisions")
             {
@@ -67,7 +79,9 @@ public sealed class SetupNotificationsViewModelTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
 
-        var vm = new SetupNotificationsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var sp = CreateSp();
+        var apiClient = new ApiClient(client);
+        var vm = new SetupNotificationsViewModel(sp, new TestHttpClientFactory(client), apiClient);
         await vm.InitializeAsync();
 
         Assert.False(vm.Loading);
@@ -90,7 +104,9 @@ public sealed class SetupNotificationsViewModelTests
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
-        var vm = new SetupNotificationsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var sp = CreateSp();
+        var apiClient = sp.GetService<IApiClient>();
+        var vm = new SetupNotificationsViewModel(sp, new TestHttpClientFactory(client), apiClient);
         await vm.InitializeAsync();
 
         vm.Model.HolidayProvider = "Memory";
@@ -117,7 +133,9 @@ public sealed class SetupNotificationsViewModelTests
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
-        var vm = new SetupNotificationsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var sp = CreateSp();
+        var apiClient = sp.GetService<IApiClient>();
+        var vm = new SetupNotificationsViewModel(sp, new TestHttpClientFactory(client), apiClient);
         await vm.InitializeAsync();
 
         vm.Model.MonthlyReminderEnabled = true;

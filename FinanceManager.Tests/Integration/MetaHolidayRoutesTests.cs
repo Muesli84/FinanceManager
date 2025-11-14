@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,18 +10,13 @@ using System.Threading;
 using Microsoft.Data.Sqlite;
 using FinanceManager.Infrastructure; // for AppDbContext
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using System.Net.Http.Headers;
 using Microsoft.Extensions.Configuration;
 using FinanceManager.Infrastructure.Auth;
 using System.Collections.Generic; // added
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Hosting; // added
+using FinanceManager.Web.Services; // use ApiClient from Web project
 
 namespace FinanceManager.Tests.Integration;
 
@@ -68,9 +62,9 @@ public class MetaHolidayRoutesTests : IClassFixture<WebApplicationFactory<Progra
         return client;
     }
 
-    private HttpClient CreateClientWithMocks(Mock<IHolidaySubdivisionService> subdivisionMock)
+    private IApiClient CreateApiClientWithMocks(Mock<IHolidaySubdivisionService> subdivisionMock)
     {
-        return CreateTestClient((services) => {
+        var client = CreateTestClient((services) => {
             // Use a dedicated in-memory SQLite database for tests to avoid touching the
             // production file and to prevent duplicate-migration / duplicate-column errors.
             var connection = new SqliteConnection("DataSource=:memory:");
@@ -85,27 +79,31 @@ public class MetaHolidayRoutesTests : IClassFixture<WebApplicationFactory<Progra
 
             services.AddSingleton<IHolidaySubdivisionService>(subdivisionMock.Object);
         });
+
+        return new ApiClient(client);
+    }
+
+    private IApiClient CreateApiClient()
+    {
+        var client = CreateTestClient();
+        return new ApiClient(client);
     }
 
     [Fact]
     public async Task HolidayCountries_ShouldReturn200AndList()
     {
-        var client = CreateTestClient();
-        var resp = await client.GetAsync("/api/meta/holiday-countries");
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-        var list = await resp.Content.ReadFromJsonAsync<string[]>();
+        var api = CreateApiClient();
+        var list = await api.GetHolidayCountriesAsync();
         Assert.NotNull(list);
-        Assert.Contains("DE", list);
+        Assert.Contains("DE", list!);
     }
 
     [Fact]
     public async Task HolidayProviders_ShouldReturnEnumNames()
     {
-        var client = CreateTestClient();
-        var resp = await client.GetAsync("/api/meta/holiday-providers");
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-        var providers = await resp.Content.ReadFromJsonAsync<string[]>();
-        Assert.Contains(nameof(HolidayProviderKind.NagerDate), providers);
+        var api = CreateApiClient();
+        var providers = await api.GetHolidayProvidersAsync();
+        Assert.Contains(nameof(HolidayProviderKind.NagerDate), providers!);
     }
 
     [Fact]
@@ -115,10 +113,8 @@ public class MetaHolidayRoutesTests : IClassFixture<WebApplicationFactory<Progra
         mock.Setup(s => s.GetSubdivisionsAsync(HolidayProviderKind.Memory, "DE", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { "BY", "BE" });
 
-        var client = CreateClientWithMocks(mock);
-        var resp = await client.GetAsync("/api/meta/holiday-subdivisions?provider=Memory&country=DE");
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-        var list = await resp.Content.ReadFromJsonAsync<string[]>();
+        var api = CreateApiClientWithMocks(mock);
+        var list = await api.GetHolidaySubdivisionsAsync("Memory", "DE");
         Assert.Equal(new[] { "BY", "BE" }, list);
         mock.VerifyAll();
     }

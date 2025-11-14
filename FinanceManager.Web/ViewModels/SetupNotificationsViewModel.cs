@@ -1,16 +1,19 @@
 using System.Net.Http.Json;
 using FinanceManager.Shared.Dtos;
 using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Web.Services;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SetupNotificationsViewModel : ViewModelBase
 {
     private readonly HttpClient _http;
+    private readonly IApiClient _apiClient;
 
-    public SetupNotificationsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SetupNotificationsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory, IApiClient apiClient) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
+        _apiClient = apiClient;
     }
 
     public NotificationSettingsDto Model { get; private set; } = new();
@@ -28,6 +31,10 @@ public sealed class SetupNotificationsViewModel : ViewModelBase
 
     public string[]? Subdivisions { get; private set; }
 
+    // Allowed selection lists provided by server via ApiClient
+    public string[] Providers { get; private set; } = Array.Empty<string>();
+    public string[] Countries { get; private set; } = Array.Empty<string>();
+
     public override async ValueTask InitializeAsync(CancellationToken ct = default)
     {
         await LoadAsync(ct);
@@ -38,12 +45,42 @@ public sealed class SetupNotificationsViewModel : ViewModelBase
         Loading = true; Error = null; SaveError = null; SavedOk = false; RaiseStateChanged();
         try
         {
+            // Load allowed meta values first
+            try
+            {
+                var providers = await _apiClient.GetHolidayProvidersAsync(ct);
+                Providers = providers ?? Array.Empty<string>();
+            }
+            catch
+            {
+                Providers = new[] { "Memory", "NagerDate" };
+            }
+
+            try
+            {
+                var countries = await _apiClient.GetHolidayCountriesAsync(ct);
+                Countries = countries ?? Array.Empty<string>();
+            }
+            catch
+            {
+                Countries = Array.Empty<string>();
+            }
+
             var dto = await _http.GetFromJsonAsync<NotificationSettingsDto>("/api/user/notification-settings", ct);
             Model = dto ?? new NotificationSettingsDto();
-            if (string.IsNullOrEmpty(Model.HolidayProvider))
+
+            // Ensure provider is one of allowed values, otherwise pick a sensible default
+            if (string.IsNullOrEmpty(Model.HolidayProvider) || !Providers.Contains(Model.HolidayProvider))
             {
-                Model.HolidayProvider = "Memory";
+                Model.HolidayProvider = Providers.FirstOrDefault() ?? "Memory";
             }
+
+            // Ensure country code is valid or clear it
+            if (!string.IsNullOrEmpty(Model.HolidayCountryCode) && !Countries.Contains(Model.HolidayCountryCode))
+            {
+                Model.HolidayCountryCode = null;
+            }
+
             _original = Clone(Model);
             Hour = Model.MonthlyReminderHour ?? 9;
             Minute = Model.MonthlyReminderMinute ?? 0;
@@ -60,17 +97,21 @@ public sealed class SetupNotificationsViewModel : ViewModelBase
     public async Task LoadSubdivisionsAsync(CancellationToken ct = default)
     {
         Subdivisions = null;
-        if (Model.HolidayProvider == "NagerDate" && !string.IsNullOrWhiteSpace(Model.HolidayCountryCode))
+        if (Model.HolidayProvider != null && Model.HolidayProvider != "Memory" && !string.IsNullOrWhiteSpace(Model.HolidayCountryCode))
         {
             try
             {
-                var list = await _http.GetFromJsonAsync<string[]>($"/api/meta/holiday-subdivisions?provider={Model.HolidayProvider}&country={Model.HolidayCountryCode}", ct);
+                var list = await _apiClient.GetHolidaySubdivisionsAsync(Model.HolidayProvider, Model.HolidayCountryCode, ct);
                 Subdivisions = list ?? Array.Empty<string>();
             }
             catch
             {
                 Subdivisions = Array.Empty<string>();
             }
+        }
+        else
+        {
+            Subdivisions = null;
         }
         RaiseStateChanged();
     }

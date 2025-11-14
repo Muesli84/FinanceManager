@@ -96,6 +96,15 @@ namespace FinanceManager.Web
                     : builder.Configuration["Api:BaseAddress"] ?? "https://localhost:5001/";
                 client.BaseAddress = new Uri(baseUri);
             }).AddHttpMessageHandler<AuthenticatedHttpClientHandler>();
+            builder.Services.AddHttpClient<IApiClient, ApiClient>((sp, client) =>
+            {
+                var accessor = sp.GetRequiredService<IHttpContextAccessor>();
+                var ctx = accessor.HttpContext;
+                var baseUri = ctx != null
+                    ? $"{ctx.Request.Scheme}://{ctx.Request.Host.ToUriComponent()}/"
+                    : builder.Configuration["Api:BaseAddress"] ?? "https://localhost:5001/";
+                client.BaseAddress = new Uri(baseUri);
+            }).AddHttpMessageHandler<AuthenticatedHttpClientHandler>();
             builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
 
             // AlphaVantage
