@@ -214,9 +214,13 @@
                 }
 
                 var list = result as TimeSeriesPointDto[] ?? Array.Empty<TimeSeriesPointDto>();
-                _data.Clear();
-                _data.AddRange(list.Select(x => new Point(x.PeriodStart, x.Amount)));
-                _multipleYears = _data.Select(d => d.PeriodStart.Year).Distinct().Skip(1).Any();
+                await InvokeAsync(() =>
+                {
+                    _data.Clear();
+                    _data.AddRange(list.Select(x => new Point(x.PeriodStart, x.Amount)));
+                    _multipleYears = _data.Select(d => d.PeriodStart.Year).Distinct().Skip(1).Any();
+                    StateHasChanged();
+                });
             }
         }
     }
