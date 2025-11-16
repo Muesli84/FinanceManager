@@ -20,73 +20,22 @@ using FinanceManager.Web.Services; // use ApiClient from Web project
 
 namespace FinanceManager.Tests.Integration;
 
-public class MetaHolidayRoutesTests : IClassFixture<WebApplicationFactory<Program>>
+public class MetaHolidayRoutesTests : IntegrationTestBase, IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly WebApplicationFactory<Program> _factory;
-
-    public MetaHolidayRoutesTests(WebApplicationFactory<Program> factory)
-    {
-        _factory = factory;
-    }
-
-    private HttpClient CreateTestClient(Action<IServiceCollection>? serviceConfiguration = null)
-    {
-        var clientFactory = _factory.WithWebHostBuilder(builder =>
-        {
-            // disable background tasks for tests
-            builder.ConfigureAppConfiguration((context, conf) =>
-            {
-                conf.AddInMemoryCollection(new[] { new KeyValuePair<string, string>("BackgroundTasks:Enabled", "false") });
-            });
-
-            // disable file logging in tests
-            builder.ConfigureLogging(logging =>
-            {
-                logging.ClearProviders();
-                logging.AddConsole();
-            });
-
-            // no special configuration here; use app's registered JwtTokenService
-            builder.ConfigureTestServices(services => { serviceConfiguration?.Invoke(services); });
-        });
-
-        // create client (this starts the test server)
-        var client = clientFactory.CreateClient();
-
-        // obtain the app's IJwtTokenService from the test host and create a token
-        using var scope = clientFactory.Services.CreateScope();
-        var jwt = scope.ServiceProvider.GetRequiredService<IJwtTokenService>();
-        var token = jwt.CreateToken(Guid.NewGuid(), "testuser", isAdmin: false, out var expires);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        return client;
-    }
+    public MetaHolidayRoutesTests(WebApplicationFactory<Program> factory) : base(factory) { }
 
     private IApiClient CreateApiClientWithMocks(Mock<IHolidaySubdivisionService> subdivisionMock)
     {
-        var client = CreateTestClient((services) => {
-            // Use a dedicated in-memory SQLite database for tests to avoid touching the
-            // production file and to prevent duplicate-migration / duplicate-column errors.
-            var connection = new SqliteConnection("DataSource=:memory:");
-            connection.Open();
-
-            // Replace AppDbContext registration with in-memory SQLite
-            services.AddSingleton<SqliteConnection>(connection);
-            services.AddDbContext<AppDbContext>(options =>
-            {
-                options.UseSqlite(connection);
-            });
-
+        var api = CreateApiClient(true, services =>
+        {
             services.AddSingleton<IHolidaySubdivisionService>(subdivisionMock.Object);
         });
-
-        return new ApiClient(client);
+        return api;
     }
 
     private IApiClient CreateApiClient()
     {
-        var client = CreateTestClient();
-        return new ApiClient(client);
+        return CreateApiClient();
     }
 
     [Fact]

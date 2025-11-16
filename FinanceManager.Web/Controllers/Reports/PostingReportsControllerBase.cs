@@ -3,6 +3,7 @@ using FinanceManager.Application.Reports;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
 using Microsoft.AspNetCore.Mvc;
+using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Web.Controllers.Reports;
 
@@ -30,11 +31,6 @@ public abstract class PostingReportsControllerBase : ControllerBase
     /// Posting kind supplied by derived controllers.
     /// </summary>
     protected abstract PostingKind Kind { get; }
-
-    /// <summary>
-    /// DTO representing a single aggregate point returned to the client.
-    /// </summary>
-    public sealed record TimeSeriesPointDto(DateTime PeriodStart, decimal Amount);
 
     private static int? NormalizeYears(int? maxYearsBack)
     {

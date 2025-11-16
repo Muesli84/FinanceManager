@@ -4,6 +4,7 @@
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Application.Reports
 @using FinanceManager.Web.Components.Shared
+@using FinanceManager.Web.Services
 
 @inject HttpClient Http
 @inject IStringLocalizer<FinanceManager.Web.Components.Pages.Home> Localizer
@@ -293,22 +294,20 @@
             {
                 case HomeKpiPredefined.AccountsAggregates:
                     builder.OpenComponent<AggregateBarChart>(i++);
-                    builder.AddAttribute(i++, "Endpoint", "/api/accounts/aggregates");
+                    builder.AddAttribute(i++, "ApiMethod", nameof(IApiClient.GetAccountsAggregatesAllAsync));
+                    builder.AddAttribute(i++, "ApiArgs", new object[] { "Month", 7, 2 });
                     builder.AddAttribute(i++, "Title", (object?)null);
-                    builder.AddAttribute(i++, "Take", 7);
                     builder.AddAttribute(i++, "HideIntervalSelector", true);
-                    builder.AddAttribute(i++, "InitialPeriod", "Month");
                     builder.AddAttribute(i++, "Compact", true);
                     builder.AddAttribute(i++, "BarsHeightPx", 110);
                     builder.CloseComponent();
                     break;
                 case HomeKpiPredefined.SavingsPlanAggregates:
                     builder.OpenComponent<AggregateBarChart>(i++);
-                    builder.AddAttribute(i++, "Endpoint", "/api/savings-plans/aggregates");
+                    builder.AddAttribute(i++, "ApiMethod", nameof(IApiClient.GetSavingsPlansAggregatesAllAsync));
+                    builder.AddAttribute(i++, "ApiArgs", new object[] { "Month", 7, null });
                     builder.AddAttribute(i++, "Title", (object?)null);
-                    builder.AddAttribute(i++, "Take", 7);
                     builder.AddAttribute(i++, "HideIntervalSelector", true);
-                    builder.AddAttribute(i++, "InitialPeriod", "Month");
                     builder.AddAttribute(i++, "PositiveColor", "#2d9d4f");
                     builder.AddAttribute(i++, "NegativeColor", "#b55");
                     builder.AddAttribute(i++, "Compact", true);
@@ -317,13 +316,13 @@
                     break;
                 case HomeKpiPredefined.SecuritiesDividends:
                     builder.OpenComponent<AggregateBarChart>(i++);
-                    builder.AddAttribute(i++, "Endpoint", "/api/securities/dividends");
+                    builder.AddAttribute(i++, "ApiMethod", nameof(IApiClient.GetSecuritiesDividendsAsync));
+                    builder.AddAttribute(i++, "ApiArgs", new object[] { "Quarter", 7, null });
                     builder.AddAttribute(i++, "Title", (object?)null);
                     builder.AddAttribute(i++, "HideIntervalSelector", true);
-                    builder.AddAttribute(i++, "InitialPeriod", "Quarter");
+                    builder.AddAttribute(i++, "Compact", true);
                     builder.AddAttribute(i++, "PositiveColor", "#d4a72c");
                     builder.AddAttribute(i++, "NegativeColor", "#b55");
-                    builder.AddAttribute(i++, "Compact", true);
                     builder.AddAttribute(i++, "BarsHeightPx", 110);
                     builder.CloseComponent();
                     break;

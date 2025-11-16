@@ -2,6 +2,7 @@ using FinanceManager.Application;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
+using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers.Reports;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;

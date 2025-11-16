@@ -1,7 +1,11 @@
 @using System.Net.Http.Json
 @using System.Globalization
+@using FinanceManager.Shared.Dtos
+@using FinanceManager.Web.Services
+@using System.Reflection
 @inject HttpClient Http
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.AggregateBarChart> Localizer
+@inject FinanceManager.Web.Services.IApiClient ApiClient
 
 <div class="@($"aggregate-chart-wrapper{(Compact? " compact" : string.Empty)}")" aria-busy="@_loading">
     @if (!string.IsNullOrWhiteSpace(Title))
@@ -15,7 +19,7 @@
             <select @bind="_period" @bind:after="LoadAsync" aria-label="@Localizer["Aria_SelectInterval"]">
                 <option value="Month">@Localizer["Interval_Month"]</option>
                 <option value="Quarter">@Localizer["Interval_Quarter"]</option>
-                <option value="HalfYear">@Localizer["Interval_HalfYear"]</option>
+                <option value="HalfYear">@Localizer["Interval_Half_Year"]</option>
                 <option value="Year">@Localizer["Interval_Year"]</option>
                 <option value="AllHistory">@Localizer["Interval_AllHistory"]</option>
             </select>
@@ -59,7 +63,7 @@
                              role="img"
                              aria-label="@BuildAria(p)"
                              title="@BuildTooltip(p)"
-                             style="height:@(h)px;"></div>
+                             style="height:@(h)px;"><!-- --></div>
                     }
                 </div>
                 <div class="zero-line"></div>
@@ -71,7 +75,7 @@
                              role="img"
                              aria-label="@BuildAria(p)"
                              title="@BuildTooltip(p)"
-                             style="height:@(h)px;"></div>
+                             style="height:@(h)px;"><!-- --></div>
                     }
                 </div>
             </div>
@@ -98,6 +102,8 @@
 
 @code {
     [Parameter] public string Endpoint { get; set; } = string.Empty;
+    [Parameter] public string? ApiMethod { get; set; }
+    [Parameter] public object[]? ApiArgs { get; set; }
     [Parameter] public string? Title { get; set; }
     [Parameter] public string PositiveColor { get; set; } = "#2d6cdf";
     [Parameter] public string NegativeColor { get; set; } = "#c94";
@@ -124,7 +130,7 @@
         {
             _period = InitialPeriod!;
         }
-        if (!string.IsNullOrWhiteSpace(Endpoint) && _data.Count == 0)
+        if ((!string.IsNullOrWhiteSpace(Endpoint) && ApiMethod == null && _data.Count == 0) || (!string.IsNullOrWhiteSpace(ApiMethod) && _data.Count == 0))
         {
             await LoadAsync();
         }
@@ -137,24 +143,108 @@
         int step = (int)Math.Ceiling(total / (double)MaxVisibleLabels);
         return index % step == 0;
     }
+    private async Task RunApiMethod()
+    {
+        // When ApiMethod is provided we support dynamic invocation with optional ApiArgs.
+        // If ApiArgs is null, construct default args pattern: (string period, int take, int? maxYearsBack)
+        object[] argsToUse;
+        if (ApiArgs != null && ApiArgs.Length > 0)
+        {
+            argsToUse = ApiArgs;
+        }
+        else
+        {
+            var takeVal = Take ?? 36;
+            argsToUse = new object[] { _period, takeVal, MaxYearsBack };
+        }
+
+        var clientType = ApiClient.GetType();
+        var method = clientType.GetMethod(ApiMethod);
+        if (method == null)
+        {
+            // Try interface methods as fallback
+            method = typeof(IApiClient).GetMethod(ApiMethod!);
+        }
+
+        if (method != null)
+        {
+            // Align arguments to parameter count (ignore trailing CancellationToken)
+            var parameters = method.GetParameters();
+            var expectedCount = parameters.Length;
+            // If last parameter is CancellationToken we can ignore adding it here
+            if (expectedCount > 0 && parameters.Last().ParameterType == typeof(CancellationToken))
+            {
+                argsToUse = argsToUse.Concat(new object[] { CancellationToken.None }).ToArray();
+            }
+
+            if (argsToUse.Length > expectedCount)
+            {
+                // Trim extra args
+                argsToUse = argsToUse.Take(expectedCount).ToArray();
+            }
+            else if (argsToUse.Length < expectedCount)
+            {
+                // Pad missing args with defaults (null or default values)
+                var padded = new object[expectedCount];
+                for (int i = 0; i < expectedCount; i++)
+                {
+                    padded[i] = i < argsToUse.Length ? argsToUse[i] : GetDefault(parameters[i].ParameterType);
+                }
+                argsToUse = padded;
+            }
+
+            // If method is declared on interface but ApiClient is a proxy/type implementing it, use that method info
+            var invokedMethod = method;
+            if (!method.DeclaringType!.IsAssignableFrom(clientType))
+            {
+                invokedMethod = clientType.GetMethod(method.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase) ?? method;
+            }
+
+            // Invoke
+            var taskObj = invokedMethod.Invoke(ApiClient, argsToUse) as System.Threading.Tasks.Task;
+            if (taskObj != null)
+            {
+                await taskObj.ConfigureAwait(false);
+                object? result = null;
+                var taskType = taskObj.GetType();
+                if (taskType.IsGenericType)
+                {
+                    var resultProp = taskType.GetProperty("Result");
+                    result = resultProp?.GetValue(taskObj);
+                }
+
+                var list = result as TimeSeriesPointDto[] ?? Array.Empty<TimeSeriesPointDto>();
+                _data.Clear();
+                _data.AddRange(list.Select(x => new Point(x.PeriodStart, x.Amount)));
+                _multipleYears = _data.Select(d => d.PeriodStart.Year).Distinct().Skip(1).Any();
+            }
+        }
+    }
 
     private async Task LoadAsync()
     {
-        if (string.IsNullOrWhiteSpace(Endpoint)) { return; }
+        if (string.IsNullOrWhiteSpace(Endpoint) && string.IsNullOrWhiteSpace(ApiMethod)) { return; }
         _loading = true;
         StateHasChanged();
         try
         {
-            var baseUrl = Endpoint.Contains('?') ? $"{Endpoint}&period={_period}" : $"{Endpoint}?period={_period}";
-            if (Take.HasValue && Take.Value > 0) { baseUrl += $"&take={Take.Value}"; }
-            if (MaxYearsBack.HasValue && MaxYearsBack.Value > 0) { baseUrl += $"&maxYearsBack={MaxYearsBack.Value}"; }
-            var resp = await Http.GetAsync(baseUrl);
-            if (resp.IsSuccessStatusCode)
+            if (!string.IsNullOrWhiteSpace(ApiMethod))
             {
-                var list = await resp.Content.ReadFromJsonAsync<List<TimeSeriesResponse>>() ?? new();
-                _data.Clear();
-                _data.AddRange(list.Select(x => new Point(x.PeriodStart, x.Amount)));
-                _multipleYears = _data.Select(d => d.PeriodStart.Year).Distinct().Skip(1).Any();
+                await RunApiMethod();                
+            }
+            else
+            {
+                var baseUrl = Endpoint.Contains('?') ? $"{Endpoint}&period={_period}" : $"{Endpoint}?period={_period}";
+                if (Take.HasValue && Take.Value > 0) { baseUrl += $"&take={Take.Value}"; }
+                if (MaxYearsBack.HasValue && MaxYearsBack.Value > 0) { baseUrl += $"&maxYearsBack={MaxYearsBack.Value}"; }
+                var resp = await Http.GetAsync(baseUrl);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var list = await resp.Content.ReadFromJsonAsync<List<TimeSeriesResponse>>() ?? new();
+                    _data.Clear();
+                    _data.AddRange(list.Select(x => new Point(x.PeriodStart, x.Amount)));
+                    _multipleYears = _data.Select(d => d.PeriodStart.Year).Distinct().Skip(1).Any();
+                }
             }
         }
         finally
@@ -162,6 +252,12 @@
             _loading = false;
             StateHasChanged();
         }
+    }
+
+    private static object? GetDefault(Type t)
+    {
+        if (!t.IsValueType) return null;
+        return Activator.CreateInstance(t);
     }
 
     private string FormatLabel(DateTime d)
