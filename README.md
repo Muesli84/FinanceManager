@@ -1,4 +1,4 @@
-﻿# Finance Manager
+# Finance Manager
 
 > Persönliche Finanzverwaltung mit Kontoauszug-Import, Sparplänen, Wertpapiertracking, Auswertungen & Mehrbenutzer?/Sharing-Funktionen.
 >
@@ -20,23 +20,60 @@
 12. Lizenz / Status
 
 ## 1. Überblick
-FinanceManager ist eine Blazor Server Anwendung (.NET 9) zur Verwaltung persönlicher Finanzen. Importierte Kontoauszüge (CSV/PDF) werden verarbeitet, Buchungen kategorisiert und in Bank-/Kontakt-/Sparplan- und Wertpapierposten überführt. Ergänzend existieren Auswertungen (Monat, Quartal, Jahr, YTD) und ein KPI-Dashboard. Mehrere Benutzer werden unterstützt; Bankkonten können gezielt geteilt werden. Eine .NET MAUI App (iOS) ist geplant.
+FinanceManager ist eine Blazor Server Anwendung (.NET 9) zur Verwaltung persönlicher Finanzen. Importierte Kontoauszüge (CSV/PDF) werden verarbeitet, Buchungen kategorisiert und in Bank-/Kontakt-/Sparplan- und Wertpapierposten überführt. Ergänzend existieren Auswertungen (Monat, Quartal, Jahr, YTD) und ein KPI-Dashboard. Mehrere Benutzer werden unterstützt. 
 
 ## 2. Kernfunktionen
-- Konten: Giro- & Sparkonten, Bankkontakt-Automatik, Sharing (Lese / optional Schreibrechte).
-- Kontoauszug-Import: CSV & PDF (Strategy Pattern), Duplikatserkennung, Buch.-Blatt vor endgültiger Verbuchung, Alias-Matching für Kontakte, Aufteilung in Monats-/Teilmengen mit Benutzereinstellungen.
-- Kontoauszug Massenbuchung: Dialog/Service; Teilbuchungen belassen Drafts offen; Anhänge werden beim Vollcommit umgehängt.
+- Benutzeranmeldung
+  - Registrierungsmlglichkeit nur bei leerer Datenbank, Der erste Benutzer ist Administrator
+  - Benutzerverwaltung im Administrationsbereich
+  - IP-Sperrliste bei wiederholten fehlerhaften Anmeldeversuchen
+- Konten: Verwaltung von Giro- & Sparkonten
 - Kontakte & Kategorien: Verwaltung inkl. Aliasnamen (Wildcards ? *). Automatische Zuordnung beim Import. Merge-Funktion.
-- Sparpläne: Einmalig (Zielbetrag/Zieldatum), wiederkehrend (Intervalle), offen. Status/Analyse (erreicht/erforderlich/Prognose). Archivierung möglich.
-- Wertpapiere: Aktien/Fonds, Transaktionen (Kauf, Verkauf, Dividende/Zins, Gebühren, Steuern, Menge). Kursdienst via AlphaVantage inklusive Limit-Erkennung.
-- Auswertungen: Aggregationen Monat / Quartal / Jahr, YTD, Vorjahresvergleich, P&L nach Kategorien. Export CSV/XLSX.
-- Favoritenberichte: Konfigurierbare Report-Favoriten inkl. Multi-PostingKinds, Filter (Accounts/Contacts/Savings/Securities/Kategorien/SecuritySubTypes), YTD/Charts/Vergleiche.
-- KPI Dashboard: Kacheln inkl. Favoritenberichte; Dividenden/Monatsumsätze etc.
-- Backups: Erstellen, Auflisten, Herunterladen, Wiederherstellen, Löschen (Zip mit NDJSON; v3 Schema).
-- Anhänge: Upload an Draft/DraftEntry/Contact; Kategorien; Größen-/MIME-Validierung; Reassign/Referenzen bei Buchung; Download.
-- Benachrichtigungen: Monatsabschluss-Reminder (letzter Werktag; Land/Subdivision/Uhrzeit konfigurierbar) inkl. Anzeige auf der Startseite.
-- Adminbereich: Benutzerverwaltung (Anlegen, Bearbeiten, Sperren/Entsperren, Löschen) & IP-Sperrliste.
-- Einheitliches Menüband (Ribbon) auf Detailseiten.
+- Kontoauszüge: 
+  - Import von CSV & PDF
+  - unterstützte Banken: ING, Wüstenrot
+  - Duplikatserkennung für bereits gebuchte Posten
+  - automatische Kontierung für Kontakte, Sparpläne und Wertpapiere
+  - Plausibilitätsprüfungen vor dem Buchen
+  - Dateianhänge pro Buchung
+  - Erfassung der Kontobewegungen als Posten pro Kontierung
+- Sparpläne: 
+  - Einmalig (Zielbetrag/Zieldatum), wiederkehrend (Intervalle), offen. 
+  - Status/Analyse (erreicht/erforderlich/Prognose). 
+  - Archivierung möglich.
+- Wertpapiere: 
+  - Aktien/Fonds, 
+  - Transaktionen (Kauf, Verkauf, Dividende/Zins, Gebühren, Steuern, Menge). 
+  - Kursdienst via AlphaVantage inklusive Limit-Erkennung.
+- Auswertungen: 
+  - Aggregationen Monat / Quartal / Jahr, YTD, 
+  - Vorjahresvergleich, 
+  - P&L nach Kategorien. 
+  - Export CSV/XLSX.
+  - Favoritenberichte: 
+    - Konfigurierbare Report-Favoriten, 
+    - Filter auf einzelne Konten (Bankkonto/Kontakt/Sparpläne/Wertpapiere/Kategorien), 
+    - YTD/Charts/Vergleiche.
+- KPI Dashboard: 
+  - Kacheln für Favoritenberichte; 
+  - feste Berechnungsweisen für Dividenden/Monatsumsätze etc.
+- Backups: 
+  - Erstellen von Wiederherstellungspunkten pro Benutzer
+  - Herunterladen (Zip mit NDJSON; v3 Schema)
+  - Wiederherstellen alter Bestände, 
+  - Löschen 
+- Anhänge: 
+  - Upload an Kontoauszug/Kontobewegung/Contact; 
+  - Kategorien; 
+  - Größen-/MIME-Validierung; 
+  - Reassign/Referenzen bei Buchung; 
+  - Download.
+- Benachrichtigungen: 
+  - Monatsabschluss-Reminder (letzter Werktag; Land/Subdivision/Uhrzeit konfigurierbar) inkl. Anzeige auf der Startseite.
+- Adminbereich: 
+  - Benutzerverwaltung (Anlegen, Bearbeiten, Sperren/Entsperren, Löschen) 
+  - IP-Sperrliste.
+
 
 ## 3. Architektur & Schichten (geplant)
 ```
