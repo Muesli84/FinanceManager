@@ -3,7 +3,6 @@ using FinanceManager.Application.Contacts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
@@ -25,9 +24,6 @@ public sealed class ContactCategoriesController : ControllerBase
         _logger = logger;
     }
 
-    public sealed record CreateCategoryRequest([Required, MinLength(2)] string Name);
-    public sealed record UpdateCategoryRequest([Required, MinLength(2)] string Name);
-
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactCategoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
@@ -47,7 +43,7 @@ public sealed class ContactCategoriesController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ContactCategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateAsync([FromBody] CreateCategoryRequest req, CancellationToken ct)
+    public async Task<IActionResult> CreateAsync([FromBody] ContactCategoryCreateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
@@ -57,7 +53,7 @@ public sealed class ContactCategoriesController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new ApiErrorDto(ex.Message));
         }
         catch (Exception ex)
         {
@@ -87,7 +83,7 @@ public sealed class ContactCategoriesController : ControllerBase
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] UpdateCategoryRequest req, CancellationToken ct)
+    public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] ContactCategoryUpdateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
