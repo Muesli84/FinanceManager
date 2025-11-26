@@ -27,7 +27,7 @@ public sealed class AuthController : ControllerBase
         var result = await _auth.LoginAsync(new LoginCommand(request.Username, request.Password, ip, request.PreferredLanguage, request.TimeZoneId), ct);
         if (!result.Success)
         {
-            return Unauthorized(new { error = result.Error });
+            return Unauthorized(new ApiErrorDto(result.Error!));
         }
 
         // Set cookie with explicit expiry that matches token expiry
@@ -41,7 +41,7 @@ public sealed class AuthController : ControllerBase
             Expires = new DateTimeOffset(result.Value.ExpiresUtc)
         });
 
-        return Ok(new { user = result.Value.Username, isAdmin = result.Value.IsAdmin, exp = result.Value.ExpiresUtc });
+        return Ok(new AuthOkResponse(result.Value.Username, result.Value.IsAdmin, result.Value.ExpiresUtc));
     }
 
     [HttpPost("register")]
@@ -54,7 +54,7 @@ public sealed class AuthController : ControllerBase
         var result = await _auth.RegisterAsync(new RegisterUserCommand(request.Username, request.Password, request.PreferredLanguage, request.TimeZoneId), ct);
         if (!result.Success)
         {
-            return Conflict(new { error = result.Error });
+            return Conflict(new ApiErrorDto(result.Error!));
         }
 
         Response.Cookies.Append(AuthCookieName, result.Value!.Token, new CookieOptions
@@ -67,7 +67,7 @@ public sealed class AuthController : ControllerBase
             Expires = new DateTimeOffset(result.Value.ExpiresUtc)
         });
 
-        return Ok(new { user = result.Value.Username, isAdmin = result.Value.IsAdmin, exp = result.Value.ExpiresUtc });
+        return Ok(new AuthOkResponse(result.Value.Username, result.Value.IsAdmin, result.Value.ExpiresUtc));
     }
 
     [HttpPost("logout")]
@@ -88,25 +88,5 @@ public sealed class AuthController : ControllerBase
             concrete.Clear();
         }
         return Ok();
-    }
-
-    public sealed class LoginRequest
-    {
-        [Required, MinLength(3)]
-        public string Username { get; set; } = string.Empty;
-        [Required, MinLength(6)]
-        public string Password { get; set; } = string.Empty;
-        public string? PreferredLanguage { get; set; }
-        public string? TimeZoneId { get; set; }
-    }
-
-    public sealed class RegisterRequest
-    {
-        [Required, MinLength(3)]
-        public string Username { get; set; } = string.Empty;
-        [Required, MinLength(6)]
-        public string Password { get; set; } = string.Empty;
-        public string? PreferredLanguage { get; set; }
-        public string? TimeZoneId { get; set; }
     }
 }
