@@ -1,16 +1,19 @@
 using FinanceManager.Application;
 using FinanceManager.Domain; // PostingKind
 using FinanceManager.Infrastructure;
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
 [Route("api/securities/dividends")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+[Produces(MediaTypeNames.Application.Json)]
 public sealed class DividendsReportsController : ControllerBase
 {
     private readonly ICurrentUserService _currentUser;
@@ -21,8 +24,6 @@ public sealed class DividendsReportsController : ControllerBase
         _db = db;
     }
 
-    public sealed record TimeSeriesPointDto(DateTime PeriodStart, decimal Amount);
-
     private const int SecurityPostingSubType_Dividend = 2; // matches client enum mapping
 
     /// <summary>
@@ -30,7 +31,8 @@ public sealed class DividendsReportsController : ControllerBase
     /// The optional 'period' and 'take' parameters are accepted for compatibility with the generic chart component but are ignored (always quarterly, full range).
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAsync([FromQuery] string? period = null, [FromQuery] int? take = null, CancellationToken ct = default)
+    [ProducesResponseType(typeof(IReadOnlyList<AggregatePointDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAsync([FromQuery] string? period = null, [FromQuery] int? take = null, CancellationToken ct = default)
     {
         var userId = _currentUser.UserId;
         var today = DateTime.UtcNow.Date;
@@ -43,7 +45,7 @@ public sealed class DividendsReportsController : ControllerBase
             .ToListAsync(ct);
         if (securityIds.Count == 0)
         {
-            return Ok(Array.Empty<TimeSeriesPointDto>());
+            return Ok(Array.Empty<AggregatePointDto>());
         }
 
         var raw = await _db.Postings.AsNoTracking()
@@ -56,7 +58,7 @@ public sealed class DividendsReportsController : ControllerBase
 
         var groups = raw
             .GroupBy(x => QuarterStart(x.BookingDate))
-            .Select(g => new TimeSeriesPointDto(g.Key, g.Sum(x => x.Amount)))
+            .Select(g => new AggregatePointDto(g.Key, g.Sum(x => x.Amount)))
             .OrderBy(x => x.PeriodStart)
             .ToList();
 
