@@ -29,6 +29,7 @@ namespace FinanceManager.Web.Controllers
         private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
         [HttpPost("{type}")]
+        [ProducesResponseType(typeof(BackgroundTaskInfo), StatusCodes.Status200OK)]
         public ActionResult<BackgroundTaskInfo> Enqueue([FromRoute] BackgroundTaskType type, [FromQuery] bool allowDuplicate = false)
         {
             var userId = GetUserId();
@@ -38,6 +39,7 @@ namespace FinanceManager.Web.Controllers
         }
 
         [HttpGet("active")]
+        [ProducesResponseType(typeof(IEnumerable<BackgroundTaskInfo>), StatusCodes.Status200OK)]
         public ActionResult<IEnumerable<BackgroundTaskInfo>> GetActiveAndQueued()
         {
             var userId = GetUserId();
@@ -46,6 +48,8 @@ namespace FinanceManager.Web.Controllers
         }
 
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(BackgroundTaskInfo), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<BackgroundTaskInfo> GetDetail([FromRoute] Guid id)
         {
             var userId = GetUserId();
@@ -55,6 +59,9 @@ namespace FinanceManager.Web.Controllers
         }
 
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult CancelOrRemove([FromRoute] Guid id)
         {
             var userId = GetUserId();
@@ -63,14 +70,14 @@ namespace FinanceManager.Web.Controllers
             if (info.Status == BackgroundTaskStatus.Running)
             {
                 var cancelled = _taskManager.TryCancel(id);
-                return cancelled ? NoContent() : BadRequest();
+                return cancelled ? NoContent() : BadRequest(new ApiErrorDto("Could not cancel running task."));
             }
             if (info.Status == BackgroundTaskStatus.Queued)
             {
                 var removed = _taskManager.TryRemoveQueued(id);
-                return removed ? NoContent() : BadRequest();
+                return removed ? NoContent() : BadRequest(new ApiErrorDto("Could not remove queued task."));
             }
-            return BadRequest();
+            return BadRequest(new ApiErrorDto("Only queued or running tasks can be cancelled or removed."));
         }
     }
 }
