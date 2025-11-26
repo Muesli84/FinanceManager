@@ -1,11 +1,5 @@
 namespace FinanceManager.Domain;
 
-public enum AccountType
-{
-    Giro = 0,
-    Savings = 1
-}
-
 public enum AccountShareRole
 {
     Read = 0,

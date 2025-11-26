@@ -78,7 +78,7 @@ public sealed class StatementDraftServiceTests
     public async Task CreateDraftAsync_ShouldReturnEntries_AndAutoDetectAccount_WhenSingleAccount()
     {
         var (sut, db, owner) = Create();
-        db.Accounts.Add(new Account(owner, FinanceManager.Domain.AccountType.Giro, "Test", null, Guid.NewGuid()));
+        db.Accounts.Add(new Account(owner, AccountType.Giro, "Test", null, Guid.NewGuid()));
         db.SaveChanges();
 
         var counter = 0;
@@ -115,7 +115,7 @@ public sealed class StatementDraftServiceTests
         var accountId = Guid.NewGuid();
 
         // Arrange: Account und Draft anlegen
-        db.Accounts.Add(new Account(owner, FinanceManager.Domain.AccountType.Giro, "Testkonto", null, Guid.NewGuid()));
+        db.Accounts.Add(new Account(owner, AccountType.Giro, "Testkonto", null, Guid.NewGuid()));
         db.SaveChanges();
 
         var draft = new FinanceManager.Domain.Statements.StatementDraft(owner, "file.csv", "", null);
@@ -137,7 +137,7 @@ public sealed class StatementDraftServiceTests
     {
         var (sut, db, owner) = CreateWithAttachments();
         // Single account so detected account gets set
-        db.Accounts.Add(new Account(owner, FinanceManager.Domain.AccountType.Giro, "Test", null, Guid.NewGuid()));
+        db.Accounts.Add(new Account(owner, AccountType.Giro, "Test", null, Guid.NewGuid()));
         db.SaveChanges();
 
         var bytes = Encoding.UTF8.GetBytes($"{{\"Type\":\"Backup\",\"Version\":2}}\n{{ \"BankAccounts\": [{{ \"IBAN\": \"\"}}], \"BankAccountLedgerEntries\": [], \"BankAccountJournalLines\": [{{\"Id\": 1,\"PostingDate\": \"2017-07-15T00:00:00\",\"ValutaDate\": \"2017-07-15T00:00:00\",\"PostingDescription\": \"Lastschrift\",\"SourceName\": \"GEZ\",\"Description\": \"GEZ Gebuehr\",\"CurrencyCode\": \"EUR\",\"Amount\": -97.95,\"CreatedAt\": \"2017-07-16T12:33:42.000041\"}}] }}");

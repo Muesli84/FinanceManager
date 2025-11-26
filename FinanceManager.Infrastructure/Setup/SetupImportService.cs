@@ -1037,7 +1037,7 @@ public sealed class SetupImportService : ISetupImportService
                 }
                 else
                 {
-                    var newAccount = new Account(userId, isEmpty ? FinanceManager.Domain.AccountType.Giro : FinanceManager.Domain.AccountType.Savings, name, iban, contact.Id);
+                    var newAccount = new Account(userId, isEmpty ? AccountType.Giro : AccountType.Savings, name, iban, contact.Id);
                     _db.Accounts.Add(newAccount);
                     yield return new KeyValuePair<string, Guid>(iban, newAccount.Id);
                 }

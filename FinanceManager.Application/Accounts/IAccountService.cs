@@ -1,5 +1,4 @@
-using FinanceManager.Domain;
-using FinanceManager.Domain.Accounts;
+using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Application.Accounts;
 
@@ -12,5 +11,3 @@ public interface IAccountService
     Task<AccountDto?> GetAsync(Guid id, Guid ownerUserId, CancellationToken ct);
     Task SetSymbolAttachmentAsync(Guid id, Guid ownerUserId, Guid? attachmentId, CancellationToken ct);
 }
-
-public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId, Guid? SymbolAttachmentId, SavingsPlanExpectation SavingsPlanExpectation);

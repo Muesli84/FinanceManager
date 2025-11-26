@@ -160,7 +160,7 @@ public sealed partial class StatementDraftService
             }
 
             TryAutoAssignContact(contacts, aliasLookup, bankContactId, selfContact, entry);
-            if (bankAccount is not null && bankAccount.SavingsPlanExpectation != Domain.Accounts.SavingsPlanExpectation.None)
+            if (bankAccount is not null && bankAccount.SavingsPlanExpectation != SavingsPlanExpectation.None)
                 TryAutoAssignSavingsPlan(entry, savingPlans, selfContact);
             TryAutoAssignSecurity(securities, contacts, bankContactId, entry);
         }

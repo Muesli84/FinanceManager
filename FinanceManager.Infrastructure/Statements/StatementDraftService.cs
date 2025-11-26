@@ -1309,9 +1309,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     {
                         var sev = account.SavingsPlanExpectation switch
                         {
-                            FinanceManager.Domain.Accounts.SavingsPlanExpectation.Required => "Error",
-                            FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional => "Warning",
-                            FinanceManager.Domain.Accounts.SavingsPlanExpectation.None => null,
+                            SavingsPlanExpectation.Required => "Error",
+                            SavingsPlanExpectation.Optional => "Warning",
+                            SavingsPlanExpectation.None => null,
                             _ => "Warning"
                         };
                         if (sev != null)
@@ -1392,9 +1392,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
                         {
                             var sev = account.SavingsPlanExpectation switch
                             {
-                                FinanceManager.Domain.Accounts.SavingsPlanExpectation.Required => "Error",
-                                FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional => "Warning",
-                                FinanceManager.Domain.Accounts.SavingsPlanExpectation.None => null,
+                                SavingsPlanExpectation.Required => "Error",
+                                SavingsPlanExpectation.Optional => "Warning",
+                                SavingsPlanExpectation.None => null,
                                 _ => "Warning"
                             };
                             if (sev != null)

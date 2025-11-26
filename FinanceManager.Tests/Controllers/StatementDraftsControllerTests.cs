@@ -89,7 +89,7 @@ public sealed class StatementDraftsControllerTests
     public async Task UploadAsync_ShouldCreateDraft()
     {
         var (controller, db, user) = Create();
-        var account = new Account(user, FinanceManager.Domain.AccountType.Giro, "A", null, Guid.NewGuid());
+        var account = new Account(user, AccountType.Giro, "A", null, Guid.NewGuid());
         db.Accounts.Add(account);
         await db.SaveChangesAsync();
 

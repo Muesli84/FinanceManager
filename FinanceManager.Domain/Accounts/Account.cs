@@ -1,11 +1,6 @@
 namespace FinanceManager.Domain.Accounts;
 
-public enum SavingsPlanExpectation : short
-{
-    None = 0,
-    Optional = 1,
-    Required = 2
-}
+using FinanceManager.Shared.Dtos; // use shared enums
 
 public sealed class Account : Entity, IAggregateRoot
 {

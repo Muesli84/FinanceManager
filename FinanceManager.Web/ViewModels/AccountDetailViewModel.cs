@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Json;
 using FinanceManager.Domain.Attachments;
+using FinanceManager.Shared.Dtos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
@@ -52,8 +53,8 @@ public sealed class AccountDetailViewModel : ViewModelBase
     private Guid? _symbolAttachmentId;
 
     // New: SavingsPlanExpectation
-    public FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation { get => _savingsPlanExpectation; set { if (_savingsPlanExpectation != value) { _savingsPlanExpectation = value; RaiseStateChanged(); } } }
-    private FinanceManager.Domain.Accounts.SavingsPlanExpectation _savingsPlanExpectation = FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional;
+    public SavingsPlanExpectation SavingsPlanExpectation { get => _savingsPlanExpectation; set { if (_savingsPlanExpectation != value) { _savingsPlanExpectation = value; RaiseStateChanged(); } } }
+    private SavingsPlanExpectation _savingsPlanExpectation = SavingsPlanExpectation.Optional;
 
     // Related state
     private bool _showAttachments;
@@ -239,7 +240,7 @@ public sealed class AccountDetailViewModel : ViewModelBase
     }
 
     // DTOs / VMs used by VM
-    public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid? BankContactId, Guid? SymbolAttachmentId, FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation);
+    public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid? BankContactId, Guid? SymbolAttachmentId, SavingsPlanExpectation SavingsPlanExpectation);
     public sealed record ContactDto(Guid Id, string Name);
     public sealed class BankContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 }

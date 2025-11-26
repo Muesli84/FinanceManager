@@ -31,23 +31,6 @@ public sealed class AccountsController : ControllerBase
         _logger = logger;
     }
 
-    public sealed record AccountCreateRequest([
-        Required, MinLength(2)] string Name,
-        AccountType Type,
-        string? Iban,
-        Guid? BankContactId,
-        string? NewBankContactName,
-        Guid? SymbolAttachmentId,
-        FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation);
-
-    public sealed record AccountUpdateRequest([
-        Required, MinLength(2)] string Name,
-        string? Iban,
-        Guid? BankContactId,
-        string? NewBankContactName,
-        Guid? SymbolAttachmentId,
-        FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation);
-
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AccountDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? bankContactId = null, CancellationToken ct = default)
