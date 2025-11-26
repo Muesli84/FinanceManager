@@ -36,6 +36,8 @@ public sealed class PostingsController : ControllerBase
     public sealed record GroupLinksDto(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
     [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(PostingDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PostingDto>> GetById(Guid id, CancellationToken ct)
     {
         var p = await _db.Postings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
@@ -138,6 +140,8 @@ public sealed class PostingsController : ControllerBase
     }
 
     [HttpGet("account/{accountId:guid}")]
+    [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetAccountPostings(Guid accountId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
@@ -165,6 +169,8 @@ public sealed class PostingsController : ControllerBase
     }
 
     [HttpGet("contact/{contactId:guid}")]
+    [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetContactPostings(Guid contactId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
@@ -177,6 +183,8 @@ public sealed class PostingsController : ControllerBase
     }
 
     [HttpGet("savings-plan/{planId:guid}")]
+    [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetSavingsPlanPostings(Guid planId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
@@ -188,6 +196,8 @@ public sealed class PostingsController : ControllerBase
     }
 
     [HttpGet("security/{securityId:guid}")]
+    [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<PostingServiceDto>>> GetSecurityPostings(Guid securityId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
@@ -199,6 +209,9 @@ public sealed class PostingsController : ControllerBase
     }
 
     [HttpGet("group/{groupId:guid}")]
+    [ProducesResponseType(typeof(GroupLinksDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<GroupLinksDto>> GetGroupLinksAsync(Guid groupId, CancellationToken ct)
     {
         if (groupId == Guid.Empty) { return BadRequest(); }
