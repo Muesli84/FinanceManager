@@ -37,7 +37,7 @@ public class RibbonTests : TestContext
         };
 
         // Act
-        var cut = RenderComponent<Ribbon<TabId>>(p => p
+        var cut = Render<Ribbon<TabId>>(p => p
             .Add(x => x.Tabs, tabs)
             .Add(x => x.ActiveTab, TabId.One));
 
@@ -71,7 +71,7 @@ public class RibbonTests : TestContext
             }
         };
 
-        var cut = RenderComponent<Ribbon<TabId>>(p => p
+        var cut = Render<Ribbon<TabId>>(p => p
             .Add(x => x.Tabs, tabs)
             .Add(x => x.ActiveTab, TabId.One));
 
