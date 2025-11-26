@@ -2,6 +2,7 @@ using FinanceManager.Application;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +20,7 @@ public sealed class AccountReportsController : PostingReportsControllerBase
         : base(current, series) { }
 
     [HttpGet]
-    public Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAsync(
+    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAsync(
         Guid accountId,
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
@@ -39,7 +40,7 @@ public sealed class AccountsAllReportsController : PostingReportsControllerBase
         : base(current, series) { }
 
     [HttpGet]
-    public Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAllAsync(
+    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAllAsync(
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
         [FromQuery] int? maxYearsBack = null,

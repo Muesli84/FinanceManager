@@ -1,5 +1,6 @@
 using FinanceManager.Domain; // PostingKind
 using FinanceManager.Domain.Postings; // AggregatePeriod
+using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Application.Reports;
 
@@ -34,5 +35,3 @@ public interface IPostingTimeSeriesService
         int? maxYearsBack,
         CancellationToken ct);
 }
-
-public sealed record AggregatePointDto(DateTime PeriodStart, decimal Amount);

@@ -2,6 +2,7 @@ using FinanceManager.Application;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceManager.Web.Controllers;
@@ -23,8 +24,6 @@ public abstract class PostingReportsControllerBase : ControllerBase
 
     protected abstract PostingKind Kind { get; }
 
-    public sealed record TimeSeriesPointDto(DateTime PeriodStart, decimal Amount);
-
     private static int? NormalizeYears(int? maxYearsBack)
     {
         if (!maxYearsBack.HasValue) { return null; }
@@ -34,7 +33,7 @@ public abstract class PostingReportsControllerBase : ControllerBase
     /// <summary>
     /// Shared internal handler used by specific controllers.
     /// </summary>
-    protected async Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetInternalAsync(Guid entityId, string period, int take, int? maxYearsBack, CancellationToken ct)
+    protected async Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetInternalAsync(Guid entityId, string period, int take, int? maxYearsBack, CancellationToken ct)
     {
         if (!Enum.TryParse<AggregatePeriod>(period, true, out var p))
         {
@@ -50,11 +49,11 @@ public abstract class PostingReportsControllerBase : ControllerBase
         {
             return NotFound();
         }
-        var result = data.Select(a => new TimeSeriesPointDto(a.PeriodStart, a.Amount)).ToList();
+        var result = data.Select(a => new AggregatePointDto(a.PeriodStart, a.Amount)).ToList();
         return Ok(result);
     }
 
-    protected async Task<ActionResult<IReadOnlyList<TimeSeriesPointDto>>> GetAllInternalAsync(string period, int take, int? maxYearsBack, CancellationToken ct)
+    protected async Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAllInternalAsync(string period, int take, int? maxYearsBack, CancellationToken ct)
     {
         if (!Enum.TryParse<AggregatePeriod>(period, true, out var p))
         {
@@ -63,7 +62,7 @@ public abstract class PostingReportsControllerBase : ControllerBase
         take = Math.Clamp(take <= 0 ? (p == AggregatePeriod.Month ? 36 : p == AggregatePeriod.Quarter ? 16 : p == AggregatePeriod.HalfYear ? 12 : 10) : take, 1, 200);
         var years = NormalizeYears(maxYearsBack);
         var data = await _seriesService.GetAllAsync(_currentUser.UserId, Kind, p, take, years, ct);
-        var result = data.Select(a => new TimeSeriesPointDto(a.PeriodStart, a.Amount)).ToList();
+        var result = data.Select(a => new AggregatePointDto(a.PeriodStart, a.Amount)).ToList();
         return Ok(result);
     }
 }

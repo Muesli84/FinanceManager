@@ -1,6 +1,7 @@
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain; // PostingKind
 using FinanceManager.Domain.Postings;
+using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Reports;
