@@ -1,4 +1,4 @@
-using FinanceManager.Domain.Reports;
+using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Application.Reports;
 

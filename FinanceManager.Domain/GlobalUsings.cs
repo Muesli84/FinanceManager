@@ -1,0 +1,1 @@
+global using FinanceManager.Shared.Dtos;

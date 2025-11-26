@@ -1,6 +1,6 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain.Reports;
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -42,6 +42,8 @@ public sealed class HomeKpisController : ControllerBase
 
     [HttpPost]
     [ProducesResponseType(typeof(HomeKpiDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> CreateAsync([FromBody] CreateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
@@ -52,11 +54,11 @@ public sealed class HomeKpisController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return Conflict(new { error = ex.Message });
+            return Conflict(new ApiErrorDto(ex.Message));
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new ApiErrorDto(ex.Message));
         }
         catch (Exception ex)
         {
@@ -87,6 +89,8 @@ public sealed class HomeKpisController : ControllerBase
 
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(HomeKpiDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] UpdateRequest req, CancellationToken ct)
     {
@@ -98,11 +102,11 @@ public sealed class HomeKpisController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return Conflict(new { error = ex.Message });
+            return Conflict(new ApiErrorDto(ex.Message));
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new ApiErrorDto(ex.Message));
         }
         catch (Exception ex)
         {

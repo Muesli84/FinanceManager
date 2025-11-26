@@ -244,5 +244,3 @@ public sealed class AccountDetailViewModel : ViewModelBase
     public sealed record ContactDto(Guid Id, string Name);
     public sealed class BankContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 }
-
-public enum AccountType { Giro = 0, Savings = 1 }
