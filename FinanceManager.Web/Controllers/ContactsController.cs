@@ -6,7 +6,6 @@ using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
@@ -27,11 +26,6 @@ public sealed class ContactsController : ControllerBase
         _current = current;
         _logger = logger;
     }
-
-    public sealed record ContactCreateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
-    public sealed record ContactUpdateRequest([Required, MinLength(2)] string Name, ContactType Type, Guid? CategoryId, string? Description, bool? IsPaymentIntermediary);
-    public sealed record AliasCreateRequest([Required, MinLength(1)] string Pattern);
-    public sealed record ContactMergeRequest([Required] Guid TargetContactId);
 
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactDto>), StatusCodes.Status200OK)]
@@ -83,7 +77,7 @@ public sealed class ContactsController : ControllerBase
 
     [HttpPost]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateAsync([FromBody] ContactCreateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
@@ -94,7 +88,7 @@ public sealed class ContactsController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new ApiErrorDto(ex.Message));
         }
         catch (Exception ex)
         {
@@ -116,7 +110,7 @@ public sealed class ContactsController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new ApiErrorDto(ex.Message));
         }
         catch (Exception ex)
         {
@@ -192,7 +186,7 @@ public sealed class ContactsController : ControllerBase
 
     [HttpPost("{id:guid}/merge")]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> MergeAsync(Guid id, [FromBody] ContactMergeRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid)
@@ -206,7 +200,7 @@ public sealed class ContactsController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new ApiErrorDto(ex.Message));
         }
         catch (Exception ex)
         {
@@ -215,13 +209,15 @@ public sealed class ContactsController : ControllerBase
         }
     }
 
+    public sealed record CountResponse(int count);
+
     [HttpGet("count")]
     public async Task<IActionResult> CountAsync(CancellationToken ct = default)
     {
         try
         {
             var count = await _contacts.CountAsync(_current.UserId, ct);
-            return Ok(new { count });
+            return Ok(new CountResponse(count));
         }
         catch (Exception ex)
         {
@@ -273,5 +269,4 @@ public sealed class ContactsController : ControllerBase
             return Problem("Unexpected error", statusCode: 500);
         }
     }
-
 }
