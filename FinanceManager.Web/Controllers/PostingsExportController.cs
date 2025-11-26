@@ -2,6 +2,7 @@ using FinanceManager.Application; // for ICurrentUserService
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain;
 using FinanceManager.Infrastructure;
+using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Infrastructure; // added
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -32,24 +33,36 @@ public sealed class PostingsExportController : ControllerBase
     }
 
     [HttpGet("account/{accountId:guid}/export")]
-    public Task<IActionResult> ExportAccountAsync(Guid accountId, string format = "csv", DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default)
-        => ExportAsync(PostingKind.Bank, accountId, format, from, to, q, ct);
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<IActionResult> ExportAccountAsync(Guid accountId, [FromQuery] PostingExportRequest req, CancellationToken ct = default)
+        => ExportAsync(PostingKind.Bank, accountId, req, ct);
 
     [HttpGet("contact/{contactId:guid}/export")]
-    public Task<IActionResult> ExportContactAsync(Guid contactId, string format = "csv", DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default)
-        => ExportAsync(PostingKind.Contact, contactId, format, from, to, q, ct);
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<IActionResult> ExportContactAsync(Guid contactId, [FromQuery] PostingExportRequest req, CancellationToken ct = default)
+        => ExportAsync(PostingKind.Contact, contactId, req, ct);
 
     [HttpGet("savings-plan/{planId:guid}/export")]
-    public Task<IActionResult> ExportSavingsPlanAsync(Guid planId, string format = "csv", DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default)
-        => ExportAsync(PostingKind.SavingsPlan, planId, format, from, to, q, ct);
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<IActionResult> ExportSavingsPlanAsync(Guid planId, [FromQuery] PostingExportRequest req, CancellationToken ct = default)
+        => ExportAsync(PostingKind.SavingsPlan, planId, req, ct);
 
     [HttpGet("security/{securityId:guid}/export")]
-    public Task<IActionResult> ExportSecurityAsync(Guid securityId, string format = "csv", DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default)
-        => ExportAsync(PostingKind.Security, securityId, format, from, to, q, ct);
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<IActionResult> ExportSecurityAsync(Guid securityId, [FromQuery] PostingExportRequest req, CancellationToken ct = default)
+        => ExportAsync(PostingKind.Security, securityId, req, ct);
 
-    private async Task<IActionResult> ExportAsync(PostingKind kind, Guid contextId, string format, DateTime? from, DateTime? to, string? q, CancellationToken ct)
+    private async Task<IActionResult> ExportAsync(PostingKind kind, Guid contextId, PostingExportRequest req, CancellationToken ct)
     {
-        if (!TryParseFormat(format, out var exportFormat))
+        if (!TryParseFormat(req.Format, out var exportFormat))
         {
             return Problem(title: "Invalid format", detail: "Supported formats are 'csv' and 'xlsx'.", statusCode: StatusCodes.Status400BadRequest);
         }
@@ -97,9 +110,9 @@ public sealed class PostingsExportController : ControllerBase
             ContextId: contextId,
             Format: exportFormat,
             MaxRows: maxRows,
-            From: from,
-            To: to,
-            Q: q);
+            From: req.From,
+            To: req.To,
+            Q: req.Q);
 
         try
         {
