@@ -3,7 +3,6 @@ using FinanceManager.Application.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
@@ -32,17 +31,10 @@ public sealed class AdminIpBlocksController : ControllerBase
         return Ok(list);
     }
 
-    public sealed class CreateRequest
-    {
-        [Required, MaxLength(64)] public string IpAddress { get; set; } = string.Empty;
-        [MaxLength(200)] public string? Reason { get; set; }
-        public bool IsBlocked { get; set; } = true;
-    }
-
     [HttpPost]
     [ProducesResponseType(typeof(IpBlockDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> CreateAsync([FromBody] CreateRequest req, CancellationToken ct)
+    public async Task<IActionResult> CreateAsync([FromBody] IpBlockCreateRequest req, CancellationToken ct)
     {
         if (!_current.IsAdmin) return Forbid();
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
@@ -72,16 +64,10 @@ public sealed class AdminIpBlocksController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
-    public sealed class UpdateRequest
-    {
-        [MaxLength(200)] public string? Reason { get; set; }
-        public bool? IsBlocked { get; set; }
-    }
-
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(IpBlockDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] UpdateRequest req, CancellationToken ct)
+    public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] IpBlockUpdateRequest req, CancellationToken ct)
     {
         if (!_current.IsAdmin) return Forbid();
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
@@ -92,7 +78,7 @@ public sealed class AdminIpBlocksController : ControllerBase
     [HttpPost("{id:guid}/block")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> BlockAsync(Guid id, [FromBody] UpdateRequest req, CancellationToken ct)
+    public async Task<IActionResult> BlockAsync(Guid id, [FromBody] IpBlockUpdateRequest req, CancellationToken ct)
     {
         if (!_current.IsAdmin) return Forbid();
         var ok = await _service.BlockAsync(id, req.Reason, ct);
