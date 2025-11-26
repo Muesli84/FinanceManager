@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.Net.Mime;
 using FinanceManager.Application.Users;
 using Microsoft.AspNetCore.Mvc;
@@ -48,19 +47,6 @@ public sealed class AdminUsersController : ControllerBase
             return Problem("Unexpected error", statusCode: 500);
         }
     }
-
-    public sealed record CreateUserRequest([
-        Required, MinLength(3)] string Username,
-        [Required, MinLength(6)] string Password,
-        bool IsAdmin);
-
-    public sealed record UpdateUserRequest(
-        [MinLength(3)] string? Username,
-        bool? IsAdmin,
-        bool? Active,
-        string? PreferredLanguage);
-
-    public sealed record ResetPasswordRequest([Required, MinLength(6)] string NewPassword);
 
     [HttpPost]
     [ProducesResponseType(typeof(UserAdminDto), StatusCodes.Status201Created)]
