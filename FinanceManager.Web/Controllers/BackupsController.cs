@@ -35,18 +35,19 @@ public sealed class BackupsController : ControllerBase
     [RequestSizeLimit(1_024_000_000)]
     [RequestFormLimits(MultipartBodyLengthLimit = 1_024_000_000)]
     [ProducesResponseType(typeof(BackupDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UploadAsync([FromForm] IFormFile file, CancellationToken ct)
     {
         try
         {
-            if (file == null || file.Length == 0) { return BadRequest("Keine Datei ausgewählt."); }
+            if (file == null || file.Length == 0) { return BadRequest(new ApiErrorDto("Keine Datei ausgewählt.")); }
             await using var s = file.OpenReadStream();
             var dto = await _svc.UploadAsync(_current.UserId, s, file.FileName, ct);
             return Ok(dto);
         }
         catch (FileLoadException)
         {
-            return BadRequest("Ein Backup mit dem Dateinamen ist bereits vorhanden.");
+            return BadRequest(new ApiErrorDto("Ein Backup mit dem Dateinamen ist bereits vorhanden."));
         }
     }
 
@@ -61,14 +62,19 @@ public sealed class BackupsController : ControllerBase
 
     // Legacy immediate apply (kept for compatibility)
     [HttpPost("{id:guid}/apply")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ApplyAsync(Guid id, CancellationToken ct)
     {
         var ok = await _svc.ApplyAsync(_current.UserId, id, (s1, i1, i2, i3, i4) => { }, ct);
         return ok ? NoContent() : NotFound();
     }
 
+    private sealed record BackupRestorePayload(Guid BackupId);
+
     // Background restore via generic background task queue
     [HttpPost("{id:guid}/apply/start")]
+    [ProducesResponseType(typeof(BackupRestoreStatusDto), StatusCodes.Status200OK)]
     public IActionResult StartApplyAsync(Guid id)
     {
         // Check existing queued/running restore for user
@@ -80,12 +86,13 @@ public sealed class BackupsController : ControllerBase
         {
             return Ok(MapStatus(existing));
         }
-        var payload = new { BackupId = id };
+        var payload = new BackupRestorePayload(id);
         var info = _taskManager.Enqueue(BackgroundTaskType.BackupRestore, _current.UserId, payload, allowDuplicate: false);
         return Ok(MapStatus(info));
     }
 
     [HttpGet("restore/status")]
+    [ProducesResponseType(typeof(BackupRestoreStatusDto), StatusCodes.Status200OK)]
     public IActionResult GetStatus()
     {
         var tasks = _taskManager.GetAll()
@@ -95,12 +102,13 @@ public sealed class BackupsController : ControllerBase
         var active = tasks.FirstOrDefault(t => t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued) ?? tasks.FirstOrDefault();
         if (active == null)
         {
-            return Ok(new { running = false });
+            return Ok(new BackupRestoreStatusDto(false, 0, 0, null, null, 0, 0, null));
         }
         return Ok(MapStatus(active));
     }
 
     [HttpPost("restore/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public IActionResult Cancel()
     {
         var running = _taskManager.GetAll().FirstOrDefault(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.BackupRestore && t.Status == BackgroundTaskStatus.Running);
@@ -112,26 +120,27 @@ public sealed class BackupsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(Guid id, CancellationToken ct)
     {
         var ok = await _svc.DeleteAsync(_current.UserId, id, ct);
         return ok ? NoContent() : NotFound();
     }
 
-    private static object MapStatus(BackgroundTaskInfo info)
+    private static BackupRestoreStatusDto MapStatus(BackgroundTaskInfo info)
     {
         var running = info.Status == BackgroundTaskStatus.Running || info.Status == BackgroundTaskStatus.Queued;
         var error = info.Status == BackgroundTaskStatus.Failed ? (info.ErrorDetail ?? info.Message) : null;
-        return new
-        {
+        return new BackupRestoreStatusDto(
             running,
-            processed = info.Processed ?? 0,
-            total = info.Total ?? 0,
-            message = info.Message,
+            info.Processed ?? 0,
+            info.Total ?? 0,
+            info.Message,
             error,
-            processed2 = info.Processed2 ?? 0,
-            total2 = info.Total2 ?? 0,
-            message2 = info.Message2
-        };
+            info.Processed2 ?? 0,
+            info.Total2 ?? 0,
+            info.Message2
+        );
     }
 }
