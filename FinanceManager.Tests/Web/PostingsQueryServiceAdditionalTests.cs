@@ -59,7 +59,7 @@ namespace FinanceManager.Tests.Web
             Assert.NotNull(res);
             Assert.Single(res);
             var dto = res[0];
-            Assert.Equal((int)PostingKind.Bank, dto.Kind);
+            Assert.Equal(PostingKind.Bank, dto.Kind);
             Assert.Equal(acc.Id, dto.BankPostingAccountId);
             Assert.Equal(sym, dto.BankPostingAccountSymbolAttachmentId);
         }
@@ -81,7 +81,7 @@ namespace FinanceManager.Tests.Web
             var res = await svc.GetSavingsPlanPostingsAsync(plan.Id, 0, 50, null, null, null, owner);
             Assert.NotNull(res);
             Assert.Single(res);
-            Assert.Equal((int)PostingKind.SavingsPlan, res[0].Kind);
+            Assert.Equal(PostingKind.SavingsPlan, res[0].Kind);
             Assert.Equal(plan.Id, res[0].SavingsPlanId);
         }
 
@@ -102,7 +102,7 @@ namespace FinanceManager.Tests.Web
             var res = await svc.GetSecurityPostingsAsync(sec.Id, 0, 50, null, null, owner);
             Assert.NotNull(res);
             Assert.Single(res);
-            Assert.Equal((int)PostingKind.Security, res[0].Kind);
+            Assert.Equal(PostingKind.Security, res[0].Kind);
             Assert.Equal(sec.Id, res[0].SecurityId);
         }
 

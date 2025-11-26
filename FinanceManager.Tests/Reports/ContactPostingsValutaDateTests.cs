@@ -100,7 +100,7 @@ public sealed class ContactPostingsValutaDateTests
         var analysis = new DateTime(year, 2, 1);
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Contact,
+            PostingKind: PostingKind.Contact,
             Interval: ReportInterval.Month,
             Take: 12,
             IncludeCategory: false,
@@ -197,7 +197,7 @@ public sealed class ContactPostingsValutaDateTests
         var analysis = new DateTime(year, 2, 1);
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Contact,
+            PostingKind: PostingKind.Contact,
             Interval: ReportInterval.Month,
             Take: 12,
             IncludeCategory: false,

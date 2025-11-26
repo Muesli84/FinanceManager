@@ -93,7 +93,7 @@ public sealed class ReportAggregationServiceTests
 
         var sut = new ReportAggregationService(db);
         // Take groﬂ genug, um alle 33 Monate abzudecken
-        var query = new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 40, IncludeCategory: true, ComparePrevious: true, CompareYear: true);
+        var query = new ReportAggregationQuery(user.Id, PostingKind.Contact, ReportInterval.Month, 40, IncludeCategory: true, ComparePrevious: true, CompareYear: true);
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
         Assert.NotNull(result);
@@ -179,7 +179,7 @@ public sealed class ReportAggregationServiceTests
         await db.SaveChangesAsync();
 
         var sut = new ReportAggregationService(db);
-        var query = new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Ytd, 40, IncludeCategory: true, ComparePrevious: true, CompareYear: true);
+        var query = new ReportAggregationQuery(user.Id, PostingKind.Contact, ReportInterval.Ytd, 40, IncludeCategory: true, ComparePrevious: true, CompareYear: true);
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
         Assert.Equal(ReportInterval.Ytd, result.Interval);
@@ -291,13 +291,13 @@ public sealed class ReportAggregationServiceTests
         // Multi-kinds: Bank + Contact
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Bank, // primary kind irrelevant when PostingKinds provided
+            PostingKind: PostingKind.Bank, // primary kind irrelevant when PostingKinds provided
             Interval: ReportInterval.Month,
             Take: 12,
             IncludeCategory: false,
             ComparePrevious: false,
             CompareYear: false,
-            PostingKinds: new[] { (int)PostingKind.Bank, (int)PostingKind.Contact },
+            PostingKinds: new[] { PostingKind.Bank, PostingKind.Contact },
             AnalysisDate: m2,
             Filters: filters);
 
@@ -375,7 +375,7 @@ public sealed class ReportAggregationServiceTests
         );
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Security,
+            PostingKind: PostingKind.Security,
             Interval: ReportInterval.Month,
             Take: 12,
             IncludeCategory: true,
@@ -442,7 +442,7 @@ public sealed class ReportAggregationServiceTests
 
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Security,
+            PostingKind: PostingKind.Security,
             Interval: ReportInterval.Month,
             Take: 12,
             IncludeCategory: true,
@@ -511,7 +511,7 @@ public sealed class ReportAggregationServiceTests
 
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Security,
+            PostingKind: PostingKind.Security,
             Interval: ReportInterval.Month,
             Take: 12,
             IncludeCategory: true,
@@ -700,7 +700,7 @@ public sealed class ReportAggregationServiceTests
 
         async Task AssertForKindAsync(PostingKind kind, Guid? id1, Guid? id2)
         {
-            var q = new ReportAggregationQuery(user.Id, (int)kind, ReportInterval.Month, 24, IncludeCategory: false, ComparePrevious: true, CompareYear: true, PostingKinds: null, AnalysisDate: analysis, Filters: null);
+            var q = new ReportAggregationQuery(user.Id, kind, ReportInterval.Month, 24, IncludeCategory: false, ComparePrevious: true, CompareYear: true, PostingKinds: null, AnalysisDate: analysis, Filters: null);
             var result = await sut.QueryAsync(q, CancellationToken.None);
             Assert.Equal(ReportInterval.Month, result.Interval);
             Assert.True(result.ComparedPrevious);
@@ -757,7 +757,7 @@ public sealed class ReportAggregationServiceTests
             SavingsPlanCategoryIds: null,
             SecurityCategoryIds: null);
 
-        var q = new ReportAggregationQuery(user.Id, (int)PostingKind.Bank, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: true, PostingKinds: null, AnalysisDate: analysis, Filters: filters);
+        var q = new ReportAggregationQuery(user.Id, PostingKind.Bank, ReportInterval.Month, 12, IncludeCategory: false, ComparePrevious: true, CompareYear: true, PostingKinds: null, AnalysisDate: analysis, Filters: filters);
         var result = await sut.QueryAsync(q, CancellationToken.None);
         Assert.Empty(result.Points);
     }
@@ -815,7 +815,7 @@ public sealed class ReportAggregationServiceTests
 
         var q = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Bank,
+            PostingKind: PostingKind.Bank,
             Interval: interval,
             Take: 24,
             IncludeCategory: false,

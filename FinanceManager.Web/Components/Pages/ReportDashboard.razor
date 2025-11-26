@@ -38,7 +38,7 @@ else
                     <div class="multi-kind-list">
                         @foreach(var kind in _postingKindValues)
                         {
-                            var v = (int)kind;
+                            var v = kind;
                             var checkedAttr = _selectedKinds.Contains(v);
                             var label = Localizer[$"PostingKind_{kind}"];
                             <label class="mk-item"><input type="checkbox" value="@v" checked="@checkedAttr" @onchange="e => OnToggleKind(v, e.Value is bool b && b)" /> @label</label>
@@ -296,7 +296,7 @@ else
                     <div class="tabs-bar" role="tablist">
                         @foreach (var k in _selectedKinds)
                         {
-                            var kind = (PostingKind)k;
+                            var kind = k;
                             var isActive = k == _vm!.GetActiveFilterTabKind();
                             var cls = isActive ? "tab-btn active" : "tab-btn";
                             <button type="button" class="@cls" role="tab" aria-selected="@isActive" @onclick="(()=> { _vm!.ActiveFilterTabKind = k; StateHasChanged(); })">@Localizer[$"PostingKind_{kind}"]</button>
@@ -307,8 +307,8 @@ else
                     @foreach (var opt in _vm!.GetOptionsForKind(_vm!.GetActiveFilterTabKind()))
                     {
                         var currentKind = (PostingKind)_vm!.GetActiveFilterTabKind();
-                        var sel = _vm!.IsOptionSelectedTemp((int)currentKind, opt.Id);
-                        <label class="mk-item line"><input type="checkbox" checked="@sel" @onchange="e => _vm!.ToggleTempForKind((int)currentKind, opt.Id, e.Value is bool b && b)" /> @opt.Name</label>
+                        var sel = _vm!.IsOptionSelectedTemp(currentKind, opt.Id);
+                        <label class="mk-item line"><input type="checkbox" checked="@sel" @onchange="e => _vm!.ToggleTempForKind(currentKind, opt.Id, e.Value is bool b && b)" /> @opt.Name</label>
                     }
                     @if (_vm!.GetOptionsForKind(_vm!.GetActiveFilterTabKind()).Count == 0)
                     {
@@ -364,7 +364,7 @@ else
     private readonly Dictionary<string, Guid?> _savingsCategorySymbolByName = new();
     private readonly Dictionary<string, Guid?> _securityCategorySymbolByName = new();
 
-    private List<int> _selectedKinds = new(){ (int)PostingKind.Bank }; // multi selection
+    private List<PostingKind> _selectedKinds = new() { PostingKind.Bank }; // multi selection
     private ReportInterval _interval = ReportInterval.Month;
     private bool _includeCategory;
     private bool _comparePrevious;
@@ -378,8 +378,8 @@ else
     private readonly PostingKind[] _postingKindValues = new[]{ PostingKind.Bank, PostingKind.Contact, PostingKind.SavingsPlan, PostingKind.Security };
 
     private bool IsMulti => _selectedKinds.Count > 1;
-    private int PrimaryKind => _selectedKinds.First();
-    private bool IsCategorySupported(int kind) => kind == (int)PostingKind.Contact || kind == (int)PostingKind.SavingsPlan || kind == (int)PostingKind.Security;
+    private PostingKind PrimaryKind => _selectedKinds.First();
+    private bool IsCategorySupported(PostingKind kind) => kind == PostingKind.Contact || kind == PostingKind.SavingsPlan || kind == PostingKind.Security;
     private bool IsCategoryGroupingSingle => !IsMulti && _includeCategory && IsCategorySupported(PrimaryKind);
     private bool ShowCategoryColumn => _includeCategory && !IsCategoryGroupingSingle;
     private bool ShowPreviousColumns => _comparePrevious && _interval is not ReportInterval.Year and not ReportInterval.Ytd;
@@ -817,7 +817,7 @@ else
         SetUseValuta(string.Equals(v, "valuta", StringComparison.OrdinalIgnoreCase));
     }
 
-    private void OnToggleKind(int value, bool isChecked)
+    private void OnToggleKind(PostingKind value, bool isChecked)
     {
         var beforePrimary = PrimaryKind;
         if (isChecked)
@@ -829,7 +829,7 @@ else
             _selectedKinds.Remove(value);
             if (_selectedKinds.Count == 0)
             {
-                _selectedKinds.Add((int)PostingKind.Bank);
+                _selectedKinds.Add(PostingKind.Bank);
             }
         }
         _selectedKinds = _selectedKinds.Distinct().ToList();
@@ -887,7 +887,7 @@ else
     {
         _vm!.ActiveFavoriteId = fav.Id;
         _vm!.FavoriteName = fav.Name;
-        _selectedKinds = fav.PostingKinds?.Count > 0 ? fav.PostingKinds.Select(x=>x).ToList() : new List<int>{ fav.PostingKind };
+        _selectedKinds = fav.PostingKinds?.Count > 0 ? fav.PostingKinds.Select(x => x).ToList() : new List<PostingKind> { fav.PostingKind };
         _includeCategory = fav.IncludeCategory;
         _includeDividendRelated = fav.Filters?.IncludeDividendRelated ?? false;
         _interval = (ReportInterval)fav.Interval;

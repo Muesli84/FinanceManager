@@ -174,7 +174,7 @@ public sealed class SecurityDividendsYtdScenarioTests
         var analysis = new DateTime(2025, 10, 8);
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Security,
+            PostingKind: PostingKind.Security,
             Interval: ReportInterval.Ytd,
             Take: 24,
             IncludeCategory: false,

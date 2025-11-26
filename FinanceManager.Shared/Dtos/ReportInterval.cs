@@ -1,4 +1,4 @@
-namespace FinanceManager.Domain.Reports;
+namespace FinanceManager.Shared.Dtos;
 
 /// <summary>
 /// Interval granularity for configurable aggregate reports. YTD represents a cumulative year-to-date view.

@@ -3,10 +3,12 @@ using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Reports;
 using FinanceManager.Infrastructure; // DbContext
 using FinanceManager.Infrastructure.Setup; // SchemaPatcher
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
+using static FinanceManager.Web.ViewModels.PostingsSavingsPlanViewModel;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -26,47 +28,10 @@ public sealed class ReportAggregatesController : ControllerBase
         _agg = agg; _current = current; _logger = logger; _db = db; _loggerFactory = loggerFactory;
     }
 
-    public sealed record FiltersRequest(
-        IReadOnlyCollection<Guid>? AccountIds,
-        IReadOnlyCollection<Guid>? ContactIds,
-        IReadOnlyCollection<Guid>? SavingsPlanIds,
-        IReadOnlyCollection<Guid>? SecurityIds,
-        IReadOnlyCollection<Guid>? ContactCategoryIds,
-        IReadOnlyCollection<Guid>? SavingsPlanCategoryIds,
-        IReadOnlyCollection<Guid>? SecurityCategoryIds,
-        IReadOnlyCollection<int>? SecuritySubTypes, // new
-        bool? IncludeDividendRelated // new
-    )
-    {
-        public ReportAggregationFilters ToModel() => new(
-            AccountIds,
-            ContactIds,
-            SavingsPlanIds,
-            SecurityIds,
-            ContactCategoryIds,
-            SavingsPlanCategoryIds,
-            SecurityCategoryIds,
-            SecuritySubTypes,
-            IncludeDividendRelated
-        );
-    }
-
-    public sealed record QueryRequest(
-        int PostingKind,
-        ReportInterval Interval,
-        int Take = 24,
-        bool IncludeCategory = false,
-        bool ComparePrevious = false,
-        bool CompareYear = false,
-        bool UseValutaDate = false,
-        IReadOnlyCollection<int>? PostingKinds = null, // neu: Multi aus Body
-        DateTime? AnalysisDate = null, // neu: optionales Analysedatum (Monatsgenau)
-        FiltersRequest? Filters = null // neu: optionale Entitäts-/Kategorie-Filter
-    );
-
     [HttpPost]
     [ProducesResponseType(typeof(ReportAggregationResult), StatusCodes.Status200OK)]
-    public async Task<IActionResult> QueryAsync([FromBody] QueryRequest req, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> QueryAsync([FromBody] ReportAggregatesQueryRequest req, CancellationToken ct)
     {
         try
         {
@@ -76,7 +41,7 @@ public sealed class ReportAggregatesController : ControllerBase
             }
 
             // Fallback: Query-String (?postingKinds=0,1,2) nur nutzen, wenn im Body nichts gesendet wurde
-            IReadOnlyCollection<int>? multi = req.PostingKinds;
+            IReadOnlyCollection<PostingKind>? multi = req.PostingKinds;
             if ((multi == null || multi.Count == 0))
             {
                 var kindsParam = Request.Query["postingKinds"].FirstOrDefault();
@@ -86,7 +51,7 @@ public sealed class ReportAggregatesController : ControllerBase
                         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                         .Select(s => int.TryParse(s, out var v) ? v : (int?)null)
                         .Where(v => v.HasValue)
-                        .Select(v => v!.Value)
+                        .Select(v => (PostingKind)v!.Value)
                         .Distinct()
                         .ToArray();
                 }
@@ -110,7 +75,20 @@ public sealed class ReportAggregatesController : ControllerBase
                 analysisDate = new DateTime(d.Year, d.Month, 1);
             }
 
-            var filters = req.Filters?.ToModel();
+            ReportAggregationFilters? filters = null;
+            if (req.Filters != null)
+            {
+                filters = new ReportAggregationFilters(
+                    req.Filters.AccountIds,
+                    req.Filters.ContactIds,
+                    req.Filters.SavingsPlanIds,
+                    req.Filters.SecurityIds,
+                    req.Filters.ContactCategoryIds,
+                    req.Filters.SavingsPlanCategoryIds,
+                    req.Filters.SecurityCategoryIds,
+                    req.Filters.SecuritySubTypes,
+                    req.Filters.IncludeDividendRelated);
+            }
 
             var query = new ReportAggregationQuery(
                 _current.UserId,
@@ -144,7 +122,16 @@ public sealed class ReportAggregatesController : ControllerBase
                     req.PostingKinds,
                     req.AnalysisDate,
                     req.UseValutaDate,
-                    req.Filters?.ToModel());
+                    req.Filters == null ? null : new ReportAggregationFilters(
+                        req.Filters.AccountIds,
+                        req.Filters.ContactIds,
+                        req.Filters.SavingsPlanIds,
+                        req.Filters.SecurityIds,
+                        req.Filters.ContactCategoryIds,
+                        req.Filters.SavingsPlanCategoryIds,
+                        req.Filters.SecurityCategoryIds,
+                        req.Filters.SecuritySubTypes,
+                        req.Filters.IncludeDividendRelated));
                 var result = await _agg.QueryAsync(query, ct);
                 return Ok(result);
             }

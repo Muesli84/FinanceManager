@@ -116,7 +116,7 @@ public sealed class SecurityDividendNetYtdSimpleTests
         var analysis = new DateTime(year, 6, 1);
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Security,
+            PostingKind: PostingKind.Security,
             Interval: ReportInterval.Ytd,
             Take: 12,
             IncludeCategory: false,

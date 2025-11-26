@@ -60,7 +60,7 @@ public sealed class ReportAggregationServiceSecurityMixedSubTypesTests
         var sut = new ReportAggregationService(db);
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Security,
+            PostingKind: PostingKind.Security,
             Interval: ReportInterval.Month,
             Take: 12,
             IncludeCategory: false,

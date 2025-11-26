@@ -113,7 +113,7 @@ public sealed class ReportAggregation_ValutaBookingTests
         var analysis = new DateTime(2025,9,1);
         var query = new ReportAggregationQuery(
             OwnerUserId: owner.Id,
-            PostingKind: (int)PostingKind.Contact,
+            PostingKind: PostingKind.Contact,
             Interval: ReportInterval.Month,
             Take: 24,
             IncludeCategory: false,
@@ -181,7 +181,7 @@ public sealed class ReportAggregation_ValutaBookingTests
         var analysis = new DateTime(2025,9,1);
         var query = new ReportAggregationQuery(
             OwnerUserId: owner.Id,
-            PostingKind: (int)PostingKind.Contact,
+            PostingKind: PostingKind.Contact,
             Interval: ReportInterval.Month,
             Take: 24,
             IncludeCategory: false,

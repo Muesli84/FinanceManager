@@ -68,7 +68,7 @@ public sealed class ReportAggregationServiceMultiKindTests
         await db.SaveChangesAsync();
 
         var sut = new ReportAggregationService(db);
-        var query = new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: true, ComparePrevious: false, CompareYear: false, PostingKinds: new []{ (int)PostingKind.Contact, (int)PostingKind.SavingsPlan });
+        var query = new ReportAggregationQuery(user.Id, PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: true, ComparePrevious: false, CompareYear: false, PostingKinds: new []{ PostingKind.Contact, PostingKind.SavingsPlan });
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
         // Expect type rows for both kinds in latest month (feb)
@@ -112,7 +112,7 @@ public sealed class ReportAggregationServiceMultiKindTests
         await db.SaveChangesAsync();
 
         var sut = new ReportAggregationService(db);
-        var query = new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 6, IncludeCategory: false, ComparePrevious: false, CompareYear: false, PostingKinds: new []{ (int)PostingKind.Contact, (int)PostingKind.SavingsPlan });
+        var query = new ReportAggregationQuery(user.Id, PostingKind.Contact, ReportInterval.Month, 6, IncludeCategory: false, ComparePrevious: false, CompareYear: false, PostingKinds: new []{ PostingKind.Contact, PostingKind.SavingsPlan });
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
         // Type rows exist and sum entity amounts

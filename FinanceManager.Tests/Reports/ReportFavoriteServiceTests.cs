@@ -33,7 +33,7 @@ public sealed class ReportFavoriteServiceTests
         db.Users.Add(user); await db.SaveChangesAsync();
         var svc = new ReportFavoriteService(db);
 
-        var dto = await svc.CreateAsync(user.Id, new ReportFavoriteCreateRequest("MyFav",  (int)PostingKind.Contact, true, ReportInterval.Month, true, false, true, true), CancellationToken.None);
+        var dto = await svc.CreateAsync(user.Id, new ReportFavoriteCreateRequest("MyFav",  PostingKind.Contact, true, ReportInterval.Month, true, false, true, true), CancellationToken.None);
         Assert.NotEqual(Guid.Empty, dto.Id);
         Assert.Equal("MyFav", dto.Name);
         Assert.True(dto.IncludeCategory);
