@@ -1,12 +1,9 @@
 using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace FinanceManager.Web.Controllers
 {
@@ -27,21 +24,23 @@ namespace FinanceManager.Web.Controllers
         }
 
         [HttpPost("rebuild")] 
+        [ProducesResponseType(typeof(AggregatesRebuildStatusDto), StatusCodes.Status202Accepted)]
         public IActionResult RebuildAsync([FromQuery] bool allowDuplicate = false)
         {
             var existing = _tasks.GetAll()
                 .FirstOrDefault(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.RebuildAggregates && (t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued));
             if (existing != null && !allowDuplicate)
             {
-                return Accepted(new { running = true, processed = existing.Processed ?? 0, total = existing.Total ?? 0, message = existing.Message });
+                return Accepted(new AggregatesRebuildStatusDto(true, existing.Processed ?? 0, existing.Total ?? 0, existing.Message));
             }
 
             var info = _tasks.Enqueue(BackgroundTaskType.RebuildAggregates, _current.UserId, payload: null, allowDuplicate: allowDuplicate);
             _logger.LogInformation("Enqueued rebuild aggregates task {TaskId} for user {UserId}", info.Id, _current.UserId);
-            return Accepted(new { running = true, processed = 0, total = 0, message = "Queued" });
+            return Accepted(new AggregatesRebuildStatusDto(true, 0, 0, "Queued"));
         }
 
         [HttpGet("rebuild/status")] 
+        [ProducesResponseType(typeof(AggregatesRebuildStatusDto), StatusCodes.Status200OK)]
         public IActionResult GetRebuildStatus()
         {
             var task = _tasks.GetAll()
@@ -51,9 +50,9 @@ namespace FinanceManager.Web.Controllers
 
             if (task == null)
             {
-                return Ok(new { running = false, processed = 0, total = 0, message = (string?)null });
+                return Ok(new AggregatesRebuildStatusDto(false, 0, 0, null));
             }
-            return Ok(new { running = true, processed = task.Processed ?? 0, total = task.Total ?? 0, message = task.Message });
+            return Ok(new AggregatesRebuildStatusDto(true, task.Processed ?? 0, task.Total ?? 0, task.Message));
         }
     }
 }
