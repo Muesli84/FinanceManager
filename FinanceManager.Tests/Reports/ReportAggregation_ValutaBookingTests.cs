@@ -1,19 +1,11 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Domain;
+using FinanceManager.Application.Reports;
+using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
-using FinanceManager.Infrastructure.Reports;
 using FinanceManager.Infrastructure.Aggregates;
-using FinanceManager.Application.Reports;
-using FinanceManager.Domain.Reports;
-using FinanceManager.Shared.Dtos;
+using FinanceManager.Infrastructure.Reports;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
-using FinanceManager.Domain.Contacts;
 
 namespace FinanceManager.Tests.Reports;
 
@@ -110,7 +102,7 @@ public sealed class ReportAggregation_ValutaBookingTests
         }
         await db.SaveChangesAsync(ct);
 
-        var analysis = new DateTime(2025,9,1);
+        var analysis = new DateTime(2025, 9, 1);
         var query = new ReportAggregationQuery(
             OwnerUserId: owner.Id,
             PostingKind: PostingKind.Contact,
@@ -127,7 +119,7 @@ public sealed class ReportAggregation_ValutaBookingTests
 
         var result = await svc.QueryAsync(query, ct);
         Assert.Equal(ReportInterval.Month, result.Interval);
-        var periodStart = new DateTime(2025,9,1);
+        var periodStart = new DateTime(2025, 9, 1);
         var row = result.Points.Single(p => p.GroupKey == $"Contact:{contact.Id}" && p.PeriodStart == periodStart);
         // Expect only two rows with valuta in Sep 2025: -1 and -13.56 => sum -14.56
         Assert.Equal(-14.56m, row.Amount, 3);
@@ -178,7 +170,7 @@ public sealed class ReportAggregation_ValutaBookingTests
         }
         await db.SaveChangesAsync(ct);
 
-        var analysis = new DateTime(2025,9,1);
+        var analysis = new DateTime(2025, 9, 1);
         var query = new ReportAggregationQuery(
             OwnerUserId: owner.Id,
             PostingKind: PostingKind.Contact,
@@ -195,7 +187,7 @@ public sealed class ReportAggregation_ValutaBookingTests
 
         var result = await svc.QueryAsync(query, ct);
         Assert.Equal(ReportInterval.Month, result.Interval);
-        var periodStart = new DateTime(2025,9,1);
+        var periodStart = new DateTime(2025, 9, 1);
         var row = result.Points.Single(p => p.GroupKey == $"Contact:{contact.Id}" && p.PeriodStart == periodStart);
         // Expect sum of bookings in Sep 2025: computed manually = -38.61
         Assert.Equal(-38.61m, row.Amount, 3);

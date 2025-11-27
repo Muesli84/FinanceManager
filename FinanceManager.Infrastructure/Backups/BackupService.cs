@@ -1,15 +1,12 @@
 using FinanceManager.Application.Backups;
+using FinanceManager.Application.Statements;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
-using static iText.StyledXmlParser.Jsoup.Select.Evaluator;
-using Microsoft.Extensions.DependencyInjection;
-using FinanceManager.Application.Aggregates;
-using FinanceManager.Application.Statements;
-using FinanceManager.Domain.Reports;
 
 namespace FinanceManager.Infrastructure.Backups;
 
@@ -171,7 +168,7 @@ public sealed class BackupService : IBackupService
             progressCallback(e.StepDescription, e.Step, e.Total, e.SubStep, e.SubTotal);
         };
         await importerLegacy.ImportAsync(userId, ndjson, replaceExisting: true, ct);
-        return true;        
+        return true;
     }
 
     private static async Task<(bool ok, MemoryStream? content)> ReadNdjsonAsync(string filePath, CancellationToken ct)

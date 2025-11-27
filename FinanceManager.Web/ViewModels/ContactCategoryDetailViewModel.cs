@@ -1,8 +1,5 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Http.Json;
-using FinanceManager.Domain.Attachments;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.ViewModels;
 

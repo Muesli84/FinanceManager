@@ -1,12 +1,9 @@
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
+using FinanceManager.Application;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
-using FinanceManager.Application;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 
 namespace FinanceManager.Tests.ViewModels;
 
@@ -127,7 +124,7 @@ public sealed class PostingsAccountViewModelTests
         var vm = new PostingsAccountViewModel(CreateSp(), new TestHttpClientFactory(CreateHttpClient(_ => new HttpResponseMessage(HttpStatusCode.OK))));
         vm.Configure(Guid.Parse("11111111-1111-1111-1111-111111111111"));
         vm.SetSearch("test q");
-        vm.SetRange(new DateTime(2024,1,2), new DateTime(2024,2,3));
+        vm.SetRange(new DateTime(2024, 1, 2), new DateTime(2024, 2, 3));
 
         var url = vm.GetExportUrl("csv");
 

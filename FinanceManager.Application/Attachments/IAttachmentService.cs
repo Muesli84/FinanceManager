@@ -1,5 +1,4 @@
 using FinanceManager.Domain.Attachments;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Application.Attachments;
 

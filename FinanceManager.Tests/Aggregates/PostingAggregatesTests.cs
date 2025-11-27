@@ -1,19 +1,12 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Domain;
+using FinanceManager.Application.Aggregates;
+using FinanceManager.Domain.Accounts; // for Account, AccountType
+using FinanceManager.Domain.Contacts; // for Contact
 using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
-using FinanceManager.Application.Aggregates;
-using FinanceManager.Infrastructure.Aggregates;
-using FinanceManager.Domain.Accounts; // for Account, AccountType
-using FinanceManager.Domain.Contacts; // for Contact
-using FinanceManager.Shared.Dtos; // for ContactType
 
 namespace FinanceManager.Tests.Aggregates;
 
@@ -128,9 +121,9 @@ public sealed class PostingAggregatesTests
 
         var year = 2020;
         // p1: booking Jan 10, valuta Jan 31 -> both in Jan
-        var p1 = new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.Bank, accountId, null, null, null, new DateTime(year,1,10), new DateTime(year,1,31), 100m, null, null, null, null, null);
+        var p1 = new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.Bank, accountId, null, null, null, new DateTime(year, 1, 10), new DateTime(year, 1, 31), 100m, null, null, null, null, null);
         // p2: booking Jan 11, valuta Feb 1 -> booking Jan, valuta Feb
-        var p2 = new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.Bank, accountId, null, null, null, new DateTime(year,1,11), new DateTime(year,2,1), 200m, null, null, null, null, null);
+        var p2 = new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.Bank, accountId, null, null, null, new DateTime(year, 1, 11), new DateTime(year, 2, 1), 200m, null, null, null, null, null);
 
         // add postings to DB and run rebuild
         db.Postings.AddRange(p1, p2);
@@ -140,14 +133,14 @@ public sealed class PostingAggregatesTests
         await svc.RebuildForUserAsync(userId, (done, total) => { }, ct);
 
         // Booking aggregates: Jan should sum both = 300
-        var janStart = new DateTime(year,1,1);
+        var janStart = new DateTime(year, 1, 1);
         var bookingJan = await db.PostingAggregates.Where(a => a.Kind == PostingKind.Bank && a.AccountId == accountId && a.Period == AggregatePeriod.Month && a.PeriodStart == janStart && a.DateKind == AggregateDateKind.Booking).SingleAsync();
         Assert.Equal(300m, bookingJan.Amount);
 
         // Valuta aggregates: Jan = 100, Feb = 200
         var valutaJan = await db.PostingAggregates.Where(a => a.Kind == PostingKind.Bank && a.AccountId == accountId && a.Period == AggregatePeriod.Month && a.PeriodStart == janStart && a.DateKind == AggregateDateKind.Valuta).SingleAsync();
         Assert.Equal(100m, valutaJan.Amount);
-        var febStart = new DateTime(year,2,1);
+        var febStart = new DateTime(year, 2, 1);
         var valutaFeb = await db.PostingAggregates.Where(a => a.Kind == PostingKind.Bank && a.AccountId == accountId && a.Period == AggregatePeriod.Month && a.PeriodStart == febStart && a.DateKind == AggregateDateKind.Valuta).SingleAsync();
         Assert.Equal(200m, valutaFeb.Amount);
     }

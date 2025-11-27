@@ -1,22 +1,15 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Application.Attachments;
 using FinanceManager.Domain.Attachments;
-using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
 using FinanceManager.Web.Infrastructure.Attachments;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
-using Xunit;
-using Microsoft.Extensions.Localization;
-using Microsoft.AspNetCore.DataProtection;
 
 namespace FinanceManager.Tests.Controllers;
 

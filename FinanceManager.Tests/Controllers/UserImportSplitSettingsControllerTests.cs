@@ -1,23 +1,13 @@
-using System;
-using System.Net.Mime;
-using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Domain.Users;
-using FinanceManager.Shared.Dtos;
+using FinanceManager.Infrastructure; // AppDbContext
+using FinanceManager.Tests.TestHelpers;
 using FinanceManager.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
-using Xunit;
-using FinanceManager.Infrastructure; // AppDbContext
-using FinanceManager.Domain.Users; // User entity
-using FinanceManager.Domain; // Entity base
-using System.Reflection;
-using FinanceManager.Tests.TestHelpers;
+using System.Security.Claims;
 
 namespace FinanceManager.Tests.Controllers;
 

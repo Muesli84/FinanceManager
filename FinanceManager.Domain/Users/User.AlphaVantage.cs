@@ -1,5 +1,3 @@
-using System;
-
 namespace FinanceManager.Domain.Users;
 
 public sealed partial class User

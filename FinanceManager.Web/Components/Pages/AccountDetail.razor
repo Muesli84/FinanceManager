@@ -67,7 +67,7 @@ else
 
             <div>
                 <label>@Localizer["LabelSavingsPlanExpectation"]</label><br />
-                <InputSelect TValue="FinanceManager.Shared.Dtos.SavingsPlanExpectation" @bind-Value="_vm!.SavingsPlanExpectation">
+                <InputSelect TValue="SavingsPlanExpectation" @bind-Value="_vm!.SavingsPlanExpectation">
                     <option value="@(SavingsPlanExpectation.None.ToString())">@Localizer["Expectation_None"]</option>
                     <option value="@(SavingsPlanExpectation.Optional.ToString())">@Localizer["Expectation_Optional"]</option>
                     <option value="@(SavingsPlanExpectation.Required.ToString())">@Localizer["Expectation_Required"]</option>

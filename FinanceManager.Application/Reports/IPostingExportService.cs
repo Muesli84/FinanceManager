@@ -1,11 +1,3 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Postings;
-using FinanceManager.Shared.Dtos;
-
 namespace FinanceManager.Application.Reports;
 
 public enum PostingExportFormat

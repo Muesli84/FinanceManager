@@ -1,7 +1,4 @@
 using FinanceManager.Web;
-using FinanceManager.Infrastructure;
-using FinanceManager.Domain.Users;
-using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -1,15 +1,8 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain.Reports; // ReportInterval
-using FinanceManager.Domain; // PostingKind
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace FinanceManager.Tests.Reports;
 
@@ -29,11 +22,11 @@ public sealed class ReportFavoriteServiceTests
     public async Task CreateAsync_ShouldPersistAndReturnDto()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("user","pw", false);
+        var user = new FinanceManager.Domain.Users.User("user", "pw", false);
         db.Users.Add(user); await db.SaveChangesAsync();
         var svc = new ReportFavoriteService(db);
 
-        var dto = await svc.CreateAsync(user.Id, new ReportFavoriteCreateRequest("MyFav",  PostingKind.Contact, true, ReportInterval.Month, true, false, true, true), CancellationToken.None);
+        var dto = await svc.CreateAsync(user.Id, new ReportFavoriteCreateRequest("MyFav", PostingKind.Contact, true, ReportInterval.Month, true, false, true, true), CancellationToken.None);
         Assert.NotEqual(Guid.Empty, dto.Id);
         Assert.Equal("MyFav", dto.Name);
         Assert.True(dto.IncludeCategory);
@@ -47,7 +40,7 @@ public sealed class ReportFavoriteServiceTests
     public async Task CreateAsync_ShouldThrow_OnDuplicateNamePerUser()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("user","pw", false);
+        var user = new FinanceManager.Domain.Users.User("user", "pw", false);
         db.Users.Add(user); await db.SaveChangesAsync();
         var svc = new ReportFavoriteService(db);
         await svc.CreateAsync(user.Id, new ReportFavoriteCreateRequest("Dup", PostingKind.Contact, false, ReportInterval.Month, false, false, false, false), CancellationToken.None);
@@ -58,9 +51,9 @@ public sealed class ReportFavoriteServiceTests
     public async Task CreateAsync_ShouldAllowSameNameForDifferentUsers()
     {
         using var db = CreateDb();
-        var user1 = new FinanceManager.Domain.Users.User("u1","pw", false);
-        var user2 = new FinanceManager.Domain.Users.User("u2","pw", false);
-        db.Users.AddRange(user1,user2); await db.SaveChangesAsync();
+        var user1 = new FinanceManager.Domain.Users.User("u1", "pw", false);
+        var user2 = new FinanceManager.Domain.Users.User("u2", "pw", false);
+        db.Users.AddRange(user1, user2); await db.SaveChangesAsync();
         var svc = new ReportFavoriteService(db);
         await svc.CreateAsync(user1.Id, new ReportFavoriteCreateRequest("Same", PostingKind.Contact, false, ReportInterval.Month, false, false, false, false), CancellationToken.None);
         await svc.CreateAsync(user2.Id, new ReportFavoriteCreateRequest("Same", PostingKind.Contact, false, ReportInterval.Month, false, false, false, false), CancellationToken.None);
@@ -71,7 +64,7 @@ public sealed class ReportFavoriteServiceTests
     public async Task UpdateAsync_ShouldModifyFields_AndRejectDuplicate()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("u","pw", false);
+        var user = new FinanceManager.Domain.Users.User("u", "pw", false);
         db.Users.Add(user); await db.SaveChangesAsync();
         var svc = new ReportFavoriteService(db);
         var a = await svc.CreateAsync(user.Id, new ReportFavoriteCreateRequest("A", PostingKind.Contact, false, ReportInterval.Month, false, false, false, false), CancellationToken.None);
@@ -97,9 +90,9 @@ public sealed class ReportFavoriteServiceTests
     public async Task DeleteAsync_ShouldReturnFalse_WhenNotOwnedOrMissing()
     {
         using var db = CreateDb();
-        var user1 = new FinanceManager.Domain.Users.User("u1","pw", false);
-        var user2 = new FinanceManager.Domain.Users.User("u2","pw", false);
-        db.Users.AddRange(user1,user2); await db.SaveChangesAsync();
+        var user1 = new FinanceManager.Domain.Users.User("u1", "pw", false);
+        var user2 = new FinanceManager.Domain.Users.User("u2", "pw", false);
+        db.Users.AddRange(user1, user2); await db.SaveChangesAsync();
         var svc = new ReportFavoriteService(db);
         var fav = await svc.CreateAsync(user1.Id, new ReportFavoriteCreateRequest("Fav", PostingKind.Contact, false, ReportInterval.Month, false, false, false, false), CancellationToken.None);
         Assert.False(await svc.DeleteAsync(fav.Id, user2.Id, CancellationToken.None));
@@ -111,9 +104,9 @@ public sealed class ReportFavoriteServiceTests
     public async Task ListAndGet_ShouldRespectOwnershipAndOrdering()
     {
         using var db = CreateDb();
-        var user1 = new FinanceManager.Domain.Users.User("u1","pw", false);
-        var user2 = new FinanceManager.Domain.Users.User("u2","pw", false);
-        db.Users.AddRange(user1,user2); await db.SaveChangesAsync();
+        var user1 = new FinanceManager.Domain.Users.User("u1", "pw", false);
+        var user2 = new FinanceManager.Domain.Users.User("u2", "pw", false);
+        db.Users.AddRange(user1, user2); await db.SaveChangesAsync();
         var svc = new ReportFavoriteService(db);
         await svc.CreateAsync(user1.Id, new ReportFavoriteCreateRequest("Zeta", PostingKind.Contact, false, ReportInterval.Month, false, false, false, false), CancellationToken.None);
         await svc.CreateAsync(user1.Id, new ReportFavoriteCreateRequest("Alpha", PostingKind.Contact, false, ReportInterval.Month, false, false, false, false), CancellationToken.None);

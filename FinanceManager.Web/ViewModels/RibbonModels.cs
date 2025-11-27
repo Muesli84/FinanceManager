@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace FinanceManager.Web.ViewModels;
 
 public enum UiRibbonItemSize

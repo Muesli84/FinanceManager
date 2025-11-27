@@ -1,18 +1,12 @@
-using FinanceManager.Web.Services;
-using FinanceManager.Infrastructure;
-using FinanceManager.Domain;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Postings;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Securities;
-using FinanceManager.Shared.Dtos;
+using FinanceManager.Infrastructure;
+using FinanceManager.Web.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace FinanceManager.Tests.Web
 {

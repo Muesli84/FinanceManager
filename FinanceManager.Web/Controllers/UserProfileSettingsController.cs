@@ -1,11 +1,9 @@
 using FinanceManager.Application;
 using FinanceManager.Infrastructure;
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 

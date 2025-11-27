@@ -2,24 +2,12 @@ using FinanceManager.Application;
 using FinanceManager.Application.Accounts;
 using FinanceManager.Application.Attachments; // new
 using FinanceManager.Application.Statements;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Attachments; // new
-using FinanceManager.Domain.Securities;
-using FinanceManager.Domain.Statements;
-using FinanceManager.Infrastructure;
-using FinanceManager.Infrastructure.Accounts;
 using FinanceManager.Infrastructure.Statements; // for ImportSplitInfo
-using FinanceManager.Shared.Dtos;
-using FinanceManager.Web.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Net.Mime;
-using System.Text.Json;
 
 namespace FinanceManager.Web.Controllers;
 

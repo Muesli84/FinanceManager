@@ -1,6 +1,4 @@
-using System.Net.Http.Json;
 using FinanceManager.Application;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace FinanceManager.Web.ViewModels;
 

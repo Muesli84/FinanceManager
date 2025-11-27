@@ -1,7 +1,3 @@
-using System.Net.Http.Json;
-using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
@@ -179,7 +175,7 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         if (plan == null) return false;
         if (plan.Type == SavingsPlanType.Open) return false;
         if (!_analysisByPlan.TryGetValue(plan.Id, out var a)) return false;
-        if (a.TargetAmount is null) return false;        
+        if (a.TargetAmount is null) return false;
         // completed when accumulated already reached or exceeded target
         return a.AccumulatedAmount >= a.TargetAmount.Value;
     }
@@ -208,7 +204,7 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         if (plan.TargetDate == DateTime.MinValue) return false;
         if (plan.TargetDate > DateTime.Now) return false;
         var remainingAmount = GetRemainingAmount(plan) ?? 0;
-        if (remainingAmount <= 0) return false;        
+        if (remainingAmount <= 0) return false;
         return true;
     }
 }

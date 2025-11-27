@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 public sealed class NoOpAuthTokenProvider : IAuthTokenProvider
 {
     public Task<string?> GetAccessTokenAsync(CancellationToken cancellationToken)

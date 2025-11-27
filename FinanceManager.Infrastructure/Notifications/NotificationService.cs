@@ -1,6 +1,4 @@
 using FinanceManager.Application.Notifications;
-using FinanceManager.Domain.Notifications;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Notifications;

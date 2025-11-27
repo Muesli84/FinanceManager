@@ -1,11 +1,9 @@
 using FinanceManager.Application;
 using FinanceManager.Domain.Notifications;
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 
@@ -29,7 +27,8 @@ public sealed class UserNotificationSettingsController : ControllerBase
         var uid = _current.UserId;
         var dto = await _db.Users.AsNoTracking()
             .Where(u => u.Id == uid)
-            .Select(u => new NotificationSettingsDto {
+            .Select(u => new NotificationSettingsDto
+            {
                 MonthlyReminderEnabled = u.MonthlyReminderEnabled,
                 MonthlyReminderHour = u.MonthlyReminderHour,
                 MonthlyReminderMinute = u.MonthlyReminderMinute,

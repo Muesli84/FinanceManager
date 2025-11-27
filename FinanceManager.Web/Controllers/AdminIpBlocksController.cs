@@ -8,7 +8,7 @@ using System.Net.Mime;
 namespace FinanceManager.Web.Controllers;
 
 [ApiController]
-[Route("api/admin/ip-blocks")] 
+[Route("api/admin/ip-blocks")]
 [Produces(MediaTypeNames.Application.Json)]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public sealed class AdminIpBlocksController : ControllerBase

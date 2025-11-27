@@ -1,8 +1,4 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Threading;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Application
 {

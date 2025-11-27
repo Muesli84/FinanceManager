@@ -1,7 +1,4 @@
-using System.Net.Http.Json;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Web.ViewModels;
 

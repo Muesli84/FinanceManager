@@ -1,17 +1,11 @@
 using FinanceManager.Application;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Attachments;
-using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
-using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace FinanceManager.Web.Controllers;
 

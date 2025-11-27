@@ -1,8 +1,4 @@
-using FinanceManager.Domain;
 using FinanceManager.Domain.Statements;
-using FinanceManager.Shared.Dtos;
-using System.Threading.Tasks;
-using FinanceManager.Domain.Securities;
 
 namespace FinanceManager.Application.Statements;
 

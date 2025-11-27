@@ -1,6 +1,3 @@
-using System.Net.Http.Json;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SecurityPricesViewModel : ViewModelBase

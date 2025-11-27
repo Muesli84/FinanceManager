@@ -14,7 +14,7 @@
         {
             if (int.TryParse(value, out var result))
                 return result;
-            return default(int);            
+            return default(int);
         }
     }
 }

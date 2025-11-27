@@ -1,14 +1,10 @@
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Xunit;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 
 namespace FinanceManager.Tests.ViewModels;
 
@@ -78,7 +74,7 @@ public sealed class SavingsPlansViewModelTests
             }
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.StartsWith($"/api/savings-plans/{plans[0].Id}/analysis"))
             {
-                var dto = new SavingsPlanAnalysisDto(plans[0].Id, true, 1000m, new DateTime(2025,1,1), 300m, 50m, 14);
+                var dto = new SavingsPlanAnalysisDto(plans[0].Id, true, 1000m, new DateTime(2025, 1, 1), 300m, 50m, 14);
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(AnalysisJson(dto), Encoding.UTF8, "application/json") };
             }
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.StartsWith($"/api/savings-plans/{plans[1].Id}/analysis"))
@@ -127,7 +123,7 @@ public sealed class SavingsPlansViewModelTests
         var vm = new SavingsPlansViewModel(sp, new TestHttpClientFactory(client));
 
         var planId = Guid.NewGuid();
-        var plan = new SavingsPlanDto(planId, "P", SavingsPlanType.Recurring, 1000m, new DateTime(2025,1,1), SavingsPlanInterval.Monthly, true, DateTime.UtcNow, null, null);
+        var plan = new SavingsPlanDto(planId, "P", SavingsPlanType.Recurring, 1000m, new DateTime(2025, 1, 1), SavingsPlanInterval.Monthly, true, DateTime.UtcNow, null, null);
         // inject analysis to internal dictionary via Initialize + reflection is overkill: simulate through private method? we can't access. Instead, call through status methods when no analysis: should be Normal -> Active label
         var loc = sp.GetRequiredService<IStringLocalizer<SavingsPlansViewModelTests>>();
         var label = vm.GetStatusLabel(loc, plan);

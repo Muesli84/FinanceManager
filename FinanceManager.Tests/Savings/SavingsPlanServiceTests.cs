@@ -1,16 +1,8 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Application.Savings;
-using FinanceManager.Domain.Savings;
+using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Savings;
-using FinanceManager.Shared.Dtos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
-using FinanceManager.Domain.Postings;
-using FinanceManager.Domain;
 
 public sealed class SavingsPlanServiceTests
 {

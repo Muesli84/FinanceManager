@@ -1,6 +1,5 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Reports;
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -37,7 +36,7 @@ public sealed class HomeKpisController : ControllerBase
         public HomeKpiPredefined? PredefinedType { get; set; }
         [MaxLength(120)] public string? Title { get; set; }
         [Required] public HomeKpiDisplayMode DisplayMode { get; set; }
-        [Range(0,int.MaxValue)] public int SortOrder { get; set; }
+        [Range(0, int.MaxValue)] public int SortOrder { get; set; }
     }
 
     [HttpPost]
@@ -74,7 +73,7 @@ public sealed class HomeKpisController : ControllerBase
         public HomeKpiPredefined? PredefinedType { get; set; }
         [MaxLength(120)] public string? Title { get; set; }
         [Required] public HomeKpiDisplayMode DisplayMode { get; set; }
-        [Range(0,int.MaxValue)] public int SortOrder { get; set; }
+        [Range(0, int.MaxValue)] public int SortOrder { get; set; }
     }
 
     [HttpGet("{id:guid}", Name = "GetHomeKpi")]

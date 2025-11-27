@@ -1,7 +1,3 @@
-using System.Net.Http.Json;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SetupAttachmentCategoriesViewModel : ViewModelBase
@@ -71,7 +67,7 @@ public sealed class SetupAttachmentCategoriesViewModel : ViewModelBase
                 if (dto is not null)
                 {
                     Items.Add(dto);
-                    Items.Sort((a,b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+                    Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
                     NewName = string.Empty;
                     ActionOk = true;
                 }
@@ -116,7 +112,7 @@ public sealed class SetupAttachmentCategoriesViewModel : ViewModelBase
                     var idx = Items.FindIndex(x => x.Id == dto.Id);
                     if (idx >= 0) { Items[idx] = dto; }
                     else { Items.Add(dto); }
-                    Items.Sort((a,b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+                    Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
                     ActionOk = true;
                     CancelEdit();
                 }

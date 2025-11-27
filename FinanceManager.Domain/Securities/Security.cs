@@ -1,5 +1,3 @@
-using System;
-
 namespace FinanceManager.Domain.Securities;
 
 public sealed class Security

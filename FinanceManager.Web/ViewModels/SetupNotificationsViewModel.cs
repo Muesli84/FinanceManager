@@ -1,7 +1,3 @@
-using System.Net.Http.Json;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SetupNotificationsViewModel : ViewModelBase

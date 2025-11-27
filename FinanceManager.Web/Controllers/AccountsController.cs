@@ -1,14 +1,10 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Mime;
 using FinanceManager.Application;
 using FinanceManager.Application.Accounts;
 using FinanceManager.Application.Contacts;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Contacts;
-using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 

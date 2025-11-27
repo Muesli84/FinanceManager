@@ -1,10 +1,11 @@
-using FinanceManager.Application.Statements;
+using FinanceManager.Application;
+using FinanceManager.Application.Attachments;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
+using FinanceManager.Infrastructure.Attachments;
 using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,17 +13,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.IO;
-using System.Net.Http.Headers;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
-using FinanceManager.Application;
-using System.Collections.Generic;
-using FinanceManager.Application.Attachments;
-using FinanceManager.Infrastructure.Attachments;
 
 namespace FinanceManager.Tests.Controllers;
 

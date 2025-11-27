@@ -1,4 +1,3 @@
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -11,7 +10,7 @@ public sealed partial class User : IdentityUser<Guid>, IAggregateRoot
     // Existing constructor for callers that already compute a password hash
     public User(string username, string passwordHash)
     {
-        Rename(username);        
+        Rename(username);
         SetPasswordHash(passwordHash);
         // Defaults for import split settings (FA-AUSZ-016)
         ImportSplitMode = ImportSplitMode.MonthlyOrFixed;

@@ -1,14 +1,10 @@
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using FinanceManager.Application;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
 using Microsoft.Extensions.Localization;
-using Xunit;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 
 namespace FinanceManager.Tests.Web;
 

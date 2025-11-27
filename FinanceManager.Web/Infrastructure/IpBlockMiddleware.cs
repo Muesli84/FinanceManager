@@ -1,8 +1,6 @@
-using System.Text.Json;
 using FinanceManager.Infrastructure;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace FinanceManager.Web.Infrastructure;
 

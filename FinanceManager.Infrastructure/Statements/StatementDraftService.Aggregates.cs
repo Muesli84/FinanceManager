@@ -1,9 +1,3 @@
-using FinanceManager.Domain.Postings;
-using FinanceManager.Domain;
-using FinanceManager.Shared.Dtos;
-using Microsoft.EntityFrameworkCore;
-using FinanceManager.Application.Aggregates;
-
 namespace FinanceManager.Infrastructure.Statements;
 
 public sealed partial class StatementDraftService

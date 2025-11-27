@@ -1,6 +1,4 @@
 using FinanceManager.Application;
-using FinanceManager.Application.Savings;
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

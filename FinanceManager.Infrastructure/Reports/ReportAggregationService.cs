@@ -1,10 +1,6 @@
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Postings;
-using FinanceManager.Domain.Reports;
-using FinanceManager.Domain; // ensure PostingKind enum
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Shared.Dtos;
-using System.Linq;
 
 namespace FinanceManager.Infrastructure.Reports;
 
@@ -389,13 +385,18 @@ public sealed class ReportAggregationService : IReportAggregationService
         {
             var categoryAgg = entityGroups
                 .Where(e => SupportsCategories(e.Kind))
-                .GroupBy(e => new { e.Kind, e.PeriodStart, CategoryId = e.Kind switch
+                .GroupBy(e => new
                 {
-                    PostingKind.Contact => (e.ContactId.HasValue && contactCategoryMap.TryGetValue(e.ContactId.Value, out var cid)) ? cid : null,
-                    PostingKind.SavingsPlan => (e.SavingsPlanId.HasValue && savingsCategoryMap.TryGetValue(e.SavingsPlanId.Value, out var sid)) ? sid : null,
-                    PostingKind.Security => (e.SecurityId.HasValue && securityCategoryMap.TryGetValue(e.SecurityId.Value, out var secid)) ? secid : null,
-                    _ => null
-                } })
+                    e.Kind,
+                    e.PeriodStart,
+                    CategoryId = e.Kind switch
+                    {
+                        PostingKind.Contact => (e.ContactId.HasValue && contactCategoryMap.TryGetValue(e.ContactId.Value, out var cid)) ? cid : null,
+                        PostingKind.SavingsPlan => (e.SavingsPlanId.HasValue && savingsCategoryMap.TryGetValue(e.SavingsPlanId.Value, out var sid)) ? sid : null,
+                        PostingKind.Security => (e.SecurityId.HasValue && securityCategoryMap.TryGetValue(e.SecurityId.Value, out var secid)) ? secid : null,
+                        _ => null
+                    }
+                })
                 .Select(g => new { g.Key.Kind, g.Key.PeriodStart, g.Key.CategoryId, Amount = g.Sum(x => x.Amount) })
                 .ToList();
 
@@ -788,11 +789,11 @@ public sealed class ReportAggregationService : IReportAggregationService
                             Sample = g.OrderBy(x => x.PeriodStart).First()
                         })
                         .OrderBy(x => x.Year);
-                foreach (var y in byYear)
-                {
-                    var start = new DateTime(y.Year, 1, 1);
-                    ytd.Add(new ReportAggregatePointDto(start, y.Sample.GroupKey, y.Sample.GroupName, y.Sample.CategoryName, y.Amount, y.Sample.ParentGroupKey, null, null));
-                }
+                    foreach (var y in byYear)
+                    {
+                        var start = new DateTime(y.Year, 1, 1);
+                        ytd.Add(new ReportAggregatePointDto(start, y.Sample.GroupKey, y.Sample.GroupName, y.Sample.CategoryName, y.Amount, y.Sample.ParentGroupKey, null, null));
+                    }
                 }
                 return ytd;
             }

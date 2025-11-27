@@ -1,5 +1,3 @@
-using FinanceManager.Shared.Dtos;
-
 public interface ISavingsPlanCategoryService
 {
     Task<IReadOnlyList<SavingsPlanCategoryDto>> ListAsync(Guid ownerUserId, CancellationToken ct);

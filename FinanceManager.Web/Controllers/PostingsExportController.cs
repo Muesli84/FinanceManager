@@ -1,8 +1,6 @@
 using FinanceManager.Application; // for ICurrentUserService
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain;
 using FinanceManager.Infrastructure;
-using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Infrastructure; // added
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;

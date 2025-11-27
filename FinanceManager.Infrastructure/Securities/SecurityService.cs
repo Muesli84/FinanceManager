@@ -1,8 +1,6 @@
 using FinanceManager.Application.Securities;
-using FinanceManager.Domain.Securities;
-using FinanceManager.Shared.Dtos;
+using FinanceManager.Domain.Attachments;
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Domain.Attachments; // added
 
 namespace FinanceManager.Infrastructure.Securities;
 

@@ -1,6 +1,5 @@
 using FinanceManager.Application.Securities;
 using FinanceManager.Domain.Securities;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Securities;

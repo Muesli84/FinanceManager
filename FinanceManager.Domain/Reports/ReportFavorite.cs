@@ -1,7 +1,3 @@
-using FinanceManager.Domain; 
-using FinanceManager.Domain.Reports;
-using FinanceManager.Shared.Dtos;
-
 namespace FinanceManager.Domain.Reports;
 
 /// <summary>

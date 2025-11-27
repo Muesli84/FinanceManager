@@ -2,8 +2,6 @@ using FinanceManager.Application;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System.Linq;
 
 namespace FinanceManager.Web.Controllers
 {
@@ -23,7 +21,7 @@ namespace FinanceManager.Web.Controllers
             _logger = logger;
         }
 
-        [HttpPost("rebuild")] 
+        [HttpPost("rebuild")]
         [ProducesResponseType(typeof(AggregatesRebuildStatusDto), StatusCodes.Status202Accepted)]
         public IActionResult RebuildAsync([FromQuery] bool allowDuplicate = false)
         {
@@ -39,7 +37,7 @@ namespace FinanceManager.Web.Controllers
             return Accepted(new AggregatesRebuildStatusDto(true, 0, 0, "Queued"));
         }
 
-        [HttpGet("rebuild/status")] 
+        [HttpGet("rebuild/status")]
         [ProducesResponseType(typeof(AggregatesRebuildStatusDto), StatusCodes.Status200OK)]
         public IActionResult GetRebuildStatus()
         {

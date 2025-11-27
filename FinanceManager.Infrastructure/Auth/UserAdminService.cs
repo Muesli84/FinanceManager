@@ -1,11 +1,9 @@
 using FinanceManager.Application.Users;
+using FinanceManager.Domain.Contacts; // added
 using FinanceManager.Domain.Users;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using FinanceManager.Domain.Contacts; // added
-using FinanceManager.Domain;
-using FinanceManager.Shared.Dtos; // added for ContactType
-using Microsoft.AspNetCore.Identity;
 
 namespace FinanceManager.Infrastructure.Auth;
 

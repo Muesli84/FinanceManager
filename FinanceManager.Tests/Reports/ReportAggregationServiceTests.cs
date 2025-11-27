@@ -1,22 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain;
+using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Postings;
-using FinanceManager.Domain.Reports;
+using FinanceManager.Domain.Savings;
+using FinanceManager.Domain.Securities; // added
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
-using FinanceManager.Domain.Securities; // added
-using FinanceManager.Domain.Accounts;
-using FinanceManager.Domain.Savings;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Tests.Reports;
 
@@ -36,7 +27,7 @@ public sealed class ReportAggregationServiceTests
     public async Task QueryAsync_ShouldAggregateCategoriesAndComparisons_ForContactsAcrossMonths()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
@@ -44,11 +35,11 @@ public sealed class ReportAggregationServiceTests
         var catA = new ContactCategory(user.Id, "Cat A");
         var catB = new ContactCategory(user.Id, "Cat B");
         var catC = new ContactCategory(user.Id, "Cat C");
-        db.ContactCategories.AddRange(catA,catB,catC);
+        db.ContactCategories.AddRange(catA, catB, catC);
         await db.SaveChangesAsync();
 
         // Helper zum Erstellen eines Kontakts mit Basisbetrag (pro Posting) 10 / 20 / 30
-        Contact NewContact(Guid ownerId, ContactCategory cat, string name) => new(ownerId, name, FinanceManager.Shared.Dtos.ContactType.Person, cat.Id, null);
+        Contact NewContact(Guid ownerId, ContactCategory cat, string name) => new(ownerId, name, ContactType.Person, cat.Id, null);
 
         var cA1 = NewContact(user.Id, catA, "A1");
 
@@ -59,19 +50,19 @@ public sealed class ReportAggregationServiceTests
         var cC2 = NewContact(user.Id, catC, "C2");
         var cC3 = NewContact(user.Id, catC, "C3");
 
-        db.Contacts.AddRange(cA1,cB1,cB2,cC1,cC2,cC3);
+        db.Contacts.AddRange(cA1, cB1, cB2, cC1, cC2, cC3);
         await db.SaveChangesAsync();
 
         // Monate Jan 2023 .. Sep 2025 (einschlieﬂlich)
-        var start = new DateTime(2023,1,1);
-        var end = new DateTime(2025,9,1);
+        var start = new DateTime(2023, 1, 1);
+        var end = new DateTime(2025, 9, 1);
         var months = new List<DateTime>();
-        for(var dt = start; dt <= end; dt = dt.AddMonths(1)) { months.Add(new DateTime(dt.Year, dt.Month,1)); }
+        for (var dt = start; dt <= end; dt = dt.AddMonths(1)) { months.Add(new DateTime(dt.Year, dt.Month, 1)); }
 
         // Pro Monat pro Kontakt zwei Postings: Kontakt 1 Basis 10Ä, Kontakt 2 Basis 20Ä, Kontakt 3 Basis 30Ä => Monatssumme = Basis * 2
         void AddMonthlyAggregates(Contact contact, decimal perPosting)
         {
-            foreach(var m in months)
+            foreach (var m in months)
             {
                 var agg = new PostingAggregate(PostingKind.Contact, null, contact.Id, null, null, m, AggregatePeriod.Month);
                 agg.Add(perPosting); // erster Posten
@@ -143,30 +134,30 @@ public sealed class ReportAggregationServiceTests
     public async Task QueryAsync_ShouldAggregateYtdCategoriesAndComparisons_ForContacts()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
         var catA = new ContactCategory(user.Id, "Cat A");
         var catB = new ContactCategory(user.Id, "Cat B");
         var catC = new ContactCategory(user.Id, "Cat C");
-        db.ContactCategories.AddRange(catA,catB,catC);
+        db.ContactCategories.AddRange(catA, catB, catC);
         await db.SaveChangesAsync();
 
-        Contact NewContact(Guid ownerId, ContactCategory cat, string name) => new(ownerId, name, FinanceManager.Shared.Dtos.ContactType.Person, cat.Id, null);
+        Contact NewContact(Guid ownerId, ContactCategory cat, string name) => new(ownerId, name, ContactType.Person, cat.Id, null);
         var cA1 = NewContact(user.Id, catA, "A1");
         var cB1 = NewContact(user.Id, catB, "B1"); var cB2 = NewContact(user.Id, catB, "B2");
         var cC1 = NewContact(user.Id, catC, "C1"); var cC2 = NewContact(user.Id, catC, "C2"); var cC3 = NewContact(user.Id, catC, "C3");
-        db.Contacts.AddRange(cA1,cB1,cB2,cC1,cC2,cC3);
+        db.Contacts.AddRange(cA1, cB1, cB2, cC1, cC2, cC3);
         await db.SaveChangesAsync();
 
-        var start = new DateTime(2023,1,1); var end = new DateTime(2025,9,1);
+        var start = new DateTime(2023, 1, 1); var end = new DateTime(2025, 9, 1);
         var months = new List<DateTime>();
-        for(var dt = start; dt <= end; dt = dt.AddMonths(1)) { months.Add(new DateTime(dt.Year, dt.Month,1)); }
+        for (var dt = start; dt <= end; dt = dt.AddMonths(1)) { months.Add(new DateTime(dt.Year, dt.Month, 1)); }
 
         void AddMonthlyAggregates(Contact contact, decimal perPosting)
         {
-            foreach(var m in months)
+            foreach (var m in months)
             {
                 var agg = new PostingAggregate(PostingKind.Contact, null, contact.Id, null, null, m, AggregatePeriod.Month);
                 agg.Add(perPosting); agg.Add(perPosting);
@@ -196,7 +187,7 @@ public sealed class ReportAggregationServiceTests
         decimal catB_2023 = 60m * monthsPrevYears; decimal catB_2024 = 60m * monthsPrevYears; decimal catB_2025 = 60m * monthsYear2025;
         decimal catC_2023 = 120m * monthsPrevYears; decimal catC_2024 = 120m * monthsPrevYears; decimal catC_2025 = 120m * monthsYear2025;
 
-        DateTime Y(int year) => new DateTime(year,1,1);
+        DateTime Y(int year) => new DateTime(year, 1, 1);
 
         var a2023 = result.Points.Single(p => p.GroupKey == CatKey(catA) && p.PeriodStart == Y(2023));
         var a2024 = result.Points.Single(p => p.GroupKey == CatKey(catA) && p.PeriodStart == Y(2024));
@@ -237,12 +228,12 @@ public sealed class ReportAggregationServiceTests
     {
         using var db = CreateDb();
         // Arrange user and base data
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
         // Accounts (Bank kind)
-        var bankContact = new FinanceManager.Domain.Contacts.Contact(user.Id, "Bank", FinanceManager.Shared.Dtos.ContactType.Bank, null, null);
+        var bankContact = new FinanceManager.Domain.Contacts.Contact(user.Id, "Bank", ContactType.Bank, null, null);
         db.Contacts.Add(bankContact);
         var acc1 = new FinanceManager.Domain.Accounts.Account(user.Id, AccountType.Giro, "A1", null, bankContact.Id);
         var acc2 = new FinanceManager.Domain.Accounts.Account(user.Id, AccountType.Giro, "A2", null, bankContact.Id);
@@ -250,9 +241,9 @@ public sealed class ReportAggregationServiceTests
         db.Accounts.AddRange(acc1, acc2, acc3);
 
         // Contacts (Contact kind)
-        var c1 = new FinanceManager.Domain.Contacts.Contact(user.Id, "C1", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
-        var c2 = new FinanceManager.Domain.Contacts.Contact(user.Id, "C2", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
-        var c3 = new FinanceManager.Domain.Contacts.Contact(user.Id, "NoiseContact", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
+        var c1 = new FinanceManager.Domain.Contacts.Contact(user.Id, "C1", ContactType.Person, null, null);
+        var c2 = new FinanceManager.Domain.Contacts.Contact(user.Id, "C2", ContactType.Person, null, null);
+        var c3 = new FinanceManager.Domain.Contacts.Contact(user.Id, "NoiseContact", ContactType.Person, null, null);
         db.Contacts.AddRange(c1, c2, c3);
         await db.SaveChangesAsync();
 
@@ -338,7 +329,7 @@ public sealed class ReportAggregationServiceTests
     public async Task QueryAsync_SecurityDividendCategory_ShouldInjectCurrentMonthZero_AndCarryPrevious_WhenCurrentHasNoData()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
@@ -408,7 +399,7 @@ public sealed class ReportAggregationServiceTests
     public async Task QueryAsync_SecurityDividendCategory_ShouldNotInjectCurrentMonth_WhenNoComparisons()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
@@ -477,7 +468,7 @@ public sealed class ReportAggregationServiceTests
     public async Task QueryAsync_SecurityDividendCategory_SixMonthsAgo_ShouldInjectCurrentZero_AndCarryPrev()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
@@ -555,14 +546,14 @@ public sealed class ReportAggregationServiceTests
     /// </summary>
     private static async Task<SeedResult> SeedAllKindsAsync(AppDbContext db, Guid ownerUserId, DateTime analysisMonth, int monthsBack)
     {
-        var bank = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "Bank", FinanceManager.Shared.Dtos.ContactType.Bank, null, null);
+        var bank = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "Bank", ContactType.Bank, null, null);
         db.Contacts.Add(bank);
         var acc1 = new Account(ownerUserId, AccountType.Giro, "ACC1", null, bank.Id);
         var acc2 = new Account(ownerUserId, AccountType.Giro, "ACC2", null, bank.Id);
         db.Accounts.AddRange(acc1, acc2);
 
-        var con1 = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "CON1", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
-        var con2 = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "CON2", FinanceManager.Shared.Dtos.ContactType.Person, null, null);
+        var con1 = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "CON1", ContactType.Person, null, null);
+        var con2 = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "CON2", ContactType.Person, null, null);
         db.Contacts.AddRange(con1, con2);
 
         var sav1 = new SavingsPlan(ownerUserId, "SAV1", SavingsPlanType.Open, null, null, null, null);
@@ -690,7 +681,7 @@ public sealed class ReportAggregationServiceTests
     public async Task QueryAsync_Monthly_AllKinds_VerifyPrevAndYear_ForTwoEntities()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
@@ -740,7 +731,7 @@ public sealed class ReportAggregationServiceTests
     public async Task QueryAsync_Monthly_SelectOtherEntities_ShouldBeEmpty()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
@@ -776,7 +767,7 @@ public sealed class ReportAggregationServiceTests
     public async Task QueryAsync_VariousIntervals_Bank_VerifySums(ReportInterval interval)
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user); await db.SaveChangesAsync();
         var analysis = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
         var seed = await SeedAllKindsAsync(db, user.Id, analysis, monthsBack: 24);
@@ -894,5 +885,5 @@ public sealed class ReportAggregationServiceTests
         {
             Assert.Equal(prevRow.Amount, rowPoint.PreviousAmount);
         }
-     }
+    }
 }

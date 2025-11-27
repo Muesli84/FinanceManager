@@ -1,6 +1,3 @@
-using System.Net.Http.Json;
-using System.Linq;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;

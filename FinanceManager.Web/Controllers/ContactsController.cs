@@ -1,8 +1,5 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Contacts;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Contacts;
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -165,7 +162,7 @@ public sealed class ContactsController : ControllerBase
         {
             _logger.LogError(ex, "Add contact {ContactId} alias failed", id);
             return Problem("Unexpected error", statusCode: 500);
-        }   
+        }
     }
 
     [HttpDelete("{id:guid}/aliases/{aliasId:guid}")]

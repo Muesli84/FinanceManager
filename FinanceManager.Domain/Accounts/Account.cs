@@ -1,7 +1,5 @@
 namespace FinanceManager.Domain.Accounts;
 
-using FinanceManager.Shared.Dtos; // use shared enums
-
 public sealed class Account : Entity, IAggregateRoot
 {
     private Account() { }

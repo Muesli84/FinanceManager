@@ -1,7 +1,7 @@
-using System.Globalization;
+using FinanceManager.Infrastructure;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Infrastructure;
+using System.Globalization;
 
 namespace FinanceManager.Web.Infrastructure;
 

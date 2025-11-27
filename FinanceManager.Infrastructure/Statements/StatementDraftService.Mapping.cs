@@ -1,7 +1,4 @@
-using System.Linq;
 using FinanceManager.Domain.Statements;
-using FinanceManager.Application.Statements;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Infrastructure.Statements;
 

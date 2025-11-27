@@ -1,5 +1,3 @@
-using System;
-
 namespace FinanceManager.Domain.Attachments;
 
 public sealed class AttachmentCategory

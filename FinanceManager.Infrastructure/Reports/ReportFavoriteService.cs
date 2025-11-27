@@ -1,6 +1,5 @@
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Reports;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Reports;

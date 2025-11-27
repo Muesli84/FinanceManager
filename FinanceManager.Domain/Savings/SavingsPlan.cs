@@ -1,6 +1,3 @@
-using FinanceManager.Shared.Dtos;
-using System;
-
 namespace FinanceManager.Domain.Savings;
 
 public sealed class SavingsPlan

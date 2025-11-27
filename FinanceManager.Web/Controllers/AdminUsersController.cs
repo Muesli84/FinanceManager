@@ -1,6 +1,6 @@
-using System.Net.Mime;
 using FinanceManager.Application.Users;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 

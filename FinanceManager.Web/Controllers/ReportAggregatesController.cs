@@ -1,14 +1,10 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain.Reports;
 using FinanceManager.Infrastructure; // DbContext
-using FinanceManager.Infrastructure.Setup; // SchemaPatcher
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
-using static FinanceManager.Web.ViewModels.PostingsSavingsPlanViewModel;
 
 namespace FinanceManager.Web.Controllers;
 

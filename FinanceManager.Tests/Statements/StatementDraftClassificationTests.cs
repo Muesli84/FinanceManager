@@ -1,19 +1,11 @@
-using FinanceManager.Domain;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Shared.Dtos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
 
 public sealed class StatementDraftClassificationTests
 {
@@ -94,7 +86,7 @@ public sealed class StatementDraftClassificationTests
         conn.Dispose();
     }
 
-    
+
     [Fact]
     public async Task BankAccount_IsRecognized_ForSingleAccount()
     {
@@ -112,7 +104,7 @@ public sealed class StatementDraftClassificationTests
         conn.Dispose();
     }
 
-    
+
 
     [Fact]
     public async Task BankAccount_IsNotRecognized()
@@ -126,7 +118,7 @@ public sealed class StatementDraftClassificationTests
             draft.AccountName = "DE456";
             draft.AddEntry(DateTime.Today, 100, "Test", "Empfänger", DateTime.Today, "EUR", "Buchung", false);
         });
-        
+
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         Assert.Null(draft.DetectedAccountId);
@@ -196,7 +188,7 @@ public sealed class StatementDraftClassificationTests
         {
             draft.AddEntry(DateTime.Today, 100, "Test", contact.Name, DateTime.Today, "EUR", "Buchung", false);
         });
-        
+
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
@@ -252,7 +244,7 @@ public sealed class StatementDraftClassificationTests
         {
             draft.AddEntry(DateTime.Today, 100, "Test", otherContact.Name, DateTime.Today, "EUR", "Buchung", false);
         });
-        
+
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();
@@ -273,7 +265,7 @@ public sealed class StatementDraftClassificationTests
         {
             draft.AddEntry(DateTime.Today, 100, "Rechnung 123", "PayPal", DateTime.Today, "EUR", "Buchung", false);
         });
-        
+
         await sut.ClassifyAsync(draft.Id, null, owner, CancellationToken.None);
 
         var entry = draft.Entries.First();

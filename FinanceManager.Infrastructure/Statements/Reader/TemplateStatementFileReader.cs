@@ -1,10 +1,7 @@
 ﻿using FinanceManager.Application.Statements;
-using Org.BouncyCastle.Math.EC.Multiplier;
 using System.Globalization;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FinanceManager.Infrastructure.Statements.Reader
 {
@@ -116,7 +113,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                     foreach (var record in ParseNextLine(line))
                         yield return record;
                     break;
-                 case ParseMode.Ignore:
+                case ParseMode.Ignore:
                     if (line.Length == 0)
                         CurrentMode = ParseMode.None;
                     else if (EndKeywords is null)
@@ -324,7 +321,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
             {
                 foreach (XmlNode Field in CurrentSection.ChildNodes)
                 {
-                    switch(Field.Name)
+                    switch (Field.Name)
                     {
                         case "field":
                             FieldIdx = ParseField(Values, FieldIdx, Field);
@@ -332,7 +329,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
                         case "regExp":
                             ParseRegularExpression(line, Field);
                             break;
-                    }                    
+                    }
                 }
             }
             catch (ArgumentOutOfRangeException)

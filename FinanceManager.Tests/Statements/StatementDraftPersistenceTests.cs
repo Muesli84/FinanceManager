@@ -1,22 +1,11 @@
-using FinanceManager.Application.Statements;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Shared.Dtos;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel;
-using System;
-using System.Diagnostics.Metrics;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace FinanceManager.Tests.Statements;
 

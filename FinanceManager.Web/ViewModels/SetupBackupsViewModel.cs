@@ -1,8 +1,3 @@
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.IO;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SetupBackupsViewModel : ViewModelBase

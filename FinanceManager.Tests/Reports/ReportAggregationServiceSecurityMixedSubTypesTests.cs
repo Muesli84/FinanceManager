@@ -1,17 +1,9 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
-using FinanceManager.Shared.Dtos; // SecurityPostingSubType
-using FinanceManager.Domain.Reports; // ReportInterval
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace FinanceManager.Tests.Reports;
 
@@ -31,7 +23,7 @@ public sealed class ReportAggregationServiceSecurityMixedSubTypesTests
     public async Task QueryAsync_SecurityMonth_NoSubtypeFilter_ShouldSumAllSubTypes()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw", false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 

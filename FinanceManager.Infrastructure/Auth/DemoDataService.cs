@@ -1,7 +1,4 @@
-using FinanceManager.Domain;
-using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
-using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure;
 
 public sealed class DemoDataService

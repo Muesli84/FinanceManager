@@ -1,12 +1,10 @@
-using System.Net;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
 using FinanceManager.Application;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Xunit;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 
 namespace FinanceManager.Tests.ViewModels;
 

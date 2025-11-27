@@ -1,8 +1,6 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceManager.Web.Controllers;

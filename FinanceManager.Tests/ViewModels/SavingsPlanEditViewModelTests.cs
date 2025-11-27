@@ -1,14 +1,10 @@
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Xunit;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 
 namespace FinanceManager.Tests.ViewModels;
 
@@ -63,8 +59,8 @@ public sealed class SavingsPlanEditViewModelTests
     public async Task InitializeAsync_Loads_Edit()
     {
         var id = Guid.NewGuid();
-        var plan = new SavingsPlanDto(id, "Plan A", SavingsPlanType.Recurring, 1000m, new DateTime(2026,1,1), SavingsPlanInterval.Monthly, true, DateTime.UtcNow, null, null);
-        var analysis = new SavingsPlanAnalysisDto(id, true, 1000m, new DateTime(2026,1,1), 200m, 50m, 20);
+        var plan = new SavingsPlanDto(id, "Plan A", SavingsPlanType.Recurring, 1000m, new DateTime(2026, 1, 1), SavingsPlanInterval.Monthly, true, DateTime.UtcNow, null, null);
+        var analysis = new SavingsPlanAnalysisDto(id, true, 1000m, new DateTime(2026, 1, 1), 200m, 50m, 20);
         var cats = new[] { new SavingsPlanCategoryDto { Id = Guid.NewGuid(), Name = "Cat1" } };
 
         var client = CreateHttpClient(req =>

@@ -5,7 +5,7 @@ using iText.Kernel.Pdf.Canvas.Parser.Listener;
 
 namespace FinanceManager.Infrastructure.Statements.Reader
 {
-    public abstract class PDFStatementFilereader: TemplateStatementFileReader, IStatementFileReader
+    public abstract class PDFStatementFilereader : TemplateStatementFileReader, IStatementFileReader
     {
         protected override IEnumerable<string> ReadContent(byte[] fileBytes)
         {

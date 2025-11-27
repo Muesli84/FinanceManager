@@ -1,8 +1,4 @@
-using FinanceManager.Domain.Reports;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using System.Net.Http.Json;
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -692,7 +688,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                     PostingKind.Bank => TempAccounts.Count,
                     PostingKind.Contact => TempContacts.Count,
                     PostingKind.SavingsPlan => TempSavings.Count,
-                    PostingKind.Security=> TempSecurities.Count,
+                    PostingKind.Security => TempSecurities.Count,
                     _ => 0
                 };
                 return baseCount + typeCount;

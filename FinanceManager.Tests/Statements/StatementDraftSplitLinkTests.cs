@@ -1,16 +1,11 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Domain.Users;
-using FinanceManager.Domain.Statements;
 using FinanceManager.Domain.Contacts;
+using FinanceManager.Domain.Statements;
+using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
-using ContactType = FinanceManager.Shared.Dtos.ContactType;
 
 namespace FinanceManager.Tests.Statements;
 

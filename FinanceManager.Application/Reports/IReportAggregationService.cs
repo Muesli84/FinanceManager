@@ -1,6 +1,3 @@
-using FinanceManager.Domain;
-using FinanceManager.Domain.Reports;
-
 namespace FinanceManager.Application.Reports;
 
 /// <summary>

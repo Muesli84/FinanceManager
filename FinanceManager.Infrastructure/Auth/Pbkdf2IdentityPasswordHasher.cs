@@ -1,7 +1,7 @@
-using System.Security.Cryptography;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using FinanceManager.Domain.Users;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Cryptography;
 
 namespace FinanceManager.Infrastructure.Auth;
 

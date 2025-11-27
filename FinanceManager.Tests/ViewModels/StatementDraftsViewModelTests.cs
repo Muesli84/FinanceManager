@@ -1,13 +1,9 @@
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
-using System.IO;
+using FinanceManager.Application;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
-using FinanceManager.Application;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 
 namespace FinanceManager.Tests.ViewModels;
 

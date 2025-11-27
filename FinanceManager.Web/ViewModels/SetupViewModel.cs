@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;

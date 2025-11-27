@@ -1,4 +1,3 @@
-using FinanceManager.Application.Notifications;
 using FinanceManager.Domain.Notifications;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;

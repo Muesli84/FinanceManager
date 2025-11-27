@@ -1,12 +1,9 @@
+using FinanceManager.Application.Attachments;
 using FinanceManager.Application.Savings;
-using FinanceManager.Domain.Savings;
-using FinanceManager.Shared.Dtos;
+using FinanceManager.Domain.Attachments;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
-using FinanceManager.Application.Attachments;
-using FinanceManager.Domain.Attachments;
 
 namespace FinanceManager.Web.Controllers;
 

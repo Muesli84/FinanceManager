@@ -1,11 +1,8 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain.Reports; // added for ReportInterval
-using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.Controllers;
 

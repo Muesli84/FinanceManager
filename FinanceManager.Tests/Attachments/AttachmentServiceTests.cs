@@ -1,11 +1,10 @@
-using System.Text;
 using FinanceManager.Domain.Attachments;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Attachments;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using Xunit;
+using System.Text;
 
 namespace FinanceManager.Tests.Attachments;
 

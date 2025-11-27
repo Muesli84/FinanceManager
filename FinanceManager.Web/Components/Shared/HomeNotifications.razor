@@ -1,4 +1,5 @@
 @using System.Net.Http.Json
+@using FinanceManager.Shared.Dtos.Admin
 @inject HttpClient Http
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.HomeNotifications> L
@@ -40,7 +41,7 @@
 }
 
 @code {
-    private List<FinanceManager.Shared.Dtos.NotificationDto> _items = new();
+    private List<NotificationDto> _items = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -54,7 +55,7 @@
     {
         try
         {
-            var list = await Http.GetFromJsonAsync<List<FinanceManager.Shared.Dtos.NotificationDto>>("/api/notifications");
+            var list = await Http.GetFromJsonAsync<List<NotificationDto>>("/api/notifications");
             _items = (list ?? new()).Where(n => n.Target == 0 /* HomePage */).ToList();
         }
         catch { }

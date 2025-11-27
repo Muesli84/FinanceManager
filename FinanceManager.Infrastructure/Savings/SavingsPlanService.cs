@@ -1,9 +1,7 @@
 using FinanceManager.Application.Savings;
-using FinanceManager.Domain; // added for PostingKind
+using FinanceManager.Domain.Attachments;
 using FinanceManager.Domain.Savings;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Domain.Attachments; // added
 
 namespace FinanceManager.Infrastructure.Savings;
 

@@ -1,12 +1,9 @@
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
+using FinanceManager.Application;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
-using FinanceManager.Application;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 
 namespace FinanceManager.Tests.ViewModels;
 
@@ -47,7 +44,7 @@ public sealed class PostingDetailViewModelTests
         return services.BuildServiceProvider();
     }
 
-    private static string PostingJson(Guid id, Guid groupId, Guid? accountId=null, Guid? contactId=null, Guid? planId=null, Guid? securityId=null)
+    private static string PostingJson(Guid id, Guid groupId, Guid? accountId = null, Guid? contactId = null, Guid? planId = null, Guid? securityId = null)
     {
         var obj = new
         {

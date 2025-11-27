@@ -1,8 +1,6 @@
 using FinanceManager.Application.Accounts;
-using FinanceManager.Domain.Contacts;
-using FinanceManager.Shared.Dtos;
-using Microsoft.EntityFrameworkCore;
 using FinanceManager.Domain.Attachments; // added
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Accounts;
 

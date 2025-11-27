@@ -1,18 +1,13 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using FinanceManager.Application.Notifications;
+using FinanceManager.Domain.Notifications;
 using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
+using FinanceManager.Tests.TestHelpers;
 using FinanceManager.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 using Microsoft.Extensions.Localization;
 using Moq;
-using FinanceManager.Application.Notifications;
-using FinanceManager.Domain.Notifications;
-using FinanceManager.Tests.TestHelpers;
 
 namespace FinanceManager.Tests.Notifications;
 
