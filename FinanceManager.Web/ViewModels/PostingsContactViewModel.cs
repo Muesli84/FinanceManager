@@ -16,7 +16,7 @@ public sealed class PostingsContactViewModel : ViewModelBase
         _http = httpFactory.CreateClient("Api");
     }
 
-    public Guid SecurityId { get; private set; }
+    public Guid ContactId { get; private set; }
     public bool Loaded { get; private set; }
 
     public string Search { get; private set; } = string.Empty;
@@ -33,9 +33,9 @@ public sealed class PostingsContactViewModel : ViewModelBase
 
     public List<PostingItem> Items { get; } = new();
 
-    public void Configure(Guid securityId)
+    public void Configure(Guid contactId)
     {
-        SecurityId = securityId;
+        ContactId = contactId;
     }
 
     public override async ValueTask InitializeAsync(CancellationToken ct = default)
@@ -75,8 +75,7 @@ public sealed class PostingsContactViewModel : ViewModelBase
             var firstPage = Skip == 0;
             var parts = new List<string> { $"skip={Skip}", "take=50" };
             if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
-            var url = $"/api/postings/contact/{SecurityId}?{string.Join('&', parts)}";
-            // Use shared PostingServiceDto from shared project
+            var url = $"/api/postings/contact/{ContactId}?{string.Join('&', parts)}";
             var chunk = await _http.GetFromJsonAsync<List<PostingServiceDto>>(url, ct) ?? new();
             Items.AddRange(chunk.Select(Map));
             Skip += chunk.Count;
@@ -128,7 +127,7 @@ public sealed class PostingsContactViewModel : ViewModelBase
         var parts = new List<string> { $"format={Uri.EscapeDataString(format)}" };
         if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
         var qs = parts.Count > 0 ? ("?" + string.Join('&', parts)) : string.Empty;
-        return $"/api/postings/security/{SecurityId}/export{qs}";
+        return $"/api/postings/contact/{ContactId}/export{qs}";
     }
 
     public override IReadOnlyList<UiRibbonGroup> GetRibbon(IStringLocalizer localizer)

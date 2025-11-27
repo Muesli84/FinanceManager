@@ -75,13 +75,11 @@ public sealed class UserImportSplitSettingsControllerTests
     public async Task UpdateAsync_ShouldPersistValues_IncludingMinEntries()
     {
         var (controller, db, _) = Create();
-        var req = new UserImportSplitSettingsController.UpdateRequest
-        {
-            Mode = ImportSplitMode.MonthlyOrFixed,
-            MaxEntriesPerDraft = 300,
-            MonthlySplitThreshold = 350,
-            MinEntriesPerDraft = 5
-        };
+        var req = new ImportSplitSettingsUpdateRequest(
+            Mode: ImportSplitMode.MonthlyOrFixed,
+            MaxEntriesPerDraft: 300,
+            MonthlySplitThreshold: 350,
+            MinEntriesPerDraft: 5);
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
         Assert.IsType<NoContentResult>(resp);
 
@@ -95,13 +93,11 @@ public sealed class UserImportSplitSettingsControllerTests
     public async Task UpdateAsync_ShouldValidateThreshold()
     {
         var (controller, db, _) = Create();
-        var req = new UserImportSplitSettingsController.UpdateRequest
-        {
-            Mode = ImportSplitMode.MonthlyOrFixed,
-            MaxEntriesPerDraft = 300,
-            MonthlySplitThreshold = 100,
-            MinEntriesPerDraft = 8
-        };
+        var req = new ImportSplitSettingsUpdateRequest(
+            Mode: ImportSplitMode.MonthlyOrFixed,
+            MaxEntriesPerDraft: 300,
+            MonthlySplitThreshold: 100,
+            MinEntriesPerDraft: 8);
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
         var obj = Assert.IsType<ObjectResult>(resp);
         var details = Assert.IsType<ValidationProblemDetails>(obj.Value);
@@ -109,20 +105,18 @@ public sealed class UserImportSplitSettingsControllerTests
 
         var user = await db.Users.SingleAsync();
         Assert.Equal(250, user.ImportMaxEntriesPerDraft); // unchanged
-        Assert.Equal(8, user.ImportMinEntriesPerDraft); // unchanged default
+        Assert.Equal(8, user.ImportMinEntriesPerDraft);   // unchanged default
     }
 
     [Fact]
     public async Task UpdateAsync_ShouldAllowFixedSizeWithoutThreshold_AndPersistMinEntries()
     {
         var (controller, db, _) = Create();
-        var req = new UserImportSplitSettingsController.UpdateRequest
-        {
-            Mode = ImportSplitMode.FixedSize,
-            MaxEntriesPerDraft = 400,
-            MonthlySplitThreshold = null,
-            MinEntriesPerDraft = 3 // ignored in fixed size but persisted for later
-        };
+        var req = new ImportSplitSettingsUpdateRequest(
+            Mode: ImportSplitMode.FixedSize,
+            MaxEntriesPerDraft: 400,
+            MonthlySplitThreshold: null,
+            MinEntriesPerDraft: 3);
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
         Assert.IsType<NoContentResult>(resp);
 
@@ -136,13 +130,11 @@ public sealed class UserImportSplitSettingsControllerTests
     public async Task UpdateAsync_ShouldFail_WhenMinEntriesGreaterThanMax()
     {
         var (controller, db, _) = Create();
-        var req = new UserImportSplitSettingsController.UpdateRequest
-        {
-            Mode = ImportSplitMode.Monthly,
-            MaxEntriesPerDraft = 50,
-            MonthlySplitThreshold = null,
-            MinEntriesPerDraft = 60 // invalid
-        };
+        var req = new ImportSplitSettingsUpdateRequest(
+            Mode: ImportSplitMode.Monthly,
+            MaxEntriesPerDraft: 50,
+            MonthlySplitThreshold: null,
+            MinEntriesPerDraft: 60);
         var resp = await controller.UpdateAsync(req, CancellationToken.None);
         var obj = Assert.IsType<ObjectResult>(resp);
         var details = Assert.IsType<ValidationProblemDetails>(obj.Value);

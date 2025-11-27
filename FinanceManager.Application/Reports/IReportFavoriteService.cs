@@ -29,7 +29,7 @@ public sealed record ReportFavoriteFiltersDto(
 public sealed record ReportFavoriteDto(
     Guid Id,
     string Name,
-    int PostingKind,
+    PostingKind PostingKind,
     bool IncludeCategory,
     ReportInterval Interval,
     int Take,
@@ -39,14 +39,14 @@ public sealed record ReportFavoriteDto(
     bool Expandable,
     DateTime CreatedUtc,
     DateTime? ModifiedUtc,
-    IReadOnlyCollection<int> PostingKinds, // multi support (at least one, falls back to single PostingKind if none stored)
+    IReadOnlyCollection<PostingKind> PostingKinds, // multi support (at least one, falls back to single PostingKind if none stored)
     ReportFavoriteFiltersDto? Filters,
     bool UseValutaDate
 );
 
 public sealed record ReportFavoriteCreateRequest(
     string Name,
-    int PostingKind,
+    PostingKind PostingKind,
     bool IncludeCategory,
     ReportInterval Interval,
     int Take,
@@ -54,20 +54,20 @@ public sealed record ReportFavoriteCreateRequest(
     bool CompareYear,
     bool ShowChart,
     bool Expandable,
-    IReadOnlyCollection<int>? PostingKinds = null, // optional multi list
+    IReadOnlyCollection<PostingKind>? PostingKinds = null, // optional multi list
     ReportFavoriteFiltersDto? Filters = null,
     bool UseValutaDate = false
 )
 {
-    public ReportFavoriteCreateRequest(string name, int postingKind, bool includeCategory, ReportInterval interval,
+    public ReportFavoriteCreateRequest(string name, PostingKind postingKind, bool includeCategory, ReportInterval interval,
         bool comparePrevious, bool compareYear, bool showChart, bool expandable,
-        IReadOnlyCollection<int>? postingKinds = null, ReportFavoriteFiltersDto? filters = null, bool useValutaDate = false)
+        IReadOnlyCollection<PostingKind>? postingKinds = null, ReportFavoriteFiltersDto? filters = null, bool useValutaDate = false)
         : this(name, postingKind, includeCategory, interval, 24, comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate) { }
 }
 
 public sealed record ReportFavoriteUpdateRequest(
     string Name,
-    int PostingKind,
+    PostingKind PostingKind,
     bool IncludeCategory,
     ReportInterval Interval,
     int Take,
@@ -75,13 +75,13 @@ public sealed record ReportFavoriteUpdateRequest(
     bool CompareYear,
     bool ShowChart,
     bool Expandable,
-    IReadOnlyCollection<int>? PostingKinds = null, // optional multi list
+    IReadOnlyCollection<PostingKind>? PostingKinds = null, // optional multi list
     ReportFavoriteFiltersDto? Filters = null,
     bool UseValutaDate = false
 )
 {
-    public ReportFavoriteUpdateRequest(string name, int postingKind, bool includeCategory, ReportInterval interval,
+    public ReportFavoriteUpdateRequest(string name, PostingKind postingKind, bool includeCategory, ReportInterval interval,
         bool comparePrevious, bool compareYear, bool showChart, bool expandable,
-        IReadOnlyCollection<int>? postingKinds = null, ReportFavoriteFiltersDto? filters = null, bool useValutaDate = false)
+        IReadOnlyCollection<PostingKind>? postingKinds = null, ReportFavoriteFiltersDto? filters = null, bool useValutaDate = false)
         : this(name, postingKind, includeCategory, interval, 24, comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate) { }
 }

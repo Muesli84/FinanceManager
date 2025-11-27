@@ -108,7 +108,7 @@ public sealed class StatementDraftsControllerTests
     public async Task AddEntry_ShouldReturnNotFound_ForUnknownDraft()
     {
         var (controller, _, _) = Create();
-        var response = await controller.AddEntryAsync(Guid.NewGuid(), new StatementDraftsController.AddEntryRequest(DateTime.UtcNow.Date, 10m, "X"), default);
+        var response = await controller.AddEntryAsync(Guid.NewGuid(), new StatementDraftAddEntryRequest(DateTime.UtcNow.Date, 10m, "X"), default);
         Assert.IsType<NotFoundResult>(response);
     }
 
@@ -116,7 +116,7 @@ public sealed class StatementDraftsControllerTests
     public async Task Commit_ShouldReturnNotFound_WhenDraftMissing()
     {
         var (controller, _, _) = Create();
-        var response = await controller.CommitAsync(Guid.NewGuid(), new StatementDraftsController.CommitRequest(Guid.NewGuid(), FinanceManager.Domain.ImportFormat.Csv), default);
+        var response = await controller.CommitAsync(Guid.NewGuid(), new StatementDraftCommitRequest(Guid.NewGuid(), ImportFormat.Csv), default);
         Assert.IsType<NotFoundResult>(response);
     }
 
@@ -160,7 +160,7 @@ public sealed class StatementDraftsControllerTests
         await db.SaveChangesAsync();
 
         // Link only ONE child draft (child2) via controller endpoint
-        var linkResult = await controller.SetEntrySplitDraftAsync(parent.Id, parentEntry.Id, new StatementDraftsController.SetSplitDraftRequest(child2.Id), CancellationToken.None);
+        var linkResult = await controller.SetEntrySplitDraftAsync(parent.Id, parentEntry.Id, new StatementDraftSetSplitDraftRequest(child2.Id), CancellationToken.None);
         Assert.IsType<OkObjectResult>(linkResult);
         var okLink = (OkObjectResult)linkResult;
         var splitSumProp = okLink.Value!.GetType().GetProperty("SplitSum")!.GetValue(okLink.Value);

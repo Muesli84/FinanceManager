@@ -1,5 +1,6 @@
 using FinanceManager.Domain; 
 using FinanceManager.Domain.Reports;
+using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Domain.Reports;
 
@@ -13,7 +14,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
 
     public ReportFavorite(Guid ownerUserId,
         string name,
-        int postingKind,
+        PostingKind postingKind,
         bool includeCategory,
         ReportInterval interval,
         bool comparePrevious,
@@ -36,11 +37,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
 
     public Guid OwnerUserId { get; private set; }
     public string Name { get; private set; } = null!;
-    /// <summary>
-    /// Stored as int to decouple from current enum (FinanceManager.Domain.Postings.PostingKind)
-    /// to allow future extension without migration churn.
-    /// </summary>
-    public int PostingKind { get; private set; }
+    public PostingKind PostingKind { get; private set; }
     public bool IncludeCategory { get; private set; }
     public ReportInterval Interval { get; private set; }
     public bool ComparePrevious { get; private set; }
@@ -71,7 +68,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         Touch();
     }
 
-    public void Update(int postingKind, bool includeCategory, ReportInterval interval, bool comparePrevious, bool compareYear, bool showChart, bool expandable, int take, bool useValutaDate)
+    public void Update(PostingKind postingKind, bool includeCategory, ReportInterval interval, bool comparePrevious, bool compareYear, bool showChart, bool expandable, int take, bool useValutaDate)
     {
         PostingKind = postingKind;
         IncludeCategory = includeCategory;
@@ -91,16 +88,33 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         Take = Math.Clamp(take, 1, 120);
     }
 
-    public IReadOnlyCollection<int> GetPostingKinds() =>
-        (PostingKindsCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => int.Parse(s)).ToArray()) ?? new [] { PostingKind };
+    public IReadOnlyCollection<PostingKind> GetPostingKinds()
+        => (PostingKindsCsv?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(s => TryParseKind(s))
+                .Where(k => k.HasValue)
+                .Select(k => k!.Value)
+                .ToArray()) ?? new PostingKind[] { PostingKind };
 
-     public void SetPostingKinds(IEnumerable<int> kinds)
-     {
-        var list = kinds.Distinct().ToArray();
-        PostingKindsCsv = string.Join(",", list);
+    private static PostingKind? TryParseKind(string s)
+    {
+        if (int.TryParse(s, out var v))
+        {
+            if (Enum.IsDefined(typeof(PostingKind), v)) { return (PostingKind)v; }
+            return null;
+        }
+        if (Enum.TryParse<PostingKind>(s, ignoreCase: true, out var kind))
+        {
+            return kind;
+        }
+        return null;
+    }
+
+    public void SetPostingKinds(IEnumerable<PostingKind> kinds)
+    {
+        var list = kinds.Distinct().Select(k => ((int)k).ToString()).ToArray();
+        PostingKindsCsv = string.Join(',', list);
         Touch();
-     }
+    }
 
     public void SetFilters(
         IEnumerable<Guid>? accountIds,
@@ -148,8 +162,8 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         );
     }
 
-    private static string? ToCsv(IEnumerable<Guid>? ids) => ids == null ? null : string.Join(",", ids.Distinct());
-    private static string? ToCsvInt(IEnumerable<int>? values) => values == null ? null : string.Join(",", values.Distinct());
+    private static string? ToCsv(IEnumerable<Guid>? ids) => ids == null ? null : string.Join(',', ids.Distinct());
+    private static string? ToCsvInt(IEnumerable<int>? values) => values == null ? null : string.Join(',', values.Distinct());
     private static IReadOnlyCollection<Guid>? FromCsv(string? csv)
         => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Guid.Parse).ToArray();
     private static IReadOnlyCollection<int>? FromCsvInt(string? csv)

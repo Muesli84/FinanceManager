@@ -32,7 +32,7 @@ public sealed class HomeKpiServiceTests
         var user1 = new FinanceManager.Domain.Users.User("u1","pw", false);
         var user2 = new FinanceManager.Domain.Users.User("u2","pw", false);
         db.Users.AddRange(user1,user2); await db.SaveChangesAsync();
-        var fav1 = new ReportFavorite(user1.Id, "Fav1", 1, false, ReportInterval.Month, false, false, false, true);
+        var fav1 = new ReportFavorite(user1.Id, "Fav1", PostingKind.Contact, false, ReportInterval.Month, false, false, false, true);
         db.ReportFavorites.Add(fav1); await db.SaveChangesAsync();
 
         var svc = new HomeKpiService(db);

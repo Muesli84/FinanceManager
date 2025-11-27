@@ -601,7 +601,7 @@ public sealed class SetupImportService : ISetupImportService
             {
                 var id = f.GetProperty("Id").GetGuid();
                 var name = f.GetProperty("Name").GetString() ?? string.Empty;
-                var postingKind = f.GetProperty("PostingKind").GetInt32();
+                var postingKind = (PostingKind)f.GetProperty("PostingKind").GetInt32();
                 var includeCategory = f.GetProperty("IncludeCategory").GetBoolean();
                 var interval = (ReportInterval)f.GetProperty("Interval").GetInt32();
                 var take = f.TryGetProperty("Take", out var takeEl) ? takeEl.GetInt32() : 24;
@@ -620,7 +620,7 @@ public sealed class SetupImportService : ISetupImportService
                     {
                         var kinds = kindsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                             .Select(s => int.TryParse(s, out var v) ? v : (int?)null)
-                            .Where(v => v.HasValue).Select(v => v!.Value).ToArray();
+                            .Where(v => v.HasValue).Select(v => (PostingKind)v!.Value).ToArray();
                         if (kinds.Length > 0) { entity.SetPostingKinds(kinds); }
                     }
                 }

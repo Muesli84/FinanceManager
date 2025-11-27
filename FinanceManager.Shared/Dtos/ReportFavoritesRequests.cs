@@ -18,7 +18,7 @@ public sealed class ReportFavoriteFiltersApiDto
 public sealed class ReportFavoriteCreateApiRequest
 {
     [Required, MinLength(2), MaxLength(120)] public string Name { get; set; } = string.Empty;
-    [Range(0, 10)] public int PostingKind { get; set; }
+    [Range(0, 10)] public PostingKind PostingKind { get; set; }
     public bool IncludeCategory { get; set; }
     [Range(0, 10)] public int Interval { get; set; }
     [Range(1,120)] public int Take { get; set; } = 24;
@@ -26,7 +26,7 @@ public sealed class ReportFavoriteCreateApiRequest
     public bool CompareYear { get; set; }
     public bool ShowChart { get; set; }
     public bool Expandable { get; set; } = true;
-    public IReadOnlyCollection<int>? PostingKinds { get; set; }
+    public IReadOnlyCollection<PostingKind>? PostingKinds { get; set; }
     public ReportFavoriteFiltersApiDto? Filters { get; set; }
     public bool UseValutaDate { get; set; }
 }
@@ -34,7 +34,7 @@ public sealed class ReportFavoriteCreateApiRequest
 public sealed class ReportFavoriteUpdateApiRequest
 {
     [Required, MinLength(2), MaxLength(120)] public string Name { get; set; } = string.Empty;
-    [Range(0, 10)] public int PostingKind { get; set; }
+    [Range(0, 10)] public PostingKind PostingKind { get; set; }
     public bool IncludeCategory { get; set; }
     [Range(0, 10)] public int Interval { get; set; }
     [Range(1,120)] public int Take { get; set; } = 24;
@@ -42,7 +42,7 @@ public sealed class ReportFavoriteUpdateApiRequest
     public bool CompareYear { get; set; }
     public bool ShowChart { get; set; }
     public bool Expandable { get; set; } = true;
-    public IReadOnlyCollection<int>? PostingKinds { get; set; }
+    public IReadOnlyCollection<PostingKind>? PostingKinds { get; set; }
     public ReportFavoriteFiltersApiDto? Filters { get; set; }
     public bool UseValutaDate { get; set; }
 }

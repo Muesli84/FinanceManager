@@ -125,7 +125,7 @@ public sealed class StatementDraftServiceTests
         db.SaveChanges();
 
         // Act
-        var result = await sut.CommitAsync(draft.Id, owner, db.Accounts.Single().Id, FinanceManager.Domain.ImportFormat.Csv, CancellationToken.None);
+        var result = await sut.CommitAsync(draft.Id, owner, db.Accounts.Single().Id, ImportFormat.Csv, CancellationToken.None);
 
         // Assert
         Assert.NotNull(result);

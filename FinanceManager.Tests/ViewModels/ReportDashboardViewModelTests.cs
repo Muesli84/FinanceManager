@@ -94,7 +94,7 @@ public sealed class ReportDashboardViewModelTests
         });
         var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client));
 
-        var resp = await vm.LoadAsync(0, 0, 24, false, false, false, new int[]{0}, DateTime.UtcNow, null);
+        var resp = await vm.LoadAsync(0, 0, 24, false, false, false, new PostingKind[] { PostingKind.Bank}, DateTime.UtcNow, null);
 
         Assert.Equal(3, resp.Points.Count);
     }
@@ -110,12 +110,12 @@ public sealed class ReportDashboardViewModelTests
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/report-favorites")
             {
                 postCount++;
-                var json = JsonSerializer.Serialize(new ReportDashboardViewModel.FavoriteDto(Guid.NewGuid(), "Fav", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new int[]{0}, null));
+                var json = JsonSerializer.Serialize(new ReportDashboardViewModel.FavoriteDto(Guid.NewGuid(), "Fav", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new PostingKind[] { PostingKind.Bank}, null));
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
             }
             if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath.StartsWith("/api/report-favorites/"))
             {
-                var json = JsonSerializer.Serialize(new ReportDashboardViewModel.FavoriteDto(Guid.NewGuid(), "Fav2", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new int[]{0}, null));
+                var json = JsonSerializer.Serialize(new ReportDashboardViewModel.FavoriteDto(Guid.NewGuid(), "Fav2", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new PostingKind[] { PostingKind.Bank}, null));
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
             }
             if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath.StartsWith("/api/report-favorites/"))
@@ -126,12 +126,12 @@ public sealed class ReportDashboardViewModelTests
         });
         var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client));
 
-        var saved = await vm.SaveFavoriteAsync("n", 0, false, 0, 24, false, false, true, true, new int[]{0}, null);
+        var saved = await vm.SaveFavoriteAsync("n", 0, false, 0, 24, false, false, true, true, new PostingKind[]{ PostingKind.Bank }, null);
         Assert.NotNull(saved);
         Assert.Equal(HttpMethod.Post, lastReq!.Method);
         Assert.Equal("/api/report-favorites", lastReq!.RequestUri!.AbsolutePath);
 
-        var updated = await vm.UpdateFavoriteAsync(Guid.NewGuid(), "n2", 0, false, 0, 24, false, false, true, true, new int[]{0}, null);
+        var updated = await vm.UpdateFavoriteAsync(Guid.NewGuid(), "n2", 0, false, 0, 24, false, false, true, true, new PostingKind[]{ PostingKind.Bank}, null);
         Assert.NotNull(updated);
         Assert.Equal(HttpMethod.Put, lastReq!.Method);
 
@@ -159,7 +159,7 @@ public sealed class ReportDashboardViewModelTests
         });
         var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client))
         {
-            SelectedKinds = new List<int> { 0, 1 }, // Bank, Contact
+            SelectedKinds = new List<PostingKind> { PostingKind.Bank, PostingKind.Contact }, 
             Interval = (int)ReportInterval.Month,
             IncludeCategory = false,
             Take = 24
@@ -192,7 +192,7 @@ public sealed class ReportDashboardViewModelTests
         });
         var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client))
         {
-            SelectedKinds = new List<int> { 0, 1 }, // multi
+            SelectedKinds = new List<PostingKind> { PostingKind.Bank, PostingKind.Contact }, // multi
             IncludeCategory = true,
             ComparePrevious = true,
             CompareYear = true,
@@ -240,7 +240,7 @@ public sealed class ReportDashboardViewModelTests
         });
         var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client))
         {
-            SelectedKinds = new List<int> { 0, 1 },
+            SelectedKinds = new List<PostingKind> { PostingKind.Bank, PostingKind.Contact },
             IncludeCategory = true,
         };
 

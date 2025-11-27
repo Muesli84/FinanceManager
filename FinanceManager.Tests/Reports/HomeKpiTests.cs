@@ -30,7 +30,7 @@ public sealed class HomeKpiTests
         var user = new FinanceManager.Domain.Users.User("owner","pw", false);
         db.Users.Add(user); await db.SaveChangesAsync();
 
-        var fav = new ReportFavorite(user.Id, "Fav", 1, false, ReportInterval.Month, false, false, false, true);
+        var fav = new ReportFavorite(user.Id, "Fav", PostingKind.Contact, false, ReportInterval.Month, false, false, false, true);
         db.ReportFavorites.Add(fav); await db.SaveChangesAsync();
 
         // valid
@@ -49,7 +49,7 @@ public sealed class HomeKpiTests
         using var db = CreateDb();
         var user = new FinanceManager.Domain.Users.User("owner","pw", false);
         db.Users.Add(user); await db.SaveChangesAsync();
-        var fav = new ReportFavorite(user.Id, "Fav", 1, false, ReportInterval.Month, false, false, false, true);
+        var fav = new ReportFavorite(user.Id, "Fav", PostingKind.Contact, false, ReportInterval.Month, false, false, false, true);
         db.ReportFavorites.Add(fav); await db.SaveChangesAsync();
 
         db.HomeKpis.Add(new HomeKpi(user.Id, HomeKpiKind.ReportFavorite, HomeKpiDisplayMode.TotalOnly, 0, fav.Id));

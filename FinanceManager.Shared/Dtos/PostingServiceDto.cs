@@ -7,7 +7,7 @@ namespace FinanceManager.Shared.Dtos
         DateTime BookingDate,
         DateTime ValutaDate,
         decimal Amount,
-        int Kind,
+        PostingKind Kind,
         Guid? AccountId,
         Guid? ContactId,
         Guid? SavingsPlanId,

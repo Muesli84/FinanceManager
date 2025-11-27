@@ -184,8 +184,8 @@ public sealed class AttachmentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DownloadAsync(Guid id, [FromQuery] string? token, CancellationToken ct)
     {
-        // If user is authenticated, allow normal path (attachment owner check happens in service.DownloadAsync)
-        if (User?.Identity?.IsAuthenticated == true)
+        // Prefer authenticated current user indicator over HttpContext principal to support unit tests
+        if (_current.IsAuthenticated)
         {
             var payload = await _service.DownloadAsync(_current.UserId, id, ct);
             if (payload == null) { return NotFound(); }
@@ -206,7 +206,6 @@ public sealed class AttachmentsController : ControllerBase
             var expires = new DateTime(ticks, DateTimeKind.Utc);
             if (tokenAttachmentId != id) { return NotFound(); }
             if (DateTime.UtcNow > expires) { return NotFound(); }
-            // Now fetch attachment content by owner id.
             var payload = await _service.DownloadAsync(ownerUserId, id, ct);
             if (payload == null) { return NotFound(); }
             var (content, fileName, contentType) = payload.Value;

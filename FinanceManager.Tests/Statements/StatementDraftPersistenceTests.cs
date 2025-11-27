@@ -128,7 +128,7 @@ public sealed class StatementDraftPersistenceTests
         var bytes = Encoding.UTF8.GetBytes($"{{\"Type\":\"Backup\",\"Version\":2}}\n{{ \"BankAccounts\": [{{ \"IBAN\": \"{account.Iban}\"}}], \"BankAccountLedgerEntries\": [], \"BankAccountJournalLines\": [{{\"Id\": 1,\"PostingDate\": \"2017-07-15T00:00:00\",\"ValutaDate\": \"2017-07-15T00:00:00\",\"PostingDescription\": \"Lastschrift\",\"SourceName\": \"GEZ\",\"Description\": \"GEZ Gebuehr\",\"CurrencyCode\": \"EUR\",\"Amount\": -97.95,\"CreatedAt\": \"2017-07-16T12:33:42.000041\"}}] }}");
         await foreach (var draft in sut.CreateDraftAsync(owner, "c.csv", bytes, CancellationToken.None))
         {
-            var result = await sut.CommitAsync(draft.DraftId, owner, account.Id, FinanceManager.Domain.ImportFormat.Csv, CancellationToken.None);
+            var result = await sut.CommitAsync(draft.DraftId, owner, account.Id, ImportFormat.Csv, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(1, db.StatementImports.Count());
