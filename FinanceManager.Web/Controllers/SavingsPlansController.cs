@@ -26,17 +26,8 @@ public sealed class SavingsPlansController : ControllerBase
         _attachments = attachments;
     }
 
-    public sealed record SavingsPlanCreateRequest(
-        [Required, MinLength(2)] string Name,
-        SavingsPlanType Type,
-        decimal? TargetAmount,
-        DateTime? TargetDate,
-        SavingsPlanInterval? Interval,
-        Guid? CategoryId,
-        string? ContractNumber
-    );
-
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<SavingsPlanDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
     {
         var list = await _service.ListAsync(_current.UserId, onlyActive, ct);
@@ -44,10 +35,13 @@ public sealed class SavingsPlansController : ControllerBase
     }
 
     [HttpGet("count")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> CountAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
         => Ok(new { count = await _service.CountAsync(_current.UserId, onlyActive, ct) });
 
     [HttpGet("{id:guid}", Name = "GetSavingsPlans")]
+    [ProducesResponseType(typeof(SavingsPlanDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAsync(Guid id, CancellationToken ct)
     {
         var dto = await _service.GetAsync(id, _current.UserId, ct);
@@ -55,6 +49,7 @@ public sealed class SavingsPlansController : ControllerBase
     }
 
     [HttpGet("{id:guid}/analysis")]
+    [ProducesResponseType(typeof(SavingsPlanAnalysisDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> AnalyzeAsync(Guid id, CancellationToken ct)
     {
         var dto = await _service.AnalyzeAsync(id, _current.UserId, ct);
@@ -62,6 +57,8 @@ public sealed class SavingsPlansController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(SavingsPlanDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateAsync([FromBody] SavingsPlanCreateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
@@ -70,6 +67,9 @@ public sealed class SavingsPlansController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(SavingsPlanDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] SavingsPlanCreateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
@@ -78,6 +78,8 @@ public sealed class SavingsPlansController : ControllerBase
     }
 
     [HttpPost("{id:guid}/archive")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ArchiveAsync(Guid id, CancellationToken ct)
     {
         var ok = await _service.ArchiveAsync(id, _current.UserId, ct);
@@ -85,6 +87,8 @@ public sealed class SavingsPlansController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(Guid id, CancellationToken ct)
     {
         var ok = await _service.DeleteAsync(id, _current.UserId, ct);
@@ -92,6 +96,8 @@ public sealed class SavingsPlansController : ControllerBase
     }
 
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct)
     {
         try
@@ -106,6 +112,8 @@ public sealed class SavingsPlansController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/symbol")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ClearSymbolAsync(Guid id, CancellationToken ct)
     {
         try
@@ -121,6 +129,9 @@ public sealed class SavingsPlansController : ControllerBase
 
     [HttpPost("{id:guid}/symbol")]
     [RequestSizeLimit(long.MaxValue)]
+    [ProducesResponseType(typeof(AttachmentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UploadSymbolAsync(Guid id, [FromForm] IFormFile? file, [FromForm] Guid? categoryId, CancellationToken ct)
     {
         if (file == null) { return BadRequest(new { error = "File required" }); }
