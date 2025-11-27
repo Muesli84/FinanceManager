@@ -18,14 +18,14 @@ public sealed class StatementDraftsViewModel : ViewModelBase
 
     public sealed class StatementDraftEntryDto
     {
-        public FinanceManager.Domain.Statements.StatementDraftEntryStatus Status { get; set; }
+        public StatementDraftEntryStatus Status { get; set; }
     }
     public sealed class StatementDraftDto
     {
         public Guid DraftId { get; set; }
         public string OriginalFileName { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public FinanceManager.Domain.StatementDraftStatus Status { get; set; }
+        public StatementDraftStatus Status { get; set; }
         public List<StatementDraftEntryDto> Entries { get; set; } = new();
     }
 
@@ -34,7 +34,7 @@ public sealed class StatementDraftsViewModel : ViewModelBase
         public Guid Id { get; set; }
         public string FileName { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public FinanceManager.Domain.StatementDraftStatus Status { get; set; }
+        public StatementDraftStatus Status { get; set; }
         public int PendingEntries { get; set; }
     }
 
@@ -81,7 +81,7 @@ public sealed class StatementDraftsViewModel : ViewModelBase
             }
             foreach (var d in batch)
             {
-                var pending = d.Entries.Count(e => e.Status != FinanceManager.Domain.Statements.StatementDraftEntryStatus.AlreadyBooked);
+                var pending = d.Entries.Count(e => e.Status != StatementDraftEntryStatus.AlreadyBooked);
                 Items.Add(new DraftItem
                 {
                     Id = d.DraftId,

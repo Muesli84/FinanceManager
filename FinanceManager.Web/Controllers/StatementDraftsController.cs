@@ -49,11 +49,8 @@ public sealed class StatementDraftsController : ControllerBase
         _attachments = attachments;
     }
 
-    public sealed record UploadRequest([Required] string FileName);
-
-    public sealed record UploadResult(StatementDraftDto? FirstDraft, object? SplitInfo);
-
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<StatementDraftDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOpenAsync([FromQuery] int skip = 0, [FromQuery] int take = 3, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 3);
@@ -62,14 +59,15 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("count")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOpenCountAsync(CancellationToken ct)
     {
         var count = await _drafts.GetOpenDraftsCountAsync(_current.UserId, ct);
         return Ok(new { count });
     }
 
-    // NEW: delete all open drafts
     [HttpDelete("all")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteAllAsync(CancellationToken ct)
     {
         var removed = await _drafts.DeleteAllAsync(_current.UserId, ct);
@@ -79,6 +77,8 @@ public sealed class StatementDraftsController : ControllerBase
 
     [HttpPost("upload")]
     [RequestSizeLimit(10_000_000)]
+    [ProducesResponseType(typeof(StatementDraftUploadResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UploadAsync([FromForm] IFormFile file, CancellationToken ct)
     {
         if (file == null || file.Length == 0) { return BadRequest(new { error = "File required" }); }
@@ -89,7 +89,6 @@ public sealed class StatementDraftsController : ControllerBase
         {
             firstDraft ??= draft;
         }
-        // Try to get split info (service is implementation instance)
         object? splitInfo = null;
         if (_drafts is StatementDraftService impl && impl.LastImportSplitInfo != null)
         {
@@ -105,11 +104,11 @@ public sealed class StatementDraftsController : ControllerBase
                 info.MonthlyThreshold
             };
         }
-        return Ok(new UploadResult(firstDraft, splitInfo));
+        return Ok(new StatementDraftUploadResult(firstDraft, splitInfo));
     }
 
-    // Classification status via background task queue
     [HttpGet("classify/status")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public IActionResult GetClassifyStatus()
     {
         var task = _taskManager.GetAll()
@@ -132,6 +131,7 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("classify")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status202Accepted)]
     public IActionResult ClassifyAllAsync()
     {
         var existing = _taskManager.GetAll()
@@ -147,6 +147,7 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("book-all/status")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public IActionResult GetBookAllStatus()
     {
         var task = _taskManager.GetAll()
@@ -160,10 +161,9 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(new { running = task.Status == BackgroundTaskStatus.Running, processed = task.Processed ?? 0, failed = 0, total = task.Total ?? 0, warnings = task.Warnings, errors = task.Errors, message = task.Message, issues = Array.Empty<object>() });
     }
 
-    public sealed record MassBookRequest(bool IgnoreWarnings, bool AbortOnFirstIssue, bool BookEntriesIndividually);
-
     [HttpPost("book-all")]
-    public IActionResult BookAllAsync([FromBody] MassBookRequest req)
+    [ProducesResponseType(typeof(object), StatusCodes.Status202Accepted)]
+    public IActionResult BookAllAsync([FromBody] StatementDraftMassBookRequest req)
     {
         var existing = _taskManager.GetAll()
             .FirstOrDefault(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.BookAllDrafts && (t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued));
@@ -178,6 +178,7 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("book-all/cancel")]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
     public IActionResult CancelBookAll()
     {
         var task = _taskManager.GetAll().FirstOrDefault(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.BookAllDrafts && t.Status == BackgroundTaskStatus.Running);
@@ -187,6 +188,8 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("{draftId:guid}")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAsync(Guid draftId, [FromQuery] bool headerOnly = false, [FromQuery] string? src = null, [FromQuery] Guid? fromEntryDraftId = null, [FromQuery] Guid? fromEntryId = null, CancellationToken ct = default)
     {
         StatementDraftDto? draft = headerOnly
@@ -217,6 +220,8 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("{draftId:guid}/entries/{entryId:guid}")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
         var draft = await _drafts.GetDraftHeaderAsync(draftId, _current.UserId, ct);
@@ -263,7 +268,9 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/entries")]
-    public async Task<IActionResult> AddEntryAsync(Guid draftId, [FromBody] AddEntryRequest req, CancellationToken ct)
+    [ProducesResponseType(typeof(StatementDraftDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddEntryAsync(Guid draftId, [FromBody] StatementDraftAddEntryRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
         var draft = await _drafts.AddEntryAsync(draftId, _current.UserId, req.BookingDate, req.Amount, req.Subject, ct);
@@ -271,6 +278,8 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/classify")]
+    [ProducesResponseType(typeof(StatementDraftDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ClassifyAsync(Guid draftId, CancellationToken ct)
     {
         try
@@ -285,6 +294,8 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/classify/{entryId:guid}")]
+    [ProducesResponseType(typeof(StatementDraftDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ClassifyEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
         try
@@ -299,6 +310,7 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/account/{accountId:guid}")]
+    [ProducesResponseType(typeof(StatementDraftDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetAccountAsync(Guid draftId, Guid accountId, CancellationToken ct)
     {
         var draft = await _drafts.SetAccountAsync(draftId, _current.UserId, accountId, ct);
@@ -306,14 +318,16 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/commit")]
-    public async Task<IActionResult> CommitAsync(Guid draftId, [FromBody] CommitRequest req, CancellationToken ct)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CommitAsync(Guid draftId, [FromBody] StatementDraftCommitRequest req, CancellationToken ct)
     {
         var result = await _drafts.CommitAsync(draftId, _current.UserId, req.AccountId, req.Format, ct);
         return result is null ? NotFound() : Ok(result);
     }
 
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/contact")]
-    public async Task<IActionResult> SetEntryContactAsync(Guid draftId, Guid entryId, [FromBody] SetContactRequest body, CancellationToken ct)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetEntryContactAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetContactRequest body, CancellationToken ct)
     {
         var draft = await _drafts.SetEntryContactAsync(draftId, entryId, body.ContactId, _current.UserId, ct);
         if (draft == null) { return NotFound(); }
@@ -322,7 +336,8 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/costneutral")]
-    public async Task<IActionResult> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, [FromBody] SetCostNeutralRequest body, CancellationToken ct)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetCostNeutralRequest body, CancellationToken ct)
     {
         var draft = await _drafts.SetEntryCostNeutralAsync(draftId, entryId, body.IsCostNeutral, _current.UserId, ct);
         if (draft == null) { return NotFound(); }
@@ -331,7 +346,8 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/savingsplan")]
-    public async Task<IActionResult> SetEntrySavingPlanAsync(Guid draftId, Guid entryId, [FromBody] SetSavingsPlanRequest body, CancellationToken ct)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetEntrySavingPlanAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetSavingsPlanRequest body, CancellationToken ct)
     {
         var draft = await _drafts.AssignSavingsPlanAsync(draftId, entryId, body.SavingsPlanId, _current.UserId, ct);
         if (draft == null) { return NotFound(); }
@@ -339,10 +355,10 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(entry);
     }
 
-    public sealed record SetSplitDraftRequest(Guid? SplitDraftId);
-
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/split")]
-    public async Task<IActionResult> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, [FromBody] SetSplitDraftRequest body, CancellationToken ct)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetSplitDraftRequest body, CancellationToken ct)
     {
         try
         {
@@ -368,6 +384,8 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpDelete("{draftId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CancelAsync(Guid draftId, CancellationToken ct)
     {
         var ok = await _drafts.CancelAsync(draftId, _current.UserId, ct);
@@ -375,6 +393,8 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("{draftId:guid}/file")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DownloadOriginalAsync(Guid draftId, CancellationToken ct)
     {
         var draft = await _drafts.GetDraftHeaderAsync(draftId, _current.UserId, ct);
@@ -388,26 +408,17 @@ public sealed class StatementDraftsController : ControllerBase
         return File(content, string.IsNullOrWhiteSpace(contentType) ? MediaTypeNames.Application.Octet : contentType, fileName);
     }
 
-    public sealed record AddEntryRequest([Required] DateTime BookingDate, [Required] decimal Amount, [Required, MaxLength(500)] string Subject);
-    public sealed record CommitRequest(Guid AccountId, ImportFormat Format);
-    public sealed record SetContactRequest(Guid? ContactId);
-    public sealed record SetCostNeutralRequest(bool? IsCostNeutral);
-    public sealed record SetSavingsPlanRequest(Guid? SavingsPlanId);
-    public sealed record SetArchiveSavingsPlanOnBookingRequest(bool ArchiveOnBooking);
-    public sealed record UpdateEntryCoreRequest(DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string Subject, string? RecipientName, string? CurrencyCode, string? BookingDescription);
-
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/edit-core")]
-    public async Task<IActionResult> UpdateEntryCoreAsync(Guid draftId, Guid entryId, [FromBody] UpdateEntryCoreRequest body, CancellationToken ct)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateEntryCoreAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftUpdateEntryCoreRequest body, CancellationToken ct)
     {
         var updated = await _drafts.UpdateEntryCoreAsync(draftId, entryId, _current.UserId, body.BookingDate, body.ValutaDate, body.Amount, body.Subject, body.RecipientName, body.CurrencyCode, body.BookingDescription, ct);
         return updated == null ? NotFound() : Ok(updated);
     }
 
-    public sealed record SetEntrySecurityRequest(Guid? SecurityId, SecurityTransactionType? TransactionType, decimal? Quantity, decimal? FeeAmount, decimal? TaxAmount);
-
-    [HttpPost("{draftId:guid}/entries/{entryId:guid}/security")
-    ]
-    public async Task<IActionResult> SetEntrySecurityAsync(Guid draftId, Guid entryId, [FromBody] SetEntrySecurityRequest body, CancellationToken ct)
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/security")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetEntrySecurityAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetEntrySecurityRequest body, CancellationToken ct)
     {
         var draft = await _drafts.SetEntrySecurityAsync(draftId, entryId, body.SecurityId, body.TransactionType, body.Quantity, body.FeeAmount, body.TaxAmount, _current.UserId, ct);
         if (draft == null) { return NotFound(); }
@@ -416,7 +427,8 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/savingsplan/archive-on-booking")]
-    public async Task<IActionResult> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, [FromBody] SetArchiveSavingsPlanOnBookingRequest body, CancellationToken ct)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetArchiveSavingsPlanOnBookingRequest body, CancellationToken ct)
     {
         var draft = await _drafts.SetEntryArchiveSavingsPlanOnBookingAsync(draftId, entryId, body.ArchiveOnBooking, _current.UserId, ct);
         if (draft == null) { return NotFound(); }
@@ -425,6 +437,7 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("{draftId:guid}/validate")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> ValidateAsync(Guid draftId, CancellationToken ct)
     {
         var result = await _drafts.ValidateAsync(draftId, null, _current.UserId, ct);
@@ -432,6 +445,7 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("{draftId:guid}/entries/{entryId:guid}/validate")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> ValidateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
         var result = await _drafts.ValidateAsync(draftId, entryId, _current.UserId, ct);
@@ -439,6 +453,9 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/book")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status428PreconditionRequired)]
     public async Task<IActionResult> BookAsync(Guid draftId, [FromQuery] bool forceWarnings = false, CancellationToken ct = default)
     {
         var result = await _drafts.BookAsync(draftId, null, _current.UserId, forceWarnings, ct);
@@ -448,6 +465,9 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/book")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status428PreconditionRequired)]
     public async Task<IActionResult> BookEntryAsync(Guid draftId, Guid entryId, [FromQuery] bool forceWarnings = false, CancellationToken ct = default)
     {
         var result = await _drafts.BookAsync(draftId, entryId, _current.UserId, forceWarnings, ct);
@@ -456,16 +476,17 @@ public sealed class StatementDraftsController : ControllerBase
         return Ok(result);
     }
 
-    public sealed record SaveEntryAllRequest(Guid? ContactId, bool? IsCostNeutral, Guid? SavingsPlanId, bool? ArchiveOnBooking, Guid? SecurityId, SecurityTransactionType? TransactionType, decimal? Quantity, decimal? FeeAmount, decimal? TaxAmount);
-
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/save-all")]
-    public async Task<IActionResult> SaveEntryAllAsync(Guid draftId, Guid entryId, [FromBody] SaveEntryAllRequest body, CancellationToken ct)
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SaveEntryAllAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSaveEntryAllRequest body, CancellationToken ct)
     {
         var dto = await _drafts.SaveEntryAllAsync(draftId, entryId, _current.UserId, body.ContactId, body.IsCostNeutral, body.SavingsPlanId, body.ArchiveOnBooking, body.SecurityId, body.TransactionType, body.Quantity, body.FeeAmount, body.TaxAmount, ct);
         return dto == null ? NotFound() : Ok(dto);
     }
 
     [HttpDelete("{draftId:guid}/entries/{entryId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
         var ok = await _drafts.DeleteEntryAsync(draftId, entryId, _current.UserId, ct);
@@ -473,6 +494,7 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/reset-duplicate")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> ResetDuplicateAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
         var dto = await _drafts.ResetDuplicateEntryAsync(draftId, entryId, _current.UserId, ct);

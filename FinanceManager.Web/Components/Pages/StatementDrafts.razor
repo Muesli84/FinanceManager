@@ -357,8 +357,8 @@ else
     private sealed class TempStatus { public bool running { get; set; } public int processed { get; set; } public int total { get; set; } public string? message { get; set; } }
     private sealed class BookIssue { public Guid draftId { get; set; } public Guid? entryId { get; set; } public string code { get; set; } = string.Empty; public string message { get; set; } = string.Empty; }
     private sealed class BookStatus { public bool running { get; set; } public int processed { get; set; } public int failed { get; set; } public int total { get; set; } public int warnings { get; set; } public int errors { get; set; } public string? message { get; set; } public List<BookIssue>? issues { get; set; } }
-    private sealed class StatementDraftDto { public Guid DraftId { get; set; } public string OriginalFileName { get; set; } = string.Empty; public string? Description { get; set; } public FinanceManager.Domain.StatementDraftStatus Status { get; set; } public List<StatementDraftEntryDto> Entries { get; set; } = new(); }
-    private sealed class StatementDraftEntryDto { public Guid Id { get; set; } public FinanceManager.Domain.Statements.StatementDraftEntryStatus Status { get; set; } }
+    private sealed class StatementDraftDto { public Guid DraftId { get; set; } public string OriginalFileName { get; set; } = string.Empty; public string? Description { get; set; } public StatementDraftStatus Status { get; set; } public List<StatementDraftEntryDto> Entries { get; set; } = new(); }
+    private sealed class StatementDraftEntryDto { public Guid Id { get; set; } public StatementDraftEntryStatus Status { get; set; } }
     
      private sealed record UploadResultDto(StatementDraftDto? FirstDraft, object? SplitInfo);
  }

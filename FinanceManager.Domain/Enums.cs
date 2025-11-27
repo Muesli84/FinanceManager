@@ -7,11 +7,6 @@ public enum AccountShareRole
     Admin = 2
 }
 
-public enum ImportFormat
-{
-    Csv = 0,
-    Pdf = 1
-}
 
 public enum StatementEntryStatus
 {
@@ -20,11 +15,6 @@ public enum StatementEntryStatus
     IgnoredDuplicate = 2
 }
 
-public enum StatementDraftStatus
-{
-    Draft = 0,
-    Committed = 1,
-    Expired = 2
-}
+
 
 

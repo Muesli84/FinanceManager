@@ -55,7 +55,7 @@ namespace FinanceManager.Web.Services
                     if (opts.BookEntriesIndividually)
                     {
                         var orderedEntries = draft.Entries
-                            .Where(e => e.Status == FinanceManager.Domain.Statements.StatementDraftEntryStatus.Accounted)
+                            .Where(e => e.Status == StatementDraftEntryStatus.Accounted)
                             .OrderBy(e => e.BookingDate)
                             .ThenBy(e => e.Id)
                             .ToList();
@@ -96,7 +96,7 @@ namespace FinanceManager.Web.Services
                         }
 
                         var refreshed = await draftService.GetDraftAsync(draft.DraftId, context.UserId, ct);
-                        if (refreshed == null || refreshed.Status == FinanceManager.Domain.StatementDraftStatus.Committed)
+                        if (refreshed == null || refreshed.Status == StatementDraftStatus.Committed)
                         {
                             processedDrafts++;
                         }

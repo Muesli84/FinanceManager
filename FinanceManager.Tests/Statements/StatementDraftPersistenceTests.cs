@@ -134,7 +134,7 @@ public sealed class StatementDraftPersistenceTests
             Assert.Equal(1, db.StatementImports.Count());
             Assert.Equal(draft.Entries.Count, db.StatementEntries.Count());
             var persistedDraft = await sut.GetDraftAsync(draft.DraftId, owner, CancellationToken.None);
-            Assert.Equal(FinanceManager.Domain.StatementDraftStatus.Committed, persistedDraft!.Status);
+            Assert.Equal(StatementDraftStatus.Committed, persistedDraft!.Status);
             counter++;
         }
         Assert.Equal(1, counter);
