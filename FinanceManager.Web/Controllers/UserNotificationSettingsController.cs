@@ -41,20 +41,11 @@ public sealed class UserNotificationSettingsController : ControllerBase
         return Ok(dto);
     }
 
-    public sealed class UpdateRequest
-    {
-        public bool MonthlyReminderEnabled { get; set; }
-        [Range(0,23)] public int? MonthlyReminderHour { get; set; }
-        [Range(0,59)] public int? MonthlyReminderMinute { get; set; }
-        [Required] public string HolidayProvider { get; set; } = "Memory";
-        [StringLength(10, MinimumLength = 2)] public string? HolidayCountryCode { get; set; }
-        [StringLength(20, MinimumLength = 2)] public string? HolidaySubdivisionCode { get; set; }
-    }
-
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UpdateAsync([FromBody] UpdateRequest req, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateAsync([FromBody] UserNotificationSettingsUpdateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
         var uid = _current.UserId;
