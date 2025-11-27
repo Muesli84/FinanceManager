@@ -160,7 +160,6 @@ else
             }
             else
             {
-                // Request authentication with current URL as return target
                 var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
                 VmOnAuthenticationRequired(_vm, returnUrl);
             }
@@ -171,7 +170,7 @@ else
     private void VmOnAuthenticationRequired(object? sender, string? returnUrl)
     {
         var url = string.IsNullOrWhiteSpace(returnUrl) ? "/login" : $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}";
-        Nav.NavigateTo(url, forceLoad: true);
+        _ = InvokeAsync(() => Nav.NavigateTo(url, forceLoad: true));
     }
 
     private void VmOnStateChanged(object? sender, EventArgs e)
