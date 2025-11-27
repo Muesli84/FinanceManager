@@ -20,10 +20,10 @@ public sealed class SecurityBackfillController : ControllerBase
         _tasks = tasks; _current = current;
     }
 
-    public sealed record BackfillRequest(Guid? SecurityId, DateTime? FromDateUtc, DateTime? ToDateUtc);
-
     [HttpPost]
-    public ActionResult<BackgroundTaskInfo> Enqueue([FromBody] BackfillRequest req)
+    [ProducesResponseType(typeof(BackgroundTaskInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public ActionResult<BackgroundTaskInfo> Enqueue([FromBody] SecurityBackfillRequest req)
     {
         var payload = new { SecurityId = req.SecurityId?.ToString(), FromDateUtc = req.FromDateUtc?.ToString("o"), ToDateUtc = req.ToDateUtc?.ToString("o") };
         var info = _tasks.Enqueue(BackgroundTaskType.SecurityPricesBackfill, _current.UserId, payload, allowDuplicate: false);
