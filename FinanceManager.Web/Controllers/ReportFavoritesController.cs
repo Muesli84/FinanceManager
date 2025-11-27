@@ -1,6 +1,7 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Reports; // added for ReportInterval
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -41,39 +42,11 @@ public sealed class ReportFavoritesController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
-    public sealed class FiltersDto
-    {
-        public IReadOnlyCollection<Guid>? AccountIds { get; set; }
-        public IReadOnlyCollection<Guid>? ContactIds { get; set; }
-        public IReadOnlyCollection<Guid>? SavingsPlanIds { get; set; }
-        public IReadOnlyCollection<Guid>? SecurityIds { get; set; }
-        public IReadOnlyCollection<Guid>? ContactCategoryIds { get; set; }
-        public IReadOnlyCollection<Guid>? SavingsPlanCategoryIds { get; set; }
-        public IReadOnlyCollection<Guid>? SecurityCategoryIds { get; set; }
-        public IReadOnlyCollection<int>? SecuritySubTypes { get; set; }
-        public bool? IncludeDividendRelated { get; set; } // new
-    }
-
-    public sealed class CreateRequest
-    {
-        [Required, MinLength(2), MaxLength(120)] public string Name { get; set; } = string.Empty;
-        [Range(0, 10)] public int PostingKind { get; set; }
-        public bool IncludeCategory { get; set; }
-        [Required] public ReportInterval Interval { get; set; }
-        [Range(1,120)] public int Take { get; set; } = 24;
-        public bool ComparePrevious { get; set; }
-        public bool CompareYear { get; set; }
-        public bool ShowChart { get; set; }
-        public bool Expandable { get; set; } = true;
-        public IReadOnlyCollection<int>? PostingKinds { get; set; } // multi-kind support
-        public FiltersDto? Filters { get; set; }
-        public bool UseValutaDate { get; set; }
-    }
-
     [HttpPost]
     [ProducesResponseType(typeof(ReportFavoriteDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateAsync([FromBody] CreateRequest req, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreateAsync([FromBody] ReportFavoriteCreateApiRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
@@ -81,7 +54,7 @@ public sealed class ReportFavoritesController : ControllerBase
             var filters = req.Filters == null ? null : new ReportFavoriteFiltersDto(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds, req.Filters.SecuritySubTypes, req.Filters.IncludeDividendRelated);
             var dto = await _favorites.CreateAsync(
                 _current.UserId,
-                new ReportFavoriteCreateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters, req.UseValutaDate),
+                new ReportFavoriteCreateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, (ReportInterval)req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters, req.UseValutaDate),
                 ct);
             return CreatedAtRoute("GetReportFavorite", new { id = dto.Id }, dto);
         }
@@ -100,26 +73,12 @@ public sealed class ReportFavoritesController : ControllerBase
         }
     }
 
-    public sealed class UpdateRequest
-    {
-        [Required, MinLength(2), MaxLength(120)] public string Name { get; set; } = string.Empty;
-        [Range(0, 10)] public int PostingKind { get; set; }
-        public bool IncludeCategory { get; set; }
-        [Required] public ReportInterval Interval { get; set; }
-        [Range(1,120)] public int Take { get; set; } = 24;
-        public bool ComparePrevious { get; set; }
-        public bool CompareYear { get; set; }
-        public bool ShowChart { get; set; }
-        public bool Expandable { get; set; } = true;
-        public IReadOnlyCollection<int>? PostingKinds { get; set; } // multi-kind support
-        public FiltersDto? Filters { get; set; }
-        public bool UseValutaDate { get; set; }
-    }
-
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(ReportFavoriteDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] UpdateRequest req, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] ReportFavoriteUpdateApiRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         try
@@ -128,7 +87,7 @@ public sealed class ReportFavoritesController : ControllerBase
             var dto = await _favorites.UpdateAsync(
                 id,
                 _current.UserId,
-                new ReportFavoriteUpdateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters, req.UseValutaDate),
+                new ReportFavoriteUpdateRequest(req.Name.Trim(), req.PostingKind, req.IncludeCategory, (ReportInterval)req.Interval, req.Take, req.ComparePrevious, req.CompareYear, req.ShowChart, req.Expandable, req.PostingKinds, filters, req.UseValutaDate),
                 ct);
             return dto == null ? NotFound() : Ok(dto);
         }
