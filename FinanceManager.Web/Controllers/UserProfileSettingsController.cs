@@ -40,21 +40,11 @@ public sealed class UserProfileSettingsController : ControllerBase
         return Ok(dto);
     }
 
-    public sealed class UpdateRequest
-    {
-        [MaxLength(10)] public string? PreferredLanguage { get; set; }
-        [MaxLength(100)] public string? TimeZoneId { get; set; }
-
-        // New: AlphaVantage key controls
-        [MaxLength(120)] public string? AlphaVantageApiKey { get; set; }  // optional: set/replace
-        public bool? ClearAlphaVantageApiKey { get; set; }                // optional: clear
-        public bool? ShareAlphaVantageApiKey { get; set; }                // optional: admin-only
-    }
-
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> UpdateAsync([FromBody] UpdateRequest req, CancellationToken ct)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateAsync([FromBody] UserProfileSettingsUpdateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == _current.UserId, ct);
@@ -64,7 +54,6 @@ public sealed class UserProfileSettingsController : ControllerBase
             user.SetPreferredLanguage(req.PreferredLanguage);
             user.SetTimeZoneId(req.TimeZoneId);
 
-            // AlphaVantage key set/clear
             if (req.ClearAlphaVantageApiKey == true)
             {
                 user.SetAlphaVantageKey(null);
@@ -74,7 +63,6 @@ public sealed class UserProfileSettingsController : ControllerBase
                 user.SetAlphaVantageKey(req.AlphaVantageApiKey);
             }
 
-            // Share flag: only users in Admin role may enable/disable sharing
             if (req.ShareAlphaVantageApiKey.HasValue)
             {
                 if (!_current.IsAdmin && req.ShareAlphaVantageApiKey.Value)
