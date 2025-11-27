@@ -1,5 +1,6 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Securities;
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,14 +22,9 @@ public sealed class SecurityCategoriesController : ControllerBase
         _current = current;
     }
 
-    public sealed class CategoryRequest
-    {
-        [Required, MinLength(2)]
-        public string Name { get; set; } = string.Empty;
-    }
-
-    // WICHTIG: Route eindeutig benennen, damit CreatedAtRoute sie sicher findet.
     [HttpGet("{id:guid}", Name = "GetSecurityCategory")]
+    [ProducesResponseType(typeof(SecurityCategoryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAsync(Guid id, CancellationToken ct)
     {
         var dto = await _service.GetAsync(id, _current.UserId, ct);
@@ -36,21 +32,25 @@ public sealed class SecurityCategoriesController : ControllerBase
     }
 
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<SecurityCategoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
         => Ok(await _service.ListAsync(_current.UserId, ct));
 
     [HttpPost]
-    public async Task<IActionResult> CreateAsync([FromBody] CategoryRequest req, CancellationToken ct)
+    [ProducesResponseType(typeof(SecurityCategoryDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateAsync([FromBody] SecurityCategoryRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
         var dto = await _service.CreateAsync(_current.UserId, req.Name, ct);
-
-        // Verwendet jetzt den eindeutig benannten Route-Namen statt CreatedAtAction (vermeidet „No route matches…“)
         return CreatedAtRoute("GetSecurityCategory", new { id = dto.Id }, dto);
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] CategoryRequest req, CancellationToken ct)
+    [ProducesResponseType(typeof(SecurityCategoryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] SecurityCategoryRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
         var dto = await _service.UpdateAsync(id, _current.UserId, req.Name, ct);
@@ -58,6 +58,8 @@ public sealed class SecurityCategoriesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(Guid id, CancellationToken ct)
     {
         var ok = await _service.DeleteAsync(id, _current.UserId, ct);
@@ -65,6 +67,8 @@ public sealed class SecurityCategoriesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct)
     {
         try
@@ -79,6 +83,8 @@ public sealed class SecurityCategoriesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/symbol")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ClearSymbolAsync(Guid id, CancellationToken ct)
     {
         try
