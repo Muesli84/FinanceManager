@@ -19,6 +19,8 @@ public sealed class SavingsPlanReportsController : PostingReportsControllerBase
     public SavingsPlanReportsController(ICurrentUserService current, IPostingTimeSeriesService series) : base(current, series) { }
 
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<AggregatePointDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAsync(
         Guid planId,
         [FromQuery] string period = "Month",
@@ -38,6 +40,7 @@ public sealed class SavingsPlansAllReportsController : PostingReportsControllerB
     public SavingsPlansAllReportsController(ICurrentUserService current, IPostingTimeSeriesService series) : base(current, series) { }
 
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<AggregatePointDto>), StatusCodes.Status200OK)]
     public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAllAsync(
         [FromQuery] string period = "Month",
         [FromQuery] int take = 36,
