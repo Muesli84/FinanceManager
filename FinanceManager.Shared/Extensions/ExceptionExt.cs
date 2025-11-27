@@ -6,8 +6,16 @@ using System.Threading.Tasks;
 
 namespace FinanceManager.Shared.Extensions
 {
+    /// <summary>
+    /// Extension methods for <see cref="Exception"/>.
+    /// </summary>
     public static class ExceptionExt
     {
+        /// <summary>
+        /// Builds a human-readable message including inner exception messages recursively.
+        /// </summary>
+        /// <param name="ex">The exception to render.</param>
+        /// <returns>A combined message string including inner exceptions, if present.</returns>
         public static string ToMessageWithInner(this Exception ex)
         {
             if (ex.InnerException != null)

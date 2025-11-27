@@ -1,5 +1,8 @@
 namespace FinanceManager.Shared.Dtos;
 
+/// <summary>
+/// Request payload describing filters to apply when querying report aggregates.
+/// </summary>
 public sealed record ReportAggregatesFiltersRequest(
     IReadOnlyCollection<Guid>? AccountIds,
     IReadOnlyCollection<Guid>? ContactIds,
@@ -12,6 +15,10 @@ public sealed record ReportAggregatesFiltersRequest(
     bool? IncludeDividendRelated
 );
 
+
+/// <summary>
+/// Request payload to query aggregate reports for a given context.
+/// </summary>
 public sealed record ReportAggregatesQueryRequest(
     PostingKind PostingKind,
     ReportInterval Interval,
