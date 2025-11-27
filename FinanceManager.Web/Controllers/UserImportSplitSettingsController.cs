@@ -44,22 +44,11 @@ public sealed class UserImportSplitSettingsController : ControllerBase
         return Ok(dto);
     }
 
-    public sealed class UpdateRequest
-    {
-        [Required]
-        public ImportSplitMode Mode { get; set; }
-        [Range(20, 10000)]
-        public int MaxEntriesPerDraft { get; set; }
-        public int? MonthlySplitThreshold { get; set; }
-        [Range(1, 10000)]
-        public int MinEntriesPerDraft { get; set; } = 8;
-    }
-
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateAsync([FromBody] UpdateRequest req, CancellationToken ct)
+    public async Task<IActionResult> UpdateAsync([FromBody] ImportSplitSettingsUpdateRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
 
