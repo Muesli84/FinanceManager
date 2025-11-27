@@ -19,6 +19,8 @@ public sealed class SecurityReportsController : PostingReportsControllerBase
     public SecurityReportsController(ICurrentUserService current, IPostingTimeSeriesService series) : base(current, series) { }
 
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<AggregatePointDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAsync(
         Guid securityId,
         [FromQuery] string period = "Month",
