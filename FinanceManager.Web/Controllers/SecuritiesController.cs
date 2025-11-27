@@ -24,25 +24,19 @@ public sealed class SecuritiesController : ControllerBase
         _service = service; _current = current; _attachments = attachments;
     }
 
-    public sealed class SecurityRequest
-    {
-        [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
-        [Required, MinLength(3)] public string Identifier { get; set; } = string.Empty;
-        [Required, MinLength(3)] public string CurrencyCode { get; set; } = "EUR";
-        public string? Description { get; set; }
-        public string? AlphaVantageCode { get; set; }
-        public Guid? CategoryId { get; set; }            // NEW
-    }
-
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<SecurityDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
         => Ok(await _service.ListAsync(_current.UserId, onlyActive, ct));
 
     [HttpGet("count")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> CountAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
         => Ok(new { count = await _service.CountAsync(_current.UserId, onlyActive, ct) });
 
     [HttpGet("{id:guid}", Name = "GetSecurityAsync")]
+    [ProducesResponseType(typeof(SecurityDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAsync(Guid id, CancellationToken ct = default)
     {
         var dto = await _service.GetAsync(id, _current.UserId, ct);
@@ -50,15 +44,19 @@ public sealed class SecuritiesController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(SecurityDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateAsync([FromBody] SecurityRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
         var dto = await _service.CreateAsync(_current.UserId, req.Name, req.Identifier, req.Description, req.AlphaVantageCode, req.CurrencyCode, req.CategoryId, ct);
-        // FIX: Use CreatedAtRoute because we referenced the named route (not the action method name) before.
         return CreatedAtRoute("GetSecurityAsync", new { id = dto.Id }, dto);
     }
 
     [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(SecurityDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdateAsync(Guid id, [FromBody] SecurityRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
@@ -67,6 +65,8 @@ public sealed class SecuritiesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/archive")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ArchiveAsync(Guid id, CancellationToken ct)
     {
         var ok = await _service.ArchiveAsync(id, _current.UserId, ct);
@@ -74,6 +74,8 @@ public sealed class SecuritiesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteAsync(Guid id, CancellationToken ct)
     {
         var ok = await _service.DeleteAsync(id, _current.UserId, ct);
@@ -81,6 +83,8 @@ public sealed class SecuritiesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct)
     {
         try
@@ -95,6 +99,8 @@ public sealed class SecuritiesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/symbol")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ClearSymbolAsync(Guid id, CancellationToken ct)
     {
         try
@@ -108,9 +114,11 @@ public sealed class SecuritiesController : ControllerBase
         }
     }
 
-    // New: upload symbol directly for security (multipart/form-data)
     [HttpPost("{id:guid}/symbol")]
     [RequestSizeLimit(long.MaxValue)]
+    [ProducesResponseType(typeof(AttachmentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> UploadSymbolAsync(Guid id, [FromForm] IFormFile? file, [FromForm] Guid? categoryId, CancellationToken ct)
     {
         if (file == null) { return BadRequest(new { error = "File required" }); }
@@ -118,7 +126,6 @@ public sealed class SecuritiesController : ControllerBase
         {
             using var stream = file.OpenReadStream();
             var dto = await _attachments.UploadAsync(_current.UserId, AttachmentEntityKind.Security, id, stream, file.FileName, file.ContentType ?? "application/octet-stream", categoryId, AttachmentRole.Symbol, ct);
-            // assign symbol
             await _service.SetSymbolAttachmentAsync(id, _current.UserId, dto.Id, ct);
             return Ok(dto);
         }
@@ -126,9 +133,8 @@ public sealed class SecuritiesController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // avoid leaking details
             return Problem("Unexpected error", statusCode: 500);
         }
     }
