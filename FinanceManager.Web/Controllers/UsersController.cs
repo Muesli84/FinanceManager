@@ -1,5 +1,6 @@
 using System.Net.Mime;
 using FinanceManager.Application.Users;
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceManager.Web.Controllers;
@@ -29,6 +30,7 @@ public sealed class UsersController : ControllerBase
     /// </remarks>
     [HttpGet("exists")]
     [ProducesResponseType(typeof(AnyUsersResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> HasAnyUsersAsync(CancellationToken ct)
     {
@@ -49,6 +51,4 @@ public sealed class UsersController : ControllerBase
             return Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Unexpected error", detail: ex.Message);
         }
     }
-
-    public sealed record AnyUsersResponse(bool Any);
 }
