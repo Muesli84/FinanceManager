@@ -1,5 +1,6 @@
 using FinanceManager.Application;
 using FinanceManager.Infrastructure;
+using FinanceManager.Shared.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,9 +20,9 @@ public sealed class SecurityPricesController : ControllerBase
     public SecurityPricesController(AppDbContext db, ICurrentUserService current)
     { _db = db; _current = current; }
 
-    public sealed record SecurityPriceDto(DateTime Date, decimal Close);
-
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<SecurityPriceDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<SecurityPriceDto>>> ListAsync(Guid id, int skip = 0, int take = 50, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, MaxTake);
