@@ -52,33 +52,3 @@ public sealed class SavingsPlanDto
     /// <summary>Optional symbol attachment id.</summary>
     public Guid? SymbolAttachmentId { get; set; }
 }
-
-/// <summary>
-/// Savings plan types.
-/// </summary>
-public enum SavingsPlanType
-{
-    /// <summary>One-time plan.</summary>
-    OneTime,
-    /// <summary>Recurring plan.</summary>
-    Recurring,
-    /// <summary>Open-ended plan.</summary>
-    Open
-}
-
-/// <summary>
-/// Recurrence intervals for savings plans.
-/// </summary>
-public enum SavingsPlanInterval
-{
-    /// <summary>Monthly.</summary>
-    Monthly,
-    /// <summary>Every two months.</summary>
-    BiMonthly,
-    /// <summary>Quarterly.</summary>
-    Quarterly,
-    /// <summary>Semi-annually.</summary>
-    SemiAnnually,
-    /// <summary>Annually.</summary>
-    Annually
-}

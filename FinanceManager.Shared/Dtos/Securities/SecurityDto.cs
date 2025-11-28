@@ -30,33 +30,3 @@ public sealed class SecurityDto
     /// <summary>Optional symbol attachment id.</summary>
     public Guid? SymbolAttachmentId { get; set; }
 }
-
-/// <summary>
-/// Transaction types for security postings.
-/// </summary>
-public enum SecurityTransactionType
-{
-    /// <summary>Buy transaction.</summary>
-    Buy = 0,
-    /// <summary>Sell transaction.</summary>
-    Sell = 1,
-    /// <summary>Dividend transaction.</summary>
-    Dividend = 2
-}
-
-/// <summary>
-/// Posting sub-types used for detailed security posting categorization.
-/// </summary>
-public enum SecurityPostingSubType
-{
-    /// <summary>Buy.</summary>
-    Buy = 0,
-    /// <summary>Sell.</summary>
-    Sell = 1,
-    /// <summary>Dividend.</summary>
-    Dividend = 2,
-    /// <summary>Fee.</summary>
-    Fee = 3,
-    /// <summary>Tax.</summary>
-    Tax = 4
-}
