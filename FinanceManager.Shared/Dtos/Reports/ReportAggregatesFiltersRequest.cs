@@ -1,5 +1,3 @@
-using FinanceManager.Shared.Dtos.Postings;
-
 namespace FinanceManager.Shared.Dtos.Reports;
 
 /// <summary>

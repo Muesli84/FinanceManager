@@ -1,5 +1,3 @@
-using FinanceManager.Shared.Dtos.Securities;
-
 namespace FinanceManager.Shared.Dtos.Statements;
 
 /// <summary>

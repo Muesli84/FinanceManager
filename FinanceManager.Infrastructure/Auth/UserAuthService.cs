@@ -1,8 +1,8 @@
 using FinanceManager.Application;
-using FinanceManager.Application.Security; // added
+using FinanceManager.Application.Security;
 using FinanceManager.Application.Users;
 using FinanceManager.Domain;
-using FinanceManager.Domain.Contacts; // added
+using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

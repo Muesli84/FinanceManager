@@ -10,5 +10,3 @@ public interface IUserAdminService
     Task<bool> UnlockAsync(Guid id, CancellationToken ct); // clears lock
     Task<bool> DeleteAsync(Guid id, CancellationToken ct);
 }
-
-public sealed record UserAdminDto(Guid Id, string Username, bool IsAdmin, bool Active, DateTime? LockoutEnd, DateTime LastLoginUtc, string? PreferredLanguage);

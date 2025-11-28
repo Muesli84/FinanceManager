@@ -58,27 +58,3 @@ public interface IStatementDraftService
 
 
 
-
-
-public sealed record CommitResult(Guid StatementImportId, int TotalEntries);
-
-// Validation DTOs
-public sealed record DraftValidationMessageDto(
-    string Code,
-    string Severity, // Error | Warning
-    string Message,
-    Guid DraftId,
-    Guid? EntryId);
-
-public sealed record DraftValidationResultDto(
-    Guid DraftId,
-    bool IsValid,
-    IReadOnlyList<DraftValidationMessageDto> Messages);
-
-public sealed record BookingResult(
-    bool Success,
-    bool HasWarnings,
-    DraftValidationResultDto Validation,
-    Guid? StatementImportId,
-    int? TotalEntries,
-    Guid? nextDraftId);

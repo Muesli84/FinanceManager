@@ -1,5 +1,3 @@
-using System;
-
 namespace FinanceManager.Shared.Dtos.Attachments;
 
 /// <summary>

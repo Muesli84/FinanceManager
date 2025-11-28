@@ -13,13 +13,3 @@ public interface IIpBlockService
     Task BlockByAddressAsync(string ipAddress, string? reason, CancellationToken ct);
 }
 
-public sealed record IpBlockDto(
-    Guid Id,
-    string IpAddress,
-    bool IsBlocked,
-    DateTime? BlockedAtUtc,
-    string? BlockReason,
-    int UnknownUserFailedAttempts,
-    DateTime? UnknownUserLastFailedUtc,
-    DateTime CreatedUtc,
-    DateTime? ModifiedUtc);

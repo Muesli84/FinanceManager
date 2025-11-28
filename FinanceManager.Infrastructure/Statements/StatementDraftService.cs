@@ -1848,7 +1848,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 }
                 async Task CreateSecurityAsync(StatementDraftEntry e, Guid gid)
                 {
-                    if (e.SecurityId == null) return;
+                    if (e.SecurityId == null) { return; }
                     var fee = Math.Abs(e.SecurityFeeAmount ?? 0m); var tax = Math.Abs(e.SecurityTaxAmount ?? 0m);
                     if (e.Amount < 0) { fee = -fee; tax = -tax; }
                     var factor = e.SecurityTransactionType switch { SecurityTransactionType.Buy => 1, SecurityTransactionType.Sell => -1, SecurityTransactionType.Dividend => -1, _ => -1 };
