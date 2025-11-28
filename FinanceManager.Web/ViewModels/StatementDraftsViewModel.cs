@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Localization;
+using FinanceManager.Shared.Dtos.Statements; // added for shared DTOs
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -9,19 +10,6 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     public StatementDraftsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
-    }
-
-    public sealed class StatementDraftEntryDto
-    {
-        public StatementDraftEntryStatus Status { get; set; }
-    }
-    public sealed class StatementDraftDto
-    {
-        public Guid DraftId { get; set; }
-        public string OriginalFileName { get; set; } = string.Empty;
-        public string? Description { get; set; }
-        public StatementDraftStatus Status { get; set; }
-        public List<StatementDraftEntryDto> Entries { get; set; } = new();
     }
 
     public sealed class DraftItem
@@ -54,7 +42,7 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     public string? BookingMessage { get; private set; }
     public int BookingErrors { get; private set; }
     public int BookingWarnings { get; private set; }
-    public List<BookIssue> BookingIssues { get; private set; } = new();
+    public List<StatementDraftMassBookIssueDto> BookingIssues { get; private set; } = new();
     private CancellationTokenSource? _bookingCts;
 
     public override async ValueTask InitializeAsync(CancellationToken ct = default)
@@ -119,43 +107,35 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     public override IReadOnlyList<UiRibbonGroup> GetRibbon(IStringLocalizer localizer)
     {
         var groups = new List<UiRibbonGroup>();
-        // Management
         groups.Add(new UiRibbonGroup(
             localizer["Ribbon_Group_Management"],
             new List<UiRibbonItem>
             {
                 new UiRibbonItem(localizer["Ribbon_DeleteAll"], "<svg><use href='/icons/sprite.svg#delete'/></svg>", UiRibbonItemSize.Large, false, "DeleteAll")
             }));
-
-        // Classification
         groups.Add(new UiRibbonGroup(
             localizer["Ribbon_Group_Classification"],
             new List<UiRibbonItem>
             {
                 new UiRibbonItem(localizer["Ribbon_Reclassify"], "<svg><use href='/icons/sprite.svg#refresh'/></svg>", UiRibbonItemSize.Large, IsClassifying, "Reclassify")
             }));
-
-        // Booking
         groups.Add(new UiRibbonGroup(
             localizer["Ribbon_Group_Booking"],
             new List<UiRibbonItem>
             {
                 new UiRibbonItem(localizer["Ribbon_MassBooking"], "<svg><use href='/icons/sprite.svg#save'/></svg>", UiRibbonItemSize.Large, IsBooking, "MassBooking")
             }));
-
-        // Import
         groups.Add(new UiRibbonGroup(
             localizer["Ribbon_Group_Import"],
             new List<UiRibbonItem>
             {
                 new UiRibbonItem(localizer["Ribbon_Import"], "<svg><use href='/icons/sprite.svg#upload'/></svg>", UiRibbonItemSize.Large, false, "Import")
             }));
-
         return groups;
     }
 
     // Upload handling
-    private sealed class UploadResponse { public StatementDraftDto? FirstDraft { get; set; } public object? SplitInfo { get; set; } }
+    private sealed class UploadResponse { public StatementDraftUploadResult? Result { get; set; } public StatementDraftUploadResult? Legacy { get; set; } public StatementDraftDto? FirstDraft { get; set; } public ImportSplitInfoDto? SplitInfo { get; set; } }
     public async Task<Guid?> UploadAsync(Stream stream, string fileName, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(stream);
@@ -166,8 +146,11 @@ public sealed class StatementDraftsViewModel : ViewModelBase
         {
             return null;
         }
-        var result = await resp.Content.ReadFromJsonAsync<UploadResponse>(cancellationToken: ct);
-        return result?.FirstDraft?.DraftId;
+        var raw = await resp.Content.ReadFromJsonAsync<UploadResponse>(cancellationToken: ct);
+        if (raw?.Result != null) return raw.Result.FirstDraft?.DraftId;
+        if (raw?.Legacy != null) return raw.Legacy.FirstDraft?.DraftId;
+        if (raw?.FirstDraft != null) return raw.FirstDraft.DraftId;
+        return null;
     }
 
     // Classification
@@ -229,8 +212,6 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     }
 
     // Booking
-    public sealed class BookIssue { public Guid draftId { get; set; } public Guid? entryId { get; set; } public string code { get; set; } = string.Empty; public string message { get; set; } = string.Empty; }
-    private sealed class BookStatus { public bool running { get; set; } public int processed { get; set; } public int failed { get; set; } public int total { get; set; } public int warnings { get; set; } public int errors { get; set; } public string? message { get; set; } public List<BookIssue>? issues { get; set; } }
     public async Task StartBookAllAsync(bool ignoreWarnings, bool abortOnFirstIssue, bool bookEntriesIndividually, CancellationToken ct = default)
     {
         _bookingCts ??= new CancellationTokenSource();
@@ -239,7 +220,7 @@ public sealed class StatementDraftsViewModel : ViewModelBase
         if (resp.StatusCode == System.Net.HttpStatusCode.Accepted)
         {
             IsBooking = true;
-            var s = await resp.Content.ReadFromJsonAsync<BookStatus>(_bookingCts.Token);
+            var s = await resp.Content.ReadFromJsonAsync<StatementDraftMassBookStatusDto>(_bookingCts.Token);
             UpdateBookingUi(s);
             _ = PollBookingUntilFinishedAsync();
         }
@@ -263,7 +244,7 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     }
     public async Task RefreshBookStatusAsync(bool reloadOnFinish = true, CancellationToken ct = default)
     {
-        var s = await _http.GetFromJsonAsync<BookStatus>("api/statement-drafts/book-all/status", ct);
+        var s = await _http.GetFromJsonAsync<StatementDraftMassBookStatusDto>("api/statement-drafts/book-all/status", ct);
         if (s != null)
         {
             var wasRunning = IsBooking;
@@ -272,23 +253,23 @@ public sealed class StatementDraftsViewModel : ViewModelBase
             {
                 _ = PollBookingUntilFinishedAsync();
             }
-            if (!s.running && s.total > 0 && reloadOnFinish)
+            if (!s.Running && s.Total > 0 && reloadOnFinish)
             {
                 await ReloadAfterActionAsync(ct);
             }
         }
     }
-    private void UpdateBookingUi(BookStatus? s)
+    private void UpdateBookingUi(StatementDraftMassBookStatusDto? s)
     {
         if (s == null) { return; }
-        IsBooking = s.running;
-        BookingProcessed = s.processed;
-        BookingFailed = s.failed;
-        BookingTotal = s.total;
-        BookingMessage = s.message ?? (IsBooking ? "Working..." : null);
-        BookingErrors = s.errors;
-        BookingWarnings = s.warnings;
-        BookingIssues = s.issues ?? new();
+        IsBooking = s.Running;
+        BookingProcessed = s.Processed;
+        BookingFailed = s.Failed;
+        BookingTotal = s.Total;
+        BookingMessage = s.Message ?? (IsBooking ? "Working..." : null);
+        BookingErrors = s.Errors;
+        BookingWarnings = s.Warnings;
+        BookingIssues = s.Issues?.ToList() ?? new();
         RaiseStateChanged();
     }
     public async Task CancelBookingAsync(CancellationToken ct = default)

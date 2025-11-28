@@ -30,16 +30,16 @@ namespace FinanceManager.Shared.Dtos.Postings
         string? RecipientName,
         /// <summary>Optional description or additional details.</summary>
         string? Description,
-        /// <summary>Security sub type as integer (trade/dividend details).</summary>
-        int? SecuritySubType,
+        /// <summary>Security sub type (enum) for security-related postings.</summary>
+        SecurityPostingSubType? SecuritySubType,
         /// <summary>Optional quantity for security-related postings.</summary>
         decimal? Quantity,
         /// <summary>Linked group id to connect related postings.</summary>
         Guid GroupId,
         /// <summary>Linked posting id when this posting has a counterpart.</summary>
         Guid? LinkedPostingId,
-        /// <summary>Linked posting kind as integer.</summary>
-        int? LinkedPostingKind,
+        /// <summary>Linked posting kind (enum) when linked.</summary>
+        PostingKind? LinkedPostingKind,
         /// <summary>Linked posting account id, when applicable.</summary>
         Guid? LinkedPostingAccountId,
         /// <summary>Linked posting account symbol attachment id.</summary>

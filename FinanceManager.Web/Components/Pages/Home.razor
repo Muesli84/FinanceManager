@@ -9,6 +9,7 @@
 @inject IJSRuntime JS
 @using FinanceManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Web
+@using FinanceManager.Shared.Dtos.Statements
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="Home.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -127,7 +128,7 @@ else
     private bool _importSuccess;
     private Guid? _draftId;
 
-    private SplitInfoDto? _splitInfo;
+    private ImportSplitInfoDto? _splitInfo;
 
     // Upload progress state
     private bool _uploadInProgress;
@@ -203,7 +204,7 @@ else
         StateHasChanged();
 
         Guid? firstDraftId = null;
-        SplitInfoDto? lastSplitInfo = null;
+        ImportSplitInfoDto? lastSplitInfo = null;
 
         foreach (var file in files)
         {
@@ -216,7 +217,7 @@ else
             var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
             if (resp.IsSuccessStatusCode)
             {
-                var result = await resp.Content.ReadFromJsonAsync<UploadResultDto>();
+                var result = await resp.Content.ReadFromJsonAsync<StatementDraftUploadResult>();
                 if (result?.FirstDraft != null && !firstDraftId.HasValue)
                 {
                     firstDraftId = result.FirstDraft.DraftId;
@@ -246,11 +247,6 @@ else
         StateHasChanged();
     }
 
-    // Inline DTOs used by upload widget
-    private sealed record UploadResultDto(StatementDraftDto? FirstDraft, SplitInfoDto? SplitInfo);
-    private sealed record SplitInfoDto(string Mode, bool EffectiveMonthly, int DraftCount, int TotalMovements, int MaxEntriesPerDraft, int LargestDraftSize, int MonthlyThreshold);
-    private sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, List<StatementDraftEntryDto> Entries);
-    private sealed record StatementDraftEntryDto(Guid TempId, DateTime BookingDate, decimal Amount, string Subject);
 }
 
 <style>

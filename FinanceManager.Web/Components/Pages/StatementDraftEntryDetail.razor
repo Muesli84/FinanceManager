@@ -8,8 +8,10 @@
 @using FinanceManager.Web.Components.Shared
 @inject IStringLocalizer<Components.Pages.StatementDraftEntryDetail> Localizer
 @using FinanceManager.Domain.Attachments
-
-@code { enum StatementDraftStatus { Draft=0, Committed=1, Expired=2 } }
+@using FinanceManager.Shared.Dtos.Statements
+@using FinanceManager.Shared.Dtos.SavingsPlans
+@using FinanceManager.Shared.Dtos.Contacts
+@using FinanceManager.Shared.Dtos.Securities
 
 <h3>@Localizer["Title"]</h3>
 
@@ -534,7 +536,7 @@ else
     }
     private bool HasOriginEntryContext => !string.IsNullOrEmpty(ContextQuery);
 
-    private EntryDetailVm? _vm;
+    private StatementDraftEntryDetailDto? _vm;
     private List<ContactVm> _allContacts = new();
     private string _contactFilter = string.Empty;
     private Guid? _selectedContactId;
@@ -688,7 +690,7 @@ else
         var resp = await Http.GetAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}");
         if (resp.IsSuccessStatusCode)
         {
-            _vm = await resp.Content.ReadFromJsonAsync<EntryDetailVm>();
+            _vm = await resp.Content.ReadFromJsonAsync<StatementDraftEntryDetailDto>();
             _IsCostNeutral = _vm!.Entry.IsCostNeutral;
             _selectedSavingsPlanId = _vm.Entry.SavingsPlanId;
             _selectedContactId = _vm.Entry.ContactId;
@@ -843,7 +845,7 @@ else
         _loadingSplits = true;
         try
         {
-            var list = await Http.GetFromJsonAsync<List<StatementDraftListDto>>("/api/statement-drafts");
+            var list = await Http.GetFromJsonAsync<List<StatementDraftDto>>("/api/statement-drafts");
             if (list != null)
             {
                 _candidateSplits = list
@@ -933,16 +935,8 @@ else
     }
     private void ResetCoreEdits() { InitCoreEdit(); ClearDirty(); }
 
-    private sealed record EntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, bool ArchiveSavingsPlanOnBooking, Guid? SplitDraftId, Guid? SecurityId, SecurityTransactionType? SecurityTransactionType, decimal? SecurityQuantity, decimal? SecurityFeeAmount, decimal? SecurityTaxAmount);
-    private sealed record EntryDetailVm(Guid DraftId, string OriginalFileName, EntryDto Entry, Guid? PrevEntryId, Guid? NextEntryId, Guid? NextOpenEntryId, decimal? SplitSum, decimal? Difference, Guid? BankContactId);
-    private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId);
-    private enum ContactType { Self, Bank, Person, Organization, Other }
     private sealed class ContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed record SavingsPlanDto(Guid Id, string Name);
-    private sealed record StatementDraftListDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, StatementDraftStatus Status, decimal TotalAmount, bool IsSplitDraft, IReadOnlyList<EntryDto> Entries);
-    private sealed record SecurityDto(Guid Id, string Name, string Identifier);
     private sealed class SecurityVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public string Identifier { get; set; } = string.Empty; }
-    private enum SecurityTransactionType { Buy=0, Sell=1, DividendOrInterest=2 }
 
     private DraftValidationResultDto? _entryValidation;
 
@@ -953,9 +947,6 @@ else
         BuildRibbon();
         StateHasChanged();
     }
-
-    private sealed record DraftValidationMessageDto(string Code, string Severity, string Message, Guid DraftId, Guid? EntryId);
-    private sealed record DraftValidationResultDto(Guid DraftId, bool IsValid, IReadOnlyList<DraftValidationMessageDto> Messages);
 
     private async Task SaveAll()
     {
@@ -1147,7 +1138,7 @@ else
     }
 
     private bool _showBookWarnings;
-    private BookingResultDto? _lastBookingResult;
+    private StatementDraftBookingResultDto? _lastBookingResult;
 
     private async Task BookEntry()
     {
@@ -1160,7 +1151,7 @@ else
             var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/book", null);
             if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
             {
-                _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                _lastBookingResult = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>();
                 _showBookWarnings = true;
                 BuildRibbon();
                 StateHasChanged();
@@ -1172,7 +1163,7 @@ else
                 _contactError = string.IsNullOrWhiteSpace(text) ? Localizer["Err_Book"] : text;
                 return;
             }
-            _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+            _lastBookingResult = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>();
             await LoadEntryAsync();
             if (_vm != null && _vm.Entry != null && _vm.Entry.Id == EntryId)
             {
@@ -1198,14 +1189,12 @@ else
             _contactError = await resp.Content.ReadAsStringAsync();
             return;
         }
-        _lastBookingResult = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+        _lastBookingResult = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>();
         _showBookWarnings = false;
         await LoadEntryAsync();
         Nav.NavigateTo(AppendContext($"/statement-drafts/{DraftId}"), true);
         BuildRibbon();
     }
-
-    private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);
 
     private bool IsReadOnly => IsDuplicate || IsAnnounced;
     private bool IsDuplicate => _vm?.Entry.Status == StatementDraftEntryStatus.AlreadyBooked;
@@ -1223,8 +1212,7 @@ else
         var resp = await Http.PostAsync($"/api/statement-drafts/{DraftId}/entries/{EntryId}/reset-duplicate", null);
         if (resp.IsSuccessStatusCode)
         {
-            // Use returned entry to update UI immediately
-            var updated = await resp.Content.ReadFromJsonAsync<EntryDto>();
+            var updated = await resp.Content.ReadFromJsonAsync<StatementDraftEntryDto>();
             if (updated != null && _vm != null)
             {
                 _vm = _vm with { Entry = updated };

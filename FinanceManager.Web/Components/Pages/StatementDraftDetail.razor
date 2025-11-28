@@ -5,9 +5,13 @@
 @using FinanceManager.Application.Statements
 @using FinanceManager.Domain.Statements
 @using FinanceManager.Shared.Dtos
+@using FinanceManager.Shared.Dtos.Statements
 @using FinanceManager.Shared.Dtos.SavingsPlans
+@using FinanceManager.Shared.Dtos.Accounts
+@using FinanceManager.Shared.Dtos.Contacts
 @using FinanceManager.Web.Components.Shared
 @using Microsoft.Extensions.Localization
+@using FinanceManager.Domain.Contacts
 @inject IStringLocalizer<Components.Pages.StatementDraftDetail> Localizer
 
 @code {
@@ -15,7 +19,7 @@
     [Parameter, SupplyParameterFromQuery] public string? Src { get; set; } // "entry" when opened from entry detail
     [Parameter, SupplyParameterFromQuery] public Guid? FromEntryDraftId { get; set; }
     [Parameter, SupplyParameterFromQuery] public Guid? FromEntryId { get; set; }
-    private StatementDraftDto? _draft;
+    private StatementDraftDetailDto? _draft;
     private EntryForm _form = new() { BookingDate = DateTime.Today };
     private List<AccountVm> _accounts = new();
     private List<ContactDto> _contacts = new();
@@ -34,12 +38,10 @@
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
     private TabId _activeTab = TabId.Statement;
 
-    private sealed record BookingResultDto(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId);
-
     protected override async Task OnParametersSetAsync()
     {
-        _draft = await Http.GetFromJsonAsync<StatementDraftDto>($"/api/statement-drafts/{Id}");
-        _hasFile = _draft != null; // always true for existing drafts; actual file may be missing but controller handles 404
+        _draft = await Http.GetFromJsonAsync<StatementDraftDetailDto>($"/api/statement-drafts/{Id}");
+        _hasFile = _draft != null;
         await LoadAccountsAsync();
         _selectedAccountId = _draft?.DetectedAccountId;
         await LoadSavingsPlansAsync();
@@ -55,8 +57,6 @@
     {
         _contactDisplaySymbolById.Clear();
         _savingsPlanDisplaySymbolById.Clear();
-
-        // load contact categories
         var contactCategoryMap = new Dictionary<Guid, Guid?>();
         try
         {
@@ -71,8 +71,6 @@
             }
         }
         catch { }
-
-        // load savings plan categories
         var savingsPlanCategoryMap = new Dictionary<Guid, Guid?>();
         try
         {
@@ -87,8 +85,6 @@
             }
         }
         catch { }
-
-        // build contact display symbols (contact symbol or category fallback)
         foreach (var c in _contacts)
         {
             Guid? display = null;
@@ -96,8 +92,6 @@
             else if (c.CategoryId.HasValue && contactCategoryMap.TryGetValue(c.CategoryId.Value, out var catSym) && catSym.HasValue) display = catSym;
             _contactDisplaySymbolById[c.Id] = display;
         }
-
-        // build savings plan display symbols
         foreach (var p in _savingsPlans)
         {
             Guid? display = null;
@@ -107,11 +101,8 @@
         }
     }
 
-    private Guid? GetContactDisplaySymbol(Guid contactId)
-        => _contactDisplaySymbolById.TryGetValue(contactId, out var v) ? v : null;
-
-    private Guid? GetSavingsPlanDisplaySymbol(Guid planId)
-        => _savingsPlanDisplaySymbolById.TryGetValue(planId, out var v) ? v : null;
+    private Guid? GetContactDisplaySymbol(Guid contactId) => _contactDisplaySymbolById.TryGetValue(contactId, out var v) ? v : null;
+    private Guid? GetSavingsPlanDisplaySymbol(Guid planId) => _savingsPlanDisplaySymbolById.TryGetValue(planId, out var v) ? v : null;
 
     private void BuildRibbon()
     {
@@ -133,7 +124,6 @@
             Size = Ribbon<TabId>.RibbonItemSize.Large,
             Callback = () => { BackGeneric(); return Task.CompletedTask; }
         });
-
         navItems.Add(new Ribbon<TabId>.RibbonItem
         {
             Label = Localizer["Ribbon_Prev"],
@@ -150,12 +140,7 @@
             Size = Ribbon<TabId>.RibbonItemSize.Large,
             Callback = () => { GoNextInUpload(); return Task.CompletedTask; }
         });
-
-        var navGroup = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Navigation"],
-            Items = navItems
-        };
+        var navGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Navigation"], Items = navItems };
 
         var manageItems = new List<Ribbon<TabId>.RibbonItem>
         {
@@ -181,8 +166,6 @@
                 Callback = async () => { await ValidateDraft(); }
             }
         };
-
-
         if (_draft != null && _draft.Status == StatementDraftStatus.Draft)
         {
             manageItems.Insert(0, new Ribbon<TabId>.RibbonItem
@@ -194,33 +177,18 @@
                 Callback = () => { _ = BookDraft(); return Task.CompletedTask; }
             });
         }
-
-        // New: account details action - opens the detected account's detail page
-        var refItems = new List<Ribbon<TabId>.RibbonItem>();
-        refItems.Add(new Ribbon<TabId>.RibbonItem
+        var refItems = new List<Ribbon<TabId>.RibbonItem>
         {
-            Label = Localizer["Ribbon_AccountDetails"],
-            IconSvg = "<svg><use href='/icons/sprite.svg#account'/></svg>",
-            Disabled = _draft?.DetectedAccountId == null,
-            Size = Ribbon<TabId>.RibbonItemSize.Large,
-            Callback = () =>
+            new Ribbon<TabId>.RibbonItem
             {
-                var accId = _draft?.DetectedAccountId;
-                if (accId != null)
-                {
-                    Nav.NavigateTo($"/accounts/{accId}");
-                }
-                return Task.CompletedTask;
+                Label = Localizer["Ribbon_AccountDetails"],
+                IconSvg = "<svg><use href='/icons/sprite.svg#account'/></svg>",
+                Disabled = _draft?.DetectedAccountId == null,
+                Size = Ribbon<TabId>.RibbonItemSize.Large,
+                Callback = () => { var accId = _draft?.DetectedAccountId; if (accId != null) { Nav.NavigateTo($"/accounts/{accId}"); } return Task.CompletedTask; }
             }
-        });
-
-
-        var manageGroup = new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Manage"],
-            Items = manageItems
         };
-
+        var manageGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Manage"], Items = manageItems };
         var fileGroup = new Ribbon<TabId>.RibbonGroup
         {
             Title = Localizer["Ribbon_Group_Statement"],
@@ -244,13 +212,7 @@
                 }
             }
         };
-
-        var refGroup =  new Ribbon<TabId>.RibbonGroup
-        {
-            Title = Localizer["Ribbon_Group_Related"],
-            Items = refItems
-        };
-
+        var refGroup = new Ribbon<TabId>.RibbonGroup { Title = Localizer["Ribbon_Group_Related"], Items = refItems };
         _tabs = new()
         {
             new Ribbon<TabId>.RibbonTab<TabId>
@@ -262,52 +224,16 @@
         };
     }
 
-    private Task OnActiveTabChanged(TabId id)
-    {
-        _activeTab = id;
-        return Task.CompletedTask;
-    }
-
-    private void GoPrevInUpload()
-    {
-        if (_draft?.PrevInUpload != null)
-        {
-            var qp = BuildContextQuery();
-            Nav.NavigateTo($"/statement-drafts/{_draft.PrevInUpload}{qp}");
-        }
-    }
-    private void GoNextInUpload()
-    {
-        if (_draft?.NextInUpload != null)
-        {
-            var qp = BuildContextQuery();
-            Nav.NavigateTo($"/statement-drafts/{_draft.NextInUpload}{qp}");
-        }
-    }
-
-    private string BuildContextQuery()
-    {
-        if (!string.Equals(Src, "entry", StringComparison.OrdinalIgnoreCase) || !FromEntryDraftId.HasValue || !FromEntryId.HasValue)
-        {
-            return string.Empty;
-        }
-        return $"?src=entry&fromEntryDraftId={FromEntryDraftId}&fromEntryId={FromEntryId}";
-    }
+    private Task OnActiveTabChanged(TabId id) { _activeTab = id; return Task.CompletedTask; }
+    private void GoPrevInUpload() { if (_draft?.PrevInUpload != null) { var qp = BuildContextQuery(); Nav.NavigateTo($"/statement-drafts/{_draft.PrevInUpload}{qp}"); } }
+    private void GoNextInUpload() { if (_draft?.NextInUpload != null) { var qp = BuildContextQuery(); Nav.NavigateTo($"/statement-drafts/{_draft.NextInUpload}{qp}"); } }
+    private string BuildContextQuery() => !string.Equals(Src, "entry", StringComparison.OrdinalIgnoreCase) || !FromEntryDraftId.HasValue || !FromEntryId.HasValue ? string.Empty : $"?src=entry&fromEntryDraftId={FromEntryDraftId}&fromEntryId={FromEntryId}";
 
     private async Task ValidateDraft()
     {
-        try
-        {
-            _validation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{Id}/validate");
-        }
-        catch (Exception ex)
-        {
-            _bookingError = ex.Message;
-        }
-        finally
-        {
-            StateHasChanged();
-        }
+        try { _validation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{Id}/validate"); }
+        catch (Exception ex) { _bookingError = ex.Message; }
+        finally { StateHasChanged(); }
     }
 
     private async Task BookDraft()
@@ -318,46 +244,26 @@
             var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book", null);
             if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
             {
-                var res = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
-                _lastValidation = res?.Validation;
-                _validation = res?.Validation;
-                _pendingWarningConfirmation = true;
+                var res = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>();
+                _lastValidation = res?.Validation; _validation = res?.Validation; _pendingWarningConfirmation = true;
             }
             else if (!resp.IsSuccessStatusCode)
             {
-                BookingResultDto? resObj = null;
-                try { resObj = await resp.Content.ReadFromJsonAsync<BookingResultDto>(); } catch { }
-                if (resObj?.Validation != null)
-                {
-                    _validation = resObj.Validation;
-                    _bookingError = Localizer["Error_FixIssues"];
-                }
-                else
-                {
-                    _bookingError = await resp.Content.ReadAsStringAsync();
-                }
+                StatementDraftBookingResultDto? resObj = null; try { resObj = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>(); } catch { }
+                if (resObj?.Validation != null) { _validation = resObj.Validation; _bookingError = Localizer["Error_FixIssues"]; }
+                else { _bookingError = await resp.Content.ReadAsStringAsync(); }
             }
             else
             {
-                var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                var ok = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>();
                 if (ok != null && ok.Success)
                 {
-                    if (ok.nextDraftId is not null)
-                    {
-                        Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true);
-                        return;
-                    }
-                    Nav.NavigateTo("/statement-drafts", true);
-                    return;
+                    if (ok.NextDraftId is not null) { Nav.NavigateTo($"/statement-drafts/{ok.NextDraftId}", true); return; }
+                    Nav.NavigateTo("/statement-drafts", true); return;
                 }
             }
         }
-        finally
-        {
-            _booking = false;
-            BuildRibbon();
-            StateHasChanged();
-        }
+        finally { _booking = false; BuildRibbon(); StateHasChanged(); }
     }
 
     private async Task ForceBook()
@@ -368,21 +274,20 @@
             var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book?forceWarnings=true", null);
             if (!resp.IsSuccessStatusCode)
             {
-                BookingResultDto? resObj = null; try { resObj = await resp.Content.ReadFromJsonAsync<BookingResultDto>(); } catch { }
+                StatementDraftBookingResultDto? resObj = null; try { resObj = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>(); } catch { }
                 if (resObj?.Validation != null) { _validation = resObj.Validation; _bookingError = Localizer["Error_FixIssues"]; }
                 else { _bookingError = await resp.Content.ReadAsStringAsync(); }
             }
             else
             {
-                var ok = await resp.Content.ReadFromJsonAsync<BookingResultDto>();
+                var ok = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>();
                 if (ok != null && ok.Success)
                 {
-                    if (ok.nextDraftId is not null) Nav.NavigateTo($"/statement-drafts/{ok.nextDraftId}", true); else Nav.NavigateTo("/statement-drafts", true);
+                    if (ok.NextDraftId is not null) Nav.NavigateTo($"/statement-drafts/{ok.NextDraftId}", true); else Nav.NavigateTo("/statement-drafts", true);
                 }
             }
         }
-        finally { _booking = false; _pendingWarningConfirmation = false; }
-        BuildRibbon();
+        finally { _booking = false; _pendingWarningConfirmation = false; BuildRibbon(); }
     }
 
     private async Task LoadAccountsAsync()
@@ -412,23 +317,10 @@
             var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/account/{accId}", null);
             if (resp.IsSuccessStatusCode)
             {
-                _draft = await resp.Content.ReadFromJsonAsync<StatementDraftDto>();
+                _draft = await resp.Content.ReadFromJsonAsync<StatementDraftDetailDto>();
                 _selectedAccountId = _draft?.DetectedAccountId;
-                BuildRibbon();
-                StateHasChanged();
+                BuildRibbon(); StateHasChanged();
             }
-        }
-    }
-
-    private async Task AddEntryAsync()
-    {
-        var response = await Http.PostAsJsonAsync($"/api/statement-drafts/{Id}/entries", new { BookingDate = _form.BookingDate, Amount = _form.Amount, Subject = _form.Subject });
-        if (response.IsSuccessStatusCode)
-        {
-            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
-            _form = new EntryForm { BookingDate = DateTime.Today };
-            BuildRibbon();
-            StateHasChanged();
         }
     }
 
@@ -437,10 +329,8 @@
         var response = await Http.PostAsync($"/api/statement-drafts/{Id}/classify", null);
         if (response.IsSuccessStatusCode)
         {
-            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDto>();
-            _selectedAccountId = _draft?.DetectedAccountId;
-            BuildRibbon();
-            StateHasChanged();
+            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDetailDto>();
+            _selectedAccountId = _draft?.DetectedAccountId; BuildRibbon(); StateHasChanged();
         }
     }
 
@@ -452,57 +342,30 @@
         else { _bookingError = await resp.Content.ReadAsStringAsync(); StateHasChanged(); }
     }
 
+    private sealed class EntryForm { public DateTime BookingDate { get; set; } public decimal Amount { get; set; } public string Subject { get; set; } = string.Empty; }
+    private sealed class AccountVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid BankContactId { get; set; } }
+
     private bool HasEntryContext => string.Equals(Src, "entry", StringComparison.OrdinalIgnoreCase) && FromEntryDraftId.HasValue && FromEntryId.HasValue;
 
     private void OpenEntry(Guid entryId)
     {
-        string url;
-        if (HasEntryContext)
-        {
-            var existing = BuildContextQuery();
-            url = $"/statement-drafts/{Id}/entries/{entryId}{existing}";
-        }
-        else
-        {
-            url = $"/statement-drafts/{Id}/entries/{entryId}?src=entry&fromEntryDraftId={Id}&fromEntryId={entryId}";
-        }
+        var url = HasEntryContext ? $"/statement-drafts/{Id}/entries/{entryId}{BuildContextQuery()}" : $"/statement-drafts/{Id}/entries/{entryId}?src=entry&fromEntryDraftId={Id}&fromEntryId={entryId}";
         Nav.NavigateTo(url);
     }
-    private void BackToParent()
-    {
-        if (_draft?.ParentDraftId != null && _draft.ParentEntryId != null)
-        {
-            var qp = BuildContextQuery();
-            Nav.NavigateTo($"/statement-drafts/{_draft.ParentDraftId}/entries/{_draft.ParentEntryId}{qp}");
-        }
-    }
     private void ToggleViewer() { if (!_hasFile) { return; } _showViewer = !_showViewer; _fileUrl = _showViewer ? $"/api/statement-drafts/{Id}/file" : null; StateHasChanged(); }
-    private void DownloadFile() { if (!_hasFile) { return; } Nav.NavigateTo($"/api/statement-drafts/{Id}/file", forceLoad:true); }
+    private void DownloadFile() { if (!_hasFile) { return; } Nav.NavigateTo($"/statement-drafts/{Id}/file", forceLoad:true); }
+    private void BackGeneric() { Nav.NavigateTo("/statement-drafts"); }
+    private void BackToSourceEntry() { if (HasEntryContext) { Nav.NavigateTo($"/statement-drafts/{FromEntryDraftId}/entries/{FromEntryId}"); } }
 
-    private void BackGeneric()
+    private async Task AddEntryAsync()
     {
-        Nav.NavigateTo("/statement-drafts");
-    }
-
-    private void BackToSourceEntry()
-    {
-        if (HasEntryContext)
+        var response = await Http.PostAsJsonAsync($"/api/statement-drafts/{Id}/entries", new { BookingDate = _form.BookingDate, Amount = _form.Amount, Subject = _form.Subject });
+        if (response.IsSuccessStatusCode)
         {
-            Nav.NavigateTo($"/statement-drafts/{FromEntryDraftId}/entries/{FromEntryId}");
+            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDetailDto>();
+            _form = new EntryForm { BookingDate = DateTime.Today }; BuildRibbon(); StateHasChanged();
         }
     }
-
-    private sealed class EntryForm { public DateTime BookingDate { get; set; } public decimal Amount { get; set; } public string Subject { get; set; } = string.Empty; }
-
-    private sealed record StatementDraftEntryDto(Guid Id, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string CurrencyCode, string Subject, string? RecipientName, string? BookingDescription, bool IsAnnounced, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, Guid? SplitDraftId);
-    private sealed record StatementDraftDto(Guid DraftId, string OriginalFileName, Guid? DetectedAccountId, StatementDraftStatus Status, List<StatementDraftEntryDto> Entries, decimal TotalAmount, bool IsSplitDraft, Guid? ParentDraftId, Guid? ParentEntryId, decimal? ParentEntryAmount, Guid? UploadGroupId, Guid? PrevInUpload, Guid? NextInUpload);
-    private sealed record DraftValidationMessageDto(string Code, string Severity, string Message, Guid DraftId, Guid? EntryId);
-    private sealed record DraftValidationResultDto(Guid DraftId, bool IsValid, IReadOnlyList<DraftValidationMessageDto> Messages);
-    private sealed record AccountDto(Guid Id, string Name, int Type, string? Iban, decimal CurrentBalance, Guid BankContactId);
-    private sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, Guid? SymbolAttachmentId);
-    private enum ContactType { Self, Bank, Person, Organization, Other }
-    private sealed record SavingsPlanDto(Guid Id, string Name, SavingsPlanType? Type = null, decimal? TargetAmount = null, DateTime? TargetDate = null, SavingsPlanInterval? Interval = null, bool IsActive = true, DateTime? CreatedUtc = null, DateTime? ArchivedUtc = null, Guid? CategoryId = null, string? ContractNumber = null, Guid? SymbolAttachmentId = null);
-    private sealed class AccountVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid BankContactId { get; set; } }
 }
 
 <Ribbon TTabEnum="StatementDraftDetail.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -515,9 +378,7 @@
 else
 {
     @if(!string.IsNullOrEmpty(_bookingError))
-    {
-        <div style="margin:.5rem 0;color:#e66;font-size:.75rem;">@_bookingError</div>
-    }
+    { <div style="margin:.5rem 0;color:#e66;font-size:.75rem;">@_bookingError</div> }
     @if(_pendingWarningConfirmation && _lastValidation != null)
     {
         <div style="margin:.75rem 0;padding:.6rem .8rem;border:1px solid #665500;background:#221e00;font-size:.7rem;max-width:960px;">
@@ -531,7 +392,7 @@ else
     <p><strong>@Localizer["File"]:</strong> @_draft.OriginalFileName</p>
     <p><strong>@Localizer["Status"]:</strong> @_draft.Status</p>
     <p>
-        <strong>@Localizer["Account"]:</strong> 
+        <strong>@Localizer["Account"]:</strong>
         <select @onchange="OnAccountChanged" value="@_selectedAccountId">
             <option value="">-- @Localizer["Select"] --</option>
             @foreach (var grp in _groupedAccounts)
@@ -566,9 +427,7 @@ else
 
     <p><strong>@Localizer["TotalAmount"]:</strong> @_draft.Entries.Sum(e => e.Amount)</p>
     @if (_draft.ParentEntryAmount != null)
-    {
-        <p style="color:#ccc;"><strong>@Localizer["ParentEntryAmount"]:</strong> @_draft.ParentEntryAmount</p>
-    }
+    { <p style="color:#ccc;"><strong>@Localizer["ParentEntryAmount"]:</strong> @_draft.ParentEntryAmount</p> }
 
     <h4>@Localizer["EntriesHeader"] (@_draft.Entries.Count)</h4>
     <div class="draft-entries-container">
@@ -589,26 +448,16 @@ else
                 </tr>
             </thead>
             <tbody>
-                @foreach (var e in _draft.Entries
-                    .OrderBy(e => e.Status == StatementDraftEntryStatus.AlreadyBooked)
-                    .ThenBy(e => e.BookingDate))
+                @foreach (var e in _draft.Entries.OrderBy(e => e.Status == StatementDraftEntryStatus.AlreadyBooked).ThenBy(e => e.BookingDate))
                 {
                     var entryMessages = _validation?.Messages.Where(m => m.EntryId == e.Id).ToList() ?? new();
                     var entryErrors = entryMessages.Count(m=>m.Severity=="Error");
                     var entryWarnings = entryMessages.Count(m=>m.Severity=="Warning");
-                    var rowStyle = e.Status == StatementDraftEntryStatus.AlreadyBooked
-                        ? "opacity:.55;background:#141414;"
-                        : e.Status == StatementDraftEntryStatus.Announced 
-                        ? "opacity:.55;background:#131313;"
-                        : string.Empty;
+                    var rowStyle = e.Status == StatementDraftEntryStatus.AlreadyBooked ? "opacity:.55;background:#141414;" : e.Status == StatementDraftEntryStatus.Announced ? "opacity:.55;background:#131313;" : string.Empty;
                     <tr style="cursor:pointer;@rowStyle" @onclick="(() => OpenEntry(e.Id))">
                         <td>
                             @if (e.SplitDraftId != null)
-                            {
-                                <svg title='@Localizer["LinkedSplitDraft"]' aria-label="Split" style="width:1rem;height:1rem;">
-                                    <use href="/icons/sprite.svg#link" />
-                                </svg>
-                            }
+                            { <svg title='@Localizer["LinkedSplitDraft"]' aria-label="Split" style="width:1rem;height:1rem;"><use href="/icons/sprite.svg#link" /></svg> }
                         </td>
                         <td>@e.BookingDate.ToShortDateString()</td>
                         <td>@(e.ValutaDate?.ToShortDateString() ?? "")</td>
@@ -620,9 +469,7 @@ else
                             {
                                 var contact = _contacts.FirstOrDefault(a => a.Id == e.ContactId);
                                 <div style="display:flex;gap:.5rem;align-items:center;">
-                                    @{
-                                        var symbolId = contact != null ? GetContactDisplaySymbol(contact.Id) : null;
-                                    }
+                                    @{ var symbolId = contact != null ? GetContactDisplaySymbol(contact.Id) : null; }
                                     @if (symbolId != null)
                                     {
                                         <div style="width:28px;height:28px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
@@ -638,19 +485,14 @@ else
                                     <span>@contact?.Name</span>
                                 </div>
                             }
-                            else
-                            {
-                                <span>@(string.IsNullOrWhiteSpace(e.RecipientName) ? "" : e.RecipientName)</span>
-                            }
+                            else { <span>@(string.IsNullOrWhiteSpace(e.RecipientName) ? "" : e.RecipientName)</span> }
                         </td>
                         <td>
                             @if (e.SavingsPlanId != null)
                             {
                                 var plan = _savingsPlans.FirstOrDefault(p => p.Id == e.SavingsPlanId);
                                 <div style="display:flex;gap:.5rem;align-items:center;">
-                                    @{
-                                        var sId = plan != null ? GetSavingsPlanDisplaySymbol(plan.Id) : null;
-                                    }
+                                    @{ var sId = plan != null ? GetSavingsPlanDisplaySymbol(plan.Id) : null; }
                                     @if (sId != null)
                                     {
                                         <div style="width:28px;height:28px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
@@ -666,10 +508,7 @@ else
                                     <span>@plan?.Name</span>
                                 </div>
                             }
-                            else
-                            {
-                                <span></span>
-                            }
+                            else { <span></span> }
                         </td>
                         <td class="wrap">@(string.IsNullOrWhiteSpace(e.BookingDescription) ? "" : e.BookingDescription)</td>
                         <td>@(e.IsAnnounced ? "✓" : "")</td>
@@ -715,8 +554,7 @@ else
 }
 
 <div style="display:flex;align-items:flex-start;gap:1rem;">
-    <div style="flex:1;min-width:0;">
-    </div>
+    <div style="flex:1;min-width:0;"></div>
     @if (_showViewer && _hasFile)
     {
         <div style="width:420px;max-width:45%;height:70vh;position:sticky;top:1rem;border:1px solid var(--border);border-radius:var(--radius);background:#111;display:flex;flex-direction:column;">
@@ -730,8 +568,5 @@ else
 </div>
 
 <style>
-/* Subtle visual separation for already booked items when table has its own background */
-.fm-table tr[style*="opacity:.55"] td {
-    color: #aaa;
-}
+.fm-table tr[style*="opacity:.55"] td { color: #aaa; }
 </style>

@@ -137,7 +137,7 @@ else
     [Parameter] public string[]? AllowedMimeTypes { get; set; }
 
     private readonly List<AttachmentDto> _items = new();
-    private readonly List<CategoryDto> _categories = new();
+    private readonly List<AttachmentCategoryDto> _categories = new();
     private readonly Dictionary<Guid, string> _categoryNames = new();
     private string _selectedCategoryId = string.Empty;
     private bool _loaded;
@@ -254,7 +254,7 @@ else
                 _categories.Clear(); _categoryNames.Clear();
                 foreach (var c in cats ?? new())
                 {
-                    _categories.Add(new CategoryDto { Id = c.Id, Name = c.Name });
+                    _categories.Add(c);
                     _categoryNames[c.Id] = c.Name;
                 }
                 _items.Clear();
@@ -315,7 +315,7 @@ else
                 _categories.Clear(); _categoryNames.Clear();
                 foreach (var c in cats ?? new())
                 {
-                    _categories.Add(new CategoryDto { Id = c.Id, Name = c.Name });
+                    _categories.Add(c);
                     _categoryNames[c.Id] = c.Name;
                 }
                 _editCategoryId = dto.Id.ToString();
@@ -502,6 +502,4 @@ else
         try { if (_module is IAsyncDisposable m) { await m.DisposeAsync(); } } catch { }
         try { _selfRef?.Dispose(); } catch { }
     }
-
-    private sealed class CategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 }

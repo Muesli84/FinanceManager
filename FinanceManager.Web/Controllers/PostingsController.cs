@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using FinanceManager.Shared.Dtos.Postings; // shared posting DTOs
 
 namespace FinanceManager.Web.Controllers;
 
@@ -24,15 +25,10 @@ public sealed class PostingsController : ControllerBase
         _db = db; _current = current; _postingsQuery = postingsQuery;
     }
 
-    // Added ValutaDate to DTO
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId, Guid? LinkedPostingId, PostingKind? LinkedPostingKind, Guid? LinkedPostingAccountId, Guid? LinkedPostingAccountSymbolAttachmentId, string? LinkedPostingAccountName, Guid? BankPostingAccountId, Guid? BankPostingAccountSymbolAttachmentId, string? BankPostingAccountName);
-
-    public sealed record GroupLinksDto(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
-
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(PostingDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PostingServiceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PostingDto>> GetById(Guid id, CancellationToken ct)
+    public async Task<ActionResult<PostingServiceDto>> GetById(Guid id, CancellationToken ct)
     {
         var p = await _db.Postings.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p == null) { return NotFound(); }
@@ -105,10 +101,10 @@ public sealed class PostingsController : ControllerBase
             }
         }
 
-        var dto = new PostingDto(
+        var dto = new PostingServiceDto(
             p.Id,
             p.BookingDate,
-            p.ValutaDate, // <- include valuta
+            p.ValutaDate,
             p.Amount,
             p.Kind,
             p.AccountId,
@@ -171,7 +167,6 @@ public sealed class PostingsController : ControllerBase
         bool owned = await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == contactId && c.OwnerUserId == _current.UserId, ct);
         if (!owned) { return NotFound(); }
 
-        // Use postings query service to load contact postings (shared DTO)
         var rows = await _postingsQuery.GetContactPostingsAsync(contactId, skip, take, q, from, to, _current.UserId, ct);
         return Ok(rows);
     }

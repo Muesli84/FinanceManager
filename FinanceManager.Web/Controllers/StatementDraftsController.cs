@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Mime;
+using FinanceManager.Shared.Dtos.Statements; // ensure shared dtos
 
 namespace FinanceManager.Web.Controllers;
 
@@ -77,20 +78,18 @@ public sealed class StatementDraftsController : ControllerBase
         {
             firstDraft ??= draft;
         }
-        object? splitInfo = null;
+        ImportSplitInfoDto? splitInfo = null;
         if (_drafts is StatementDraftService impl && impl.LastImportSplitInfo != null)
         {
             var info = impl.LastImportSplitInfo;
-            splitInfo = new
-            {
-                Mode = info.ConfiguredMode.ToString(),
+            splitInfo = new ImportSplitInfoDto(
+                info.ConfiguredMode.ToString(),
                 info.EffectiveMonthly,
                 info.DraftCount,
                 info.TotalMovements,
                 info.MaxEntriesPerDraft,
                 info.LargestDraftSize,
-                info.MonthlyThreshold
-            };
+                info.MonthlyThreshold);
         }
         return Ok(new StatementDraftUploadResult(firstDraft, splitInfo));
     }
@@ -135,7 +134,7 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("book-all/status")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StatementDraftMassBookStatusDto), StatusCodes.Status200OK)]
     public IActionResult GetBookAllStatus()
     {
         var task = _taskManager.GetAll()
@@ -144,25 +143,33 @@ public sealed class StatementDraftsController : ControllerBase
             .FirstOrDefault(t => t.Status is BackgroundTaskStatus.Running or BackgroundTaskStatus.Queued);
         if (task == null)
         {
-            return Ok(new { running = false, processed = 0, failed = 0, total = 0, warnings = 0, errors = 0, message = (string?)null, issues = Array.Empty<object>() });
+            return Ok(new StatementDraftMassBookStatusDto(false, 0, 0, 0, 0, 0, null, Array.Empty<StatementDraftMassBookIssueDto>()));
         }
-        return Ok(new { running = task.Status == BackgroundTaskStatus.Running, processed = task.Processed ?? 0, failed = 0, total = task.Total ?? 0, warnings = task.Warnings, errors = task.Errors, message = task.Message, issues = Array.Empty<object>() });
+        return Ok(new StatementDraftMassBookStatusDto(
+            Running: task.Status == BackgroundTaskStatus.Running || task.Status == BackgroundTaskStatus.Queued,
+            Processed: task.Processed ?? 0,
+            Failed: 0,
+            Total: task.Total ?? 0,
+            Warnings: task.Warnings,
+            Errors: task.Errors,
+            Message: task.Message,
+            Issues: Array.Empty<StatementDraftMassBookIssueDto>()));
     }
 
     [HttpPost("book-all")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(StatementDraftMassBookStatusDto), StatusCodes.Status202Accepted)]
     public IActionResult BookAllAsync([FromBody] StatementDraftMassBookRequest req)
     {
         var existing = _taskManager.GetAll()
             .FirstOrDefault(t => t.UserId == _current.UserId && t.Type == BackgroundTaskType.BookAllDrafts && (t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued));
         if (existing != null)
         {
-            return Accepted(new { running = true, processed = existing.Processed ?? 0, failed = 0, total = existing.Total ?? 0, warnings = existing.Warnings, errors = existing.Errors, message = existing.Message, issues = Array.Empty<object>() });
+            return Accepted(new StatementDraftMassBookStatusDto(true, existing.Processed ?? 0, 0, existing.Total ?? 0, existing.Warnings, existing.Errors, existing.Message, Array.Empty<StatementDraftMassBookIssueDto>()));
         }
         var payload = new { req.IgnoreWarnings, req.AbortOnFirstIssue, req.BookEntriesIndividually };
         var info = _taskManager.Enqueue(BackgroundTaskType.BookAllDrafts, _current.UserId, payload, allowDuplicate: false);
         _logger.LogInformation("Enqueued booking background task {TaskId} for user {UserId}", info.Id, _current.UserId);
-        return Accepted(new { running = true, processed = 0, failed = 0, total = 0, warnings = 0, errors = 0, message = "Queued", issues = Array.Empty<object>() });
+        return Accepted(new StatementDraftMassBookStatusDto(true, 0, 0, 0, 0, 0, "Queued", Array.Empty<StatementDraftMassBookIssueDto>()));
     }
 
     [HttpPost("book-all/cancel")]
@@ -176,7 +183,7 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpGet("{draftId:guid}")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAsync(Guid draftId, [FromQuery] bool headerOnly = false, [FromQuery] string? src = null, [FromQuery] Guid? fromEntryDraftId = null, [FromQuery] Guid? fromEntryId = null, CancellationToken ct = default)
     {
@@ -185,8 +192,7 @@ public sealed class StatementDraftsController : ControllerBase
             : await _drafts.GetDraftAsync(draftId, _current.UserId, ct);
         if (draft is null) { return NotFound(); }
         var neighbors = await _drafts.GetUploadGroupNeighborsAsync(draftId, _current.UserId, ct);
-        return Ok(new
-        {
+        var dto = new StatementDraftDetailDto(
             draft.DraftId,
             draft.OriginalFileName,
             draft.Description,
@@ -198,17 +204,14 @@ public sealed class StatementDraftsController : ControllerBase
             draft.ParentEntryId,
             draft.ParentEntryAmount,
             draft.UploadGroupId,
-            Entries = draft.Entries,
-            PrevInUpload = neighbors.prevId,
-            NextInUpload = neighbors.nextId,
-            Src = src,
-            FromEntryDraftId = fromEntryDraftId,
-            FromEntryId = fromEntryId
-        });
+            draft.Entries,
+            neighbors.prevId,
+            neighbors.nextId);
+        return Ok(dto);
     }
 
     [HttpGet("{draftId:guid}/entries/{entryId:guid}")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StatementDraftEntryDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
@@ -241,55 +244,72 @@ public sealed class StatementDraftsController : ControllerBase
             bankContactId = account?.BankContactId;
         }
 
-        return Ok(new
-        {
+        var dto = new StatementDraftEntryDetailDto(
             draft.DraftId,
             draft.OriginalFileName,
-            Entry = entry,
-            PrevEntryId = prev,
-            NextEntryId = next,
-            NextOpenEntryId = nextOpen,
-            SplitSum = splitSum,
-            Difference = diff,
-            BankContactId = bankContactId
-        });
+            entry,
+            prev,
+            next,
+            nextOpen,
+            splitSum,
+            diff,
+            bankContactId);
+        return Ok(dto);
     }
 
     [HttpPost("{draftId:guid}/entries")]
-    [ProducesResponseType(typeof(StatementDraftDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> AddEntryAsync(Guid draftId, [FromBody] StatementDraftAddEntryRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) { return ValidationProblem(ModelState); }
         var draft = await _drafts.AddEntryAsync(draftId, _current.UserId, req.BookingDate, req.Amount, req.Subject, ct);
-        return draft is null ? NotFound() : Ok(draft);
+        if (draft is null) return NotFound();
+        var neighbors = await _drafts.GetUploadGroupNeighborsAsync(draft.DraftId, _current.UserId, ct);
+        var dto = new StatementDraftDetailDto(
+            draft.DraftId,
+            draft.OriginalFileName,
+            draft.Description,
+            draft.DetectedAccountId,
+            draft.Status,
+            draft.TotalAmount,
+            draft.IsSplitDraft,
+            draft.ParentDraftId,
+            draft.ParentEntryId,
+            draft.ParentEntryAmount,
+            draft.UploadGroupId,
+            draft.Entries,
+            neighbors.prevId,
+            neighbors.nextId);
+        return Ok(dto);
     }
 
     [HttpPost("{draftId:guid}/classify")]
-    [ProducesResponseType(typeof(StatementDraftDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ClassifyAsync(Guid draftId, CancellationToken ct)
     {
         try
         {
             var draft = await _drafts.ClassifyAsync(draftId, null, _current.UserId, ct);
-            return draft is null ? NotFound() : Ok(draft);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(ex);
-        }
-    }
-
-    [HttpPost("{draftId:guid}/classify/{entryId:guid}")]
-    [ProducesResponseType(typeof(StatementDraftDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ClassifyEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
-    {
-        try
-        {
-            var draft = await _drafts.ClassifyAsync(draftId, entryId, _current.UserId, ct);
-            return draft is null ? NotFound() : Ok(draft);
+            if (draft is null) return NotFound();
+            var neighbors = await _drafts.GetUploadGroupNeighborsAsync(draft.DraftId, _current.UserId, ct);
+            var dto = new StatementDraftDetailDto(
+                draft.DraftId,
+                draft.OriginalFileName,
+                draft.Description,
+                draft.DetectedAccountId,
+                draft.Status,
+                draft.TotalAmount,
+                draft.IsSplitDraft,
+                draft.ParentDraftId,
+                draft.ParentEntryId,
+                draft.ParentEntryAmount,
+                draft.UploadGroupId,
+                draft.Entries,
+                neighbors.prevId,
+                neighbors.nextId);
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -298,11 +318,28 @@ public sealed class StatementDraftsController : ControllerBase
     }
 
     [HttpPost("{draftId:guid}/account/{accountId:guid}")]
-    [ProducesResponseType(typeof(StatementDraftDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetAccountAsync(Guid draftId, Guid accountId, CancellationToken ct)
     {
         var draft = await _drafts.SetAccountAsync(draftId, _current.UserId, accountId, ct);
-        return draft is null ? NotFound() : Ok(draft);
+        if (draft is null) return NotFound();
+        var neighbors = await _drafts.GetUploadGroupNeighborsAsync(draft.DraftId, _current.UserId, ct);
+        var dto = new StatementDraftDetailDto(
+            draft.DraftId,
+            draft.OriginalFileName,
+            draft.Description,
+            draft.DetectedAccountId,
+            draft.Status,
+            draft.TotalAmount,
+            draft.IsSplitDraft,
+            draft.ParentDraftId,
+            draft.ParentEntryId,
+            draft.ParentEntryAmount,
+            draft.UploadGroupId,
+            draft.Entries,
+            neighbors.prevId,
+            neighbors.nextId);
+        return Ok(dto);
     }
 
     [HttpPost("{draftId:guid}/commit")]
@@ -487,5 +524,38 @@ public sealed class StatementDraftsController : ControllerBase
     {
         var dto = await _drafts.ResetDuplicateEntryAsync(draftId, entryId, _current.UserId, ct);
         return dto == null ? NotFound() : Ok(dto);
+    }
+
+    [HttpPost("{draftId:guid}/entries/{entryId:guid}/classify-entry")]
+    [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ClassifyEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
+    {
+        try
+        {
+            var draft = await _drafts.ClassifyAsync(draftId, entryId, _current.UserId, ct);
+            if (draft is null) return NotFound();
+            var neighbors = await _drafts.GetUploadGroupNeighborsAsync(draft.DraftId, _current.UserId, ct);
+            var dto = new StatementDraftDetailDto(
+                draft.DraftId,
+                draft.OriginalFileName,
+                draft.Description,
+                draft.DetectedAccountId,
+                draft.Status,
+                draft.TotalAmount,
+                draft.IsSplitDraft,
+                draft.ParentDraftId,
+                draft.ParentEntryId,
+                draft.ParentEntryAmount,
+                draft.UploadGroupId,
+                draft.Entries,
+                neighbors.prevId,
+                neighbors.nextId);
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 }
