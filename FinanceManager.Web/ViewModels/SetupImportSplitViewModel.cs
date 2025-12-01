@@ -31,7 +31,7 @@ public sealed class SetupImportSplitViewModel : ViewModelBase
         Loading = true; Error = null; SaveError = null; SavedOk = false; RaiseStateChanged();
         try
         {
-            var dto = await _http.GetFromJsonAsync<ImportSplitSettingsDto>("/api/user/import-split-settings", ct);
+            var dto = await _http.GetFromJsonAsync<ImportSplitSettingsDto>("/api/user/settings/import-split", ct);
             Model = dto ?? new ImportSplitSettingsDto();
             _original = Clone(Model);
             RecomputeDirty();
@@ -51,7 +51,7 @@ public sealed class SetupImportSplitViewModel : ViewModelBase
         Saving = true; SavedOk = false; SaveError = null; RaiseStateChanged();
         try
         {
-            using var resp = await _http.PutAsJsonAsync("/api/user/import-split-settings", Model, ct);
+            using var resp = await _http.PutAsJsonAsync("/api/user/settings/import-split", Model, ct);
             if (resp.IsSuccessStatusCode)
             {
                 _original = Clone(Model);

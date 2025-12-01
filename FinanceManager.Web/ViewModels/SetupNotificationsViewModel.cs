@@ -34,7 +34,7 @@ public sealed class SetupNotificationsViewModel : ViewModelBase
         Loading = true; Error = null; SaveError = null; SavedOk = false; RaiseStateChanged();
         try
         {
-            var dto = await _http.GetFromJsonAsync<NotificationSettingsDto>("/api/user/notification-settings", ct);
+            var dto = await _http.GetFromJsonAsync<NotificationSettingsDto>("/api/user/settings/notifications", ct);
             Model = dto ?? new NotificationSettingsDto();
             if (string.IsNullOrEmpty(Model.HolidayProvider))
             {
@@ -85,7 +85,7 @@ public sealed class SetupNotificationsViewModel : ViewModelBase
                 Model.HolidayCountryCode,
                 Model.HolidaySubdivisionCode
             };
-            using var resp = await _http.PutAsJsonAsync("/api/user/notification-settings", payload, ct);
+            using var resp = await _http.PutAsJsonAsync("/api/user/settings/notifications", payload, ct);
             if (resp.IsSuccessStatusCode)
             {
                 Model.MonthlyReminderEnabled = payload.MonthlyReminderEnabled;

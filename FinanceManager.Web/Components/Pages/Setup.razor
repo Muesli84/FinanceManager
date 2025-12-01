@@ -125,7 +125,7 @@
     {
         try
         {
-            await Http.PostAsync("/api/aggregates/rebuild", content: null);
+            await Http.PostAsync("/api/background-tasks/aggregates/rebuild", content: null);
         }
         catch { }
     }

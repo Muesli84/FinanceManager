@@ -73,5 +73,40 @@ namespace FinanceManager.Web.Controllers
             }
             return BadRequest(new ApiErrorDto("Only queued or running tasks can be cancelled or removed."));
         }
+
+        // New: Aggregates rebuild endpoints under background-tasks, keeping original routes in AggregatesController
+        [HttpPost("aggregates/rebuild")]
+        [ProducesResponseType(typeof(AggregatesRebuildStatusDto), StatusCodes.Status202Accepted)]
+        public IActionResult RebuildAggregates([FromQuery] bool allowDuplicate = false)
+        {
+            var userId = GetUserId();
+            var existing = _taskManager.GetAll()
+                .FirstOrDefault(t => t.UserId == userId && t.Type == BackgroundTaskType.RebuildAggregates && (t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued));
+            if (existing != null && !allowDuplicate)
+            {
+                return Accepted(new AggregatesRebuildStatusDto(true, existing.Processed ?? 0, existing.Total ?? 0, existing.Message));
+            }
+
+            var info = _taskManager.Enqueue(BackgroundTaskType.RebuildAggregates, userId, payload: null, allowDuplicate: allowDuplicate);
+            _logger.LogInformation("Enqueued rebuild aggregates task {TaskId} for user {UserId}", info.Id, userId);
+            return Accepted(new AggregatesRebuildStatusDto(true, 0, 0, "Queued"));
+        }
+
+        [HttpGet("aggregates/rebuild/status")]
+        [ProducesResponseType(typeof(AggregatesRebuildStatusDto), StatusCodes.Status200OK)]
+        public IActionResult GetRebuildAggregatesStatus()
+        {
+            var userId = GetUserId();
+            var task = _taskManager.GetAll()
+                .Where(t => t.UserId == userId && t.Type == BackgroundTaskType.RebuildAggregates)
+                .OrderByDescending(t => t.EnqueuedUtc)
+                .FirstOrDefault(t => t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued);
+
+            if (task == null)
+            {
+                return Ok(new AggregatesRebuildStatusDto(false, 0, 0, null));
+            }
+            return Ok(new AggregatesRebuildStatusDto(true, task.Processed ?? 0, task.Total ?? 0, task.Message));
+        }
     }
 }

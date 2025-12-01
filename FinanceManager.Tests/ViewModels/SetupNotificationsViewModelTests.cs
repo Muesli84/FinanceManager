@@ -52,7 +52,7 @@ public sealed class SetupNotificationsViewModelTests
         var subs = new[] { "BW", "BY" };
         var client = CreateHttpClient(req =>
         {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/notification-settings")
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/notifications")
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(SettingsJson(dto), Encoding.UTF8, "application/json") };
             }
@@ -80,7 +80,7 @@ public sealed class SetupNotificationsViewModelTests
         var dto = new NotificationSettingsDto { HolidayProvider = "NagerDate", HolidayCountryCode = "DE", HolidaySubdivisionCode = "BW" };
         var client = CreateHttpClient(req =>
         {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/notification-settings")
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/notifications")
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(SettingsJson(dto), Encoding.UTF8, "application/json") };
             }
@@ -102,11 +102,11 @@ public sealed class SetupNotificationsViewModelTests
         bool putCalled = false;
         var client = CreateHttpClient(req =>
         {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/notification-settings")
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/notifications")
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(SettingsJson(dto), Encoding.UTF8, "application/json") };
             }
-            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/api/user/notification-settings")
+            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/api/user/settings/notifications")
             {
                 putCalled = true;
                 return new HttpResponseMessage(HttpStatusCode.OK);

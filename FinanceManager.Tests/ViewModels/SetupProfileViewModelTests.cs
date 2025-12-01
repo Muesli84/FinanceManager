@@ -50,7 +50,7 @@ public sealed class SetupProfileViewModelTests
         var dto = new UserProfileSettingsDto { PreferredLanguage = "de", TimeZoneId = "Europe/Berlin", HasAlphaVantageApiKey = true, ShareAlphaVantageApiKey = true };
         var client = CreateHttpClient(req =>
         {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/profile-settings")
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/profile")
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ProfileJson(dto), Encoding.UTF8, "application/json") };
             }
@@ -74,11 +74,11 @@ public sealed class SetupProfileViewModelTests
         bool putCalled = false;
         var client = CreateHttpClient(req =>
         {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/profile-settings")
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/profile")
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ProfileJson(dto), Encoding.UTF8, "application/json") };
             }
-            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/api/user/profile-settings")
+            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/api/user/settings/profile")
             {
                 putCalled = true;
                 return new HttpResponseMessage(HttpStatusCode.OK);
@@ -108,11 +108,11 @@ public sealed class SetupProfileViewModelTests
         var dto = new UserProfileSettingsDto { PreferredLanguage = "de", TimeZoneId = "Europe/Berlin", HasAlphaVantageApiKey = true, ShareAlphaVantageApiKey = false };
         var client = CreateHttpClient(req =>
         {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/profile-settings")
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/profile")
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ProfileJson(dto), Encoding.UTF8, "application/json") };
             }
-            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/api/user/profile-settings")
+            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/api/user/settings/profile")
             {
                 // naive check: content contains the clear flag
                 var json = req.Content!.ReadAsStringAsync().Result;

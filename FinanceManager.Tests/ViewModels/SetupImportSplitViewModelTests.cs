@@ -50,7 +50,7 @@ public sealed class SetupImportSplitViewModelTests
         var dto = new ImportSplitSettingsDto { Mode = ImportSplitMode.Monthly, MaxEntriesPerDraft = 200, MonthlySplitThreshold = 250, MinEntriesPerDraft = 5 };
         var client = CreateHttpClient(req =>
         {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/import-split-settings")
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/import-split")
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(SettingsJson(dto), Encoding.UTF8, "application/json") };
             }
@@ -102,11 +102,11 @@ public sealed class SetupImportSplitViewModelTests
         bool putCalled = false;
         var client = CreateHttpClient(req =>
         {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/import-split-settings")
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/import-split")
             {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(SettingsJson(dto), Encoding.UTF8, "application/json") };
             }
-            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/api/user/import-split-settings")
+            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/api/user/settings/import-split")
             {
                 putCalled = true;
                 return new HttpResponseMessage(HttpStatusCode.OK);

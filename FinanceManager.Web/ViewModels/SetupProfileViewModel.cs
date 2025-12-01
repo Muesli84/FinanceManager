@@ -34,7 +34,7 @@ public sealed class SetupProfileViewModel : ViewModelBase
         Loading = true; Error = null; SaveError = null; SavedOk = false; RaiseStateChanged();
         try
         {
-            var dto = await _http.GetFromJsonAsync<UserProfileSettingsDto>("/api/user/profile-settings", ct);
+            var dto = await _http.GetFromJsonAsync<UserProfileSettingsDto>("/api/user/settings/profile", ct);
             Model = dto ?? new();
             _original = Clone(Model);
 
@@ -72,7 +72,7 @@ public sealed class SetupProfileViewModel : ViewModelBase
                 payload["ClearAlphaVantageApiKey"] = true;
             }
 
-            using var resp = await _http.PutAsJsonAsync("/api/user/profile-settings", payload, ct);
+            using var resp = await _http.PutAsJsonAsync("/api/user/settings/profile", payload, ct);
             if (resp.IsSuccessStatusCode)
             {
                 // Reflect saved ShareKey into the model before cloning as original
