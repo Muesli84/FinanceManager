@@ -1,4 +1,9 @@
 using Microsoft.Extensions.Localization;
+using FinanceManager.Shared.Dtos.Reports; // shared report DTOs
+using FinanceManager.Shared.Dtos.Accounts;
+using FinanceManager.Shared.Dtos.Contacts;
+using FinanceManager.Shared.Dtos.SavingsPlans;
+using FinanceManager.Shared.Dtos.Securities;
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -16,8 +21,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
 
     // Dashboard state
     public bool IsBusy { get; private set; }
-    public List<PostingKind> SelectedKinds { get; set; } = new() { 0 }; // 0 == PostingKind.Bank
-    public int Interval { get; set; } = 0; // ReportInterval.Month
+    public List<PostingKind> SelectedKinds { get; set; } = new() { PostingKind.Bank };
+    public int Interval { get; set; } = (int)ReportInterval.Month;
     public bool IncludeCategory { get; set; }
     public bool ComparePrevious { get; set; }
     public bool CompareYear { get; set; }
@@ -45,7 +50,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     // New: security posting subtype filter (by enum int values)
     public HashSet<int> SelectedSecuritySubTypes { get; private set; } = new();
 
-    public List<PointDto> Points { get; private set; } = new();
+    public List<ReportAggregatePointDto> Points { get; private set; } = new();
 
     // Expansion state for table rows
     public Dictionary<string, bool> Expanded { get; } = new();
@@ -68,7 +73,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     public static bool IsCategorySupported(PostingKind kind) => kind == PostingKind.Contact || kind == PostingKind.SavingsPlan || kind == PostingKind.Security;
     public bool IsCategoryGroupingSingle => !IsMulti && IncludeCategory && IsCategorySupported(PrimaryKind);
 
-    public IReadOnlyList<PointDto> LatestPerGroup => Points
+    public IReadOnlyList<ReportAggregatePointDto> LatestPerGroup => Points
         .Where(p => !p.GroupKey.StartsWith("Type:") && !p.GroupKey.StartsWith("Category:") && p.ParentGroupKey == null)
         .GroupBy(p => p.GroupKey)
         .Select(g => g.OrderBy(x => x.PeriodStart).Last())
@@ -76,7 +81,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         .ThenByDescending(p => p.Amount)
         .ToList();
 
-    public FiltersPayload? BuildFiltersPayload()
+    public ReportAggregatesFiltersRequest? BuildFiltersPayload()
     {
         var hasEntity = SelectedAccounts.Count > 0 || SelectedContacts.Count > 0 || SelectedSavingsPlans.Count > 0 || SelectedSecurities.Count > 0;
         var hasCats = SelectedContactCategories.Count > 0 || SelectedSavingsCategories.Count > 0 || SelectedSecurityCategories.Count > 0 || SelectedAccounts.Count > 0;
@@ -92,7 +97,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         }
         if (IncludeCategory)
         {
-            return new FiltersPayload(
+            return new ReportAggregatesFiltersRequest(
                 SelectedAccounts.ToList(),
                 null,
                 null,
@@ -106,7 +111,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         }
         else
         {
-            return new FiltersPayload(
+            return new ReportAggregatesFiltersRequest(
                 SelectedAccounts.ToList(),
                 SelectedContacts.ToList(),
                 SelectedSavingsPlans.ToList(),
@@ -151,7 +156,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         }
     }
 
-    public IEnumerable<PointDto> GetTopLevelRows()
+    public IEnumerable<ReportAggregatePointDto> GetTopLevelRows()
     {
         if (IsMulti)
         {
@@ -175,9 +180,9 @@ public sealed class ReportDashboardViewModel : ViewModelBase
             .ThenByDescending(p => p.Amount);
     }
 
-    public IEnumerable<PointDto> GetChildRows(string parentKey) => GetChildRowsImpl(parentKey);
+    public IEnumerable<ReportAggregatePointDto> GetChildRows(string parentKey) => GetChildRowsImpl(parentKey);
 
-    private IEnumerable<PointDto> GetChildRowsImpl(string parentKey)
+    private IEnumerable<ReportAggregatePointDto> GetChildRowsImpl(string parentKey)
     {
         if (parentKey.StartsWith("Type:"))
         {
@@ -218,7 +223,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 .ThenByDescending(p => p.Amount)
                 .ToList();
         }
-        return Array.Empty<PointDto>();
+        return Array.Empty<ReportAggregatePointDto>();
     }
 
     public bool HasChildren(string key) => GetChildRowsImpl(key).Any();
@@ -247,7 +252,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         return byPeriod;
     }
 
-    public static bool IsNegative(PointDto p)
+    public static bool IsNegative(ReportAggregatePointDto p)
     {
         if (p.Amount < 0m)
         {
@@ -270,18 +275,18 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         return false;
     }
 
-    public async Task<AggregationResponse> LoadAsync(PostingKind primaryKind, int interval, int take, bool includeCategory, bool comparePrevious, bool compareYear, IReadOnlyCollection<PostingKind>? postingKinds, DateTime? analysisDate, FiltersPayload? filters, bool useValutaDate = false, CancellationToken ct = default)
+    public async Task<ReportAggregationResult> LoadAsync(PostingKind primaryKind, int interval, int take, bool includeCategory, bool comparePrevious, bool compareYear, IReadOnlyCollection<PostingKind>? postingKinds, DateTime? analysisDate, ReportAggregatesFiltersRequest? filters, bool useValutaDate = false, CancellationToken ct = default)
     {
-        var req = new QueryRequest(primaryKind, interval, take, includeCategory, comparePrevious, compareYear, useValutaDate, postingKinds, analysisDate, filters);
+        var req = new ReportAggregatesQueryRequest(primaryKind, (ReportInterval)interval, take, includeCategory, comparePrevious, compareYear, useValutaDate, postingKinds, analysisDate, filters);
         var resp = await _http.PostAsJsonAsync("/api/report-aggregates", req, ct);
         resp.EnsureSuccessStatusCode();
-        var result = await resp.Content.ReadFromJsonAsync<AggregationResponse>(cancellationToken: ct) ?? new AggregationResponse(interval, new(), false, false);
+        var result = await resp.Content.ReadFromJsonAsync<ReportAggregationResult>(cancellationToken: ct) ?? new ReportAggregationResult((ReportInterval)interval, Array.Empty<ReportAggregatePointDto>(), false, false);
         return result;
     }
 
-    public async Task<FavoriteDto?> SaveFavoriteAsync(string name, PostingKind primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<PostingKind>? postingKinds, FiltersPayload? filters, bool useValutaDate = false, CancellationToken ct = default)
+    public async Task<ReportFavoriteDto?> SaveFavoriteAsync(string name, PostingKind primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<PostingKind>? postingKinds, ReportAggregatesFiltersRequest? filters, bool useValutaDate = false, CancellationToken ct = default)
     {
-        var payload = new FavCreate
+        var payload = new ReportFavoriteCreateApiRequest
         {
             Name = name,
             PostingKind = primaryKind,
@@ -293,7 +298,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
             ShowChart = showChart,
             Expandable = expandable,
             PostingKinds = postingKinds,
-            Filters = filters is null ? null : new FavFiltersDto
+            Filters = filters is null ? null : new ReportFavoriteFiltersApiDto
             {
                 AccountIds = filters.AccountIds,
                 ContactIds = filters.ContactIds,
@@ -309,12 +314,12 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         };
         var resp = await _http.PostAsJsonAsync("/api/report-favorites", payload, ct);
         if (!resp.IsSuccessStatusCode) { return null; }
-        return await resp.Content.ReadFromJsonAsync<FavoriteDto>(cancellationToken: ct);
+        return await resp.Content.ReadFromJsonAsync<ReportFavoriteDto>(cancellationToken: ct);
     }
 
-    public async Task<FavoriteDto?> UpdateFavoriteAsync(Guid id, string name, PostingKind primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<PostingKind>? postingKinds, FiltersPayload? filters, bool useValutaDate = false, CancellationToken ct = default)
+    public async Task<ReportFavoriteDto?> UpdateFavoriteAsync(Guid id, string name, PostingKind primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<PostingKind>? postingKinds, ReportAggregatesFiltersRequest? filters, bool useValutaDate = false, CancellationToken ct = default)
     {
-        var payload = new FavCreate
+        var payload = new ReportFavoriteUpdateApiRequest
         {
             Name = name,
             PostingKind = primaryKind,
@@ -326,7 +331,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
             ShowChart = showChart,
             Expandable = expandable,
             PostingKinds = postingKinds,
-            Filters = filters is null ? null : new FavFiltersDto
+            Filters = filters is null ? null : new ReportFavoriteFiltersApiDto
             {
                 AccountIds = filters.AccountIds,
                 ContactIds = filters.ContactIds,
@@ -342,126 +347,13 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         };
         var resp = await _http.PutAsJsonAsync($"/api/report-favorites/{id}", payload, ct);
         if (!resp.IsSuccessStatusCode) { return null; }
-        return await resp.Content.ReadFromJsonAsync<FavoriteDto>(cancellationToken: ct);
+        return await resp.Content.ReadFromJsonAsync<ReportFavoriteDto>(cancellationToken: ct);
     }
 
     public async Task<bool> DeleteFavoriteAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/report-favorites/{id}", ct);
         return resp.IsSuccessStatusCode;
-    }
-
-    public void OpenFavoriteDialog(bool update, string? resetNameIfNew = null)
-    {
-        FavoriteDialogIsUpdate = update;
-        if (!update)
-        {
-            FavoriteName = resetNameIfNew ?? string.Empty;
-        }
-        FavoriteError = null;
-        ShowFavoriteDialog = true;
-        RaiseStateChanged();
-    }
-
-    public void CloseFavoriteDialog()
-    {
-        ShowFavoriteDialog = false;
-        RaiseStateChanged();
-    }
-
-    public async Task<FavoriteDto?> SubmitFavoriteDialogAsync(string defaultName, PostingKind primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<PostingKind>? postingKinds, FiltersPayload? filters, bool useValutaDate = false, CancellationToken ct = default)
-    {
-        FavoriteError = null;
-        try
-        {
-            if (FavoriteDialogIsUpdate && ActiveFavoriteId.HasValue)
-            {
-                var res = await UpdateFavoriteAsync(ActiveFavoriteId.Value,
-                    FavoriteName.Trim(), primaryKind, includeCategory, interval, take,
-                    comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate, ct);
-                if (res is null)
-                {
-                    FavoriteError = "Error_UpdateFavorite";
-                    RaiseStateChanged();
-                    return null;
-                }
-                FavoriteName = res.Name;
-                ShowFavoriteDialog = false;
-                RaiseStateChanged();
-                return res;
-            }
-            else
-            {
-                var name = string.IsNullOrWhiteSpace(FavoriteName) ? defaultName : FavoriteName.Trim();
-                var res = await SaveFavoriteAsync(name, primaryKind, includeCategory, interval, take,
-                    comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate, ct);
-                if (res is null)
-                {
-                    FavoriteError = "Error_SaveFavorite";
-                    RaiseStateChanged();
-                    return null;
-                }
-                ActiveFavoriteId = res.Id;
-                FavoriteName = res.Name;
-                ShowFavoriteDialog = false;
-                RaiseStateChanged();
-                return res;
-            }
-        }
-        catch (Exception ex)
-        {
-            FavoriteError = ex.Message;
-            RaiseStateChanged();
-            return null;
-        }
-    }
-
-    public sealed record FiltersPayload(
-        IReadOnlyCollection<Guid>? AccountIds,
-        IReadOnlyCollection<Guid>? ContactIds,
-        IReadOnlyCollection<Guid>? SavingsPlanIds,
-        IReadOnlyCollection<Guid>? SecurityIds,
-        IReadOnlyCollection<Guid>? ContactCategoryIds,
-        IReadOnlyCollection<Guid>? SavingsPlanCategoryIds,
-        IReadOnlyCollection<Guid>? SecurityCategoryIds,
-        IReadOnlyCollection<int>? SecuritySubTypes, // new
-        bool? IncludeDividendRelated // new
-    );
-
-    public sealed record QueryRequest(PostingKind PostingKind, int Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, bool UseValutaDate, IReadOnlyCollection<PostingKind>? PostingKinds, DateTime? AnalysisDate, FiltersPayload? Filters);
-
-    public sealed record AggregationResponse(int Interval, List<PointDto> Points, bool ComparedPrevious, bool ComparedYear);
-    public sealed record PointDto(DateTime PeriodStart, string GroupKey, string GroupName, string? CategoryName, decimal Amount, string? ParentGroupKey, decimal? PreviousAmount, decimal? YearAgoAmount);
-
-    public sealed record FavoriteDto(Guid Id, string Name, PostingKind PostingKind, bool IncludeCategory, int Interval, int Take, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<PostingKind> PostingKinds, FavFiltersDto? Filters, bool UseValutaDate = false);
-
-    public sealed class FavCreate
-    {
-        public string Name { get; set; } = string.Empty;
-        public PostingKind PostingKind { get; set; }
-        public bool IncludeCategory { get; set; }
-        public int Interval { get; set; }
-        public int Take { get; set; }
-        public bool ComparePrevious { get; set; }
-        public bool CompareYear { get; set; }
-        public bool ShowChart { get; set; }
-        public bool Expandable { get; set; }
-        public IReadOnlyCollection<PostingKind>? PostingKinds { get; set; }
-        public FavFiltersDto? Filters { get; set; }
-        public bool UseValutaDate { get; set; }
-    }
-
-    public sealed class FavFiltersDto
-    {
-        public IReadOnlyCollection<Guid>? AccountIds { get; set; }
-        public IReadOnlyCollection<Guid>? ContactIds { get; set; }
-        public IReadOnlyCollection<Guid>? SavingsPlanIds { get; set; }
-        public IReadOnlyCollection<Guid>? SecurityIds { get; set; }
-        public IReadOnlyCollection<Guid>? ContactCategoryIds { get; set; }
-        public IReadOnlyCollection<Guid>? SavingsPlanCategoryIds { get; set; }
-        public IReadOnlyCollection<Guid>? SecurityCategoryIds { get; set; }
-        public IReadOnlyCollection<int>? SecuritySubTypes { get; set; } // new
-        public bool? IncludeDividendRelated { get; set; } // new
     }
 
     // Filter options (for dialog)
@@ -483,7 +375,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         {
             foreach (var k in SelectedKinds)
             {
-                var kind = k; // PostingKind as int
+                var kind = k; // PostingKind as enum
                 var list = new List<SimpleOption>();
                 if (IncludeCategory && IsCategorySupported(kind))
                 {
@@ -492,7 +384,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                         var resp = await _http.GetAsync("/api/contact-categories", ct);
                         if (resp.IsSuccessStatusCode)
                         {
-                            var cats = await resp.Content.ReadFromJsonAsync<List<CategoryDto>>(cancellationToken: ct) ?? new();
+                            var cats = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>(cancellationToken: ct) ?? new();
                             list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
                         }
                     }
@@ -501,7 +393,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                         var resp = await _http.GetAsync("/api/savings-plan-categories", ct);
                         if (resp.IsSuccessStatusCode)
                         {
-                            var cats = await resp.Content.ReadFromJsonAsync<List<CategoryDto>>(cancellationToken: ct) ?? new();
+                            var cats = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? new();
                             list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
                         }
                     }
@@ -510,7 +402,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                         var resp = await _http.GetAsync("/api/security-categories", ct);
                         if (resp.IsSuccessStatusCode)
                         {
-                            var cats = await resp.Content.ReadFromJsonAsync<List<CategoryDto>>(cancellationToken: ct) ?? new();
+                            var cats = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>(cancellationToken: ct) ?? new();
                             list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
                         }
                     }
@@ -522,7 +414,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                         var resp = await _http.GetAsync("/api/accounts?skip=0&take=1000", ct);
                         if (resp.IsSuccessStatusCode)
                         {
-                            var acc = await resp.Content.ReadFromJsonAsync<List<EntityDto>>(cancellationToken: ct) ?? new();
+                            var acc = await resp.Content.ReadFromJsonAsync<List<AccountDto>>(cancellationToken: ct) ?? new();
                             list = acc.Select(a => new SimpleOption { Id = a.Id, Name = a.Name }).ToList();
                         }
                     }
@@ -531,7 +423,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                         var resp = await _http.GetAsync("/api/contacts?all=true", ct);
                         if (resp.IsSuccessStatusCode)
                         {
-                            var con = await resp.Content.ReadFromJsonAsync<List<EntityDto>>(cancellationToken: ct) ?? new();
+                            var con = await resp.Content.ReadFromJsonAsync<List<ContactDto>>(cancellationToken: ct) ?? new();
                             list = con.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
                         }
                     }
@@ -540,7 +432,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                         var resp = await _http.GetAsync("/api/savings-plans?onlyActive=false", ct);
                         if (resp.IsSuccessStatusCode)
                         {
-                            var sav = await resp.Content.ReadFromJsonAsync<List<EntityDto>>(cancellationToken: ct) ?? new();
+                            var sav = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>(cancellationToken: ct) ?? new();
                             list = sav.Select(p => new SimpleOption { Id = p.Id, Name = p.Name }).ToList();
                         }
                     }
@@ -549,7 +441,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                         var resp = await _http.GetAsync("/api/securities?onlyActive=false", ct);
                         if (resp.IsSuccessStatusCode)
                         {
-                            var sec = await resp.Content.ReadFromJsonAsync<List<EntityDto>>(cancellationToken: ct) ?? new();
+                            var sec = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>(cancellationToken: ct) ?? new();
                             list = sec.Select(s => new SimpleOption { Id = s.Id, Name = s.Name }).ToList();
                         }
                     }
@@ -568,16 +460,12 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     {
         if (ActiveFilterTabKind.HasValue && SelectedKinds.Contains(ActiveFilterTabKind.Value))
         {
-            return (PostingKind)ActiveFilterTabKind.Value;
+            return ActiveFilterTabKind.Value;
         }
-        return (PostingKind)PrimaryKind;
+        return PrimaryKind;
     }
     public List<SimpleOption> GetOptionsForKind(PostingKind k)
         => FilterOptionsByKind.TryGetValue(k, out var list) ? list : new List<SimpleOption>();
-
-    // Lightweight DTOs to fetch options
-    private sealed class EntityDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
-    private sealed class CategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 
     // Filter dialog state and temp buffers
     public bool ShowFilterDialog { get; set; }
@@ -793,5 +681,70 @@ public sealed class ReportDashboardViewModel : ViewModelBase
             new UiRibbonItem(localizer["Ribbon_ClearFilters"], "<svg><use href='/icons/sprite.svg#clear'/></svg>", UiRibbonItemSize.Small, GetSelectedFiltersCount()==0, "FiltersClear")
         });
         return new List<UiRibbonGroup> { nav, actions, filters };
+    }
+
+    public void OpenFavoriteDialog(bool update, string? resetNameIfNew = null)
+    {
+        FavoriteDialogIsUpdate = update;
+        if (!update)
+        {
+            FavoriteName = resetNameIfNew ?? string.Empty;
+        }
+        FavoriteError = null;
+        ShowFavoriteDialog = true;
+        RaiseStateChanged();
+    }
+
+    public void CloseFavoriteDialog()
+    {
+        ShowFavoriteDialog = false;
+        RaiseStateChanged();
+    }
+
+    public async Task<ReportFavoriteDto?> SubmitFavoriteDialogAsync(string defaultName, PostingKind primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<PostingKind>? postingKinds, ReportAggregatesFiltersRequest? filters, bool useValutaDate = false, CancellationToken ct = default)
+    {
+        FavoriteError = null;
+        try
+        {
+            if (FavoriteDialogIsUpdate && ActiveFavoriteId.HasValue)
+            {
+                var res = await UpdateFavoriteAsync(ActiveFavoriteId.Value,
+                    FavoriteName.Trim(), primaryKind, includeCategory, interval, take,
+                    comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate, ct);
+                if (res is null)
+                {
+                    FavoriteError = "Error_UpdateFavorite";
+                    RaiseStateChanged();
+                    return null;
+                }
+                FavoriteName = res.Name;
+                ShowFavoriteDialog = false;
+                RaiseStateChanged();
+                return res;
+            }
+            else
+            {
+                var name = string.IsNullOrWhiteSpace(FavoriteName) ? defaultName : FavoriteName.Trim();
+                var res = await SaveFavoriteAsync(name, primaryKind, includeCategory, interval, take,
+                    comparePrevious, compareYear, showChart, expandable, postingKinds, filters, useValutaDate, ct);
+                if (res is null)
+                {
+                    FavoriteError = "Error_SaveFavorite";
+                    RaiseStateChanged();
+                    return null;
+                }
+                ActiveFavoriteId = res.Id;
+                FavoriteName = res.Name;
+                ShowFavoriteDialog = false;
+                RaiseStateChanged();
+                return res;
+            }
+        }
+        catch (Exception ex)
+        {
+            FavoriteError = ex.Message;
+            RaiseStateChanged();
+            return null;
+        }
     }
 }

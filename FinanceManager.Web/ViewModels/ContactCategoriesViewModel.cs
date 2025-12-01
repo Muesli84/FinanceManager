@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
+using FinanceManager.Shared.Dtos.Contacts; // ContactCategoryDto
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -96,5 +97,4 @@ public sealed class ContactCategoriesViewModel : ViewModelBase
     }
 
     public sealed class CategoryItem { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid? SymbolAttachmentId { get; set; } }
-    public sealed record ContactCategoryDto(Guid Id, string Name, Guid? SymbolAttachmentId);
 }

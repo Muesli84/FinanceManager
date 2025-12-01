@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using FinanceManager.Shared.Dtos.Contacts; // use shared ContactDto, ContactCategoryDto, AliasNameDto, ContactCreateRequest, ContactUpdateRequest
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -142,7 +143,7 @@ public sealed class ContactDetailViewModel : ViewModelBase
             Guid? catId = Guid.TryParse(CategoryId, out var parsed) ? parsed : null;
             if (IsNew)
             {
-                var create = new { Name = Name.Trim(), Type, CategoryId = catId, Description, IsPaymentIntermediary, SymbolAttachmentId };
+                var create = new ContactCreateRequest(Name.Trim(), Type, catId, Description, IsPaymentIntermediary);
                 var resp = await _http.PostAsJsonAsync("/api/contacts", create, ct);
                 if (resp.IsSuccessStatusCode)
                 {
@@ -160,7 +161,7 @@ public sealed class ContactDetailViewModel : ViewModelBase
             }
             else
             {
-                var update = new { Name = Name.Trim(), Type, CategoryId = catId, Description, IsPaymentIntermediary, SymbolAttachmentId };
+                var update = new ContactUpdateRequest(Name.Trim(), Type, catId, Description, IsPaymentIntermediary);
                 var resp = await _http.PutAsJsonAsync($"/api/contacts/{ContactId}", update, ct);
                 if (!resp.IsSuccessStatusCode)
                 {
@@ -211,7 +212,7 @@ public sealed class ContactDetailViewModel : ViewModelBase
             var resp = await _http.GetAsync($"/api/contacts/{ContactId}/aliases", ct);
             if (resp.IsSuccessStatusCode)
             {
-                var list = await resp.Content.ReadFromJsonAsync<List<AliasDto>>(cancellationToken: ct) ?? new();
+                var list = await resp.Content.ReadFromJsonAsync<List<AliasNameDto>>(cancellationToken: ct) ?? new();
                 Aliases = list.Select(a => new AliasItem { Id = a.Id, Pattern = a.Pattern }).ToList();
                 RaiseStateChanged();
             }
@@ -226,7 +227,7 @@ public sealed class ContactDetailViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(pattern)) { AliasError = "ErrorAliasEmpty"; RaiseStateChanged(); return; }
         try
         {
-            var resp = await _http.PostAsJsonAsync($"/api/contacts/{ContactId}/aliases", new { Pattern = pattern }, ct);
+            var resp = await _http.PostAsJsonAsync($"/api/contacts/{ContactId}/aliases", new AliasCreateRequest(pattern), ct);
             if (resp.IsSuccessStatusCode)
             {
                 NewAlias = string.Empty;
@@ -283,7 +284,7 @@ public sealed class ContactDetailViewModel : ViewModelBase
         if (IsNew || !ContactId.HasValue || targetId == Guid.Empty) { throw new InvalidOperationException("Invalid merge target."); }
         try
         {
-            var resp = await _http.PostAsJsonAsync($"/api/contacts/{ContactId}/merge", new { targetContactId = targetId }, ct);
+            var resp = await _http.PostAsJsonAsync($"/api/contacts/{ContactId}/merge", new ContactMergeRequest(targetId), ct);
             if (resp.IsSuccessStatusCode)
             {
                 ShowMergeDialog = false;
@@ -371,11 +372,6 @@ public sealed class ContactDetailViewModel : ViewModelBase
         if (merged.Count > 0) { groups.AddRange(merged); }
         return groups;
     }
-
-    // DTOs
-    public sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, string? Description, bool IsPaymentIntermediary, Guid? SymbolAttachmentId);
-    public sealed record ContactCategoryDto(Guid Id, string Name);
-    public sealed record AliasDto(Guid Id, string Pattern);
 
     public sealed class CategoryItem { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
     public sealed class AliasItem { public Guid Id { get; set; } public string Pattern { get; set; } = string.Empty; }

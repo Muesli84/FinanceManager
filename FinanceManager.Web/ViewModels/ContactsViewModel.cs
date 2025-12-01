@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Localization;
+using FinanceManager.Shared.Dtos.Contacts; // ContactDto, ContactCategoryDto
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -145,7 +146,4 @@ public sealed class ContactsViewModel : ViewModelBase
         public Guid? CategorySymbolAttachmentId { get; set; }
         public Guid? DisplaySymbolAttachmentId => SymbolAttachmentId ?? CategorySymbolAttachmentId;
     }
-
-    public sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, string? Description, bool IsPaymentIntermediary, Guid? SymbolAttachmentId);
-    public sealed record ContactCategoryDto(Guid Id, string Name, Guid? SymbolAttachmentId);
 }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Localization;
+using FinanceManager.Shared.Dtos.Postings; // use shared PostingServiceDto and GroupLinksDto
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -80,7 +81,7 @@ public sealed class PostingsAccountViewModel : ViewModelBase
             if (From.HasValue) { parts.Add($"from={From:yyyy-MM-dd}"); }
             if (To.HasValue) { parts.Add($"to={To:yyyy-MM-dd}"); }
             var url = $"/api/postings/account/{AccountId}?{string.Join('&', parts)}";
-            var chunk = await _http.GetFromJsonAsync<List<PostingDto>>(url, ct) ?? new();
+            var chunk = await _http.GetFromJsonAsync<List<PostingServiceDto>>(url, ct) ?? new();
             Items.AddRange(chunk.Select(Map));
             Skip += chunk.Count;
             if (chunk.Count == 0 || (!firstPage && chunk.Count < 50)) { CanLoadMore = false; }
@@ -126,7 +127,7 @@ public sealed class PostingsAccountViewModel : ViewModelBase
         }
         try
         {
-            var dto = await _http.GetFromJsonAsync<GroupLinksResponse>($"/api/postings/group/{sel.GroupId}", CancellationToken);
+            var dto = await _http.GetFromJsonAsync<GroupLinksDto>($"/api/postings/group/{sel.GroupId}", CancellationToken);
             LinkedAccountId = dto?.AccountId; LinkedContactId = dto?.ContactId; LinkedPlanId = dto?.SavingsPlanId; LinkedSecurityId = dto?.SecurityId;
         }
         catch { }
@@ -167,7 +168,7 @@ public sealed class PostingsAccountViewModel : ViewModelBase
         return new List<UiRibbonGroup> { nav, filter, export };
     }
 
-    private static PostingItem Map(PostingDto p) => new()
+    private static PostingItem Map(PostingServiceDto p) => new()
     {
         Id = p.Id,
         BookingDate = p.BookingDate,
@@ -186,9 +187,6 @@ public sealed class PostingsAccountViewModel : ViewModelBase
         SecuritySubType = p.SecuritySubType,
         Quantity = p.Quantity
     };
-
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId);
-    public sealed record GroupLinksResponse(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
     public sealed class PostingItem
     {

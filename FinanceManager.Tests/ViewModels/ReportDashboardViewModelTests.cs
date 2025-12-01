@@ -1,9 +1,11 @@
 using FinanceManager.Application;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using FinanceManager.Shared.Dtos.Reports; // use shared DTOs
 
 namespace FinanceManager.Tests.ViewModels;
 
@@ -106,12 +108,12 @@ public sealed class ReportDashboardViewModelTests
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/report-favorites")
             {
                 postCount++;
-                var json = JsonSerializer.Serialize(new ReportDashboardViewModel.FavoriteDto(Guid.NewGuid(), "Fav", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new PostingKind[] { PostingKind.Bank }, null));
+                var json = JsonSerializer.Serialize(new ReportFavoriteDto(Guid.NewGuid(), "Fav", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new PostingKind[] { PostingKind.Bank }, null, false));
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
             }
             if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath.StartsWith("/api/report-favorites/"))
             {
-                var json = JsonSerializer.Serialize(new ReportDashboardViewModel.FavoriteDto(Guid.NewGuid(), "Fav2", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new PostingKind[] { PostingKind.Bank }, null));
+                var json = JsonSerializer.Serialize(new ReportFavoriteDto(Guid.NewGuid(), "Fav2", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new PostingKind[] { PostingKind.Bank }, null, false));
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
             }
             if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath.StartsWith("/api/report-favorites/"))
@@ -208,7 +210,7 @@ public sealed class ReportDashboardViewModelTests
     [Fact]
     public void IsNegative_MarksZeroWithNegativeBaselines()
     {
-        var p = new ReportDashboardViewModel.PointDto(DateTime.UtcNow, "x", "n", null, 0m, null, -10m, -5m);
+        var p = new ReportAggregatePointDto(DateTime.UtcNow, "x", "n", null, 0m, null, -10m, -5m);
         Assert.True(ReportDashboardViewModel.IsNegative(p));
     }
 
@@ -247,5 +249,12 @@ public sealed class ReportDashboardViewModelTests
         Assert.All(bankChildren, c => Assert.False(c.GroupKey.StartsWith("Category:")));
         var contactChildren = vm.GetChildRows("Type:Contact").ToList();
         Assert.All(contactChildren, c => Assert.True(c.GroupKey.StartsWith("Category:")));
+    }
+
+    [Fact]
+    public void IsNegative_Works()
+    {
+        var p = new ReportAggregatePointDto(DateTime.UtcNow, "x", "n", null, 0m, null, -10m, -5m);
+        Assert.True(ReportDashboardViewModel.IsNegative(p));
     }
 }

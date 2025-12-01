@@ -423,7 +423,7 @@ else
     private bool ShowTotalRow => _vm!.GetTopLevelRows().Any();
     // moved totals helpers into ViewModel
 
-    private string GetDisplayName(ReportDashboardViewModel.PointDto p)
+    private string GetDisplayName(FinanceManager.Shared.Dtos.Reports.ReportAggregatePointDto p)
     {
         if (p.GroupKey.StartsWith("Type:"))
         {
@@ -434,10 +434,14 @@ else
         {
             return Localizer["Category_Uncategorized"];    
         }
+        return GetDisplayNameImpl(p);
+    }
+    private string GetDisplayNameImpl(FinanceManager.Shared.Dtos.Reports.ReportAggregatePointDto p)
+    {
         return p.GroupName;
     }
 
-    private static bool IsNegativeRow(ReportDashboardViewModel.PointDto p)
+    private static bool IsNegativeRow(FinanceManager.Shared.Dtos.Reports.ReportAggregatePointDto p)
     {
         if (p.Amount < 0m)
         {
@@ -748,7 +752,7 @@ else
         }
     }
 
-    private Guid? GetSymbolForPoint(ReportDashboardViewModel.PointDto p)
+    private Guid? GetSymbolForPoint(FinanceManager.Shared.Dtos.Reports.ReportAggregatePointDto p)
     {
         if (p == null) return null;
         try
@@ -875,8 +879,8 @@ else
     {
         try
         {
-            var fav = await Http.GetFromJsonAsync<ReportDashboardViewModel.FavoriteDto>($"/api/report-favorites/{id}");
-            if (fav is not null)
+            var fav = await Http.GetFromJsonAsync<FinanceManager.Shared.Dtos.Reports.ReportFavoriteDto>($"/api/report-favorites/{id}");
+            if (fav != null)
             {
                 ApplyFavorite(fav);
             }
@@ -887,7 +891,7 @@ else
         }
     }
 
-    private void ApplyFavorite(ReportDashboardViewModel.FavoriteDto fav)
+    private void ApplyFavorite(FinanceManager.Shared.Dtos.Reports.ReportFavoriteDto fav)
     {
         _vm!.ActiveFavoriteId = fav.Id;
         _vm!.FavoriteName = fav.Name;
@@ -922,15 +926,13 @@ else
          _ = LoadAsync();
     }
 
-    private ReportDashboardViewModel.FiltersPayload? BuildFilters()
+    private FinanceManager.Shared.Dtos.Reports.ReportAggregatesFiltersRequest? BuildFilters()
     {
-        var payload = _vm!.BuildFiltersPayload();
-        if (payload == null && !_includeDividendRelated)
-        {
-            return null;
-        }
-        return payload is null
-            ? new ReportDashboardViewModel.FiltersPayload(null, null, null, null, null, null, null, null, _includeDividendRelated)
-            : payload with { IncludeDividendRelated = _includeDividendRelated };
+        var payload = _includeCategory
+            ? new FinanceManager.Shared.Dtos.Reports.ReportAggregatesFiltersRequest(_vm!.SelectedAccounts.ToList(), null, null, null,
+                _vm.SelectedContactCategories.ToList(), _vm.SelectedSavingsCategories.ToList(), _vm.SelectedSecurityCategories.ToList(), _vm.SelectedSecuritySubTypes.ToList(), _includeDividendRelated)
+            : new FinanceManager.Shared.Dtos.Reports.ReportAggregatesFiltersRequest(_vm!.SelectedAccounts.ToList(), _vm.SelectedContacts.ToList(), _vm.SelectedSavingsPlans.ToList(), _vm.SelectedSecurities.ToList(),
+                null, null, null, _vm.SelectedSecuritySubTypes.ToList(), _includeDividendRelated);
+        return payload;
     }
 }

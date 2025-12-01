@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Localization;
+using FinanceManager.Shared.Dtos.Accounts; // use shared AccountDto
+using FinanceManager.Shared.Dtos.Contacts; // use shared ContactDto and ContactCategoryDto
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -175,7 +177,4 @@ public sealed class AccountsViewModel : ViewModelBase
 
         public Guid? DisplaySymbolAttachmentId => SymbolAttachmentId ?? ContactSymbolAttachmentId ?? CategorySymbolAttachmentId;
     }
-
-    // include SymbolAttachmentId in DTO to match server API
-    public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId, Guid? SymbolAttachmentId);
 }

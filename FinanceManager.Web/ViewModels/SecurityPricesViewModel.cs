@@ -1,3 +1,4 @@
+using FinanceManager.Shared.Dtos.Securities; // use shared DTO
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SecurityPricesViewModel : ViewModelBase
@@ -26,7 +27,7 @@ public sealed class SecurityPricesViewModel : ViewModelBase
     }
 
     public int Skip { get; private set; }
-    public List<PriceDto> Items { get; } = new();
+    public List<SecurityPriceDto> Items { get; } = new(); // switched to shared DTO
 
     // Backfill dialog state
     private bool _showBackfillDialog;
@@ -79,7 +80,7 @@ public sealed class SecurityPricesViewModel : ViewModelBase
             var resp = await _http.GetAsync($"/api/securities/{SecurityId}/prices?skip={Skip}&take=100", ct);
             if (resp.IsSuccessStatusCode)
             {
-                var chunk = await resp.Content.ReadFromJsonAsync<List<PriceDto>>(cancellationToken: ct) ?? new();
+                var chunk = await resp.Content.ReadFromJsonAsync<List<SecurityPriceDto>>(cancellationToken: ct) ?? new();
                 Items.AddRange(chunk);
                 Skip += chunk.Count;
                 if (chunk.Count < 100) { CanLoadMore = false; }
@@ -187,6 +188,4 @@ public sealed class SecurityPricesViewModel : ViewModelBase
 
         return groups;
     }
-
-    public sealed record PriceDto(DateTime Date, decimal Close);
 }

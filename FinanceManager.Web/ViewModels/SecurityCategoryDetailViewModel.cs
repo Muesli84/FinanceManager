@@ -1,3 +1,4 @@
+using FinanceManager.Shared.Dtos.Securities; // use shared SecurityCategoryDto
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 
@@ -102,13 +103,6 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
     public sealed class EditModel
     {
         [Required, MinLength(2)]
-        public string Name { get; set; } = string.Empty;
-        public Guid? SymbolAttachmentId { get; set; }
-    }
-
-    public sealed class SecurityCategoryDto
-    {
-        public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public Guid? SymbolAttachmentId { get; set; }
     }

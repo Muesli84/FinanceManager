@@ -138,6 +138,9 @@ else
     private string? _symbolError;
     private string? _symbolPreviewUrl;
 
+    private bool _pendingRedirect;
+    private string? _pendingRedirectUrl;
+
     protected override async Task OnParametersSetAsync()
     {
         if (_vm == null || _vm.AccountId != Id)
@@ -167,10 +170,30 @@ else
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingRedirect && !string.IsNullOrWhiteSpace(_pendingRedirectUrl))
+        {
+            _pendingRedirect = false;
+            var target = _pendingRedirectUrl;
+            _pendingRedirectUrl = null;
+            try
+            {
+                Nav.NavigateTo(target!, forceLoad: true);
+            }
+            catch
+            {
+                // ignore navigation errors
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
     private void VmOnAuthenticationRequired(object? sender, string? returnUrl)
     {
         var url = string.IsNullOrWhiteSpace(returnUrl) ? "/login" : $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}";
-        _ = InvokeAsync(() => Nav.NavigateTo(url, forceLoad: true));
+        _pendingRedirectUrl = url;
+        _pendingRedirect = true;
     }
 
     private void VmOnStateChanged(object? sender, EventArgs e)
@@ -182,7 +205,8 @@ else
     private void RebuildRibbon()
     {
         var groupsDto = _vm?.GetRibbon(Localizer) ?? new List<UiRibbonGroup>();
-        var groups = new List<Ribbon<TabId>.RibbonGroup>();
+        var groups = new List<Ribbon<TabId>.RibbonItem>();
+        var tabsGroups = new List<Ribbon<TabId>.RibbonGroup>();
         foreach (var g in groupsDto)
         {
             var items = new List<Ribbon<TabId>.RibbonItem>();
@@ -201,7 +225,7 @@ else
                     Callback = () => { HandleRibbonAction(it.Action); return Task.CompletedTask; }
                 });
             }
-            groups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
+            tabsGroups.Add(new Ribbon<TabId>.RibbonGroup { Title = g.Title, Items = items });
         }
 
         _tabs = new()
@@ -210,7 +234,7 @@ else
             {
                 Id = TabId.Account,
                 Title = Localizer["Ribbon_Tab_Account"],
-                Groups = groups
+                Groups = tabsGroups
             }
         };
         StateHasChanged();

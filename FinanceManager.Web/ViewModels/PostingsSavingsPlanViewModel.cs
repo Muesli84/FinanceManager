@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Localization;
+using FinanceManager.Shared.Dtos.Postings; 
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -62,7 +63,7 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
             var parts = new List<string> { $"skip={Skip}", "take=50" };
             if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
             var url = $"/api/postings/savings-plan/{PlanId}?{string.Join('&', parts)}";
-            var chunk = await _http.GetFromJsonAsync<List<PostingDto>>(url, ct) ?? new();
+            var chunk = await _http.GetFromJsonAsync<List<PostingServiceDto>>(url, ct) ?? new();
             Items.AddRange(chunk.Select(Map));
             Skip += chunk.Count;
             if (chunk.Count == 0 || (!firstPage && chunk.Count < 50)) { CanLoadMore = false; }
@@ -103,7 +104,7 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
         return new List<UiRibbonGroup> { nav, filter, export };
     }
 
-    private static PostingItem Map(PostingDto p) => new()
+    private static PostingItem Map(PostingServiceDto p) => new()
     {
         Id = p.Id,
         BookingDate = p.BookingDate,
@@ -114,16 +115,14 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
         ContactId = p.ContactId,
         SavingsPlanId = p.SavingsPlanId,
         SecurityId = p.SecurityId,
-        GroupId = p.GroupId ?? Guid.Empty,
+        GroupId = p.GroupId,
         SourceId = p.SourceId,
         Subject = p.Subject,
         RecipientName = p.RecipientName,
         Description = p.Description,
-        SecuritySubType = p.SecuritySubType
+        SecuritySubType = p.SecuritySubType,
+        Quantity = p.Quantity
     };
-
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid? GroupId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
-
 
     public sealed class PostingItem
     {
@@ -142,5 +141,6 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
         public string? RecipientName { get; set; }
         public string? Description { get; set; }
         public SecurityPostingSubType? SecuritySubType { get; set; }
+        public decimal? Quantity { get; set; }
     }
 }

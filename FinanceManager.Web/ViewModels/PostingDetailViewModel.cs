@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Localization;
+using FinanceManager.Shared.Dtos.Postings; // PostingServiceDto, GroupLinksDto
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -16,7 +17,7 @@ public sealed class PostingDetailViewModel : ViewModelBase
     public bool Loading { get; private set; }
     public bool LinksLoading { get; private set; }
 
-    public PostingDto? Detail { get; private set; }
+    public PostingServiceDto? Detail { get; private set; }
 
     public Guid? LinkedAccountId { get; private set; }
     public Guid? LinkedContactId { get; private set; }
@@ -45,7 +46,7 @@ public sealed class PostingDetailViewModel : ViewModelBase
         Loading = true; RaiseStateChanged();
         try
         {
-            var dto = await _http.GetFromJsonAsync<PostingDto>($"/api/postings/{Id}", ct);
+            var dto = await _http.GetFromJsonAsync<PostingServiceDto>($"/api/postings/{Id}", ct);
             Detail = dto;
             if (Detail != null)
             {
@@ -66,7 +67,7 @@ public sealed class PostingDetailViewModel : ViewModelBase
         try
         {
             LinksLoading = true; RaiseStateChanged();
-            var dto = await _http.GetFromJsonAsync<GroupLinksResponse>($"/api/postings/group/{Detail.GroupId}", ct);
+            var dto = await _http.GetFromJsonAsync<GroupLinksDto>($"/api/postings/group/{Detail.GroupId}", ct);
             if (dto != null)
             {
                 LinkedAccountId = dto.AccountId ?? LinkedAccountId;
@@ -96,7 +97,4 @@ public sealed class PostingDetailViewModel : ViewModelBase
     }
 
     private static bool HasId(Guid? id) => id.HasValue && id.Value != Guid.Empty;
-
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, int Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, int? SecuritySubType, decimal? Quantity, Guid GroupId);
-    public sealed record GroupLinksResponse(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 }

@@ -59,7 +59,17 @@ public sealed class AccountDetailViewModelTests
         => JsonSerializer.Serialize(items.Select(c => new { Id = c.id, Name = c.name }).ToArray());
 
     private static string AccountJson(Guid id, string name, int type, string? iban, Guid? bankContactId)
-        => JsonSerializer.Serialize(new { Id = id, Name = name, Type = type, Iban = iban, CurrentBalance = 0m, BankContactId = bankContactId });
+        => JsonSerializer.Serialize(new
+        {
+            Id = id,
+            Name = name,
+            Type = type,
+            Iban = iban,
+            CurrentBalance = 0m,
+            BankContactId = bankContactId ?? Guid.Empty,
+            SymbolAttachmentId = (Guid?)null,
+            SavingsPlanExpectation = 1 // Optional
+        });
 
     [Fact]
     public async Task Initialize_LoadsContacts_AndExistingAccount()

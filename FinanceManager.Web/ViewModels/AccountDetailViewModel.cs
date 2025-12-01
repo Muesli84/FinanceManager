@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
+using FinanceManager.Shared.Dtos.Accounts; // shared AccountDto, AccountType, SavingsPlanExpectation
+using FinanceManager.Shared.Dtos.Contacts; // shared ContactDto
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -235,8 +237,6 @@ public sealed class AccountDetailViewModel : ViewModelBase
         return groups;
     }
 
-    // DTOs / VMs used by VM
-    public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid? BankContactId, Guid? SymbolAttachmentId, SavingsPlanExpectation SavingsPlanExpectation);
-    public sealed record ContactDto(Guid Id, string Name);
+    // VMs used by VM
     public sealed class BankContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 }

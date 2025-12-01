@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
+using FinanceManager.Shared.Dtos.SavingsPlans; // use shared SavingsPlanCategoryDto
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -56,6 +57,17 @@ public sealed class SavingsPlanCategoryDetailViewModel : ViewModelBase
                 RaiseStateChanged();
                 return false;
             }
+            // update local state from created DTO if returned
+            try
+            {
+                var created = await resp.Content.ReadFromJsonAsync<SavingsPlanCategoryDto>(cancellationToken: ct);
+                if (created != null)
+                {
+                    Id = created.Id;
+                    Model.SymbolAttachmentId = created.SymbolAttachmentId;
+                }
+            }
+            catch { }
             return true;
         }
         else
@@ -102,13 +114,6 @@ public sealed class SavingsPlanCategoryDetailViewModel : ViewModelBase
     public sealed class EditModel
     {
         [Required, MinLength(2)]
-        public string Name { get; set; } = string.Empty;
-        public Guid? SymbolAttachmentId { get; set; }
-    }
-
-    public sealed class SavingsPlanCategoryDto
-    {
-        public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public Guid? SymbolAttachmentId { get; set; }
     }
