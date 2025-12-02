@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Handles user authentication: login, registration and logout using JWT cookie tokens.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public sealed class AuthController : ControllerBase
@@ -14,6 +17,11 @@ public sealed class AuthController : ControllerBase
     public AuthController(IUserAuthService auth, IAuthTokenProvider tokenProvider)
     { _auth = auth; _tokenProvider = tokenProvider; }
 
+    /// <summary>
+    /// Authenticates a user with username and password, returning a JWT (cookie) and user info.
+    /// </summary>
+    /// <param name="request">Login request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)
     {
@@ -42,6 +50,11 @@ public sealed class AuthController : ControllerBase
         return Ok(new AuthOkResponse(result.Value.Username, result.Value.IsAdmin, result.Value.ExpiresUtc));
     }
 
+    /// <summary>
+    /// Registers a new user account and returns a JWT (cookie) for immediate authentication.
+    /// </summary>
+    /// <param name="request">Registration request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct)
     {
@@ -68,6 +81,9 @@ public sealed class AuthController : ControllerBase
         return Ok(new AuthOkResponse(result.Value.Username, result.Value.IsAdmin, result.Value.ExpiresUtc));
     }
 
+    /// <summary>
+    /// Logs the current user out by clearing the auth cookie and in-memory token.
+    /// </summary>
     [HttpPost("logout")]
     public IActionResult Logout()
     {

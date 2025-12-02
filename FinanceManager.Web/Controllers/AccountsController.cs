@@ -8,6 +8,9 @@ using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Provides CRUD operations for bank accounts owned by the current user, including linking to a bank contact and symbol management.
+/// </summary>
 [ApiController]
 [Route("api/accounts")]
 [Produces(MediaTypeNames.Application.Json)]
@@ -27,6 +30,13 @@ public sealed class AccountsController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Returns a (paged) list of accounts owned by the current user. Optional filter by bank contact id.
+    /// </summary>
+    /// <param name="skip">Number of items to skip.</param>
+    /// <param name="take">Max items to return (1..200).</param>
+    /// <param name="bankContactId">Optional bank contact filter.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AccountDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? bankContactId = null, CancellationToken ct = default)
@@ -48,6 +58,11 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Gets a single account by id (must be owned by current user).
+    /// </summary>
+    /// <param name="id">Account id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpGet("{id:guid}", Name = "GetAccount")]
     [ProducesResponseType(typeof(AccountDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -65,6 +80,11 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Creates a new account. Either an existing bank contact id or a new bank contact name must be provided.
+    /// </summary>
+    /// <param name="req">Account creation payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost]
     [ProducesResponseType(typeof(AccountDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -107,6 +127,12 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Updates an existing account (including optional bank contact change and symbol assignment).
+    /// </summary>
+    /// <param name="id">Account id.</param>
+    /// <param name="req">Update payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(AccountDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -149,6 +175,11 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deletes an account owned by the current user.
+    /// </summary>
+    /// <param name="id">Account id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -166,6 +197,12 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Assigns an existing attachment as symbol for the account.
+    /// </summary>
+    /// <param name="id">Account id.</param>
+    /// <param name="attachmentId">Attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -173,7 +210,6 @@ public sealed class AccountsController : ControllerBase
     {
         try
         {
-            // Will throw ArgumentException if account not found or not owned
             await _accounts.SetSymbolAttachmentAsync(id, _current.UserId, attachmentId, ct);
             return NoContent();
         }
@@ -189,6 +225,11 @@ public sealed class AccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Clears any symbol attachment from the account.
+    /// </summary>
+    /// <param name="id">Account id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -12,6 +12,10 @@ using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Manages file and URL attachments plus their categories for the authenticated user.
+/// Supports upload, listing (paged), download (with optional short-lived token), update and deletion.
+/// </summary>
 [ApiController]
 [Route("api/attachments")]
 [Produces(MediaTypeNames.Application.Json)]
@@ -44,6 +48,17 @@ public sealed class AttachmentsController : ControllerBase
         _protector = dp.CreateProtector(ProtectorPurpose);
     }
 
+    /// <summary>
+    /// Returns a paged list of attachments for an entity (optional filtering by category, URL/file, search term).
+    /// </summary>
+    /// <param name="entityKind">Attachment entity kind enum value.</param>
+    /// <param name="entityId">Entity id.</param>
+    /// <param name="skip">Number of items to skip.</param>
+    /// <param name="take">Max items to return (capped).</param>
+    /// <param name="categoryId">Optional category filter.</param>
+    /// <param name="isUrl">True to filter URL attachments only, false for files only.</param>
+    /// <param name="q">Optional search term (file name / url substring).</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpGet("{entityKind}/{entityId:guid}")]
     [ProducesResponseType(typeof(PageResult<AttachmentDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -60,6 +75,16 @@ public sealed class AttachmentsController : ControllerBase
         return Ok(new PageResult<AttachmentDto> { Items = items.ToList(), HasMore = hasMore, Total = total });
     }
 
+    /// <summary>
+    /// Uploads a file or creates a URL attachment. Optionally sets category and role (e.g. Symbol).
+    /// </summary>
+    /// <param name="entityKind">Target entity kind.</param>
+    /// <param name="entityId">Target entity id.</param>
+    /// <param name="file">File content (if not a URL attachment).</param>
+    /// <param name="categoryId">Optional category id.</param>
+    /// <param name="url">External URL (if not a file upload).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <param name="role">Attachment role to assign (optional).</param>
     [HttpPost("{entityKind}/{entityId:guid}")]
     [RequestSizeLimit(long.MaxValue)]
     [ProducesResponseType(typeof(AttachmentDto), StatusCodes.Status200OK)]
@@ -155,9 +180,10 @@ public sealed class AttachmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Create a short-lived download token for an attachment belonging to the current user.
-    /// Caller must be authenticated and owner of the attachment.
+    /// Creates a short-lived download token for an attachment owned by the current user.
     /// </summary>
+    /// <param name="id">Attachment id.</param>
+    /// <param name="validSeconds">Validity in seconds (10..3600).</param>
     [HttpPost("{id:guid}/download-token")]
     [ProducesResponseType(typeof(AttachmentDownloadTokenDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -179,6 +205,12 @@ public sealed class AttachmentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Downloads an attachment. If authenticated: direct access. If anonymous: token validation required.
+    /// </summary>
+    /// <param name="id">Attachment id.</param>
+    /// <param name="token">Download token for anonymous access.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpGet("{id:guid}/download")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -204,8 +236,7 @@ public sealed class AttachmentsController : ControllerBase
             var ownerUserId = Guid.Parse(parts[1]);
             var ticks = long.Parse(parts[2]);
             var expires = new DateTime(ticks, DateTimeKind.Utc);
-            if (tokenAttachmentId != id) { return NotFound(); }
-            if (DateTime.UtcNow > expires) { return NotFound(); }
+            if (tokenAttachmentId != id || DateTime.UtcNow > expires) { return NotFound(); }
             var payload = await _service.DownloadAsync(ownerUserId, id, ct);
             if (payload == null) { return NotFound(); }
             var (content, fileName, contentType) = payload.Value;
@@ -218,6 +249,11 @@ public sealed class AttachmentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deletes an attachment owned by the current user.
+    /// </summary>
+    /// <param name="id">Attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -227,6 +263,12 @@ public sealed class AttachmentsController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Updates file name and category of an attachment.
+    /// </summary>
+    /// <param name="id">Attachment id.</param>
+    /// <param name="req">Update payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -236,7 +278,12 @@ public sealed class AttachmentsController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
-    // Backward-compatible route for category only (if used elsewhere)
+    /// <summary>
+    /// Sets only the category of an attachment.
+    /// </summary>
+    /// <param name="id">Attachment id.</param>
+    /// <param name="req">Category update request.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPut("{id:guid}/category")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -246,13 +293,20 @@ public sealed class AttachmentsController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
-    // Categories ------------------------------
-
+    /// <summary>
+    /// Lists all categories of the current user.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
     [HttpGet("categories")]
     [ProducesResponseType(typeof(IReadOnlyList<AttachmentCategoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListCategoriesAsync(CancellationToken ct)
         => Ok(await _cats.ListAsync(_current.UserId, ct));
 
+    /// <summary>
+    /// Creates a new attachment category.
+    /// </summary>
+    /// <param name="req">Category creation request.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost("categories")]
     [ProducesResponseType(typeof(AttachmentCategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -271,6 +325,12 @@ public sealed class AttachmentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Updates the name of an attachment category.
+    /// </summary>
+    /// <param name="id">Category id.</param>
+    /// <param name="req">Update payload containing new name.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPut("categories/{id:guid}")]
     [ProducesResponseType(typeof(AttachmentCategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -294,6 +354,11 @@ public sealed class AttachmentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Deletes a category if allowed (e.g. not system protected).
+    /// </summary>
+    /// <param name="id">Category id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpDelete("categories/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status409Conflict)]

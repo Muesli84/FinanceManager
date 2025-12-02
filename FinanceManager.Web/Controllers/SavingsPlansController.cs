@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Provides CRUD, analysis, archiving and symbol management endpoints for savings plans owned by the current user.
+/// </summary>
 [ApiController]
 [Route("api/savings-plans")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -17,12 +20,13 @@ public sealed class SavingsPlansController : ControllerBase
     private readonly IAttachmentService _attachments;
 
     public SavingsPlansController(ISavingsPlanService service, FinanceManager.Application.ICurrentUserService current, IAttachmentService attachments)
-    {
-        _service = service;
-        _current = current;
-        _attachments = attachments;
-    }
+    { _service = service; _current = current; _attachments = attachments; }
 
+    /// <summary>
+    /// Lists savings plans (optionally only active ones).
+    /// </summary>
+    /// <param name="onlyActive">If true returns only non-archived plans.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<SavingsPlanDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
@@ -31,11 +35,21 @@ public sealed class SavingsPlansController : ControllerBase
         return Ok(list);
     }
 
+    /// <summary>
+    /// Returns count of savings plans (optionally only active ones).
+    /// </summary>
+    /// <param name="onlyActive">If true counts only non-archived plans.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpGet("count")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> CountAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
         => Ok(new { count = await _service.CountAsync(_current.UserId, onlyActive, ct) });
 
+    /// <summary>
+    /// Gets a single savings plan by id.
+    /// </summary>
+    /// <param name="id">Plan id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpGet("{id:guid}", Name = "GetSavingsPlans")]
     [ProducesResponseType(typeof(SavingsPlanDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -45,6 +59,11 @@ public sealed class SavingsPlansController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
+    /// <summary>
+    /// Performs analytical aggregation for a savings plan (growth, progress etc.).
+    /// </summary>
+    /// <param name="id">Plan id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpGet("{id:guid}/analysis")]
     [ProducesResponseType(typeof(SavingsPlanAnalysisDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> AnalyzeAsync(Guid id, CancellationToken ct)
@@ -53,6 +72,11 @@ public sealed class SavingsPlansController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Creates a new savings plan.
+    /// </summary>
+    /// <param name="req">Creation request.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost]
     [ProducesResponseType(typeof(SavingsPlanDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -63,6 +87,12 @@ public sealed class SavingsPlansController : ControllerBase
         return CreatedAtRoute("GetSavingsPlans", new { id = dto.Id }, dto);
     }
 
+    /// <summary>
+    /// Updates an existing savings plan.
+    /// </summary>
+    /// <param name="id">Plan id.</param>
+    /// <param name="req">Update request (same shape as create).</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(SavingsPlanDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -74,6 +104,11 @@ public sealed class SavingsPlansController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
+    /// <summary>
+    /// Archives (soft-hides) a savings plan.
+    /// </summary>
+    /// <param name="id">Plan id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost("{id:guid}/archive")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -83,6 +118,11 @@ public sealed class SavingsPlansController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Permanently deletes a savings plan.
+    /// </summary>
+    /// <param name="id">Plan id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -92,38 +132,42 @@ public sealed class SavingsPlansController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Assigns a symbol attachment to the savings plan.
+    /// </summary>
+    /// <param name="id">Plan id.</param>
+    /// <param name="attachmentId">Attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct)
     {
-        try
-        {
-            await _service.SetSymbolAttachmentAsync(id, _current.UserId, attachmentId, ct);
-            return NoContent();
-        }
-        catch (ArgumentException)
-        {
-            return NotFound();
-        }
+        try { await _service.SetSymbolAttachmentAsync(id, _current.UserId, attachmentId, ct); return NoContent(); }
+        catch (ArgumentException) { return NotFound(); }
     }
 
+    /// <summary>
+    /// Clears any symbol attachment from the savings plan.
+    /// </summary>
+    /// <param name="id">Plan id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ClearSymbolAsync(Guid id, CancellationToken ct)
     {
-        try
-        {
-            await _service.SetSymbolAttachmentAsync(id, _current.UserId, null, ct);
-            return NoContent();
-        }
-        catch (ArgumentException)
-        {
-            return NotFound();
-        }
+        try { await _service.SetSymbolAttachmentAsync(id, _current.UserId, null, ct); return NoContent(); }
+        catch (ArgumentException) { return NotFound(); }
     }
 
+    /// <summary>
+    /// Uploads a new symbol file and assigns it to the savings plan.
+    /// </summary>
+    /// <param name="id">Plan id.</param>
+    /// <param name="file">Uploaded file.</param>
+    /// <param name="categoryId">Optional attachment category id.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost("{id:guid}/symbol")]
     [RequestSizeLimit(long.MaxValue)]
     [ProducesResponseType(typeof(AttachmentDto), StatusCodes.Status200OK)]
@@ -139,13 +183,7 @@ public sealed class SavingsPlansController : ControllerBase
             await _service.SetSymbolAttachmentAsync(id, _current.UserId, dto.Id, ct);
             return Ok(dto);
         }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception)
-        {
-            return Problem("Unexpected error", statusCode: 500);
-        }
+        catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (Exception) { return Problem("Unexpected error", statusCode: 500); }
     }
 }

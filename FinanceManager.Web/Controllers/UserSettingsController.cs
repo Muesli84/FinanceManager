@@ -9,6 +9,9 @@ using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Manages user settings for the signed-in account: profile, notification preferences, and import split configuration.
+/// </summary>
 [ApiController]
 [Route("api/user/settings")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -22,7 +25,11 @@ public sealed class UserSettingsController : ControllerBase
     public UserSettingsController(AppDbContext db, ICurrentUserService current, ILogger<UserSettingsController> logger)
     { _db = db; _current = current; _logger = logger; }
 
-    // PROFILE ---------------------------------------------------------------
+    /// <summary>
+    /// Returns profile settings of the current user (language, timezone, API key flags).
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>User profile settings DTO.</returns>
     // GET api/user/settings/profile
     [HttpGet("profile")]
     [ProducesResponseType(typeof(UserProfileSettingsDto), StatusCodes.Status200OK)]
@@ -42,6 +49,15 @@ public sealed class UserSettingsController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Updates profile settings of the current user.
+    /// </summary>
+    /// <param name="req">Profile update payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>No content response on success.</returns>
+    /// <response code="204">Profile settings updated successfully.</response>
+    /// <response code="400">Invalid profile update data.</response>
+    /// <response code="404">User not found.</response>
     // PUT api/user/settings/profile
     [HttpPut("profile")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -93,7 +109,11 @@ public sealed class UserSettingsController : ControllerBase
         }
     }
 
-    // NOTIFICATIONS ---------------------------------------------------------
+    /// <summary>
+    /// Returns notification settings like monthly reminder and holiday region/provider.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Notification settings DTO.</returns>
     // GET api/user/settings/notifications
     [HttpGet("notifications")]
     [ProducesResponseType(typeof(NotificationSettingsDto), StatusCodes.Status200OK)]
@@ -115,6 +135,15 @@ public sealed class UserSettingsController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Updates notification settings (monthly reminder time and holiday provider/region).
+    /// </summary>
+    /// <param name="req">Notification settings update payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>No content response on success.</returns>
+    /// <response code="204">Notification settings updated successfully.</response>
+    /// <response code="400">Invalid notification settings data.</response>
+    /// <response code="404">User not found.</response>
     // PUT api/user/settings/notifications
     [HttpPut("notifications")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -141,7 +170,11 @@ public sealed class UserSettingsController : ControllerBase
         return NoContent();
     }
 
-    // IMPORT SPLIT ----------------------------------------------------------
+    /// <summary>
+    /// Returns import split settings (mode, thresholds and sizes).
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Import split settings DTO.</returns>
     // GET api/user/settings/import-split
     [HttpGet("import-split")]
     [ProducesResponseType(typeof(ImportSplitSettingsDto), StatusCodes.Status200OK)]
@@ -161,6 +194,15 @@ public sealed class UserSettingsController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Updates import split settings (mode, thresholds and sizes) for the current user.
+    /// </summary>
+    /// <param name="req">Import split settings update payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>No content response on success.</returns>
+    /// <response code="204">Import split settings updated successfully.</response>
+    /// <response code="400">Invalid import split settings data.</response>
+    /// <response code="404">User not found.</response>
     // PUT api/user/settings/import-split
     [HttpPut("import-split")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -187,10 +229,7 @@ public sealed class UserSettingsController : ControllerBase
         }
 
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == _current.UserId, ct);
-        if (user == null)
-        {
-            return NotFound();
-        }
+        if (user == null) { return NotFound(); }
 
         try
         {

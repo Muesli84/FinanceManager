@@ -13,6 +13,10 @@ using FinanceManager.Domain.Postings; // PostingKind for export and aggregates
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Provides consolidated posting endpoints for querying, exporting and retrieving aggregate time series
+/// across accounts, contacts, savings plans and securities for the current user.
+/// </summary>
 [ApiController]
 [Route("api/postings")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
@@ -28,10 +32,15 @@ public sealed class PostingsController : ControllerBase
     private const int DefaultMaxRows = 50_000;
 
     public PostingsController(AppDbContext db, ICurrentUserService current, IPostingsQueryService postingsQuery, IPostingExportService exportService, IConfiguration config, IPostingTimeSeriesService series)
-    {
-        _db = db; _current = current; _postingsQuery = postingsQuery; _exportService = exportService; _config = config; _series = series;
-    }
+    { _db = db; _current = current; _postingsQuery = postingsQuery; _exportService = exportService; _config = config; _series = series; }
 
+    /// <summary>
+    /// Gets a single posting by identifier including linked posting and group bank posting metadata.
+    /// </summary>
+    /// <param name="id">Posting id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the posting details.</response>
+    /// <response code="404">Posting not found.</response>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(PostingServiceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -41,22 +50,10 @@ public sealed class PostingsController : ControllerBase
         if (p == null) { return NotFound(); }
 
         bool owned = false;
-        if (p.AccountId.HasValue)
-        {
-            owned |= await _db.Accounts.AsNoTracking().AnyAsync(a => a.Id == p.AccountId.Value && a.OwnerUserId == _current.UserId, ct);
-        }
-        if (!owned && p.ContactId.HasValue)
-        {
-            owned |= await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == p.ContactId.Value && c.OwnerUserId == _current.UserId, ct);
-        }
-        if (!owned && p.SavingsPlanId.HasValue)
-        {
-            owned |= await _db.SavingsPlans.AsNoTracking().AnyAsync(s => s.Id == p.SavingsPlanId.Value && s.OwnerUserId == _current.UserId, ct);
-        }
-        if (!owned && p.SecurityId.HasValue)
-        {
-            owned |= await _db.Securities.AsNoTracking().AnyAsync(s => s.Id == p.SecurityId.Value && s.OwnerUserId == _current.UserId, ct);
-        }
+        if (p.AccountId.HasValue) { owned |= await _db.Accounts.AsNoTracking().AnyAsync(a => a.Id == p.AccountId.Value && a.OwnerUserId == _current.UserId, ct); }
+        if (!owned && p.ContactId.HasValue) { owned |= await _db.Contacts.AsNoTracking().AnyAsync(c => c.Id == p.ContactId.Value && c.OwnerUserId == _current.UserId, ct); }
+        if (!owned && p.SavingsPlanId.HasValue) { owned |= await _db.SavingsPlans.AsNoTracking().AnyAsync(s => s.Id == p.SavingsPlanId.Value && s.OwnerUserId == _current.UserId, ct); }
+        if (!owned && p.SecurityId.HasValue) { owned |= await _db.Securities.AsNoTracking().AnyAsync(s => s.Id == p.SecurityId.Value && s.OwnerUserId == _current.UserId, ct); }
         if (!owned) { return NotFound(); }
 
         var se = await _db.StatementEntries.AsNoTracking().FirstOrDefaultAsync(se => se.Id == p.SourceId, ct);
@@ -99,10 +96,7 @@ public sealed class PostingsController : ControllerBase
                     if (bankAccSym is null)
                     {
                         var cont = await _db.Contacts.AsNoTracking().FirstOrDefaultAsync(c => c.Id == p.ContactId, ct);
-                        if (cont != null)
-                        {
-                            bankAccSym = cont.SymbolAttachmentId;
-                        }
+                        if (cont != null) { bankAccSym = cont.SymbolAttachmentId; }
                     }
                 }
             }
@@ -136,6 +130,18 @@ public sealed class PostingsController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Lists postings for an account with optional paging, search and date filters.
+    /// </summary>
+    /// <param name="accountId">Account identifier.</param>
+    /// <param name="skip">Number of records to skip (for pagination).</param>
+    /// <param name="take">Number of records to take (max 250).</param>
+    /// <param name="q">Optional search query.</param>
+    /// <param name="from">Optional start date for filtering.</param>
+    /// <param name="to">Optional end date for filtering.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the list of postings.</response>
+    /// <response code="404">Account not found or no postings.</response>
     [HttpGet("account/{accountId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -165,6 +171,9 @@ public sealed class PostingsController : ControllerBase
         return null;
     }
 
+    /// <summary>
+    /// Lists postings for a contact with optional paging, search and date filters.
+    /// </summary>
     [HttpGet("contact/{contactId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -178,6 +187,9 @@ public sealed class PostingsController : ControllerBase
         return Ok(rows);
     }
 
+    /// <summary>
+    /// Lists postings for a savings plan with optional paging and filters.
+    /// </summary>
     [HttpGet("savings-plan/{planId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -191,6 +203,9 @@ public sealed class PostingsController : ControllerBase
         return Ok(rows);
     }
 
+    /// <summary>
+    /// Lists postings for a security with optional paging and date filters.
+    /// </summary>
     [HttpGet("security/{securityId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -204,6 +219,9 @@ public sealed class PostingsController : ControllerBase
         return Ok(rows);
     }
 
+    /// <summary>
+    /// Returns group linkage (first account/contact/savings/security id) for a posting group.
+    /// </summary>
     [HttpGet("group/{groupId:guid}")]
     [ProducesResponseType(typeof(GroupLinksDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -226,10 +244,7 @@ public sealed class PostingsController : ControllerBase
             (planIds.Count > 0 && await _db.SavingsPlans.AsNoTracking().AnyAsync(s => planIds.Contains(s.Id) && s.OwnerUserId == _current.UserId, ct)) ||
             (securityIds.Count > 0 && await _db.Securities.AsNoTracking().AnyAsync(s => securityIds.Contains(s.Id) && s.OwnerUserId == _current.UserId, ct));
 
-        if (!anyOwned)
-        {
-            return NotFound();
-        }
+        if (!anyOwned) { return NotFound(); }
 
         var dto = new GroupLinksDto(
             accountIds.FirstOrDefault(),
@@ -239,7 +254,9 @@ public sealed class PostingsController : ControllerBase
         return Ok(dto);
     }
 
-    // ------------------- Export endpoints (merged) ------------------------
+    /// <summary>
+    /// Exports postings for an account in CSV or XLSX format.
+    /// </summary>
     [HttpGet("account/{accountId:guid}/export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -247,6 +264,9 @@ public sealed class PostingsController : ControllerBase
     public Task<IActionResult> ExportAccountAsync(Guid accountId, [FromQuery] PostingExportRequest req, CancellationToken ct = default)
         => ExportAsync(PostingKind.Bank, accountId, req, ct);
 
+    /// <summary>
+    /// Exports postings for a contact in CSV or XLSX format.
+    /// </summary>
     [HttpGet("contact/{contactId:guid}/export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -254,6 +274,9 @@ public sealed class PostingsController : ControllerBase
     public Task<IActionResult> ExportContactAsync(Guid contactId, [FromQuery] PostingExportRequest req, CancellationToken ct = default)
         => ExportAsync(PostingKind.Contact, contactId, req, ct);
 
+    /// <summary>
+    /// Exports postings for a savings plan in CSV or XLSX format.
+    /// </summary>
     [HttpGet("savings-plan/{planId:guid}/export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -261,6 +284,9 @@ public sealed class PostingsController : ControllerBase
     public Task<IActionResult> ExportSavingsPlanAsync(Guid planId, [FromQuery] PostingExportRequest req, CancellationToken ct = default)
         => ExportAsync(PostingKind.SavingsPlan, planId, req, ct);
 
+    /// <summary>
+    /// Exports postings for a security in CSV or XLSX format.
+    /// </summary>
     [HttpGet("security/{securityId:guid}/export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -348,8 +374,7 @@ public sealed class PostingsController : ControllerBase
             else
             {
                 var (contentType, _, stream) = await _exportService.GenerateAsync(query, ct);
-                var ext = "xlsx";
-                var fileName = $"{safeContext}_{safeName}_{DateTime.UtcNow:yyyyMMddHHmm}.{ext}";
+                var fileName = $"{safeContext}_{safeName}_{DateTime.UtcNow:yyyyMMddHHmm}.xlsx";
                 return File(stream, contentType, fileName);
             }
         }
@@ -386,33 +411,79 @@ public sealed class PostingsController : ControllerBase
         return cleaned.Replace(' ', '_');
     }
 
-    // ------------------- Aggregate endpoints (merged) ---------------------
-    private static int? NormalizeYears(int? maxYearsBack)
-    {
-        if (!maxYearsBack.HasValue) return null;
-        return Math.Clamp(maxYearsBack.Value, 1, 10);
-    }
+    /// <summary>
+    /// Returns aggregate time series for a single account.
+    /// </summary>
+    /// <param name="accountId">Account identifier.</param>
+    /// <param name="period">Optional period filter (default: Month).</param>
+    /// <param name="take">Optional limit on number of periods (default: 36).</param>
+    /// <param name="maxYearsBack">Optional maximum years back (default: null).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the aggregate data.</response>
+    /// <response code="404">Account not found.</response>
+    [HttpGet("~/api/accounts/{accountId:guid}/aggregates")]
+    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAccountAggregates(Guid accountId, [FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
+        => HandleEntityAsync(PostingKind.Bank, accountId, period, take, maxYearsBack, ct);
 
-    private static AggregatePeriod ParsePeriod(string period)
-    {
-        if (!Enum.TryParse<AggregatePeriod>(period, true, out var p))
-        {
-            p = AggregatePeriod.Month;
-        }
-        return p;
-    }
+    /// <summary>
+    /// Returns aggregate time series across all accounts.
+    /// </summary>
+    /// <param name="period">Optional period filter (default: Month).</param>
+    /// <param name="take">Optional limit on number of periods (default: 36).</param>
+    /// <param name="maxYearsBack">Optional maximum years back (default: null).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the aggregate data.</response>
+    [HttpGet("~/api/accounts/aggregates")]
+    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAccountsAllAggregates([FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
+        => HandleAllAsync(PostingKind.Bank, period, take, maxYearsBack, ct);
 
-    private static int NormalizeTake(AggregatePeriod p, int take)
-    {
-        var def = p == AggregatePeriod.Month ? 36 : p == AggregatePeriod.Quarter ? 16 : p == AggregatePeriod.HalfYear ? 12 : 10;
-        return Math.Clamp(take <= 0 ? def : take, 1, 200);
-    }
+    /// <summary>
+    /// Returns aggregate time series for a single contact.
+    /// </summary>
+    /// <param name="contactId">Contact identifier.</param>
+    /// <param name="period">Optional period filter (default: Month).</param>
+    /// <param name="take">Optional limit on number of periods (default: 36).</param>
+    /// <param name="maxYearsBack">Optional maximum years back (default: null).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the aggregate data.</response>
+    /// <response code="404">Contact not found.</response>
+    [HttpGet("~/api/contacts/{contactId:guid}/aggregates")]
+    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetContactAggregates(Guid contactId, [FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
+        => HandleEntityAsync(PostingKind.Contact, contactId, period, take, maxYearsBack, ct);
+
+    /// <summary>
+    /// Returns aggregate time series for a single savings plan.
+    /// </summary>
+    /// <param name="planId">Savings plan identifier.</param>
+    /// <param name="period">Optional period filter (default: Month).</param>
+    /// <param name="take">Optional limit on number of periods (default: 36).</param>
+    /// <param name="maxYearsBack">Optional maximum years back (default: null).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the aggregate data.</response>
+    /// <response code="404">Savings plan not found.</response>
+    [HttpGet("~/api/savings-plans/{planId:guid}/aggregates")]
+    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetSavingsPlanAggregates(Guid planId, [FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
+        => HandleEntityAsync(PostingKind.SavingsPlan, planId, period, take, maxYearsBack, ct);
+
+    /// <summary>
+    /// Returns aggregate time series across all savings plans.
+    /// </summary>
+    /// <param name="period">Optional period filter (default: Month).</param>
+    /// <param name="take">Optional limit on number of periods (default: 36).</param>
+    /// <param name="maxYearsBack">Optional maximum years back (default: null).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the aggregate data.</response>
+    [HttpGet("~/api/savings-plans/aggregates")]
+    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetSavingsPlansAllAggregates([FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
+        => HandleAllAsync(PostingKind.SavingsPlan, period, take, maxYearsBack, ct);
+
+    private static int? NormalizeYears(int? maxYearsBack) { if (!maxYearsBack.HasValue) return null; return Math.Clamp(maxYearsBack.Value, 1, 10); }
+    private static AggregatePeriod ParsePeriod(string period) { if (!Enum.TryParse<AggregatePeriod>(period, true, out var p)) { p = AggregatePeriod.Month; } return p; }
+    private static int NormalizeTake(AggregatePeriod p, int take) { var def = p == AggregatePeriod.Month ? 36 : p == AggregatePeriod.Quarter ? 16 : p == AggregatePeriod.HalfYear ? 12 : 10; return Math.Clamp(take <= 0 ? def : take, 1, 200); }
 
     private async Task<ActionResult<IReadOnlyList<AggregatePointDto>>> HandleEntityAsync(PostingKind kind, Guid entityId, string period, int take, int? maxYearsBack, CancellationToken ct)
     {
-        var p = ParsePeriod(period);
-        take = NormalizeTake(p, take);
-        var years = NormalizeYears(maxYearsBack);
+        var p = ParsePeriod(period); take = NormalizeTake(p, take); var years = NormalizeYears(maxYearsBack);
         var data = await _series.GetAsync(_current.UserId, kind, entityId, p, take, years, ct);
         if (data == null) return NotFound();
         return Ok(data.Select(a => new AggregatePointDto(a.PeriodStart, a.Amount)).ToList());
@@ -420,30 +491,8 @@ public sealed class PostingsController : ControllerBase
 
     private async Task<ActionResult<IReadOnlyList<AggregatePointDto>>> HandleAllAsync(PostingKind kind, string period, int take, int? maxYearsBack, CancellationToken ct)
     {
-        var p = ParsePeriod(period);
-        take = NormalizeTake(p, take);
-        var years = NormalizeYears(maxYearsBack);
+        var p = ParsePeriod(period); take = NormalizeTake(p, take); var years = NormalizeYears(maxYearsBack);
         var data = await _series.GetAllAsync(_current.UserId, kind, p, take, years, ct);
         return Ok(data.Select(a => new AggregatePointDto(a.PeriodStart, a.Amount)).ToList());
     }
-
-    [HttpGet("~/api/accounts/{accountId:guid}/aggregates")]
-    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAccountAggregates(Guid accountId, [FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
-        => HandleEntityAsync(PostingKind.Bank, accountId, period, take, maxYearsBack, ct);
-
-    [HttpGet("~/api/accounts/aggregates")]
-    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAccountsAllAggregates([FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
-        => HandleAllAsync(PostingKind.Bank, period, take, maxYearsBack, ct);
-
-    [HttpGet("~/api/contacts/{contactId:guid}/aggregates")]
-    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetContactAggregates(Guid contactId, [FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
-        => HandleEntityAsync(PostingKind.Contact, contactId, period, take, maxYearsBack, ct);
-
-    [HttpGet("~/api/savings-plans/{planId:guid}/aggregates")]
-    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetSavingsPlanAggregates(Guid planId, [FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
-        => HandleEntityAsync(PostingKind.SavingsPlan, planId, period, take, maxYearsBack, ct);
-
-    [HttpGet("~/api/savings-plans/aggregates")]
-    public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetSavingsPlansAllAggregates([FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
-        => HandleAllAsync(PostingKind.SavingsPlan, period, take, maxYearsBack, ct);
 }
