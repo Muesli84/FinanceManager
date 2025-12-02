@@ -2,7 +2,7 @@
 @using System.Text.Json
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Collections.Concurrent
-@inject HttpClient Http
+@inject FinanceManager.Shared.IApiClient Api
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.SymbolPicker> Localizer
 
 <div>
@@ -81,20 +81,12 @@
                 }
 
                 // Fetch new token and cache it
-                var resp = await Http.PostAsync($"/api/attachments/{attachId}/download-token?validSeconds={TokenValidSeconds}", null);
-                if (resp.IsSuccessStatusCode)
+                var token = await Api.Attachments_CreateDownloadTokenAsync(attachId, TokenValidSeconds);
+                if (token != null && !string.IsNullOrWhiteSpace(token.Token))
                 {
-                    var obj = await resp.Content.ReadFromJsonAsync<JsonElement>();
-                    if (obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty("token", out var t) && t.ValueKind == JsonValueKind.String)
-                    {
-                        var token = t.GetString();
-                        if (!string.IsNullOrWhiteSpace(token))
-                        {
-                            var expires = DateTime.UtcNow.AddSeconds(TokenValidSeconds);
-                            _tokenCache[attachId] = (token!, expires);
-                            _previewUrl = $"/api/attachments/{attachId}/download?token={Uri.EscapeDataString(token)}";
-                        }
-                    }
+                    var expires = DateTime.UtcNow.AddSeconds(TokenValidSeconds);
+                    _tokenCache[attachId] = (token.Token, expires);
+                    _previewUrl = $"/api/attachments/{attachId}/download?token={Uri.EscapeDataString(token.Token)}";
                 }
             }
         }
@@ -118,35 +110,10 @@
 
         try
         {
-            using var content = new MultipartFormDataContent();
-            var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
-            var streamContent = new StreamContent(stream);
-            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
-            content.Add(streamContent, "file", file.Name);
-
-            // Upload as symbol role
-            var url = $"/api/attachments/{(short)ParentKind}/{ParentId}?role=Symbol";
-            var resp = await Http.PostAsync(url, content);
-            if (!resp.IsSuccessStatusCode)
-            {
-                _errorKey = "Error_UploadFailed";
-                return;
-            }
-
-            var obj = await resp.Content.ReadFromJsonAsync<JsonElement>();
-            Guid? newId = null;
-            if (obj.ValueKind == JsonValueKind.Object)
-            {
-                if (obj.TryGetProperty("id", out var pid) && pid.ValueKind == JsonValueKind.String)
-                {
-                    newId = pid.GetGuid();
-                }
-                else if (obj.TryGetProperty("Id", out var pId2) && pId2.ValueKind == JsonValueKind.String)
-                {
-                    newId = pId2.GetGuid();
-                }
-            }
-
+            await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            var ct = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+            var dto = await Api.Attachments_UploadFileAsync((short)ParentKind, ParentId.Value, stream, file.Name, ct, null, (short)FinanceManager.Domain.Attachments.AttachmentRole.Symbol);
+            var newId = dto?.Id;
             if (newId.HasValue)
             {
                 // Clear any cached token for the new attachment id to force fetching a fresh token

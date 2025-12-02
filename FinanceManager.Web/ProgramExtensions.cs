@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
 using System.Text;
+using FinanceManager.Shared; // register ApiClient
 
 namespace FinanceManager.Web
 {
@@ -91,6 +92,7 @@ namespace FinanceManager.Web
                 client.BaseAddress = new Uri(baseUri);
             }).AddHttpMessageHandler<AuthenticatedHttpClientHandler>();
             builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
+            builder.Services.AddScoped<IApiClient>(sp => new ApiClient(sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api")));
 
             // AlphaVantage
             builder.Services.AddHttpClient("AlphaVantage", client =>

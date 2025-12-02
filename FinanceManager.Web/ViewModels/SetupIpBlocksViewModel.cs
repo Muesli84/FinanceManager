@@ -1,15 +1,17 @@
 using FinanceManager.Application;
+using FinanceManager.Shared; // IApiClient
+using FinanceManager.Shared.Dtos.Security; // shared ip block dtos
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SetupIpBlocksViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
     private readonly ICurrentUserService _current;
 
     public SetupIpBlocksViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<IApiClient>() ?? new ApiClient(httpFactory.CreateClient("Api"));
         _current = sp.GetRequiredService<ICurrentUserService>();
     }
 
@@ -47,22 +49,21 @@ public sealed class SetupIpBlocksViewModel : ViewModelBase
         try
         {
             Error = null;
-            var resp = await _http.GetAsync("/api/admin/ip-blocks", ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var list = await resp.Content.ReadFromJsonAsync<List<IpBlockItem>>(cancellationToken: ct);
-                Items = list ?? new();
-            }
-            else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                // Treat 404 as 'no items' rather than an error
-                Items = new();
-            }
-            else
-            {
-                var txt = await resp.Content.ReadAsStringAsync(ct);
-                Error = !string.IsNullOrWhiteSpace(txt) ? txt : $"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase}";
-            }
+            var list = await _api.Admin_ListIpBlocksAsync(null, ct);
+            Items = (list ?? Array.Empty<IpBlockDto>())
+                .Select(d => new IpBlockItem
+                {
+                    Id = d.Id,
+                    IpAddress = d.IpAddress,
+                    IsBlocked = d.IsBlocked,
+                    BlockedAtUtc = d.BlockedAtUtc,
+                    BlockReason = d.BlockReason,
+                    UnknownUserFailedAttempts = d.UnknownUserFailedAttempts,
+                    UnknownUserLastFailedUtc = d.UnknownUserLastFailedUtc,
+                    CreatedUtc = d.CreatedUtc,
+                    ModifiedUtc = d.ModifiedUtc
+                })
+                .ToList();
         }
         catch (OperationCanceledException)
         {
@@ -81,17 +82,10 @@ public sealed class SetupIpBlocksViewModel : ViewModelBase
         Busy = true; RaiseStateChanged();
         try
         {
-            var req = new { IpAddress = Ip.Trim(), Reason, IsBlocked = BlockOnCreate };
-            var resp = await _http.PostAsJsonAsync("/api/admin/ip-blocks", req, ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                Ip = string.Empty; Reason = null; BlockOnCreate = true;
-                await ReloadAsync(ct);
-            }
-            else
-            {
-                Error = await resp.Content.ReadAsStringAsync(ct);
-            }
+            var req = new IpBlockCreateRequest(Ip.Trim(), Reason, BlockOnCreate);
+            var _ = await _api.Admin_CreateIpBlockAsync(req, ct);
+            Ip = string.Empty; Reason = null; BlockOnCreate = true;
+            await ReloadAsync(ct);
         }
         catch (Exception ex)
         {
@@ -102,25 +96,25 @@ public sealed class SetupIpBlocksViewModel : ViewModelBase
 
     public async Task BlockAsync(Guid id, CancellationToken ct = default)
     {
-        try { await _http.PostAsJsonAsync($"/api/admin/ip-blocks/{id}/block", new { Reason = (string?)null }, ct); }
+        try { await _api.Admin_BlockIpAsync(id, null, ct); }
         catch { }
         await ReloadAsync(ct);
     }
     public async Task UnblockAsync(Guid id, CancellationToken ct = default)
     {
-        try { await _http.PostAsync($"/api/admin/ip-blocks/{id}/unblock", content: null, ct); }
+        try { await _api.Admin_UnblockIpAsync(id, ct); }
         catch { }
         await ReloadAsync(ct);
     }
     public async Task ResetCountersAsync(Guid id, CancellationToken ct = default)
     {
-        try { await _http.PostAsync($"/api/admin/ip-blocks/{id}/reset-counters", content: null, ct); }
+        try { await _api.Admin_ResetCountersAsync(id, ct); }
         catch { }
         await ReloadAsync(ct);
     }
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        try { await _http.DeleteAsync($"/api/admin/ip-blocks/{id}", ct); }
+        try { await _api.Admin_DeleteIpBlockAsync(id, ct); }
         catch { }
         await ReloadAsync(ct);
     }

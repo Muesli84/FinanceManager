@@ -193,7 +193,11 @@ public sealed class AccountDetailViewModelTests
         {
             if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == $"/api/accounts/{accountId}")
             {
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                var json = AccountJson(accountId, "Existing", (int)AccountType.Giro, "DE00", Guid.NewGuid());
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
             }
             if (req.Method == HttpMethod.Get && req.RequestUri!.PathAndQuery.StartsWith("/api/contacts"))
             {

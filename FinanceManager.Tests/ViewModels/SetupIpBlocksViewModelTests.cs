@@ -73,14 +73,34 @@ public sealed class SetupIpBlocksViewModelTests
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/admin/ip-blocks")
             {
                 postCalled = true;
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                var dtoJson = JsonSerializer.Serialize(new
+                {
+                    Id = Guid.NewGuid(),
+                    IpAddress = "1.2.3.4",
+                    IsBlocked = true,
+                    BlockedAtUtc = (DateTime?)null,
+                    BlockReason = "test",
+                    UnknownUserFailedAttempts = 0,
+                    UnknownUserLastFailedUtc = (DateTime?)null,
+                    CreatedUtc = DateTime.UtcNow,
+                    ModifiedUtc = (DateTime?)null
+                });
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(dtoJson, Encoding.UTF8, "application/json")
+                };
             }
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/admin/ip-blocks")
             {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ListJson(), Encoding.UTF8, "application/json") };
+                // Keine Einträge nach Erstellung nötig für diesen Test
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(ListJson(), Encoding.UTF8, "application/json")
+                };
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
+
         var vm = new SetupIpBlocksViewModel(CreateSp(), new TestHttpClientFactory(client));
         vm.Ip = "1.2.3.4";
         vm.Reason = "test";
