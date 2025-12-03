@@ -1,16 +1,18 @@
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using FinanceManager.Shared.Dtos.Contacts; // ContactCategoryDto
+using FinanceManager.Shared; // IApiClient
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ContactCategoriesViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
     public ContactCategoriesViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        var http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<IApiClient>() ?? new ApiClient(http);
     }
 
     public bool Loaded { get; private set; }
@@ -40,14 +42,10 @@ public sealed class ContactCategoriesViewModel : ViewModelBase
         if (!IsAuthenticated) { return; }
         try
         {
-            var resp = await _http.GetAsync("/api/contact-categories", ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>(cancellationToken: ct) ?? new();
-                Categories.Clear();
-                Categories.AddRange(list.Select(l => new CategoryItem { Id = l.Id, Name = l.Name, SymbolAttachmentId = l.SymbolAttachmentId }).OrderBy(c => c.Name));
-                RaiseStateChanged();
-            }
+            var list = await _api.ContactCategories_ListAsync(ct);
+            Categories.Clear();
+            Categories.AddRange(list.Select(l => new CategoryItem { Id = l.Id, Name = l.Name, SymbolAttachmentId = l.SymbolAttachmentId }).OrderBy(c => c.Name));
+            RaiseStateChanged();
         }
         catch { }
     }
@@ -60,15 +58,11 @@ public sealed class ContactCategoriesViewModel : ViewModelBase
         await Task.Yield();
         try
         {
-            var resp = await _http.PostAsJsonAsync("/api/contact-categories", new { Name = CreateName }, ct);
-            if (resp.IsSuccessStatusCode)
+            var created = await _api.ContactCategories_CreateAsync(new ContactCategoryCreateRequest(CreateName), ct);
+            if (created is not null)
             {
                 CreateName = string.Empty;
                 await LoadAsync(ct);
-            }
-            else
-            {
-                Error = await resp.Content.ReadAsStringAsync(ct);
             }
         }
         catch (Exception ex)

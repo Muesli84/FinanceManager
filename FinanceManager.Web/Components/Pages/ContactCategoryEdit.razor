@@ -3,7 +3,6 @@
 @rendermode InteractiveServer
 @inject NavigationManager Nav
 @inject IServiceProvider Services
-@inject IHttpClientFactory ClientFactory
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Web.ViewModels
 @using Microsoft.Extensions.DependencyInjection
@@ -136,6 +135,6 @@ else
         }
     }
 
-    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/contact-categories/{_vm.Id}/symbol/{aid}", null); _vm.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
-    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/contact-categories/{_vm.Id}/symbol"); _vm.Model.SymbolAttachmentId = null; StateHasChanged(); } }
+    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { _vm.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
+    private async Task OnSymbolCleared() { if (_vm?.Id != null) { _vm.Model.SymbolAttachmentId = null; StateHasChanged(); } }
 }

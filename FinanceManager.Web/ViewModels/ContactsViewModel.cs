@@ -1,15 +1,18 @@
 using Microsoft.Extensions.Localization;
 using FinanceManager.Shared.Dtos.Contacts; // ContactDto, ContactCategoryDto
+using FinanceManager.Shared; // IApiClient
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ContactsViewModel : ViewModelBase
 {
     private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
     public ContactsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
     }
 
     public bool Loaded { get; private set; }
@@ -40,17 +43,13 @@ public sealed class ContactsViewModel : ViewModelBase
     {
         try
         {
-            var resp = await _http.GetAsync("/api/contact-categories", ct);
-            if (resp.IsSuccessStatusCode)
+            var list = await _api.ContactCategories_ListAsync(ct);
+            _categoryNames.Clear();
+            _categorySymbols.Clear();
+            foreach (var c in list)
             {
-                var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>(cancellationToken: ct) ?? new();
-                _categoryNames.Clear();
-                _categorySymbols.Clear();
-                foreach (var c in list)
-                {
-                    _categoryNames[c.Id] = c.Name;
-                    _categorySymbols[c.Id] = c.SymbolAttachmentId;
-                }
+                _categoryNames[c.Id] = c.Name;
+                _categorySymbols[c.Id] = c.SymbolAttachmentId;
             }
         }
         catch { }
@@ -128,7 +127,6 @@ public sealed class ContactsViewModel : ViewModelBase
         {
             items.Add(new UiRibbonItem(localizer["Ribbon_ClearFilter"], "<svg><use href='/icons/sprite.svg#clear'/></svg>", UiRibbonItemSize.Small, false, "ClearFilter"));
         }
-        // Add link to contact categories management
         items.Add(new UiRibbonItem(localizer["Ribbon_Categories"], "<svg><use href='/icons/sprite.svg#groups'/></svg>", UiRibbonItemSize.Small, false, "Categories"));
         return new List<UiRibbonGroup>
         {

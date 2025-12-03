@@ -111,17 +111,22 @@ public sealed class ContactCategoriesViewModelTests
         // arrange
         var posted = false;
         var reloaded = false;
+        var createdId = Guid.NewGuid();
         var client = CreateHttpClient(req =>
         {
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/contact-categories")
             {
                 posted = true;
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                var createdJson = JsonSerializer.Serialize(new { Id = createdId, Name = "X", SymbolAttachmentId = (Guid?)null });
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(createdJson, Encoding.UTF8, "application/json")
+                };
             }
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/contact-categories")
             {
                 reloaded = true;
-                var json = CategoriesJson((Guid.NewGuid(), "X"));
+                var json = CategoriesJson((createdId, "X"));
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent(json, Encoding.UTF8, "application/json")

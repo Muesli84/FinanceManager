@@ -13,6 +13,7 @@
 @inject HttpClient Http
 @inject IServiceProvider Services
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ReportDashboard> Localizer
+@inject FinanceManager.Shared.IApiClient Api
 @using FinanceManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components
 @using FinanceManager.Web.ViewModels
@@ -639,15 +640,11 @@ else
         // Load contact categories (map id->symbol and name->symbol)
         try
         {
-            var resp = await Http.GetAsync("/api/contact-categories");
-            if (resp.IsSuccessStatusCode)
+            var list = await Api.ContactCategories_ListAsync();
+            foreach (var c in list)
             {
-                var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new List<ContactCategoryDto>();
-                foreach (var c in list)
-                {
-                    _contactCategorySymbolById[c.Id] = c.SymbolAttachmentId;
-                    if (!string.IsNullOrWhiteSpace(c.Name)) _contactCategorySymbolByName[c.Name!] = c.SymbolAttachmentId;
-                }
+                _contactCategorySymbolById[c.Id] = c.SymbolAttachmentId;
+                if (!string.IsNullOrWhiteSpace(c.Name)) _contactCategorySymbolByName[c.Name!] = c.SymbolAttachmentId;
             }
         }
         catch { }

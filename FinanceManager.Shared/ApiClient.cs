@@ -509,4 +509,69 @@ public sealed class ApiClient : IApiClient
     }
 
     #endregion Backups
+
+    #region Contact Categories
+
+    /// <summary>Lists all contact categories.</summary>
+    public async Task<IReadOnlyList<ContactCategoryDto>> ContactCategories_ListAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/contact-categories", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<ContactCategoryDto>>(cancellationToken: ct) ?? Array.Empty<ContactCategoryDto>();
+    }
+
+    /// <summary>Gets a contact category by id.</summary>
+    public async Task<ContactCategoryDto?> ContactCategories_GetAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/contact-categories/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<ContactCategoryDto>(cancellationToken: ct);
+    }
+
+    /// <summary>Creates a new contact category.</summary>
+    public async Task<ContactCategoryDto> ContactCategories_CreateAsync(ContactCategoryCreateRequest request, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync("/api/contact-categories", request, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<ContactCategoryDto>(cancellationToken: ct))!;
+    }
+
+    /// <summary>Updates a contact category.</summary>
+    public async Task<bool> ContactCategories_UpdateAsync(Guid id, ContactCategoryUpdateRequest request, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync($"/api/contact-categories/{id}", request, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    /// <summary>Deletes a contact category.</summary>
+    public async Task<bool> ContactCategories_DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/contact-categories/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    /// <summary>Sets the symbol (attachment) for a contact category.</summary>
+    public async Task<bool> ContactCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/contact-categories/{id}/symbol/{attachmentId}", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    /// <summary>Clears the symbol (attachment) from a contact category.</summary>
+    public async Task<bool> ContactCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/contact-categories/{id}/symbol", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    #endregion Contact Categories
 }

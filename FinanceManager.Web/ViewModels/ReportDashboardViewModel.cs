@@ -4,16 +4,19 @@ using FinanceManager.Shared.Dtos.Accounts;
 using FinanceManager.Shared.Dtos.Contacts;
 using FinanceManager.Shared.Dtos.SavingsPlans;
 using FinanceManager.Shared.Dtos.Securities;
+using FinanceManager.Shared; // IApiClient
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ReportDashboardViewModel : ViewModelBase
 {
     private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
     public ReportDashboardViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
     }
 
     // UI state moved from component
@@ -381,12 +384,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 {
                     if (kind == PostingKind.Contact) // Contact
                     {
-                        var resp = await _http.GetAsync("/api/contact-categories", ct);
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var cats = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>(cancellationToken: ct) ?? new();
-                            list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
-                        }
+                        var cats = await _api.ContactCategories_ListAsync(ct);
+                        list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
                     }
                     else if (kind == PostingKind.SavingsPlan) // SavingsPlan
                     {
@@ -411,12 +410,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 {
                     if (kind == PostingKind.Bank) // Bank
                     {
-                        var resp = await _http.GetAsync("/api/accounts?skip=0&take=1000", ct);
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var acc = await resp.Content.ReadFromJsonAsync<List<AccountDto>>(cancellationToken: ct) ?? new();
-                            list = acc.Select(a => new SimpleOption { Id = a.Id, Name = a.Name }).ToList();
-                        }
+                        var acc = await _api.GetAccountsAsync(skip: 0, take: 1000, bankContactId: null, ct);
+                        list = acc.Select(a => new SimpleOption { Id = a.Id, Name = a.Name }).ToList();
                     }
                     else if (kind == PostingKind.Contact) // Contact
                     {
