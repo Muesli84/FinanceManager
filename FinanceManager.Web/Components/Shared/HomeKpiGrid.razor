@@ -131,8 +131,8 @@
     {
         try
         {
-            var list = await Http.GetFromJsonAsync<List<HomeKpiDto>>("/api/home-kpis");
-            _kpis = list ?? new();
+            var list = await Api.HomeKpis_ListAsync();
+            _kpis = list.ToList();
         }
         catch { }
         StateHasChanged();
@@ -166,12 +166,8 @@
         var payload = new HomeKpiCreateRequest(kind, _addTabFavorites ? _selFavoriteId : null, _addTabFavorites ? null : _selPredefined, null, _selDisplay, sort);
         try
         {
-            var resp = await Http.PostAsJsonAsync("/api/home-kpis", payload);
-            if (resp.IsSuccessStatusCode)
-            {
-                var dto = await resp.Content.ReadFromJsonAsync<HomeKpiDto>();
-                if (dto != null) { _kpis.Add(dto); }
-            }
+            var dto = await Api.HomeKpis_CreateAsync(payload);
+            if (dto != null) { _kpis.Add(dto); }
         }
         catch { }
         finally
@@ -184,8 +180,8 @@
     {
         try
         {
-            var resp = await Http.DeleteAsync($"/api/home-kpis/{id}");
-            if (resp.IsSuccessStatusCode)
+            var ok = await Api.HomeKpis_DeleteAsync(id);
+            if (ok)
             {
                 _kpis.RemoveAll(k => k.Id == id);
                 _favData.Remove(id);
@@ -220,23 +216,15 @@
             var reqA = new HomeKpiUpdateRequest(kpi.Kind, kpi.ReportFavoriteId, kpi.PredefinedType, kpi.Title, kpi.DisplayMode, aNew);
             var reqB = new HomeKpiUpdateRequest(other.Kind, other.ReportFavoriteId, other.PredefinedType, other.Title, other.DisplayMode, bNew);
 
-            var respA = await Http.PutAsJsonAsync($"/api/home-kpis/{kpi.Id}", reqA);
-            var respB = await Http.PutAsJsonAsync($"/api/home-kpis/{other.Id}", reqB);
+            var dtoA = await Api.HomeKpis_UpdateAsync(kpi.Id, reqA);
+            var dtoB = await Api.HomeKpis_UpdateAsync(other.Id, reqB);
 
-            if (respA.IsSuccessStatusCode && respB.IsSuccessStatusCode)
+            if (dtoA != null && dtoB != null)
             {
-                var dtoA = await respA.Content.ReadFromJsonAsync<HomeKpiDto>();
-                var dtoB = await respB.Content.ReadFromJsonAsync<HomeKpiDto>();
-                if (dtoA != null)
-                {
-                    var iA = _kpis.FindIndex(x => x.Id == dtoA.Id);
-                    if (iA >= 0) { _kpis[iA] = dtoA; }
-                }
-                if (dtoB != null)
-                {
-                    var iB = _kpis.FindIndex(x => x.Id == dtoB.Id);
-                    if (iB >= 0) { _kpis[iB] = dtoB; }
-                }
+                var iA = _kpis.FindIndex(x => x.Id == dtoA.Id);
+                if (iA >= 0) { _kpis[iA] = dtoA; }
+                var iB = _kpis.FindIndex(x => x.Id == dtoB.Id);
+                if (iB >= 0) { _kpis[iB] = dtoB; }
             }
             else
             {
@@ -250,6 +238,22 @@
             _kpiMoving.Clear();
             StateHasChanged();
         }
+    }
+
+    private async Task OnTitleChangedAsync(HomeKpiDto k, string? newTitle)
+    {
+        try
+        {
+            var req = new HomeKpiUpdateRequest(k.Kind, k.ReportFavoriteId, k.PredefinedType, newTitle, k.DisplayMode, k.SortOrder);
+            var updated = await Api.HomeKpis_UpdateAsync(k.Id, req);
+            if (updated != null)
+            {
+                var idx = _kpis.FindIndex(x => x.Id == k.Id);
+                if (idx >= 0) { _kpis[idx] = updated; }
+            }
+        }
+        catch { }
+        StateHasChanged();
     }
 
     private RenderFragment RenderKpiTile(HomeKpiDto k) => builder =>
@@ -475,26 +479,6 @@
         {
             Nav.NavigateTo($"/reports/dashboard?favoriteId={k.ReportFavoriteId.Value}&edit=false");
         }
-    }
-
-    private async Task OnTitleChangedAsync(HomeKpiDto k, string? newTitle)
-    {
-        try
-        {
-            var req = new HomeKpiUpdateRequest(k.Kind, k.ReportFavoriteId, k.PredefinedType, newTitle, k.DisplayMode, k.SortOrder);
-            var resp = await Http.PutAsJsonAsync($"/api/home-kpis/{k.Id}", req);
-            if (resp.IsSuccessStatusCode)
-            {
-                var updated = await resp.Content.ReadFromJsonAsync<HomeKpiDto>();
-                if (updated != null)
-                {
-                    var idx = _kpis.FindIndex(x => x.Id == k.Id);
-                    if (idx >= 0) { _kpis[idx] = updated; }
-                }
-            }
-        }
-        catch { }
-        StateHasChanged();
     }
 
     private async Task LoadFavoriteKpiDataAsync(HomeKpiDto k)

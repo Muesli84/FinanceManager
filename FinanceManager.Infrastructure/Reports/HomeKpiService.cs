@@ -74,7 +74,7 @@ public sealed class HomeKpiService : IHomeKpiService
             if (!owned) { throw new InvalidOperationException("Favorite not found or not owned"); }
         }
         entity.SetFavorite(request.ReportFavoriteId);
-        // Preserve existing predefined type if not supplied
+        entity.SetTitle(request.Title ?? entity.Title);
         entity.SetPredefined(request.PredefinedType ?? entity.PredefinedType);
         entity.SetDisplayMode(request.DisplayMode);
         entity.SetSortOrder(request.SortOrder);

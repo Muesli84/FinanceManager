@@ -6,6 +6,7 @@ using FinanceManager.Shared.Dtos.Common;
 using FinanceManager.Shared.Dtos.Admin; // added for BackgroundTaskInfo/Type/Status
 using FinanceManager.Shared.Dtos.Backups; // add backups dtos
 using FinanceManager.Shared.Dtos.Contacts; // contact categories dtos
+using FinanceManager.Shared.Dtos.HomeKpi; // home kpi dtos
 
 namespace FinanceManager.Shared;
 
@@ -178,4 +179,16 @@ public interface IApiClient
     Task<bool> Contacts_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     /// <summary>Clears the symbol attachment from a contact. Returns false when not found.</summary>
     Task<bool> Contacts_ClearSymbolAsync(Guid id, CancellationToken ct = default);
+
+    // Home KPIs
+    /// <summary>Lists home KPIs for the current user.</summary>
+    Task<IReadOnlyList<HomeKpiDto>> HomeKpis_ListAsync(CancellationToken ct = default);
+    /// <summary>Gets a single home KPI by id or null if not found.</summary>
+    Task<HomeKpiDto?> HomeKpis_GetAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Creates a new home KPI.</summary>
+    Task<HomeKpiDto> HomeKpis_CreateAsync(HomeKpiCreateRequest request, CancellationToken ct = default);
+    /// <summary>Updates an existing home KPI. Returns null when not found.</summary>
+    Task<HomeKpiDto?> HomeKpis_UpdateAsync(Guid id, HomeKpiUpdateRequest request, CancellationToken ct = default);
+    /// <summary>Deletes a home KPI. Returns false when not found.</summary>
+    Task<bool> HomeKpis_DeleteAsync(Guid id, CancellationToken ct = default);
 }

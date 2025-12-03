@@ -689,4 +689,47 @@ public sealed class ApiClient : IApiClient
     }
 
     #endregion Contacts
+
+    #region Home KPIs
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<HomeKpiDto>> HomeKpis_ListAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/home-kpis", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<HomeKpiDto>>(cancellationToken: ct) ?? Array.Empty<HomeKpiDto>();
+    }
+    /// <inheritdoc />
+    public async Task<HomeKpiDto?> HomeKpis_GetAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/home-kpis/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<HomeKpiDto>(cancellationToken: ct);
+    }
+    /// <inheritdoc />
+    public async Task<HomeKpiDto> HomeKpis_CreateAsync(HomeKpiCreateRequest request, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync("/api/home-kpis", request, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<HomeKpiDto>(cancellationToken: ct))!;
+    }
+    /// <inheritdoc />
+    public async Task<HomeKpiDto?> HomeKpis_UpdateAsync(Guid id, HomeKpiUpdateRequest request, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync($"/api/home-kpis/{id}", request, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.Conflict) throw new InvalidOperationException(await resp.Content.ReadAsStringAsync(ct));
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<HomeKpiDto>(cancellationToken: ct);
+    }
+    /// <inheritdoc />
+    public async Task<bool> HomeKpis_DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/home-kpis/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    #endregion Home KPIs
 }
