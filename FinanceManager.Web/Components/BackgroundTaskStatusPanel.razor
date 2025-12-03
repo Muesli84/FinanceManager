@@ -1,8 +1,8 @@
 @using FinanceManager.Shared.Dtos
-@inject HttpClient Http
+@using FinanceManager.Shared.Dtos.Admin
+@inject FinanceManager.Shared.IApiClient Api
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.BackgroundTaskStatusPanel> Localizer
 @code {
-    [Parameter] public string TaskListEndpoint { get; set; } = "/api/background-tasks/active";
     [Parameter] public int PollInterval { get; set; } = 2000; // ms
     [Parameter] public BackgroundTaskType[]? AllowedTypes { get; set; } // optional filter only for deciding visibility
 
@@ -44,7 +44,7 @@
     {
         try
         {
-            var result = await Http.GetFromJsonAsync<List<BackgroundTaskInfo>>(TaskListEndpoint, ct) ?? new();
+            var result = (await Api.BackgroundTasks_GetActiveAsync(ct)).ToList();
 
             // Determine visibility using AllowedTypes filter, but always keep full list for display
             if (AllowedTypes != null && AllowedTypes.Length > 0)
@@ -64,13 +64,13 @@
 
     public async Task CancelTaskAsync(Guid id)
     {
-        try { await Http.DeleteAsync($"/api/background-tasks/{id}"); } catch { }
+        try { await Api.BackgroundTasks_CancelOrRemoveAsync(id, _cts?.Token ?? CancellationToken.None); } catch { }
         await LoadTasksAsync(_cts?.Token ?? CancellationToken.None);
     }
 
     public async Task RemoveQueuedAsync(Guid id)
     {
-        try { await Http.DeleteAsync($"/api/background-tasks/{id}"); } catch { }
+        try { await Api.BackgroundTasks_CancelOrRemoveAsync(id, _cts?.Token ?? CancellationToken.None); } catch { }
         await LoadTasksAsync(_cts?.Token ?? CancellationToken.None);
     }
 

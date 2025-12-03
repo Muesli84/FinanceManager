@@ -1,9 +1,5 @@
 using System.Net.Http.Json;
-using FinanceManager.Shared.Dtos.Accounts;
-using FinanceManager.Shared.Dtos.Users;
-using FinanceManager.Shared.Dtos.Security;
-using FinanceManager.Shared.Dtos.Attachments;
-using FinanceManager.Shared.Dtos.Common;
+
 
 namespace FinanceManager.Shared;
 
@@ -113,6 +109,63 @@ public sealed class ApiClient : IApiClient
     }
 
     #endregion Auth
+
+    #region Background tasks
+
+    /// <inheritdoc />
+    public async Task<BackgroundTaskInfo> BackgroundTasks_EnqueueAsync(BackgroundTaskType type, bool allowDuplicate = false, CancellationToken ct = default)
+    {
+        var url = $"/api/background-tasks/{type}?allowDuplicate={(allowDuplicate ? "true" : "false")}";
+        var resp = await _http.PostAsync(url, content: null, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<BackgroundTaskInfo>(cancellationToken: ct))!;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<BackgroundTaskInfo>> BackgroundTasks_GetActiveAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/background-tasks/active", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<BackgroundTaskInfo>>(cancellationToken: ct) ?? Array.Empty<BackgroundTaskInfo>();
+    }
+
+    /// <inheritdoc />
+    public async Task<BackgroundTaskInfo?> BackgroundTasks_GetDetailAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/background-tasks/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<BackgroundTaskInfo>(cancellationToken: ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> BackgroundTasks_CancelOrRemoveAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/background-tasks/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<AggregatesRebuildStatusDto> Aggregates_RebuildAsync(bool allowDuplicate = false, CancellationToken ct = default)
+    {
+        var url = $"/api/background-tasks/aggregates/rebuild?allowDuplicate={(allowDuplicate ? "true" : "false")}";
+        var resp = await _http.PostAsync(url, content: null, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<AggregatesRebuildStatusDto>(cancellationToken: ct))!;
+    }
+
+    /// <inheritdoc />
+    public async Task<AggregatesRebuildStatusDto> Aggregates_GetRebuildStatusAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/background-tasks/aggregates/rebuild/status", ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<AggregatesRebuildStatusDto>(cancellationToken: ct))!;
+    }
+
+    #endregion Background tasks
 
     #region Admin - Users
 

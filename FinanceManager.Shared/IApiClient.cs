@@ -3,6 +3,7 @@ using FinanceManager.Shared.Dtos.Users;
 using FinanceManager.Shared.Dtos.Security;
 using FinanceManager.Shared.Dtos.Attachments;
 using FinanceManager.Shared.Dtos.Common;
+using FinanceManager.Shared.Dtos.Admin; // added for BackgroundTaskInfo/Type/Status
 
 namespace FinanceManager.Shared;
 
@@ -25,6 +26,16 @@ public interface IApiClient
     Task<AuthOkResponse> Auth_LoginAsync(LoginRequest request, CancellationToken ct = default);
     Task<AuthOkResponse> Auth_RegisterAsync(RegisterRequest request, CancellationToken ct = default);
     Task<bool> Auth_LogoutAsync(CancellationToken ct = default);
+
+    // Background tasks
+    Task<BackgroundTaskInfo> BackgroundTasks_EnqueueAsync(BackgroundTaskType type, bool allowDuplicate = false, CancellationToken ct = default);
+    Task<IReadOnlyList<BackgroundTaskInfo>> BackgroundTasks_GetActiveAsync(CancellationToken ct = default);
+    Task<BackgroundTaskInfo?> BackgroundTasks_GetDetailAsync(Guid id, CancellationToken ct = default);
+    Task<bool> BackgroundTasks_CancelOrRemoveAsync(Guid id, CancellationToken ct = default);
+
+    // Aggregates (Background tasks specialized endpoints)
+    Task<AggregatesRebuildStatusDto> Aggregates_RebuildAsync(bool allowDuplicate = false, CancellationToken ct = default);
+    Task<AggregatesRebuildStatusDto> Aggregates_GetRebuildStatusAsync(CancellationToken ct = default);
 
     // Admin - Users
     Task<IReadOnlyList<UserAdminDto>> Admin_ListUsersAsync(CancellationToken ct = default);

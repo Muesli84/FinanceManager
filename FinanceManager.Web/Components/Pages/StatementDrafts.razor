@@ -16,7 +16,7 @@
 <h3>@Localizer["Nav_StatementDrafts"]</h3>
 
 <!-- Status panel only for classification or booking tasks -->
-<BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="2000" AllowedTypes="new[]{ BackgroundTaskType.ClassifyAllDrafts, BackgroundTaskType.BookAllDrafts }" />
+<BackgroundTaskStatusPanel PollInterval="2000" AllowedTypes="new[]{ BackgroundTaskType.ClassifyAllDrafts, BackgroundTaskType.BookAllDrafts }" />
 
 @if (_showDeleteAllDialog)
 {
