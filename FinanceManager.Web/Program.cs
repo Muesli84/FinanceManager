@@ -1,18 +1,29 @@
 using FinanceManager.Web;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace FinanceManager.Web
+{
 
-// configure logging and services moved to extensions
-builder.ConfigureLogging();
-builder.RegisterAppServices();
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+            // configure logging and services moved to extensions
+            builder.ConfigureLogging();
+            builder.RegisterAppServices();
 
-// apply migrations and seeding
-app.ApplyMigrationsAndSeed();
+            var app = builder.Build();
 
-// configure localization and middleware
-app.ConfigureLocalization();
-app.ConfigureMiddleware();
+            // apply migrations and seeding
+            app.ApplyMigrationsAndSeed();
 
-app.Run();
+            // configure localization and middleware
+            app.ConfigureLocalization();
+            app.ConfigureMiddleware();
+
+            app.Run();
+        }
+    }
+
+}

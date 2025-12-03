@@ -10,19 +10,19 @@ namespace FinanceManager.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "IncludeDividendRelated",
-                table: "ReportFavorites",
-                type: "INTEGER",
-                nullable: true);
+            //migrationBuilder.AddColumn<bool>(
+            //    name: "IncludeDividendRelated",
+            //    table: "ReportFavorites",
+            //    type: "INTEGER",
+            //    nullable: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "IncludeDividendRelated",
-                table: "ReportFavorites");
+            //migrationBuilder.DropColumn(
+            //    name: "IncludeDividendRelated",
+            //    table: "ReportFavorites");
         }
     }
 }

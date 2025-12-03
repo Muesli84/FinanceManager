@@ -84,6 +84,9 @@ public sealed class UserAdminService : IUserAdminService
         }
 
         var user = new User(username, _passwordHasher.Hash(password), false);
+        user.LockoutEnabled = !isAdmin;
+        if (string.IsNullOrEmpty(user.SecurityStamp)) user.SecurityStamp = Guid.NewGuid().ToString("N");
+        if (string.IsNullOrEmpty(user.ConcurrencyStamp)) user.ConcurrencyStamp = Guid.NewGuid().ToString("N");
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
 
