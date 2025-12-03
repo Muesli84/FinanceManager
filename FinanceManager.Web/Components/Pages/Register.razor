@@ -1,7 +1,6 @@
 @page "/register"
 @rendermode InteractiveServer
 @using System.Net.Http.Json
-@inject HttpClient Http
 @using FinanceManager.Application.Users
 @inject IUserReadService UserRead
 @inject NavigationManager Nav
@@ -11,6 +10,7 @@
 @using FinanceManager.Web.Components.Shared
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
+@inject FinanceManager.Shared.IApiClient Api // use typed ApiClient
 
 <PageTitle>@L["PageTitle"]</PageTitle>
 
@@ -134,25 +134,25 @@
             }
             catch { }
 
-            var payload = new { Username = _model.Username.Trim(), Password = _model.Password, PreferredLanguage = preferredLanguage, TimeZoneId = timeZoneId };
-            var resp = await Http.PostAsJsonAsync("/api/auth/register", payload);
-            if (!resp.IsSuccessStatusCode)
+            var req = new RegisterRequest(_model.Username.Trim(), _model.Password, preferredLanguage, timeZoneId);
+            try
             {
-                var problem = await resp.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-                problem?.TryGetValue("error", out _error);
-                _error ??= L["Error_RegisterFailed"];
-            }
-            else
-            {
+                var _ = await Api.Auth_RegisterAsync(req, CancellationToken.None);
                 Nav.NavigateTo("/", forceLoad: true);
             }
+            catch (HttpRequestException)
+            {
+                _error = L["Error_RegisterFailed"];
+            }
+            catch (Exception ex)
+            {
+                _error = string.Format(L["Error_Unexpected"], ex.Message);
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            _error = string.Format(L["Error_Unexpected"], ex.Message);
+            _busy = false;
         }
-
-        _busy = false;
     }
 
     private void InvalidSubmit(EditContext ctx) { }

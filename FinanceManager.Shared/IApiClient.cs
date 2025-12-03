@@ -21,6 +21,11 @@ public interface IApiClient
     Task SetAccountSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     Task ClearAccountSymbolAsync(Guid id, CancellationToken ct = default);
 
+    // Auth
+    Task<AuthOkResponse> Auth_LoginAsync(LoginRequest request, CancellationToken ct = default);
+    Task<AuthOkResponse> Auth_RegisterAsync(RegisterRequest request, CancellationToken ct = default);
+    Task<bool> Auth_LogoutAsync(CancellationToken ct = default);
+
     // Admin - Users
     Task<IReadOnlyList<UserAdminDto>> Admin_ListUsersAsync(CancellationToken ct = default);
     Task<UserAdminDto?> Admin_GetUserAsync(Guid id, CancellationToken ct = default);

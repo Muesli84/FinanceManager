@@ -86,6 +86,34 @@ public sealed class ApiClient : IApiClient
 
     #endregion Accounts
 
+    #region Auth
+
+    /// <inheritdoc />
+    public async Task<AuthOkResponse> Auth_LoginAsync(LoginRequest request, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync("/api/auth/login", request, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<AuthOkResponse>(cancellationToken: ct))!;
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthOkResponse> Auth_RegisterAsync(RegisterRequest request, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync("/api/auth/register", request, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<AuthOkResponse>(cancellationToken: ct))!;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> Auth_LogoutAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync("/api/auth/logout", content: null, ct);
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    #endregion Auth
+
     #region Admin - Users
 
     /// <summary>Lists all users.</summary>
