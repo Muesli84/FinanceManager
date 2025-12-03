@@ -14,6 +14,7 @@
 @using FinanceManager.Web.ViewModels
 @inject IServiceProvider Services
 @using System.Net.Http
+@inject FinanceManager.Shared.IApiClient Api
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="ContactDetail.TabId"
@@ -352,14 +353,10 @@ else
         if (Id == null) { return; }
         try
         {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.PostAsync($"/api/contacts/{Id}/symbol/{attachmentId}", null);
-            if (resp.IsSuccessStatusCode)
+            var ok = await Api.Contacts_SetSymbolAsync(Id.Value, attachmentId);
+            if (ok && _vm != null)
             {
-                if (_vm != null)
-                {
-                    _vm.SymbolAttachmentId = attachmentId;
-                }
+                _vm.SymbolAttachmentId = attachmentId;
             }
         }
         catch { }
@@ -370,14 +367,10 @@ else
         if (Id == null) { return; }
         try
         {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.DeleteAsync($"/api/contacts/{Id}/symbol");
-            if (resp.IsSuccessStatusCode)
+            var ok = await Api.Contacts_ClearSymbolAsync(Id.Value);
+            if (ok && _vm != null)
             {
-                if (_vm != null)
-                {
-                    _vm.SymbolAttachmentId = null;
-                }
+                _vm.SymbolAttachmentId = null;
             }
         }
         catch { }

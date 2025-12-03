@@ -152,4 +152,30 @@ public interface IApiClient
     Task<bool> ContactCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     /// <summary>Clears any symbol attachment from a contact category. Returns false when not found.</summary>
     Task<bool> ContactCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default);
+
+    // Contacts
+    /// <summary>Lists contacts with optional paging/filtering, or all when all=true.</summary>
+    Task<IReadOnlyList<ContactDto>> Contacts_ListAsync(int skip = 0, int take = 50, ContactType? type = null, bool all = false, string? nameFilter = null, CancellationToken ct = default);
+    /// <summary>Gets a single contact by id or null when not found.</summary>
+    Task<ContactDto?> Contacts_GetAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Creates a new contact.</summary>
+    Task<ContactDto> Contacts_CreateAsync(ContactCreateRequest request, CancellationToken ct = default);
+    /// <summary>Updates an existing contact. Returns null if not found.</summary>
+    Task<ContactDto?> Contacts_UpdateAsync(Guid id, ContactUpdateRequest request, CancellationToken ct = default);
+    /// <summary>Deletes a contact. Returns false when not found.</summary>
+    Task<bool> Contacts_DeleteAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Lists alias patterns for a contact.</summary>
+    Task<IReadOnlyList<AliasNameDto>> Contacts_GetAliasesAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Adds a new alias pattern to a contact.</summary>
+    Task<bool> Contacts_AddAliasAsync(Guid id, AliasCreateRequest request, CancellationToken ct = default);
+    /// <summary>Deletes an alias from a contact.</summary>
+    Task<bool> Contacts_DeleteAliasAsync(Guid id, Guid aliasId, CancellationToken ct = default);
+    /// <summary>Merges a source contact into a target contact and returns the updated target.</summary>
+    Task<ContactDto> Contacts_MergeAsync(Guid sourceId, ContactMergeRequest request, CancellationToken ct = default);
+    /// <summary>Returns the total number of contacts for the current user.</summary>
+    Task<int> Contacts_CountAsync(CancellationToken ct = default);
+    /// <summary>Assigns a symbol attachment to a contact. Returns false when not found.</summary>
+    Task<bool> Contacts_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
+    /// <summary>Clears the symbol attachment from a contact. Returns false when not found.</summary>
+    Task<bool> Contacts_ClearSymbolAsync(Guid id, CancellationToken ct = default);
 }

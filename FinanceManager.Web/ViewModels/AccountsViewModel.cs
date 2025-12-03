@@ -74,7 +74,7 @@ public sealed class AccountsViewModel : ViewModelBase
                 {
                     try
                     {
-                        var contact = await _http.GetFromJsonAsync<ContactDto>($"/api/contacts/{cid}", ct);
+                        var contact = await _api.Contacts_GetAsync(cid, ct);
                         return (cid, contact?.SymbolAttachmentId, contact?.CategoryId);
                     }
                     catch
@@ -103,7 +103,7 @@ public sealed class AccountsViewModel : ViewModelBase
                     {
                         try
                         {
-                            var cat = await _http.GetFromJsonAsync<ContactCategoryDto>($"/api/contact-categories/{catId}", ct);
+                            var cat = await _api.ContactCategories_GetAsync(catId, ct);
                             return (catId, cat?.SymbolAttachmentId);
                         }
                         catch

@@ -9,6 +9,7 @@
 @using Microsoft.Extensions.Localization
 
 @inject HttpClient Http
+@inject FinanceManager.Shared.IApiClient Api
 @inject IStringLocalizer<FinanceManager.Web.Components.Pages.Home> Localizer
 @inject NavigationManager Nav
 
@@ -361,7 +362,7 @@
                     {
                         var j = 0;
                         builder2.OpenComponent<NumericKpi>(j++);
-                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/contacts/count"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var cnt = await Api.Contacts_CountAsync(); return cnt; } catch { return 0; } }));
                         builder2.CloseComponent();
                     }));
                     builder.CloseElement();

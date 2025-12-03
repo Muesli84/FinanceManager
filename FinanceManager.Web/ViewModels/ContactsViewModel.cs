@@ -63,36 +63,27 @@ public sealed class ContactsViewModel : ViewModelBase
         try
         {
             var pageSize = 50;
-            var url = $"/api/contacts?skip={Contacts.Count}&take={pageSize}";
-            if (!string.IsNullOrWhiteSpace(Filter))
+            var list = await _api.Contacts_ListAsync(skip: Contacts.Count, take: pageSize, type: null, all: false, nameFilter: string.IsNullOrWhiteSpace(Filter) ? null : Filter, ct);
+            if (list.Count < pageSize)
             {
-                url += $"&q={Uri.EscapeDataString(Filter)}";
+                AllLoaded = true;
             }
-            var resp = await _http.GetAsync(url, ct);
-            if (resp.IsSuccessStatusCode)
+            foreach (var dto in list)
             {
-                var more = await resp.Content.ReadFromJsonAsync<List<ContactDto>>(cancellationToken: ct) ?? new();
-                if (more.Count < pageSize)
+                Guid? categoryId = dto.CategoryId;
+                Contacts.Add(new ContactItem
                 {
-                    AllLoaded = true;
-                }
-                foreach (var dto in more)
-                {
-                    Guid? categoryId = dto.CategoryId;
-                    Contacts.Add(new ContactItem
-                    {
-                        Id = dto.Id,
-                        Name = dto.Name,
-                        Type = dto.Type.ToString(),
-                        CategoryName = categoryId.HasValue && _categoryNames.TryGetValue(categoryId.Value, out var cat)
-                            ? cat
-                            : string.Empty,
-                        SymbolAttachmentId = dto.SymbolAttachmentId,
-                        CategorySymbolAttachmentId = categoryId.HasValue && _categorySymbols.TryGetValue(categoryId.Value, out var cs)
-                            ? cs
-                            : null
-                    });
-                }
+                    Id = dto.Id,
+                    Name = dto.Name,
+                    Type = dto.Type.ToString(),
+                    CategoryName = categoryId.HasValue && _categoryNames.TryGetValue(categoryId.Value, out var cat)
+                        ? cat
+                        : string.Empty,
+                    SymbolAttachmentId = dto.SymbolAttachmentId,
+                    CategorySymbolAttachmentId = categoryId.HasValue && _categorySymbols.TryGetValue(categoryId.Value, out var cs)
+                        ? cs
+                        : null
+                });
             }
         }
         catch { }

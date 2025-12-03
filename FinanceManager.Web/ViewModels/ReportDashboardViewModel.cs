@@ -415,12 +415,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                     }
                     else if (kind == PostingKind.Contact) // Contact
                     {
-                        var resp = await _http.GetAsync("/api/contacts?all=true", ct);
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var con = await resp.Content.ReadFromJsonAsync<List<ContactDto>>(cancellationToken: ct) ?? new();
-                            list = con.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
-                        }
+                        var con = await _api.Contacts_ListAsync(skip: 0, take: 1000, type: null, all: true, nameFilter: null, ct);
+                        list = con.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
                     }
                     else if (kind == PostingKind.SavingsPlan) // SavingsPlan
                     {

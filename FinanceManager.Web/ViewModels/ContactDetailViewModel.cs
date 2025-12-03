@@ -2,16 +2,18 @@ using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using FinanceManager.Shared.Dtos.Contacts; // use shared ContactDto, ContactCategoryDto, AliasNameDto, ContactCreateRequest, ContactUpdateRequest
+using FinanceManager.Shared; // IApiClient
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ContactDetailViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
     public ContactDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        var http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<IApiClient>() ?? new ApiClient(http);
     }
 
     // Identity / status
@@ -89,14 +91,10 @@ public sealed class ContactDetailViewModel : ViewModelBase
     {
         try
         {
-            var resp = await _http.GetAsync("/api/contact-categories", ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>(cancellationToken: ct) ?? new();
-                Categories.Clear();
-                Categories.AddRange(list.Select(c => new CategoryItem { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name));
-                RaiseStateChanged();
-            }
+            var list = await _api.ContactCategories_ListAsync(ct);
+            Categories.Clear();
+            Categories.AddRange(list.Select(c => new CategoryItem { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name));
+            RaiseStateChanged();
         }
         catch { }
     }
@@ -106,27 +104,19 @@ public sealed class ContactDetailViewModel : ViewModelBase
         if (!ContactId.HasValue) { return; }
         try
         {
-            var resp = await _http.GetAsync($"/api/contacts/{ContactId}", ct);
-            if (resp.IsSuccessStatusCode)
+            var dto = await _api.Contacts_GetAsync(ContactId.Value, ct);
+            if (dto != null)
             {
-                var dto = await resp.Content.ReadFromJsonAsync<ContactDto>(cancellationToken: ct);
-                if (dto != null)
-                {
-                    Name = dto.Name;
-                    Type = dto.Type;
-                    CategoryId = dto.CategoryId?.ToString() ?? string.Empty;
-                    IsPaymentIntermediary = dto.IsPaymentIntermediary;
-                    Description = dto.Description;
-                    SymbolAttachmentId = dto.SymbolAttachmentId; // new
-                }
-            }
-            else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                Error = "ErrorNotFound";
+                Name = dto.Name;
+                Type = dto.Type;
+                CategoryId = dto.CategoryId?.ToString() ?? string.Empty;
+                IsPaymentIntermediary = dto.IsPaymentIntermediary;
+                Description = dto.Description;
+                SymbolAttachmentId = dto.SymbolAttachmentId; // new
             }
             else
             {
-                Error = "ErrorLoadFailed";
+                Error = "ErrorNotFound";
             }
         }
         catch (Exception ex)
@@ -143,16 +133,11 @@ public sealed class ContactDetailViewModel : ViewModelBase
             Guid? catId = Guid.TryParse(CategoryId, out var parsed) ? parsed : null;
             if (IsNew)
             {
-                var create = new ContactCreateRequest(Name.Trim(), Type, catId, Description, IsPaymentIntermediary);
-                var resp = await _http.PostAsJsonAsync("/api/contacts", create, ct);
-                if (resp.IsSuccessStatusCode)
+                var dto = await _api.Contacts_CreateAsync(new ContactCreateRequest(Name.Trim(), Type, catId, Description, IsPaymentIntermediary), ct);
+                if (dto != null)
                 {
-                    var dto = await resp.Content.ReadFromJsonAsync<ContactDto>(cancellationToken: ct);
-                    if (dto != null)
-                    {
-                        ContactId = dto.Id; RaiseStateChanged();
-                        return dto.Id;
-                    }
+                    ContactId = dto.Id; SymbolAttachmentId = dto.SymbolAttachmentId; RaiseStateChanged();
+                    return dto.Id;
                 }
                 else
                 {
@@ -161,9 +146,8 @@ public sealed class ContactDetailViewModel : ViewModelBase
             }
             else
             {
-                var update = new ContactUpdateRequest(Name.Trim(), Type, catId, Description, IsPaymentIntermediary);
-                var resp = await _http.PutAsJsonAsync($"/api/contacts/{ContactId}", update, ct);
-                if (!resp.IsSuccessStatusCode)
+                var updated = await _api.Contacts_UpdateAsync(ContactId!.Value, new ContactUpdateRequest(Name.Trim(), Type, catId, Description, IsPaymentIntermediary), ct);
+                if (updated == null)
                 {
                     Error = "ErrorSaveFailed";
                 }
@@ -187,8 +171,8 @@ public sealed class ContactDetailViewModel : ViewModelBase
         Busy = true; Error = null; RaiseStateChanged();
         try
         {
-            var resp = await _http.DeleteAsync($"/api/contacts/{ContactId}", ct);
-            if (!resp.IsSuccessStatusCode)
+            var ok = await _api.Contacts_DeleteAsync(ContactId.Value, ct);
+            if (!ok)
             {
                 Error = "ErrorDeleteFailed";
             }
@@ -209,13 +193,9 @@ public sealed class ContactDetailViewModel : ViewModelBase
         if (IsNew || !ContactId.HasValue) { Aliases = new(); RaiseStateChanged(); return; }
         try
         {
-            var resp = await _http.GetAsync($"/api/contacts/{ContactId}/aliases", ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var list = await resp.Content.ReadFromJsonAsync<List<AliasNameDto>>(cancellationToken: ct) ?? new();
-                Aliases = list.Select(a => new AliasItem { Id = a.Id, Pattern = a.Pattern }).ToList();
-                RaiseStateChanged();
-            }
+            var list = await _api.Contacts_GetAliasesAsync(ContactId.Value, ct);
+            Aliases = list.Select(a => new AliasItem { Id = a.Id, Pattern = a.Pattern }).ToList();
+            RaiseStateChanged();
         }
         catch { }
     }
@@ -227,15 +207,11 @@ public sealed class ContactDetailViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(pattern)) { AliasError = "ErrorAliasEmpty"; RaiseStateChanged(); return; }
         try
         {
-            var resp = await _http.PostAsJsonAsync($"/api/contacts/{ContactId}/aliases", new AliasCreateRequest(pattern), ct);
-            if (resp.IsSuccessStatusCode)
+            var ok = await _api.Contacts_AddAliasAsync(ContactId!.Value, new AliasCreateRequest(pattern), ct);
+            if (ok)
             {
                 NewAlias = string.Empty;
                 await LoadAliasesAsync(ct);
-            }
-            else
-            {
-                AliasError = await resp.Content.ReadAsStringAsync(ct);
             }
         }
         catch (Exception ex)
@@ -250,14 +226,10 @@ public sealed class ContactDetailViewModel : ViewModelBase
         AliasError = null; RaiseStateChanged();
         try
         {
-            var resp = await _http.DeleteAsync($"/api/contacts/{ContactId}/aliases/{aliasId}", ct);
-            if (resp.IsSuccessStatusCode)
+            var ok = await _api.Contacts_DeleteAliasAsync(ContactId!.Value, aliasId, ct);
+            if (ok)
             {
                 await LoadAliasesAsync(ct);
-            }
-            else
-            {
-                AliasError = await resp.Content.ReadAsStringAsync(ct);
             }
         }
         catch (Exception ex)
@@ -284,18 +256,9 @@ public sealed class ContactDetailViewModel : ViewModelBase
         if (IsNew || !ContactId.HasValue || targetId == Guid.Empty) { throw new InvalidOperationException("Invalid merge target."); }
         try
         {
-            var resp = await _http.PostAsJsonAsync($"/api/contacts/{ContactId}/merge", new ContactMergeRequest(targetId), ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                ShowMergeDialog = false;
-                return true;
-            }
-            else
-            {
-                var raw = await resp.Content.ReadAsStringAsync(ct);
-                string? msg = TryExtractProblemMessage(raw) ?? "Merge failed.";
-                throw new InvalidOperationException(msg);
-            }
+            var dto = await _api.Contacts_MergeAsync(ContactId.Value, new ContactMergeRequest(targetId), ct);
+            ShowMergeDialog = false;
+            return dto is not null;
         }
         catch (InvalidOperationException)
         {

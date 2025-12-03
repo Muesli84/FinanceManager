@@ -82,14 +82,10 @@ public sealed class AccountDetailViewModel : ViewModelBase
     {
         try
         {
-            var resp = await _http.GetAsync("/api/contacts?type=Bank&all=true", ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>(cancellationToken: ct) ?? new();
-                BankContacts.Clear();
-                BankContacts.AddRange(list.Select(c => new BankContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name));
-                RaiseStateChanged();
-            }
+            var list = await _api.Contacts_ListAsync(skip: 0, take: 200, type: ContactType.Bank, all: true, nameFilter: null, ct);
+            BankContacts.Clear();
+            BankContacts.AddRange(list.Select(c => new BankContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name));
+            RaiseStateChanged();
         }
         catch { }
     }

@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject FinanceManager.Shared.IApiClient Api
 @using FinanceManager.Application.Statements
 @using FinanceManager.Domain.Statements
 @using FinanceManager.Shared.Dtos
@@ -292,16 +293,12 @@
 
     private async Task LoadAccountsAsync()
     {
-        var resp = await Http.GetAsync("/api/accounts?skip=0&take=500");
-        if (resp.IsSuccessStatusCode)
-        {
-            var list = await resp.Content.ReadFromJsonAsync<List<AccountDto>>() ?? new();
-            _accounts = list.Select(a => new AccountVm { Id = a.Id, Name = a.Name, BankContactId = a.BankContactId }).ToList();
-            var contactsResp = await Http.GetAsync("/api/contacts?skip=0&take=500");
-            _contacts = contactsResp.IsSuccessStatusCode ? await contactsResp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new() : new();
-            var bankContacts = _contacts.Where(c => c.Type == ContactType.Bank).ToDictionary(c => c.Id, c => c.Name);
-            _groupedAccounts = _accounts.GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)").OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
-        }
+        var list = await Api.GetAccountsAsync(skip: 0, take: 500, bankContactId: null);
+        _accounts = list.Select(a => new AccountVm { Id = a.Id, Name = a.Name, BankContactId = a.BankContactId }).ToList();
+        var contacts = await Api.Contacts_ListAsync(skip: 0, take: 500, type: null, all: true, nameFilter: null);
+        _contacts = contacts.ToList();
+        var bankContacts = _contacts.Where(c => c.Type == ContactType.Bank).ToDictionary(c => c.Id, c => c.Name);
+        _groupedAccounts = _accounts.GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)").OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
     }
 
     private async Task LoadSavingsPlansAsync()

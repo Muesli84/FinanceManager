@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject FinanceManager.Shared.IApiClient Api
 @using FinanceManager.Domain.Statements
 @using Microsoft.Extensions.Localization
 @using FinanceManager.Web.Components.Shared
@@ -722,13 +723,13 @@ else
 
     private async Task LoadContactsAsync()
     {
-        var resp = await Http.GetAsync("/api/contacts?all=true");
-        if (resp.IsSuccessStatusCode)
+        try
         {
-            var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
+            var list = await Api.Contacts_ListAsync(skip: 0, take: 1000, type: null, all: true, nameFilter: null);
             _allContacts = list.Select(c => new ContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name).ToList();
             _selfContactId = list.FirstOrDefault(c => c.Type == ContactType.Self)?.Id;
         }
+        catch { }
     }
 
     private async Task LoadUserSavingsPlansAsync()

@@ -1,6 +1,6 @@
 @using System.ComponentModel.DataAnnotations
 @using FinanceManager.Shared.Dtos
-@inject HttpClient Http
+@inject FinanceManager.Shared.IApiClient Api
 @rendermode InteractiveServer
 
 @if (Visible)
@@ -84,26 +84,17 @@
         _loading = true;
         try
         {
-            // Große Menge: gefiltert nur nach Type falls Bank-Kontakt
-            string typeConstraint = string.Equals(CurrentContactType, "Bank", StringComparison.OrdinalIgnoreCase)
-                ? "&type=Bank&all=true"
-                : "&all=true";
-
-            var resp = await Http.GetAsync($"/api/contacts?skip=0&take=1{typeConstraint}");
-            // take=1 wird durch all=true überschrieben -> Server setzt hartes Limit
-            if (resp.IsSuccessStatusCode)
-            {
-                var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new();
-                _all = list
-                    .Where(c => c.Id != CurrentContactId)
-                    .Select(c => new ContactOption(c.Id, c.Name, c.Type.ToString()))
-                    .OrderBy(c => c.Name)
-                    .ToList();
-            }
+            bool bankOnly = string.Equals(CurrentContactType, "Bank", StringComparison.OrdinalIgnoreCase);
+            var list = await Api.Contacts_ListAsync(skip:0, take:50, type: bankOnly ? ContactType.Bank : null, all: true);
+            _all = list
+                .Where(c => c.Id != CurrentContactId)
+                .Select(c => new ContactOption(c.Id, c.Name, c.Type.ToString()))
+                .OrderBy(c => c.Name)
+                .ToList();
         }
         catch(Exception ex)
         {
-            
+            Error = ex.Message;
         }
         finally
         {
