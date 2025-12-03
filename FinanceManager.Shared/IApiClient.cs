@@ -191,4 +191,40 @@ public interface IApiClient
     Task<HomeKpiDto?> HomeKpis_UpdateAsync(Guid id, HomeKpiUpdateRequest request, CancellationToken ct = default);
     /// <summary>Deletes a home KPI. Returns false when not found.</summary>
     Task<bool> HomeKpis_DeleteAsync(Guid id, CancellationToken ct = default);
+
+    // Meta Holidays
+    /// <summary>
+    /// Returns the list of available holiday provider kinds as strings.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Array of provider kind names.</returns>
+    Task<string[]> Meta_GetHolidayProvidersAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Returns supported country ISO codes for holiday data.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Array of country codes (ISO).</returns>
+    Task<string[]> Meta_GetHolidayCountriesAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Returns subdivision (state/region) codes for the given provider and country.
+    /// </summary>
+    /// <param name="provider">Holiday provider kind (enum name, case insensitive).</param>
+    /// <param name="country">ISO country code.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Array of subdivision codes or empty when unsupported.</returns>
+    Task<string[]> Meta_GetHolidaySubdivisionsAsync(string provider, string country, CancellationToken ct = default);
+
+    // User Settings - Notifications
+    /// <summary>Gets the current user's notification settings.</summary>
+    Task<NotificationSettingsDto?> User_GetNotificationSettingsAsync(CancellationToken ct = default);
+    /// <summary>Updates the current user's notification settings.</summary>
+    /// <param name="monthlyEnabled">Monthly reminder enabled flag.</param>
+    /// <param name="hour">Monthly reminder hour (0-23) or null.</param>
+    /// <param name="minute">Monthly reminder minute (0-59) or null.</param>
+    /// <param name="provider">Holiday provider name.</param>
+    /// <param name="country">Holiday country ISO code.</param>
+    /// <param name="subdivision">Holiday subdivision code.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>True on success.</returns>
+    Task<bool> User_UpdateNotificationSettingsAsync(bool monthlyEnabled, int? hour, int? minute, string? provider, string? country, string? subdivision, CancellationToken ct = default);
 }

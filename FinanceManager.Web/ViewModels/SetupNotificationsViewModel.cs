@@ -2,11 +2,12 @@ namespace FinanceManager.Web.ViewModels;
 
 public sealed class SetupNotificationsViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
     public SetupNotificationsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        var http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(http);
     }
 
     public NotificationSettingsDto Model { get; private set; } = new();
@@ -34,7 +35,7 @@ public sealed class SetupNotificationsViewModel : ViewModelBase
         Loading = true; Error = null; SaveError = null; SavedOk = false; RaiseStateChanged();
         try
         {
-            var dto = await _http.GetFromJsonAsync<NotificationSettingsDto>("/api/user/settings/notifications", ct);
+            var dto = await _api.User_GetNotificationSettingsAsync(ct);
             Model = dto ?? new NotificationSettingsDto();
             if (string.IsNullOrEmpty(Model.HolidayProvider))
             {
@@ -60,7 +61,7 @@ public sealed class SetupNotificationsViewModel : ViewModelBase
         {
             try
             {
-                var list = await _http.GetFromJsonAsync<string[]>($"/api/meta/holiday-subdivisions?provider={Model.HolidayProvider}&country={Model.HolidayCountryCode}", ct);
+                var list = await _api.Meta_GetHolidaySubdivisionsAsync(Model.HolidayProvider!, Model.HolidayCountryCode!, ct);
                 Subdivisions = list ?? Array.Empty<string>();
             }
             catch
@@ -76,28 +77,19 @@ public sealed class SetupNotificationsViewModel : ViewModelBase
         Saving = true; SavedOk = false; SaveError = null; RaiseStateChanged();
         try
         {
-            var payload = new
+            var ok = await _api.User_UpdateNotificationSettingsAsync(Model.MonthlyReminderEnabled, Hour, Minute, Model.HolidayProvider, Model.HolidayCountryCode, Model.HolidaySubdivisionCode, ct);
+            if (ok)
             {
-                Model.MonthlyReminderEnabled,
-                MonthlyReminderHour = Hour,
-                MonthlyReminderMinute = Minute,
-                Model.HolidayProvider,
-                Model.HolidayCountryCode,
-                Model.HolidaySubdivisionCode
-            };
-            using var resp = await _http.PutAsJsonAsync("/api/user/settings/notifications", payload, ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                Model.MonthlyReminderEnabled = payload.MonthlyReminderEnabled;
-                Model.MonthlyReminderHour = payload.MonthlyReminderHour;
-                Model.MonthlyReminderMinute = payload.MonthlyReminderMinute;
+                Model.MonthlyReminderEnabled = Model.MonthlyReminderEnabled;
+                Model.MonthlyReminderHour = Hour;
+                Model.MonthlyReminderMinute = Minute;
                 _original = Clone(Model);
                 SavedOk = true;
                 RecomputeDirty();
             }
             else
             {
-                SaveError = await resp.Content.ReadAsStringAsync(ct);
+                SaveError = "SaveFailed";
             }
         }
         catch (Exception ex)

@@ -732,4 +732,62 @@ public sealed class ApiClient : IApiClient
     }
 
     #endregion Home KPIs
+
+    #region Meta Holidays
+    /// <inheritdoc />
+    public async Task<string[]> Meta_GetHolidayProvidersAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/meta/holiday-providers", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<string[]>(cancellationToken: ct) ?? Array.Empty<string>();
+    }
+    /// <inheritdoc />
+    public async Task<string[]> Meta_GetHolidayCountriesAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/meta/holiday-countries", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<string[]>(cancellationToken: ct) ?? Array.Empty<string>();
+    }
+    /// <inheritdoc />
+    public async Task<string[]> Meta_GetHolidaySubdivisionsAsync(string provider, string country, CancellationToken ct = default)
+    {
+        var url = $"/api/meta/holiday-subdivisions?provider={Uri.EscapeDataString(provider ?? string.Empty)}&country={Uri.EscapeDataString(country ?? string.Empty)}";
+        var resp = await _http.GetAsync(url, ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<string[]>(cancellationToken: ct) ?? Array.Empty<string>();
+    }
+
+    #endregion Meta Holidays
+
+    #region User Settings - Notifications
+
+    /// <summary>
+    /// Gets the notification settings for the current user.
+    /// </summary>
+    public async Task<NotificationSettingsDto?> User_GetNotificationSettingsAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/user/settings/notifications", ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadFromJsonAsync<NotificationSettingsDto>(cancellationToken: ct);
+    }
+
+    /// <summary>
+    /// Updates the notification settings for the current user.
+    /// </summary>
+    public async Task<bool> User_UpdateNotificationSettingsAsync(bool monthlyEnabled, int? hour, int? minute, string? provider, string? country, string? subdivision, CancellationToken ct = default)
+    {
+        var payload = new
+        {
+            MonthlyReminderEnabled = monthlyEnabled,
+            MonthlyReminderHour = hour,
+            MonthlyReminderMinute = minute,
+            HolidayProvider = provider,
+            HolidayCountryCode = country,
+            HolidaySubdivisionCode = subdivision
+        };
+        var resp = await _http.PutAsJsonAsync("/api/user/settings/notifications", payload, ct);
+        return resp.IsSuccessStatusCode;
+    }
+
+    #endregion User Settings - Notifications
 }
