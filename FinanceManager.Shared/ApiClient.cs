@@ -790,4 +790,25 @@ public sealed class ApiClient : IApiClient
     }
 
     #endregion User Settings - Notifications
+
+    #region Notifications
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<NotificationDto>> Notifications_ListAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/notifications", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<NotificationDto>>(cancellationToken: ct) ?? Array.Empty<NotificationDto>();
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> Notifications_DismissAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/notifications/{id}/dismiss", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    #endregion Notifications
 }

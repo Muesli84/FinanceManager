@@ -227,4 +227,20 @@ public interface IApiClient
     /// <param name="ct">Cancellation token.</param>
     /// <returns>True on success.</returns>
     Task<bool> User_UpdateNotificationSettingsAsync(bool monthlyEnabled, int? hour, int? minute, string? provider, string? country, string? subdivision, CancellationToken ct = default);
+
+    // Notifications
+    /// <summary>
+    /// Lists currently active notifications for the signed-in user (filtered server-side by current UTC time).
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Active notifications.</returns>
+    Task<IReadOnlyList<NotificationDto>> Notifications_ListAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Dismisses a notification by its id for the current user.
+    /// </summary>
+    /// <param name="id">Notification id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>True if the notification existed and was dismissed.</returns>
+    Task<bool> Notifications_DismissAsync(Guid id, CancellationToken ct = default);
 }
