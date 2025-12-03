@@ -425,4 +425,88 @@ public sealed class ApiClient : IApiClient
     }
 
     #endregion Attachments
+
+    #region Backups
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<BackupDto>> Backups_ListAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/setup/backups", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<BackupDto>>(cancellationToken: ct) ?? Array.Empty<BackupDto>();
+    }
+
+    /// <inheritdoc />
+    public async Task<BackupDto> Backups_CreateAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync("/api/setup/backups", content: null, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<BackupDto>(cancellationToken: ct))!;
+    }
+
+    /// <inheritdoc />
+    public async Task<BackupDto> Backups_UploadAsync(Stream fileStream, string fileName, CancellationToken ct = default)
+    {
+        using var content = new MultipartFormDataContent();
+        content.Add(new StreamContent(fileStream), "file", fileName);
+        var resp = await _http.PostAsync("/api/setup/backups/upload", content, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<BackupDto>(cancellationToken: ct))!;
+    }
+
+    /// <inheritdoc />
+    public async Task<Stream?> Backups_DownloadAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/setup/backups/{id}/download", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        var ms = new MemoryStream();
+        await resp.Content.CopyToAsync(ms, ct);
+        ms.Position = 0;
+        return ms;
+    }
+
+    /// <inheritdoc />
+    public async Task<BackupRestoreStatusDto> Backups_StartApplyAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/setup/backups/{id}/apply/start", content: null, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<BackupRestoreStatusDto>(cancellationToken: ct))!;
+    }
+
+    /// <inheritdoc />
+    public async Task<BackupRestoreStatusDto> Backups_GetStatusAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/setup/backups/restore/status", ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<BackupRestoreStatusDto>(cancellationToken: ct))!;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> Backups_ApplyAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/setup/backups/{id}/apply", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> Backups_CancelAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync("/api/setup/backups/restore/cancel", content: null, ct);
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> Backups_DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/setup/backups/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    #endregion Backups
 }

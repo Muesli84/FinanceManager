@@ -4,6 +4,7 @@ using FinanceManager.Shared.Dtos.Security;
 using FinanceManager.Shared.Dtos.Attachments;
 using FinanceManager.Shared.Dtos.Common;
 using FinanceManager.Shared.Dtos.Admin; // added for BackgroundTaskInfo/Type/Status
+using FinanceManager.Shared.Dtos.Backups; // add backups dtos
 
 namespace FinanceManager.Shared;
 
@@ -68,4 +69,15 @@ public interface IApiClient
     Task<AttachmentCategoryDto?> Attachments_UpdateCategoryNameAsync(Guid id, string name, CancellationToken ct = default);
     Task<bool> Attachments_DeleteCategoryAsync(Guid id, CancellationToken ct = default);
     Task<AttachmentDownloadTokenDto?> Attachments_CreateDownloadTokenAsync(Guid id, int validSeconds = 60, CancellationToken ct = default);
+
+    // Setup - Backups
+    Task<IReadOnlyList<BackupDto>> Backups_ListAsync(CancellationToken ct = default);
+    Task<BackupDto> Backups_CreateAsync(CancellationToken ct = default);
+    Task<BackupDto> Backups_UploadAsync(Stream fileStream, string fileName, CancellationToken ct = default);
+    Task<Stream?> Backups_DownloadAsync(Guid id, CancellationToken ct = default);
+    Task<bool> Backups_ApplyAsync(Guid id, CancellationToken ct = default);
+    Task<BackupRestoreStatusDto> Backups_StartApplyAsync(Guid id, CancellationToken ct = default);
+    Task<BackupRestoreStatusDto> Backups_GetStatusAsync(CancellationToken ct = default);
+    Task<bool> Backups_CancelAsync(CancellationToken ct = default);
+    Task<bool> Backups_DeleteAsync(Guid id, CancellationToken ct = default);
 }

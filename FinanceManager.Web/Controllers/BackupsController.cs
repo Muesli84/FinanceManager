@@ -102,7 +102,7 @@ public sealed class BackupsController : ControllerBase
     /// </summary>
     /// <param name="id">Backup id to restore.</param>
     [HttpPost("{id:guid}/apply/start")]
-    [ProducesResponseType(typeof(BackupRestoreStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto), StatusCodes.Status200OK)]
     public IActionResult StartApplyAsync(Guid id)
     {
         var existing = _taskManager.GetAll()
@@ -122,7 +122,7 @@ public sealed class BackupsController : ControllerBase
     /// Gets status of current or last backup restore task for the user.
     /// </summary>
     [HttpGet("restore/status")]
-    [ProducesResponseType(typeof(BackupRestoreStatusDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto), StatusCodes.Status200OK)]
     public IActionResult GetStatus()
     {
         var tasks = _taskManager.GetAll()
@@ -132,7 +132,7 @@ public sealed class BackupsController : ControllerBase
         var active = tasks.FirstOrDefault(t => t.Status == BackgroundTaskStatus.Running || t.Status == BackgroundTaskStatus.Queued) ?? tasks.FirstOrDefault();
         if (active == null)
         {
-            return Ok(new BackupRestoreStatusDto(false, 0, 0, null, null, 0, 0, null));
+            return Ok(new FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto(false, 0, 0, null, null, 0, 0, null));
         }
         return Ok(MapStatus(active));
     }
@@ -166,11 +166,11 @@ public sealed class BackupsController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
-    private static BackupRestoreStatusDto MapStatus(BackgroundTaskInfo info)
+    private static FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto MapStatus(BackgroundTaskInfo info)
     {
         var running = info.Status == BackgroundTaskStatus.Running || info.Status == BackgroundTaskStatus.Queued;
         var error = info.Status == BackgroundTaskStatus.Failed ? (info.ErrorDetail ?? info.Message) : null;
-        return new BackupRestoreStatusDto(
+        return new FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto(
             running,
             info.Processed ?? 0,
             info.Total ?? 0,

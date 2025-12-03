@@ -2,11 +2,11 @@ namespace FinanceManager.Web.ViewModels;
 
 public sealed class SetupBackupsViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
-    public SetupBackupsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SetupBackupsViewModel(IServiceProvider sp, FinanceManager.Shared.IApiClient apiClient) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = apiClient;
     }
 
     public sealed class BackupItem
@@ -33,8 +33,8 @@ public sealed class SetupBackupsViewModel : ViewModelBase
         try
         {
             Error = null;
-            var list = await _http.GetFromJsonAsync<List<BackupItem>>("/api/setup/backups", ct);
-            Backups = list ?? new List<BackupItem>();
+            var list = await _api.Backups_ListAsync(ct);
+            Backups = list?.Select(b => new BackupItem { Id = b.Id, CreatedUtc = b.CreatedUtc, FileName = b.FileName, SizeBytes = b.SizeBytes, Source = b.Source }).ToList() ?? new List<BackupItem>();
         }
         catch (Exception ex)
         {
@@ -49,19 +49,11 @@ public sealed class SetupBackupsViewModel : ViewModelBase
         Busy = true; Error = null; RaiseStateChanged();
         try
         {
-            using var resp = await _http.PostAsync("/api/setup/backups", content: null, ct);
-            if (resp.IsSuccessStatusCode)
+            var created = await _api.Backups_CreateAsync(ct);
+            if (created is not null)
             {
-                var created = await resp.Content.ReadFromJsonAsync<BackupItem>(cancellationToken: ct);
-                if (created is not null)
-                {
-                    Backups ??= new List<BackupItem>();
-                    Backups.Insert(0, created);
-                }
-            }
-            else
-            {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Backups ??= new List<BackupItem>();
+                Backups.Insert(0, new BackupItem { Id = created.Id, CreatedUtc = created.CreatedUtc, FileName = created.FileName, SizeBytes = created.SizeBytes, Source = created.Source });
             }
         }
         catch (Exception ex)
@@ -76,15 +68,8 @@ public sealed class SetupBackupsViewModel : ViewModelBase
         if (id == Guid.Empty) { return; }
         try
         {
-            using var resp = await _http.PostAsync($"/api/setup/backups/{id}/apply/start", content: null, ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                HasActiveRestore = true;
-            }
-            else
-            {
-                Error = await resp.Content.ReadAsStringAsync(ct);
-            }
+            var status = await _api.Backups_StartApplyAsync(id, ct);
+            HasActiveRestore = status.Running;
         }
         catch (Exception ex)
         {
@@ -98,17 +83,13 @@ public sealed class SetupBackupsViewModel : ViewModelBase
         Busy = true; Error = null; RaiseStateChanged();
         try
         {
-            using var resp = await _http.DeleteAsync($"/api/setup/backups/{id}", ct);
-            if (resp.IsSuccessStatusCode)
+            var ok = await _api.Backups_DeleteAsync(id, ct);
+            if (ok)
             {
                 if (Backups is not null)
                 {
                     Backups.RemoveAll(x => x.Id == id);
                 }
-            }
-            else
-            {
-                Error = await resp.Content.ReadAsStringAsync(ct);
             }
         }
         catch (Exception ex)
@@ -124,20 +105,10 @@ public sealed class SetupBackupsViewModel : ViewModelBase
         Busy = true; Error = null; RaiseStateChanged();
         try
         {
-            using var content = new MultipartFormDataContent();
-            content.Add(new StreamContent(stream), "file", fileName);
-            using var resp = await _http.PostAsync("/api/setup/backups/upload", content, ct);
-            if (resp.IsSuccessStatusCode)
+            var created = await _api.Backups_UploadAsync(stream, fileName, ct);
+            if (created is not null)
             {
-                var created = await resp.Content.ReadFromJsonAsync<BackupItem>(cancellationToken: ct);
-                if (created is not null)
-                {
-                    AddBackup(created);
-                }
-            }
-            else
-            {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                AddBackup(new BackupItem { Id = created.Id, CreatedUtc = created.CreatedUtc, FileName = created.FileName, SizeBytes = created.SizeBytes, Source = created.Source });
             }
         }
         catch (Exception ex)
