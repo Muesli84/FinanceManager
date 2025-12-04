@@ -152,8 +152,8 @@
     {
         try
         {
-            var list = await Http.GetFromJsonAsync<List<ReportFavoriteDto>>("/api/report-favorites");
-            _favorites = (list ?? new()).OrderBy(f => f.Name).ToList();
+            var list = await Api.Reports_ListFavoritesAsync();
+            _favorites = (list ?? Array.Empty<ReportFavoriteDto>()).OrderBy(f => f.Name).ToList();
         }
         catch { }
         StateHasChanged();
@@ -486,7 +486,7 @@
         try
         {
             if (!k.ReportFavoriteId.HasValue) { return; }
-            var fav = await Http.GetFromJsonAsync<ReportFavoriteDto>($"/api/report-favorites/{k.ReportFavoriteId.Value}");
+            var fav = await Api.Reports_GetFavoriteAsync(k.ReportFavoriteId.Value);
             if (fav == null) { return; }
             var disablePrev = fav.Interval == ReportInterval.Ytd || fav.Interval == ReportInterval.Year;
             var req = new ReportAggregatesQueryRequest(
@@ -504,9 +504,7 @@
                     fav.Filters.ContactCategoryIds, fav.Filters.SavingsPlanCategoryIds, fav.Filters.SecurityCategoryIds, fav.Filters.SecuritySubTypes,
                     fav.Filters.IncludeDividendRelated)
             );
-            var resp = await Http.PostAsJsonAsync("/api/report-aggregates", req);
-            if (!resp.IsSuccessStatusCode) { return; }
-            var agg = await resp.Content.ReadFromJsonAsync<ReportAggregationResult>();
+            var agg = await Api.Reports_QueryAggregatesAsync(req);
             if (agg == null) { return; }
             var points = (agg.Points ?? new List<ReportAggregatePointDto>()).OrderBy(p => p.GroupKey).ThenBy(p => p.PeriodStart).ToList();
             var series = points.Where(p => p.ParentGroupKey == null || p.GroupKey.StartsWith("Type:"))

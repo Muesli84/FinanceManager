@@ -28,7 +28,7 @@ public sealed class ReportFavoriteCreateApiRequest
     /// <summary>Optional multi-kind selection for the report.</summary>
     public IReadOnlyCollection<PostingKind>? PostingKinds { get; set; }
     /// <summary>Optional filter sets.</summary>
-    public ReportFavoriteFiltersApiDto? Filters { get; set; }
+    public ReportFavoriteFiltersDto? Filters { get; set; }
     /// <summary>Aggregate by ValutaDate when true.</summary>
     public bool UseValutaDate { get; set; }
 }

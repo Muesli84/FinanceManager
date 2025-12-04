@@ -879,4 +879,64 @@ public sealed class ApiClient : IApiClient
     }
 
     #endregion Postings
+
+    #region Reports
+
+    public async Task<ReportAggregationResult> Reports_QueryAggregatesAsync(ReportAggregatesQueryRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync("/api/report-aggregates", req, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<ReportAggregationResult>(cancellationToken: ct))!;
+    }
+
+    public async Task<IReadOnlyList<ReportFavoriteDto>> Reports_ListFavoritesAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/report-favorites", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<ReportFavoriteDto>>(cancellationToken: ct) ?? Array.Empty<ReportFavoriteDto>();
+    }
+
+    public async Task<ReportFavoriteDto?> Reports_GetFavoriteAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/report-favorites/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<ReportFavoriteDto>(cancellationToken: ct);
+    }
+
+    public async Task<ReportFavoriteDto> Reports_CreateFavoriteAsync(ReportFavoriteCreateApiRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync("/api/report-favorites", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            var err = await resp.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(err);
+        }
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<ReportFavoriteDto>(cancellationToken: ct))!;
+    }
+
+    public async Task<ReportFavoriteDto?> Reports_UpdateFavoriteAsync(Guid id, ReportFavoriteUpdateApiRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync($"/api/report-favorites/{id}", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            var err = await resp.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(err);
+        }
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) { throw new ArgumentException(await resp.Content.ReadAsStringAsync(ct)); }
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<ReportFavoriteDto>(cancellationToken: ct);
+    }
+
+    public async Task<bool> Reports_DeleteFavoriteAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/report-favorites/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    #endregion Reports
 }

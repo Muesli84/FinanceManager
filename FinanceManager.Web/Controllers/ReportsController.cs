@@ -3,7 +3,6 @@ using FinanceManager.Application.Reports;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.Sqlite;
 using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
@@ -72,21 +71,6 @@ public sealed class ReportsController : ControllerBase
             var query = new ReportAggregationQuery(_current.UserId, req.PostingKind, req.Interval, req.Take, req.IncludeCategory, req.ComparePrevious, req.CompareYear, multi, analysisDate, req.UseValutaDate, filters);
             var result = await _agg.QueryAsync(query, ct);
             return Ok(result);
-        }
-        catch (SqliteException ex) when (ex.SqliteErrorCode == 1 && ex.Message.Contains("SecuritySubType", StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning(ex, "Aggregation failed due to missing column. Retrying.");
-            try
-            {
-                var query = new ReportAggregationQuery(_current.UserId, req.PostingKind, req.Interval, req.Take, req.IncludeCategory, req.ComparePrevious, req.CompareYear, req.PostingKinds, req.AnalysisDate, req.UseValutaDate, req.Filters == null ? null : new ReportAggregationFilters(req.Filters.AccountIds, req.Filters.ContactIds, req.Filters.SavingsPlanIds, req.Filters.SecurityIds, req.Filters.ContactCategoryIds, req.Filters.SavingsPlanCategoryIds, req.Filters.SecurityCategoryIds, req.Filters.SecuritySubTypes, req.Filters.IncludeDividendRelated));
-                var result = await _agg.QueryAsync(query, ct);
-                return Ok(result);
-            }
-            catch (Exception ex2)
-            {
-                _logger.LogError(ex2, "Aggregation retry failed");
-                return Problem("Unexpected error", statusCode: 500);
-            }
         }
         catch (Exception ex)
         {

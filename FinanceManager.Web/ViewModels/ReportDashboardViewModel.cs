@@ -281,10 +281,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     public async Task<ReportAggregationResult> LoadAsync(PostingKind primaryKind, int interval, int take, bool includeCategory, bool comparePrevious, bool compareYear, IReadOnlyCollection<PostingKind>? postingKinds, DateTime? analysisDate, ReportAggregatesFiltersRequest? filters, bool useValutaDate = false, CancellationToken ct = default)
     {
         var req = new ReportAggregatesQueryRequest(primaryKind, (ReportInterval)interval, take, includeCategory, comparePrevious, compareYear, useValutaDate, postingKinds, analysisDate, filters);
-        var resp = await _http.PostAsJsonAsync("/api/report-aggregates", req, ct);
-        resp.EnsureSuccessStatusCode();
-        var result = await resp.Content.ReadFromJsonAsync<ReportAggregationResult>(cancellationToken: ct) ?? new ReportAggregationResult((ReportInterval)interval, Array.Empty<ReportAggregatePointDto>(), false, false);
-        return result;
+        var result = await _api.Reports_QueryAggregatesAsync(req, ct);
+        return result ?? new ReportAggregationResult((ReportInterval)interval, Array.Empty<ReportAggregatePointDto>(), false, false);
     }
 
     public async Task<ReportFavoriteDto?> SaveFavoriteAsync(string name, PostingKind primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<PostingKind>? postingKinds, ReportAggregatesFiltersRequest? filters, bool useValutaDate = false, CancellationToken ct = default)
@@ -301,23 +299,20 @@ public sealed class ReportDashboardViewModel : ViewModelBase
             ShowChart = showChart,
             Expandable = expandable,
             PostingKinds = postingKinds,
-            Filters = filters is null ? null : new ReportFavoriteFiltersApiDto
-            {
-                AccountIds = filters.AccountIds,
-                ContactIds = filters.ContactIds,
-                SavingsPlanIds = filters.SavingsPlanIds,
-                SecurityIds = filters.SecurityIds,
-                ContactCategoryIds = filters.ContactCategoryIds,
-                SavingsPlanCategoryIds = filters.SavingsPlanCategoryIds,
-                SecurityCategoryIds = filters.SecurityCategoryIds,
-                SecuritySubTypes = filters.SecuritySubTypes,
-                IncludeDividendRelated = filters.IncludeDividendRelated
-            },
+            Filters = filters is null ? null : new ReportFavoriteFiltersDto(
+                filters.AccountIds,
+                filters.ContactIds,
+                filters.SavingsPlanIds,
+                filters.SecurityIds,
+                filters.ContactCategoryIds,
+                filters.SavingsPlanCategoryIds,
+                filters.SecurityCategoryIds,
+                filters.SecuritySubTypes,
+                filters.IncludeDividendRelated
+            ),
             UseValutaDate = useValutaDate
         };
-        var resp = await _http.PostAsJsonAsync("/api/report-favorites", payload, ct);
-        if (!resp.IsSuccessStatusCode) { return null; }
-        return await resp.Content.ReadFromJsonAsync<ReportFavoriteDto>(cancellationToken: ct);
+        return await _api.Reports_CreateFavoriteAsync(payload, ct);
     }
 
     public async Task<ReportFavoriteDto?> UpdateFavoriteAsync(Guid id, string name, PostingKind primaryKind, bool includeCategory, int interval, int take, bool comparePrevious, bool compareYear, bool showChart, bool expandable, IReadOnlyCollection<PostingKind>? postingKinds, ReportAggregatesFiltersRequest? filters, bool useValutaDate = false, CancellationToken ct = default)
@@ -334,23 +329,20 @@ public sealed class ReportDashboardViewModel : ViewModelBase
             ShowChart = showChart,
             Expandable = expandable,
             PostingKinds = postingKinds,
-            Filters = filters is null ? null : new ReportFavoriteFiltersApiDto
-            {
-                AccountIds = filters.AccountIds,
-                ContactIds = filters.ContactIds,
-                SavingsPlanIds = filters.SavingsPlanIds,
-                SecurityIds = filters.SecurityIds,
-                ContactCategoryIds = filters.ContactCategoryIds,
-                SavingsPlanCategoryIds = filters.SavingsPlanCategoryIds,
-                SecurityCategoryIds = filters.SecurityCategoryIds,
-                SecuritySubTypes = filters.SecuritySubTypes,
-                IncludeDividendRelated = filters.IncludeDividendRelated
-            },
+            Filters = filters is null ? null : new ReportFavoriteFiltersDto(
+                filters.AccountIds,
+                filters.ContactIds,
+                filters.SavingsPlanIds,
+                filters.SecurityIds,
+                filters.ContactCategoryIds,
+                filters.SavingsPlanCategoryIds,
+                filters.SecurityCategoryIds,
+                filters.SecuritySubTypes,
+                filters.IncludeDividendRelated
+            ),
             UseValutaDate = useValutaDate
         };
-        var resp = await _http.PutAsJsonAsync($"/api/report-favorites/{id}", payload, ct);
-        if (!resp.IsSuccessStatusCode) { return null; }
-        return await resp.Content.ReadFromJsonAsync<ReportFavoriteDto>(cancellationToken: ct);
+        return await _api.Reports_UpdateFavoriteAsync(id, payload, ct);
     }
 
     public async Task<bool> DeleteFavoriteAsync(Guid id, CancellationToken ct = default)

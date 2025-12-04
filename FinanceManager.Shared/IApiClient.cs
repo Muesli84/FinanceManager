@@ -8,6 +8,7 @@ using FinanceManager.Shared.Dtos.Backups; // add backups dtos
 using FinanceManager.Shared.Dtos.Contacts; // contact categories dtos
 using FinanceManager.Shared.Dtos.HomeKpi; // home kpi dtos
 using FinanceManager.Shared.Dtos.Postings; // postings dtos
+using FinanceManager.Shared.Dtos.Reports; // reports dtos
 
 namespace FinanceManager.Shared;
 
@@ -258,4 +259,18 @@ public interface IApiClient
     Task<IReadOnlyList<PostingServiceDto>> Postings_GetSecurityAsync(Guid securityId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
     /// <summary>Returns first entity links for a posting group or null when not found or unauthorized.</summary>
     Task<GroupLinksDto?> Postings_GetGroupLinksAsync(Guid groupId, CancellationToken ct = default);
+
+    // Reports
+    /// <summary>Executes a report aggregation query.</summary>
+    Task<ReportAggregationResult> Reports_QueryAggregatesAsync(ReportAggregatesQueryRequest req, CancellationToken ct = default);
+    /// <summary>Lists all report favorites for the current user.</summary>
+    Task<IReadOnlyList<ReportFavoriteDto>> Reports_ListFavoritesAsync(CancellationToken ct = default);
+    /// <summary>Gets a single report favorite by id or null if not found.</summary>
+    Task<ReportFavoriteDto?> Reports_GetFavoriteAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Creates a new report favorite.</summary>
+    Task<ReportFavoriteDto> Reports_CreateFavoriteAsync(ReportFavoriteCreateApiRequest req, CancellationToken ct = default);
+    /// <summary>Updates an existing report favorite. Returns null if not found.</summary>
+    Task<ReportFavoriteDto?> Reports_UpdateFavoriteAsync(Guid id, ReportFavoriteUpdateApiRequest req, CancellationToken ct = default);
+    /// <summary>Deletes a report favorite. Returns false when not found.</summary>
+    Task<bool> Reports_DeleteFavoriteAsync(Guid id, CancellationToken ct = default);
 }
