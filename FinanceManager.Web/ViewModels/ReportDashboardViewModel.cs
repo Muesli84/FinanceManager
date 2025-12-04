@@ -392,12 +392,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                     }
                     else if (kind == PostingKind.Security) // Security
                     {
-                        var resp = await _http.GetAsync("/api/security-categories", ct);
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var cats = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>(cancellationToken: ct) ?? new();
-                            list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
-                        }
+                        var cats = await _api.SecurityCategories_ListAsync(ct);
+                        list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
                     }
                 }
                 else
@@ -440,17 +436,6 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         }
     }
 
-    public PostingKind GetActiveFilterTabKind()
-    {
-        if (ActiveFilterTabKind.HasValue && SelectedKinds.Contains(ActiveFilterTabKind.Value))
-        {
-            return ActiveFilterTabKind.Value;
-        }
-        return PrimaryKind;
-    }
-    public List<SimpleOption> GetOptionsForKind(PostingKind k)
-        => FilterOptionsByKind.TryGetValue(k, out var list) ? list : new List<SimpleOption>();
-
     // Filter dialog state and temp buffers
     public bool ShowFilterDialog { get; set; }
     public HashSet<Guid> TempAccounts { get; private set; } = new();
@@ -460,7 +445,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     public HashSet<Guid> TempContactCats { get; private set; } = new();
     public HashSet<Guid> TempSavingsCats { get; private set; } = new();
     public HashSet<Guid> TempSecurityCats { get; private set; } = new();
-    public HashSet<int> TempSecuritySubTypes { get; private set; } = new(); // new
+    public HashSet<int> TempSecuritySubTypes { get; private set; } = new();
 
     public void OpenFilterDialog()
     {
@@ -528,13 +513,36 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         RaiseStateChanged();
     }
 
+    public PostingKind GetActiveFilterTabKind()
+    {
+        if (ActiveFilterTabKind.HasValue && SelectedKinds.Contains(ActiveFilterTabKind.Value))
+        {
+            return ActiveFilterTabKind.Value;
+        }
+        return PrimaryKind;
+    }
+    public List<SimpleOption> GetOptionsForKind(PostingKind k)
+        => FilterOptionsByKind.TryGetValue(k, out var list) ? list : new List<SimpleOption>();
+
+    public void ClearTempFilters()
+    {
+        TempAccounts.Clear();
+        TempContacts.Clear();
+        TempSavings.Clear();
+        TempSecurities.Clear();
+        TempContactCats.Clear();
+        TempSavingsCats.Clear();
+        TempSecurityCats.Clear();
+        TempSecuritySubTypes.Clear();
+        RaiseStateChanged();
+    }
+
     public int GetSelectedTempFiltersCount()
     {
         if (IsMulti)
         {
             var entityCount = TempAccounts.Count + TempContacts.Count + TempSavings.Count + TempSecurities.Count;
             var catCount = TempContactCats.Count + TempSavingsCats.Count + TempSecurityCats.Count;
-            // Include subtype chips in count for visibility
             var typeCount = TempSecuritySubTypes.Count;
             return IncludeCategory ? (catCount + TempAccounts.Count + typeCount) : (entityCount + typeCount);
         }
@@ -566,19 +574,6 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 return baseCount + typeCount;
             }
         }
-    }
-
-    public void ClearTempFilters()
-    {
-        TempAccounts.Clear();
-        TempContacts.Clear();
-        TempSavings.Clear();
-        TempSecurities.Clear();
-        TempContactCats.Clear();
-        TempSavingsCats.Clear();
-        TempSecurityCats.Clear();
-        TempSecuritySubTypes.Clear();
-        RaiseStateChanged();
     }
 
     public async Task ApplyTempAndReloadAsync(DateTime? analysisDate, CancellationToken ct = default)
@@ -666,7 +661,6 @@ public sealed class ReportDashboardViewModel : ViewModelBase
         });
         return new List<UiRibbonGroup> { nav, actions, filters };
     }
-
     public void OpenFavoriteDialog(bool update, string? resetNameIfNew = null)
     {
         FavoriteDialogIsUpdate = update;

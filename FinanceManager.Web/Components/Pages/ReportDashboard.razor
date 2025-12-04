@@ -664,15 +664,11 @@ else
         // Load security categories
         try
         {
-            var resp = await Http.GetAsync("/api/security-categories");
-            if (resp.IsSuccessStatusCode)
+            var list = await Api.SecurityCategories_ListAsync();
+            foreach (var c in list)
             {
-                var list = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>() ?? new List<SecurityCategoryDto>();
-                foreach (var c in list)
-                {
-                    _securityCategorySymbolById[c.Id] = c.SymbolAttachmentId;
-                    if (!string.IsNullOrWhiteSpace(c.Name)) _securityCategorySymbolByName[c.Name!] = c.SymbolAttachmentId;
-                }
+                _securityCategorySymbolById[c.Id] = c.SymbolAttachmentId;
+                if (!string.IsNullOrWhiteSpace(c.Name)) _securityCategorySymbolByName[c.Name!] = c.SymbolAttachmentId;
             }
         }
         catch { }

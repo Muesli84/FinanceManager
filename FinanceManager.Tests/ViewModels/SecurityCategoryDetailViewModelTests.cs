@@ -91,7 +91,12 @@ public sealed class SecurityCategoryDetailViewModelTests
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/security-categories")
             {
                 postCalled = true;
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                // Realistische erfolgreiche Antwort mit JSON-Body
+                var newId = Guid.NewGuid();
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(CatJson(new { Id = newId, Name = "NewCat" }), Encoding.UTF8, "application/json")
+                };
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
@@ -135,7 +140,11 @@ public sealed class SecurityCategoryDetailViewModelTests
             }
             if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
             {
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                // Realistische erfolgreiche Antwort mit JSON-Body
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(CatJson(new { Id = id, Name = "Updated" }), Encoding.UTF8, "application/json")
+                };
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
@@ -173,6 +182,7 @@ public sealed class SecurityCategoryDetailViewModelTests
     public async Task Delete_Success_And_Fail()
     {
         var id = Guid.NewGuid();
+        // Erfolg
         var client = CreateHttpClient(req =>
         {
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
@@ -193,7 +203,26 @@ public sealed class SecurityCategoryDetailViewModelTests
         var ok = await vm.DeleteAsync();
         Assert.True(ok);
 
-        var clientFail = CreateHttpClient(req =>
+        // Fehlerfall 1: NotFound -> false + Err_NotFound
+        var clientNotFound = CreateHttpClient(req =>
+        {
+            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+            if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound);
+            }
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        });
+        var vmNotFound = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(clientNotFound));
+        await vmNotFound.InitializeAsync(id);
+        var okNotFound = await vmNotFound.DeleteAsync();
+        Assert.False(okNotFound);
+
+        // Fehlerfall 2: BadRequest -> InvalidOperationException
+        var clientBadReq = CreateHttpClient(req =>
         {
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
             {
@@ -204,15 +233,17 @@ public sealed class SecurityCategoryDetailViewModelTests
             }
             if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
             {
-                return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("bad", Encoding.UTF8, "text/plain") };
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = new StringContent("bad", Encoding.UTF8, "text/plain")
+                };
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
-        var vm2 = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(clientFail));
-        await vm2.InitializeAsync(id);
-        var ok2 = await vm2.DeleteAsync();
-        Assert.False(ok2);
-        Assert.Equal("bad", vm2.Error);
+        var vmBadReq = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(clientBadReq));
+        await vmBadReq.InitializeAsync(id);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => vmBadReq.DeleteAsync());
+        Assert.Equal("bad", ex.Message);
     }
 
     [Fact]

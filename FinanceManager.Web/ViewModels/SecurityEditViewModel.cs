@@ -67,11 +67,8 @@ public sealed class SecurityEditViewModel : ViewModelBase
 
     public async Task LoadCategoriesAsync(CancellationToken ct = default)
     {
-        var resp = await _http.GetAsync("/api/security-categories", ct);
-        if (resp.IsSuccessStatusCode)
-        {
-            Categories = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>(cancellationToken: ct) ?? new();
-        }
+        var list = await _api.SecurityCategories_ListAsync(ct);
+        Categories = list.ToList();
     }
 
     public async Task<SecurityDto?> SaveAsync(CancellationToken ct = default)

@@ -162,6 +162,22 @@ public interface IApiClient
     /// <summary>Clears any symbol attachment from a contact category. Returns false when not found.</summary>
     Task<bool> ContactCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default);
 
+    // Security Categories
+    /// <summary>Lists security categories for the current user.</summary>
+    Task<IReadOnlyList<SecurityCategoryDto>> SecurityCategories_ListAsync(CancellationToken ct = default);
+    /// <summary>Gets a single security category by id or null if not found.</summary>
+    Task<SecurityCategoryDto?> SecurityCategories_GetAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Creates a new security category.</summary>
+    Task<SecurityCategoryDto> SecurityCategories_CreateAsync(SecurityCategoryRequest request, CancellationToken ct = default);
+    /// <summary>Updates the name of a security category. Returns null when not found.</summary>
+    Task<SecurityCategoryDto?> SecurityCategories_UpdateAsync(Guid id, SecurityCategoryRequest request, CancellationToken ct = default);
+    /// <summary>Deletes a security category. Returns false when not found.</summary>
+    Task<bool> SecurityCategories_DeleteAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Assigns a symbol attachment to a security category. Returns false when not found.</summary>
+    Task<bool> SecurityCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
+    /// <summary>Clears any symbol attachment from a security category. Returns false when not found.</summary>
+    Task<bool> SecurityCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default);
+
     // Contacts
     /// <summary>Lists contacts with optional paging/filtering, or all when all=true.</summary>
     Task<IReadOnlyList<ContactDto>> Contacts_ListAsync(int skip = 0, int take = 50, ContactType? type = null, bool all = false, string? nameFilter = null, CancellationToken ct = default);

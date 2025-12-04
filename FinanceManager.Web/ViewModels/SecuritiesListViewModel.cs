@@ -52,16 +52,12 @@ public sealed class SecuritiesListViewModel : ViewModelBase
         var categorySymbolMap = new Dictionary<Guid, Guid?>();
         try
         {
-            var creq = await _http.GetAsync("/api/security-categories", ct);
-            if (creq.IsSuccessStatusCode)
+            var clist = await _api.SecurityCategories_ListAsync(ct);
+            foreach (var c in clist)
             {
-                var clist = await creq.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>(cancellationToken: ct) ?? new();
-                foreach (var c in clist)
+                if (c.Id != Guid.Empty)
                 {
-                    if (c.Id != Guid.Empty)
-                    {
-                        categorySymbolMap[c.Id] = c.SymbolAttachmentId;
-                    }
+                    categorySymbolMap[c.Id] = c.SymbolAttachmentId;
                 }
             }
         }
