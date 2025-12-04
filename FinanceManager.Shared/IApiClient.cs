@@ -7,6 +7,7 @@ using FinanceManager.Shared.Dtos.Admin; // added for BackgroundTaskInfo/Type/Sta
 using FinanceManager.Shared.Dtos.Backups; // add backups dtos
 using FinanceManager.Shared.Dtos.Contacts; // contact categories dtos
 using FinanceManager.Shared.Dtos.HomeKpi; // home kpi dtos
+using FinanceManager.Shared.Dtos.Postings; // postings dtos
 
 namespace FinanceManager.Shared;
 
@@ -243,4 +244,18 @@ public interface IApiClient
     /// <param name="ct">Cancellation token.</param>
     /// <returns>True if the notification existed and was dismissed.</returns>
     Task<bool> Notifications_DismissAsync(Guid id, CancellationToken ct = default);
+
+    // Postings
+    /// <summary>Gets a single posting by id or null if not found or not owned by the current user.</summary>
+    Task<PostingServiceDto?> Postings_GetByIdAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Lists postings for an account. Returns empty on not found or unauthorized.</summary>
+    Task<IReadOnlyList<PostingServiceDto>> Postings_GetAccountAsync(Guid accountId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
+    /// <summary>Lists postings for a contact. Returns empty on not found or unauthorized.</summary>
+    Task<IReadOnlyList<PostingServiceDto>> Postings_GetContactAsync(Guid contactId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
+    /// <summary>Lists postings for a savings plan. Returns empty on not found or unauthorized.</summary>
+    Task<IReadOnlyList<PostingServiceDto>> Postings_GetSavingsPlanAsync(Guid planId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default);
+    /// <summary>Lists postings for a security. Returns empty on not found or unauthorized.</summary>
+    Task<IReadOnlyList<PostingServiceDto>> Postings_GetSecurityAsync(Guid securityId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
+    /// <summary>Returns first entity links for a posting group or null when not found or unauthorized.</summary>
+    Task<GroupLinksDto?> Postings_GetGroupLinksAsync(Guid groupId, CancellationToken ct = default);
 }

@@ -5,11 +5,12 @@ namespace FinanceManager.Web.ViewModels;
 
 public sealed class PostingsSavingsPlanViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
     public PostingsSavingsPlanViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        var http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(http);
     }
 
     public Guid PlanId { get; private set; }
@@ -60,13 +61,11 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
         try
         {
             var firstPage = Skip == 0;
-            var parts = new List<string> { $"skip={Skip}", "take=50" };
-            if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
-            var url = $"/api/postings/savings-plan/{PlanId}?{string.Join('&', parts)}";
-            var chunk = await _http.GetFromJsonAsync<List<PostingServiceDto>>(url, ct) ?? new();
-            Items.AddRange(chunk.Select(Map));
-            Skip += chunk.Count;
-            if (chunk.Count == 0 || (!firstPage && chunk.Count < 50)) { CanLoadMore = false; }
+            var chunk = await _api.Postings_GetSavingsPlanAsync(PlanId, Skip, 50, null, null, Search, ct);
+            var list = chunk ?? Array.Empty<PostingServiceDto>();
+            Items.AddRange(list.Select(Map));
+            Skip += list.Count;
+            if (list.Count == 0 || (!firstPage && list.Count < 50)) { CanLoadMore = false; }
         }
         catch { }
         finally { Loading = false; RaiseStateChanged(); }

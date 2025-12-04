@@ -5,11 +5,12 @@ namespace FinanceManager.Web.ViewModels;
 
 public sealed class PostingDetailViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
     public PostingDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        var http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(http);
     }
 
     public Guid Id { get; private set; }
@@ -46,7 +47,7 @@ public sealed class PostingDetailViewModel : ViewModelBase
         Loading = true; RaiseStateChanged();
         try
         {
-            var dto = await _http.GetFromJsonAsync<PostingServiceDto>($"/api/postings/{Id}", ct);
+            var dto = await _api.Postings_GetByIdAsync(Id, ct);
             Detail = dto;
             if (Detail != null)
             {
@@ -67,7 +68,7 @@ public sealed class PostingDetailViewModel : ViewModelBase
         try
         {
             LinksLoading = true; RaiseStateChanged();
-            var dto = await _http.GetFromJsonAsync<GroupLinksDto>($"/api/postings/group/{Detail.GroupId}", ct);
+            var dto = await _api.Postings_GetGroupLinksAsync(Detail.GroupId, ct);
             if (dto != null)
             {
                 LinkedAccountId = dto.AccountId ?? LinkedAccountId;

@@ -5,11 +5,12 @@ namespace FinanceManager.Web.ViewModels;
 
 public sealed class PostingsAccountViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
     public PostingsAccountViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        var http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(http);
     }
 
     public Guid AccountId { get; private set; }
@@ -76,15 +77,11 @@ public sealed class PostingsAccountViewModel : ViewModelBase
         try
         {
             var firstPage = Skip == 0;
-            var parts = new List<string> { $"skip={Skip}", "take=50" };
-            if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
-            if (From.HasValue) { parts.Add($"from={From:yyyy-MM-dd}"); }
-            if (To.HasValue) { parts.Add($"to={To:yyyy-MM-dd}"); }
-            var url = $"/api/postings/account/{AccountId}?{string.Join('&', parts)}";
-            var chunk = await _http.GetFromJsonAsync<List<PostingServiceDto>>(url, ct) ?? new();
-            Items.AddRange(chunk.Select(Map));
-            Skip += chunk.Count;
-            if (chunk.Count == 0 || (!firstPage && chunk.Count < 50)) { CanLoadMore = false; }
+            var chunk = await _api.Postings_GetAccountAsync(AccountId, Skip, 50, Search, From, To, ct);
+            var list = chunk ?? Array.Empty<PostingServiceDto>();
+            Items.AddRange(list.Select(Map));
+            Skip += list.Count;
+            if (list.Count == 0 || (!firstPage && list.Count < 50)) { CanLoadMore = false; }
         }
         catch { }
         finally { Loading = false; RaiseStateChanged(); }
@@ -127,7 +124,7 @@ public sealed class PostingsAccountViewModel : ViewModelBase
         }
         try
         {
-            var dto = await _http.GetFromJsonAsync<GroupLinksDto>($"/api/postings/group/{sel.GroupId}", CancellationToken);
+            var dto = await _api.Postings_GetGroupLinksAsync(sel.GroupId, CancellationToken);
             LinkedAccountId = dto?.AccountId; LinkedContactId = dto?.ContactId; LinkedPlanId = dto?.SavingsPlanId; LinkedSecurityId = dto?.SecurityId;
         }
         catch { }
