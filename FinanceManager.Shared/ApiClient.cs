@@ -1,24 +1,19 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using FinanceManager.Shared.Dtos.SavingsPlans;
 
 
 namespace FinanceManager.Shared;
 
-/// <summary>
-/// Typed API client for the FinanceManager backend. Encapsulates HTTP calls to controller endpoints
-/// and returns strongly-typed request/response records from the FinanceManager.Shared project.
-///
-/// Configure an <see cref="HttpClient"/> with the API base address and pass it to the constructor.
-/// </summary>
-public sealed class ApiClient : IApiClient
+public class ApiClient : IApiClient
 {
     private readonly HttpClient _http;
+    public string? LastError { get; private set; }
 
-    /// <summary>
-    /// Creates a new instance of the API client.
-    /// </summary>
-    /// <param name="http">Pre-configured <see cref="HttpClient"/> pointing at the FinanceManager API base address.</param>
-    public ApiClient(HttpClient http) => _http = http ?? throw new ArgumentNullException(nameof(http));
+    public ApiClient(HttpClient http)
+    {
+        _http = http;
+    }
 
     #region Accounts
 
@@ -939,4 +934,93 @@ public sealed class ApiClient : IApiClient
     }
 
     #endregion Reports
+
+    #region Savings Plan Categories
+
+    public async Task<IReadOnlyList<SavingsPlanCategoryDto>> SavingsPlanCategories_ListAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/savings-plan-categories", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? Array.Empty<SavingsPlanCategoryDto>();
+    }
+
+    public async Task<SavingsPlanCategoryDto?> SavingsPlanCategories_GetAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/savings-plan-categories/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<SavingsPlanCategoryDto>(cancellationToken: ct);
+    }
+
+    public async Task<SavingsPlanCategoryDto?> SavingsPlanCategories_CreateAsync(SavingsPlanCategoryDto dto, CancellationToken ct = default)
+    {
+        LastError = null;
+        var resp = await _http.PostAsJsonAsync("/api/savings-plan-categories", dto, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            LastError = await resp.Content.ReadAsStringAsync(ct);
+            return null;
+        }
+        return await resp.Content.ReadFromJsonAsync<SavingsPlanCategoryDto>(cancellationToken: ct);
+    }
+
+    public async Task<SavingsPlanCategoryDto?> SavingsPlanCategories_UpdateAsync(Guid id, SavingsPlanCategoryDto dto, CancellationToken ct = default)
+    {
+        LastError = null;
+        var resp = await _http.PutAsJsonAsync($"/api/savings-plan-categories/{id}", dto, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        if (!resp.IsSuccessStatusCode)
+        {
+            LastError = await resp.Content.ReadAsStringAsync(ct);
+            return null;
+        }
+        return await resp.Content.ReadFromJsonAsync<SavingsPlanCategoryDto>(cancellationToken: ct);
+    }
+
+    public async Task<bool> SavingsPlanCategories_DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        LastError = null;
+        var resp = await _http.DeleteAsync($"/api/savings-plan-categories/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+        if (!resp.IsSuccessStatusCode)
+        {
+            LastError = await resp.Content.ReadAsStringAsync(ct);
+            return false;
+        }
+        return true;
+    }
+
+    public async Task<bool> SavingsPlanCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default)
+    {
+        LastError = null;
+        var resp = await _http.PostAsync($"/api/savings-plan-categories/{id}/symbol/{attachmentId}", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        if (!resp.IsSuccessStatusCode)
+        {
+            LastError = await resp.Content.ReadAsStringAsync(ct);
+            return false;
+        }
+        return true;
+    }
+
+    public async Task<bool> SavingsPlanCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default)
+    {
+        LastError = null;
+        var resp = await _http.DeleteAsync($"/api/savings-plan-categories/{id}/symbol", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        if (!resp.IsSuccessStatusCode)
+        {
+            LastError = await resp.Content.ReadAsStringAsync(ct);
+            return false;
+        }
+        return true;
+    }
+
+    #endregion Savings Plan Categories
 }

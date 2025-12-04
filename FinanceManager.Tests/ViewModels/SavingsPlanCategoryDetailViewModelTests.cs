@@ -86,12 +86,17 @@ public sealed class SavingsPlanCategoryDetailViewModelTests
     public async Task Save_New_Success_And_Fail()
     {
         bool postCalled = false;
+        var id = Guid.NewGuid();
         var client = CreateHttpClient(req =>
         {
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/savings-plan-categories")
             {
                 postCalled = true;
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                // Return created object as JSON for successful POST
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(CatJson(new { Id = id, Name = "NewCat" }), Encoding.UTF8, "application/json")
+                };
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
@@ -135,7 +140,11 @@ public sealed class SavingsPlanCategoryDetailViewModelTests
             }
             if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == $"/api/savings-plan-categories/{id}")
             {
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                // Return updated object as JSON for successful PUT
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(CatJson(new { Id = id, Name = "Updated" }), Encoding.UTF8, "application/json")
+                };
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });

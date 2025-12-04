@@ -1,14 +1,18 @@
 using Microsoft.Extensions.Localization;
+using FinanceManager.Shared;
+using FinanceManager.Shared.Dtos.SavingsPlans;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SavingsPlansViewModel : ViewModelBase
 {
     private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
     public SavingsPlansViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
     }
 
     public bool Loaded { get; private set; }
@@ -65,16 +69,12 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         var categorySymbolMap = new Dictionary<Guid, Guid?>();
         try
         {
-            var creq = await _http.GetAsync("/api/savings-plan-categories", ct);
-            if (creq.IsSuccessStatusCode)
+            var clist = await _api.SavingsPlanCategories_ListAsync(ct);
+            foreach (var c in clist)
             {
-                var clist = await creq.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? new();
-                foreach (var c in clist)
+                if (c.Id != Guid.Empty)
                 {
-                    if (c.Id != Guid.Empty)
-                    {
-                        categorySymbolMap[c.Id] = c.SymbolAttachmentId;
-                    }
+                    categorySymbolMap[c.Id] = c.SymbolAttachmentId;
                 }
             }
         }

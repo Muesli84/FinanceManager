@@ -1,14 +1,18 @@
 using Microsoft.Extensions.Localization;
+using FinanceManager.Shared;
+using FinanceManager.Shared.Dtos.SavingsPlans;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SavingsPlanEditViewModel : ViewModelBase
 {
     private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
     public SavingsPlanEditViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
     }
 
     public Guid? Id { get; private set; }
@@ -89,10 +93,13 @@ public sealed class SavingsPlanEditViewModel : ViewModelBase
 
     public async Task LoadCategoriesAsync(CancellationToken ct = default)
     {
-        var resp = await _http.GetAsync("/api/savings-plan-categories", ct);
-        if (resp.IsSuccessStatusCode)
+        try
         {
-            Categories = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? new();
+            Categories = (await _api.SavingsPlanCategories_ListAsync(ct)).ToList();
+        }
+        catch
+        {
+            Categories = new();
         }
         RaiseStateChanged();
     }

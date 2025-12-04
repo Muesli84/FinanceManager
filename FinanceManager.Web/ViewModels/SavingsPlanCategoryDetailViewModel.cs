@@ -1,16 +1,19 @@
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using FinanceManager.Shared.Dtos.SavingsPlans; // use shared SavingsPlanCategoryDto
+using FinanceManager.Shared;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SavingsPlanCategoryDetailViewModel : ViewModelBase
 {
     private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
     public SavingsPlanCategoryDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
     }
 
     public Guid? Id { get; private set; }
@@ -26,15 +29,11 @@ public sealed class SavingsPlanCategoryDetailViewModel : ViewModelBase
         Error = null;
         if (IsEdit)
         {
-            var resp = await _http.GetAsync($"/api/savings-plan-categories/{Id}", ct);
-            if (resp.IsSuccessStatusCode)
+            var dto = await _api.SavingsPlanCategories_GetAsync(Id.Value, ct);
+            if (dto is not null)
             {
-                var dto = await resp.Content.ReadFromJsonAsync<SavingsPlanCategoryDto>(cancellationToken: ct);
-                if (dto is not null)
-                {
-                    Model.Name = dto.Name ?? string.Empty;
-                    Model.SymbolAttachmentId = dto.SymbolAttachmentId;
-                }
+                Model.Name = dto.Name ?? string.Empty;
+                Model.SymbolAttachmentId = dto.SymbolAttachmentId;
             }
             else
             {
@@ -50,32 +49,23 @@ public sealed class SavingsPlanCategoryDetailViewModel : ViewModelBase
         Error = null;
         if (!IsEdit)
         {
-            var resp = await _http.PostAsJsonAsync("/api/savings-plan-categories", new SavingsPlanCategoryDto { Name = Model.Name }, ct);
-            if (!resp.IsSuccessStatusCode)
+            var created = await _api.SavingsPlanCategories_CreateAsync(new SavingsPlanCategoryDto { Name = Model.Name }, ct);
+            if (created is null)
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Error = _api.LastError ?? "Error_Create";
                 RaiseStateChanged();
                 return false;
             }
-            // update local state from created DTO if returned
-            try
-            {
-                var created = await resp.Content.ReadFromJsonAsync<SavingsPlanCategoryDto>(cancellationToken: ct);
-                if (created != null)
-                {
-                    Id = created.Id;
-                    Model.SymbolAttachmentId = created.SymbolAttachmentId;
-                }
-            }
-            catch { }
+            Id = created.Id;
+            Model.SymbolAttachmentId = created.SymbolAttachmentId;
             return true;
         }
         else
         {
-            var resp = await _http.PutAsJsonAsync($"/api/savings-plan-categories/{Id}", new SavingsPlanCategoryDto { Id = Id!.Value, Name = Model.Name }, ct);
-            if (!resp.IsSuccessStatusCode)
+            var updated = await _api.SavingsPlanCategories_UpdateAsync(Id!.Value, new SavingsPlanCategoryDto { Id = Id!.Value, Name = Model.Name }, ct);
+            if (updated is null)
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Error = _api.LastError ?? "Error_Update";
                 RaiseStateChanged();
                 return false;
             }
@@ -86,10 +76,10 @@ public sealed class SavingsPlanCategoryDetailViewModel : ViewModelBase
     public async Task<bool> DeleteAsync(CancellationToken ct = default)
     {
         if (!IsEdit || Id is null) { return false; }
-        var resp = await _http.DeleteAsync($"/api/savings-plan-categories/{Id}", ct);
-        if (!resp.IsSuccessStatusCode)
+        var ok = await _api.SavingsPlanCategories_DeleteAsync(Id.Value, ct);
+        if (!ok)
         {
-            Error = await resp.Content.ReadAsStringAsync(ct);
+            Error = _api.LastError ?? "Error_Delete";
             RaiseStateChanged();
             return false;
         }

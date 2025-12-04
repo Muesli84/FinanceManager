@@ -347,8 +347,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
 
     public async Task<bool> DeleteFavoriteAsync(Guid id, CancellationToken ct = default)
     {
-        var resp = await _http.DeleteAsync($"/api/report-favorites/{id}", ct);
-        return resp.IsSuccessStatusCode;
+        return await _api.Reports_DeleteFavoriteAsync(id, ct);
     }
 
     // Filter options (for dialog)
@@ -381,12 +380,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                     }
                     else if (kind == PostingKind.SavingsPlan) // SavingsPlan
                     {
-                        var resp = await _http.GetAsync("/api/savings-plan-categories", ct);
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var cats = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? new();
-                            list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
-                        }
+                        var cats = await _api.SavingsPlanCategories_ListAsync(ct);
+                        list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
                     }
                     else if (kind == PostingKind.Security) // Security
                     {

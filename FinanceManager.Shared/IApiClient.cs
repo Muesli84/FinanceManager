@@ -9,6 +9,7 @@ using FinanceManager.Shared.Dtos.Contacts; // contact categories dtos
 using FinanceManager.Shared.Dtos.HomeKpi; // home kpi dtos
 using FinanceManager.Shared.Dtos.Postings; // postings dtos
 using FinanceManager.Shared.Dtos.Reports; // reports dtos
+using FinanceManager.Shared.Dtos.SavingsPlans; // savings plans dtos
 
 namespace FinanceManager.Shared;
 
@@ -18,6 +19,11 @@ namespace FinanceManager.Shared;
 /// </summary>
 public interface IApiClient
 {
+    /// <summary>
+    /// Holds the last error message returned by the server when a method returns false/null due to a non-success HTTP status.
+    /// </summary>
+    string? LastError { get; }
+
     // Accounts
     /// <summary>Lists accounts for the current user. Optional filter by bank contact id.</summary>
     /// <param name="skip">Number of items to skip.</param>
@@ -273,4 +279,20 @@ public interface IApiClient
     Task<ReportFavoriteDto?> Reports_UpdateFavoriteAsync(Guid id, ReportFavoriteUpdateApiRequest req, CancellationToken ct = default);
     /// <summary>Deletes a report favorite. Returns false when not found.</summary>
     Task<bool> Reports_DeleteFavoriteAsync(Guid id, CancellationToken ct = default);
+
+    // Savings Plan Categories
+    /// <summary>Lists saving plan categories for the current user.</summary>
+    Task<IReadOnlyList<SavingsPlanCategoryDto>> SavingsPlanCategories_ListAsync(CancellationToken ct = default);
+    /// <summary>Gets a single saving plan category by id or null if not found.</summary>
+    Task<SavingsPlanCategoryDto?> SavingsPlanCategories_GetAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Creates a new saving plan category.</summary>
+    Task<SavingsPlanCategoryDto?> SavingsPlanCategories_CreateAsync(SavingsPlanCategoryDto dto, CancellationToken ct = default);
+    /// <summary>Updates an existing saving plan category. Returns null when not found.</summary>
+    Task<SavingsPlanCategoryDto?> SavingsPlanCategories_UpdateAsync(Guid id, SavingsPlanCategoryDto dto, CancellationToken ct = default);
+    /// <summary>Deletes a saving plan category. Returns false when not found.</summary>
+    Task<bool> SavingsPlanCategories_DeleteAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Assigns a symbol attachment to a saving plan category. Returns false when not found.</summary>
+    Task<bool> SavingsPlanCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
+    /// <summary>Clears the symbol attachment from a saving plan category. Returns false when not found.</summary>
+    Task<bool> SavingsPlanCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default);
 }

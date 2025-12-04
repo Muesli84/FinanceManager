@@ -652,15 +652,11 @@ else
         // Load savings plan categories
         try
         {
-            var resp = await Http.GetAsync("/api/savings-plan-categories");
-            if (resp.IsSuccessStatusCode)
+            var list = await Api.SavingsPlanCategories_ListAsync();
+            foreach (var c in list)
             {
-                var list = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>() ?? new List<SavingsPlanCategoryDto>();
-                foreach (var c in list)
-                {
-                    _savingsCategorySymbolById[c.Id] = c.SymbolAttachmentId;
-                    if (!string.IsNullOrWhiteSpace(c.Name)) _savingsCategorySymbolByName[c.Name!] = c.SymbolAttachmentId;
-                }
+                _savingsCategorySymbolById[c.Id] = c.SymbolAttachmentId;
+                if (!string.IsNullOrWhiteSpace(c.Name)) _savingsCategorySymbolByName[c.Name!] = c.SymbolAttachmentId;
             }
         }
         catch { }
@@ -876,7 +872,7 @@ else
     {
         try
         {
-            var fav = await Http.GetFromJsonAsync<FinanceManager.Shared.Dtos.Reports.ReportFavoriteDto>($"/api/report-favorites/{id}");
+            var fav = await Api.Reports_GetFavoriteAsync(id);
             if (fav != null)
             {
                 ApplyFavorite(fav);

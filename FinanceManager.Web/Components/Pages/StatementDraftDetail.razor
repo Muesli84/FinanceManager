@@ -75,14 +75,10 @@
         var savingsPlanCategoryMap = new Dictionary<Guid, Guid?>();
         try
         {
-            var sreq = await Http.GetAsync("/api/savings-plan-categories");
-            if (sreq.IsSuccessStatusCode)
+            var slist = await Api.SavingsPlanCategories_ListAsync();
+            foreach (var s in slist)
             {
-                var slist = await sreq.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>() ?? new();
-                foreach (var s in slist)
-                {
-                    savingsPlanCategoryMap[s.Id] = s.SymbolAttachmentId;
-                }
+                savingsPlanCategoryMap[s.Id] = s.SymbolAttachmentId;
             }
         }
         catch { }

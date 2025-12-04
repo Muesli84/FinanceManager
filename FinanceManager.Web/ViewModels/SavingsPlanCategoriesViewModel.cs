@@ -1,15 +1,17 @@
 using Microsoft.Extensions.Localization;
 using FinanceManager.Shared.Dtos.SavingsPlans; // SavingsPlanCategoryDto
+using FinanceManager.Shared;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SavingsPlanCategoriesViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
     public SavingsPlanCategoriesViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        var http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<IApiClient>() ?? new ApiClient(http);
     }
 
     public bool Loaded { get; private set; }
@@ -30,12 +32,7 @@ public sealed class SavingsPlanCategoriesViewModel : ViewModelBase
     public async Task LoadAsync(CancellationToken ct = default)
     {
         if (!IsAuthenticated) { return; }
-        var resp = await _http.GetAsync("/api/savings-plan-categories", ct);
-        if (!resp.IsSuccessStatusCode)
-        {
-            return;
-        }
-        var list = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? new();
+        var list = await _api.SavingsPlanCategories_ListAsync(ct);
         Categories.Clear();
         Categories.AddRange(list.Select(c => new CategoryItem { Id = c.Id, Name = c.Name, SymbolAttachmentId = c.SymbolAttachmentId }).OrderBy(c => c.Name));
         RaiseStateChanged();
