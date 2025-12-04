@@ -345,7 +345,7 @@
                     {
                         var j = 0;
                         builder2.OpenComponent<NumericKpi>(j++);
-                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/savings-plans/count?onlyActive=true"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var cnt = await Api.SavingsPlans_CountAsync(true); return cnt; } catch { return 0; } }));
                         builder2.CloseComponent();
                     }));
                     builder.CloseElement();

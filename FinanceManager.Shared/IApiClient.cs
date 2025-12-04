@@ -295,4 +295,16 @@ public interface IApiClient
     Task<bool> SavingsPlanCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     /// <summary>Clears the symbol attachment from a saving plan category. Returns false when not found.</summary>
     Task<bool> SavingsPlanCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default);
+
+    // Savings Plans
+    Task<IReadOnlyList<SavingsPlanDto>> SavingsPlans_ListAsync(bool onlyActive = true, CancellationToken ct = default);
+    Task<int> SavingsPlans_CountAsync(bool onlyActive = true, CancellationToken ct = default);
+    Task<SavingsPlanDto?> SavingsPlans_GetAsync(Guid id, CancellationToken ct = default);
+    Task<SavingsPlanDto> SavingsPlans_CreateAsync(SavingsPlanCreateRequest req, CancellationToken ct = default);
+    Task<SavingsPlanDto?> SavingsPlans_UpdateAsync(Guid id, SavingsPlanCreateRequest req, CancellationToken ct = default);
+    Task<SavingsPlanAnalysisDto> SavingsPlans_AnalyzeAsync(Guid id, CancellationToken ct = default);
+    Task<bool> SavingsPlans_ArchiveAsync(Guid id, CancellationToken ct = default);
+    Task<bool> SavingsPlans_DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<bool> SavingsPlans_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
+    Task<bool> SavingsPlans_ClearSymbolAsync(Guid id, CancellationToken ct = default);
 }

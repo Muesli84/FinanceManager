@@ -6,7 +6,7 @@ namespace FinanceManager.Shared.Dtos.SavingsPlans;
 /// Request payload to create a new savings plan.
 /// </summary>
 public sealed record SavingsPlanCreateRequest(
-    [property: Required, MinLength(2)] string Name,
+    [param: Required, MinLength(2)] string Name,
     SavingsPlanType Type,
     decimal? TargetAmount,
     DateTime? TargetDate,

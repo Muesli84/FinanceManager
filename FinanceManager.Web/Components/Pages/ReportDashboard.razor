@@ -682,18 +682,14 @@ else
         {
             try
             {
-                var resp = await Http.GetAsync("/api/contacts?all=true");
-                if (resp.IsSuccessStatusCode)
+                var list = await Api.Contacts_ListAsync(skip: 0, take: 2000, type: null, all: true, nameFilter: null);
+                foreach (var c in list)
                 {
-                    var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>() ?? new List<ContactDto>();
-                    foreach (var c in list)
+                    if (contactIds.Contains(c.Id))
                     {
-                        if (contactIds.Contains(c.Id))
-                        {
-                            Guid? display = c.SymbolAttachmentId;
-                            if (!display.HasValue && c.CategoryId.HasValue && _contactCategorySymbolById.TryGetValue(c.CategoryId.Value, out var catSym)) display = catSym;
-                            _contactDisplaySymbolById[c.Id] = display;
-                        }
+                        Guid? display = c.SymbolAttachmentId;
+                        if (!display.HasValue && c.CategoryId.HasValue && _contactCategorySymbolById.TryGetValue(c.CategoryId.Value, out var catSym)) display = catSym;
+                        _contactDisplaySymbolById[c.Id] = display;
                     }
                 }
             }
@@ -704,18 +700,14 @@ else
         {
             try
             {
-                var resp = await Http.GetAsync("/api/savings-plans?onlyActive=false");
-                if (resp.IsSuccessStatusCode)
+                var list = await Api.SavingsPlans_ListAsync(onlyActive: false);
+                foreach (var p in list)
                 {
-                    var list = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new List<SavingsPlanDto>();
-                    foreach (var p in list)
+                    if (savingsIds.Contains(p.Id))
                     {
-                        if (savingsIds.Contains(p.Id))
-                        {
-                            Guid? display = p.SymbolAttachmentId;
-                            if (!display.HasValue && p.CategoryId.HasValue && _savingsCategorySymbolById.TryGetValue(p.CategoryId.Value, out var catSym)) display = catSym;
-                            _savingsDisplaySymbolById[p.Id] = display;
-                        }
+                        Guid? display = p.SymbolAttachmentId;
+                        if (!display.HasValue && p.CategoryId.HasValue && _savingsCategorySymbolById.TryGetValue(p.CategoryId.Value, out var catSym)) display = catSym;
+                        _savingsDisplaySymbolById[p.Id] = display;
                     }
                 }
             }

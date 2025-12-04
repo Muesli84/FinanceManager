@@ -380,8 +380,15 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                     }
                     else if (kind == PostingKind.SavingsPlan) // SavingsPlan
                     {
-                        var cats = await _api.SavingsPlanCategories_ListAsync(ct);
-                        list = cats.Select(c => new SimpleOption { Id = c.Id, Name = c.Name }).ToList();
+                        try
+                        {
+                            var sav = await _api.SavingsPlans_ListAsync(onlyActive: false, ct);
+                            list = sav.Select(p => new SimpleOption { Id = p.Id, Name = p.Name }).ToList();
+                        }
+                        catch
+                        {
+                            list = new List<SimpleOption>();
+                        }
                     }
                     else if (kind == PostingKind.Security) // Security
                     {
@@ -407,11 +414,14 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                     }
                     else if (kind == PostingKind.SavingsPlan) // SavingsPlan
                     {
-                        var resp = await _http.GetAsync("/api/savings-plans?onlyActive=false", ct);
-                        if (resp.IsSuccessStatusCode)
+                        try
                         {
-                            var sav = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>(cancellationToken: ct) ?? new();
+                            var sav = await _api.SavingsPlans_ListAsync(onlyActive: false, ct);
                             list = sav.Select(p => new SimpleOption { Id = p.Id, Name = p.Name }).ToList();
+                        }
+                        catch
+                        {
+                            list = new List<SimpleOption>();
                         }
                     }
                     else if (kind == PostingKind.Security) // Security

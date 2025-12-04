@@ -299,8 +299,15 @@
 
     private async Task LoadSavingsPlansAsync()
     {
-        var resp = await Http.GetAsync("/api/savings-plans?onlyActive=true");
-        if (resp.IsSuccessStatusCode) { _savingsPlans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new(); }
+        try
+        {
+            var list = await Api.SavingsPlans_ListAsync(true);
+            _savingsPlans = list.ToList();
+        }
+        catch
+        {
+            _savingsPlans = new();
+        }
     }
 
     private async Task OnAccountChanged(ChangeEventArgs e)

@@ -13,6 +13,7 @@
 @inject IServiceProvider Services
 @inject IStringLocalizer<Components.Pages.SavingsPlanEdit> Localizer
 @inject IHttpClientFactory ClientFactory
+@inject FinanceManager.Shared.IApiClient Api
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SavingsPlanEdit.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -298,6 +299,6 @@
     }
     private void OpenAttachments(){ if (_vm!.Id.HasValue){ _showAttachments = true; StateHasChanged(); } }
 
-    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/savings-plans/{_vm.Id}/symbol/{aid}", null); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
-    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/savings-plans/{_vm.Id}/symbol"); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
+    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { await Api.SavingsPlans_SetSymbolAsync(_vm.Id!.Value, aid); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
+    private async Task OnSymbolCleared() { if (_vm?.Id != null) { await Api.SavingsPlans_ClearSymbolAsync(_vm.Id!.Value); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
 }

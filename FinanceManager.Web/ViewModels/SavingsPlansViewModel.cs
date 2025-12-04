@@ -58,12 +58,15 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         _analysisByPlan.Clear();
         _displaySymbolByPlan.Clear();
 
-        var resp = await _http.GetAsync($"/api/savings-plans?onlyActive={ShowActiveOnly}", ct);
-        if (!resp.IsSuccessStatusCode)
+        try
+        {
+            var list = await _api.SavingsPlans_ListAsync(ShowActiveOnly, ct);
+            Plans = list.ToList();
+        }
+        catch
         {
             return;
         }
-        Plans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>(cancellationToken: ct) ?? new();
 
         // Load category symbols to use as fallback
         var categorySymbolMap = new Dictionary<Guid, Guid?>();
@@ -106,12 +109,8 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         {
             try
             {
-                var r = await _http.GetAsync($"/api/savings-plans/{p.Id}/analysis", ct);
-                if (r.IsSuccessStatusCode)
-                {
-                    var dto = await r.Content.ReadFromJsonAsync<SavingsPlanAnalysisDto>(cancellationToken: ct);
-                    if (dto != null) { _analysisByPlan[p.Id] = dto; }
-                }
+                var dto = await _api.SavingsPlans_AnalyzeAsync(p.Id, ct);
+                if (dto != null) { _analysisByPlan[p.Id] = dto; }
             }
             catch { }
         });

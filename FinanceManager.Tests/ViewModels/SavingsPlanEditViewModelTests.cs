@@ -183,11 +183,15 @@ public sealed class SavingsPlanEditViewModelTests
             }
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == $"/api/savings-plans/{id}/archive")
             {
-                return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("bad", Encoding.UTF8, "text/plain") };
+                // Simuliere BadRequest, der als Ausnahme geworfen wird
+                var resp = new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("bad", Encoding.UTF8, "text/plain") };
+                return resp;
             }
             if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath == $"/api/savings-plans/{id}")
             {
-                return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("bad", Encoding.UTF8, "text/plain") };
+                // Simuliere BadRequest, der als Ausnahme geworfen wird
+                var resp = new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("bad", Encoding.UTF8, "text/plain") };
+                return resp;
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });

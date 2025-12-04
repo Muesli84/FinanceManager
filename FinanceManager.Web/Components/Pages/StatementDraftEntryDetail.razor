@@ -734,10 +734,14 @@ else
 
     private async Task LoadUserSavingsPlansAsync()
     {
-        var resp = await Http.GetAsync("/api/savings-plans?onlyActive=true");
-        if (resp.IsSuccessStatusCode)
+        try
         {
-            _userSavingsPlans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>() ?? new();
+            var list = await Api.SavingsPlans_ListAsync(true);
+            _userSavingsPlans = list.ToList();
+        }
+        catch
+        {
+            _userSavingsPlans = new();
         }
     }
 

@@ -63,11 +63,12 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
                 options.UseSqlite(_connection);
             });
 
-            // Ensure schema is created for the fresh database
+            // Ensure schema is created for the fresh database using migrations
             using var sp = services.BuildServiceProvider();
             using var scope = sp.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.EnsureDeleted();
+            db.Database.Migrate();
         });
     }
 
