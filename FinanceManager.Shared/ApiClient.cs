@@ -1130,4 +1130,136 @@ public class ApiClient : IApiClient
     }
 
     #endregion Savings Plans
+
+    #region Securities
+
+    public async Task<IReadOnlyList<SecurityDto>> Securities_ListAsync(bool onlyActive = true, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/securities?onlyActive={(onlyActive ? "true" : "false")}", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<SecurityDto>>(cancellationToken: ct) ?? Array.Empty<SecurityDto>();
+    }
+
+    public async Task<int> Securities_CountAsync(bool onlyActive = true, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/securities/count?onlyActive={(onlyActive ? "true" : "false")}", ct);
+        resp.EnsureSuccessStatusCode();
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        if (json.TryGetProperty("count", out var countProp) && countProp.TryGetInt32(out var cnt))
+        {
+            return cnt;
+        }
+        return 0;
+    }
+
+    public async Task<SecurityDto?> Securities_GetAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/securities/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<SecurityDto>(cancellationToken: ct);
+    }
+
+    public async Task<SecurityDto> Securities_CreateAsync(SecurityRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync("/api/securities", req, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<SecurityDto>(cancellationToken: ct))!;
+    }
+
+    public async Task<SecurityDto?> Securities_UpdateAsync(Guid id, SecurityRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync($"/api/securities/{id}", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<SecurityDto>(cancellationToken: ct);
+    }
+
+    public async Task<bool> Securities_ArchiveAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/securities/{id}/archive", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task<bool> Securities_DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/securities/{id}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task<bool> Securities_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/securities/{id}/symbol/{attachmentId}", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task<bool> Securities_ClearSymbolAsync(Guid id, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/securities/{id}/symbol", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task<AttachmentDto> Securities_UploadSymbolAsync(Guid id, Stream fileStream, string fileName, string? contentType = null, Guid? categoryId = null, CancellationToken ct = default)
+    {
+        using var content = new MultipartFormDataContent();
+        var part = new StreamContent(fileStream);
+        part.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+        content.Add(part, "file", fileName);
+        if (categoryId.HasValue) content.Add(new StringContent(categoryId.Value.ToString()), "categoryId");
+        var resp = await _http.PostAsync($"/api/securities/{id}/symbol", content, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            LastError = await resp.Content.ReadAsStringAsync(ct);
+        }
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<AttachmentDto>(cancellationToken: ct))!;
+    }
+
+    public async Task<IReadOnlyList<AggregatePointDto>?> Securities_GetAggregatesAsync(Guid securityId, string period = "Month", int take = 36, int? maxYearsBack = null, CancellationToken ct = default)
+    {
+        var url = $"/api/securities/{securityId}/aggregates?period={Uri.EscapeDataString(period)}&take={take}";
+        if (maxYearsBack.HasValue) url += $"&maxYearsBack={maxYearsBack.Value}";
+        var resp = await _http.GetAsync(url, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<AggregatePointDto>>(cancellationToken: ct);
+    }
+
+    public async Task<IReadOnlyList<SecurityPriceDto>?> Securities_GetPricesAsync(Guid id, int skip = 0, int take = 50, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/securities/{id}/prices?skip={skip}&take={take}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<SecurityPriceDto>>(cancellationToken: ct);
+    }
+
+    public async Task<BackgroundTaskInfo> Securities_EnqueueBackfillAsync(Guid? securityId, DateTime? fromDateUtc, DateTime? toDateUtc, CancellationToken ct = default)
+    {
+        var payload = new SecurityBackfillRequest(securityId, fromDateUtc, toDateUtc);
+        var resp = await _http.PostAsJsonAsync("/api/securities/backfill", payload, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<BackgroundTaskInfo>(cancellationToken: ct))!;
+    }
+
+    public async Task<IReadOnlyList<AggregatePointDto>> Securities_GetDividendsAsync(string? period = null, int? take = null, CancellationToken ct = default)
+    {
+        var url = "/api/securities/dividends";
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(period)) query.Add($"period={Uri.EscapeDataString(period)}");
+        if (take.HasValue) query.Add($"take={take.Value}");
+        if (query.Count > 0) url += "?" + string.Join("&", query);
+        var resp = await _http.GetAsync(url, ct);
+        resp.EnsureSuccessStatusCode();
+        return (await resp.Content.ReadFromJsonAsync<IReadOnlyList<AggregatePointDto>>(cancellationToken: ct))!;
+    }
+
+    #endregion Securities
 }

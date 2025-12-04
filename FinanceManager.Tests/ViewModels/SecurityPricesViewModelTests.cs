@@ -176,7 +176,12 @@ public sealed class SecurityPricesViewModelTests
             last = req;
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/securities/backfill")
             {
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                // Erfolgsfall: JSON-Objekt zurückgeben, wie vom ViewModel erwartet
+                var okJson = "{\"ok\":true}";
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(okJson, Encoding.UTF8, "application/json")
+                };
             }
             return new HttpResponseMessage(HttpStatusCode.OK)
             {

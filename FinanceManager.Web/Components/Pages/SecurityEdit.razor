@@ -12,6 +12,7 @@
 @using FinanceManager.Web.ViewModels
 @using Microsoft.Extensions.DependencyInjection
 @inject IStringLocalizer<Components.Pages.SecurityEdit> Localizer
+@inject FinanceManager.Shared.IApiClient Api
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SecurityEdit.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -295,6 +296,30 @@
         return qs.Count > 0 ? "?" + string.Join("&", qs) : string.Empty;
     }
 
-    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/securities/{_vm.Id}/symbol/{aid}", null); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
-    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/securities/{_vm.Id}/symbol"); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
+    private async Task OnSymbolUploaded(Guid aid)
+    {
+        if (_vm?.Id != null)
+        {
+            try
+            {
+                await Api.Securities_SetSymbolAsync(_vm.Id.Value, aid);
+                _vm!.Model.SymbolAttachmentId = aid;
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
+    private async Task OnSymbolCleared()
+    {
+        if (_vm?.Id != null)
+        {
+            try
+            {
+                await Api.Securities_ClearSymbolAsync(_vm.Id.Value);
+                _vm!.Model.SymbolAttachmentId = null;
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
 }

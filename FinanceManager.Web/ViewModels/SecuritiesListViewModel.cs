@@ -5,10 +5,12 @@ namespace FinanceManager.Web.ViewModels;
 public sealed class SecuritiesListViewModel : ViewModelBase
 {
     private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
     public SecuritiesListViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(_http);
     }
 
     public bool Loaded { get; private set; }
@@ -33,15 +35,18 @@ public sealed class SecuritiesListViewModel : ViewModelBase
     public async Task LoadAsync(CancellationToken ct = default)
     {
         if (!IsAuthenticated) { return; }
-        var resp = await _http.GetAsync($"/api/securities?onlyActive={OnlyActive}", ct);
-        if (!resp.IsSuccessStatusCode)
+        try
+        {
+            var list = await _api.Securities_ListAsync(OnlyActive, ct);
+            Items = list.ToList();
+        }
+        catch
         {
             Items = new();
             _displaySymbolBySecurity.Clear();
             RaiseStateChanged();
             return;
         }
-        Items = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>(cancellationToken: ct) ?? new();
 
         // Load categories to get category symbol fallbacks
         var categorySymbolMap = new Dictionary<Guid, Guid?>();

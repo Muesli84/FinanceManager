@@ -1,6 +1,6 @@
 using FinanceManager.Shared.Dtos.Accounts;
 using FinanceManager.Shared.Dtos.Users;
-using FinanceManager.Shared.Dtos.Security;
+using FinanceManager.Shared.Dtos.Securities;
 using FinanceManager.Shared.Dtos.Attachments;
 using FinanceManager.Shared.Dtos.Common;
 using FinanceManager.Shared.Dtos.Admin; // added for BackgroundTaskInfo/Type/Status
@@ -307,4 +307,34 @@ public interface IApiClient
     Task<bool> SavingsPlans_DeleteAsync(Guid id, CancellationToken ct = default);
     Task<bool> SavingsPlans_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     Task<bool> SavingsPlans_ClearSymbolAsync(Guid id, CancellationToken ct = default);
+
+    // Securities
+    /// <summary>Lists securities for the current user.</summary>
+    Task<IReadOnlyList<SecurityDto>> Securities_ListAsync(bool onlyActive = true, CancellationToken ct = default);
+    /// <summary>Counts all or active securities.</summary>
+    Task<int> Securities_CountAsync(bool onlyActive = true, CancellationToken ct = default);
+    /// <summary>Gets a single security by id or null if not found.</summary>
+    Task<SecurityDto?> Securities_GetAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Creates a new security.</summary>
+    Task<SecurityDto> Securities_CreateAsync(SecurityRequest req, CancellationToken ct = default);
+    /// <summary>Updates an existing security. Returns null when not found.</summary>
+    Task<SecurityDto?> Securities_UpdateAsync(Guid id, SecurityRequest req, CancellationToken ct = default);
+    /// <summary>Archives a security. Returns false when not found.</summary>
+    Task<bool> Securities_ArchiveAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Deletes a security. Returns false when not found.</summary>
+    Task<bool> Securities_DeleteAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Assigns a symbol attachment to a security. Returns false when not found.</summary>
+    Task<bool> Securities_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
+    /// <summary>Clears the symbol attachment from a security. Returns false when not found.</summary>
+    Task<bool> Securities_ClearSymbolAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Uploads a new symbol file for a security.</summary>
+    Task<AttachmentDto> Securities_UploadSymbolAsync(Guid id, Stream fileStream, string fileName, string? contentType = null, Guid? categoryId = null, CancellationToken ct = default);
+    /// <summary>Gets historical aggregate data for a security.</summary>
+    Task<IReadOnlyList<AggregatePointDto>?> Securities_GetAggregatesAsync(Guid securityId, string period = "Month", int take = 36, int? maxYearsBack = null, CancellationToken ct = default);
+    /// <summary>Gets historical price data for a security.</summary>
+    Task<IReadOnlyList<SecurityPriceDto>?> Securities_GetPricesAsync(Guid id, int skip = 0, int take = 50, CancellationToken ct = default);
+    /// <summary>Enqueues a background task to backfill missing security data.</summary>
+    Task<BackgroundTaskInfo> Securities_EnqueueBackfillAsync(Guid? securityId, DateTime? fromDateUtc, DateTime? toDateUtc, CancellationToken ct = default);
+    /// <summary>Lists upcoming or past dividends for a security.</summary>
+    Task<IReadOnlyList<AggregatePointDto>> Securities_GetDividendsAsync(string? period = null, int? take = null, CancellationToken ct = default);
 }

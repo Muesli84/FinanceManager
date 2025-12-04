@@ -6,10 +6,12 @@ namespace FinanceManager.Web.ViewModels;
 public sealed class SecurityEditViewModel : ViewModelBase
 {
     private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
     public SecurityEditViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(_http);
     }
 
     public Guid? Id { get; private set; }
@@ -33,22 +35,18 @@ public sealed class SecurityEditViewModel : ViewModelBase
         await LoadCategoriesAsync(ct);
         if (IsEdit)
         {
-            var resp = await _http.GetAsync($"/api/securities/{Id}", ct);
-            if (resp.IsSuccessStatusCode)
+            var dto = await _api.Securities_GetAsync(Id.Value, ct);
+            if (dto != null)
             {
-                var dto = await resp.Content.ReadFromJsonAsync<SecurityDto>(cancellationToken: ct);
-                if (dto != null)
-                {
-                    Display = new DisplayModel { Id = dto.Id, IsActive = dto.IsActive, CategoryName = dto.CategoryName };
-                    Model.Name = dto.Name;
-                    Model.Identifier = dto.Identifier;
-                    Model.Description = dto.Description;
-                    Model.AlphaVantageCode = dto.AlphaVantageCode;
-                    Model.CurrencyCode = dto.CurrencyCode;
-                    Model.CategoryId = dto.CategoryId;
-                    Model.SymbolAttachmentId = dto.SymbolAttachmentId;
-                    Loaded = true;
-                }
+                Display = new DisplayModel { Id = dto.Id, IsActive = dto.IsActive, CategoryName = dto.CategoryName };
+                Model.Name = dto.Name;
+                Model.Identifier = dto.Identifier;
+                Model.Description = dto.Description;
+                Model.AlphaVantageCode = dto.AlphaVantageCode;
+                Model.CurrencyCode = dto.CurrencyCode;
+                Model.CategoryId = dto.CategoryId;
+                Model.SymbolAttachmentId = dto.SymbolAttachmentId;
+                Loaded = true;
             }
             else
             {
@@ -81,27 +79,35 @@ public sealed class SecurityEditViewModel : ViewModelBase
         Error = null;
         if (IsEdit)
         {
-            var resp = await _http.PutAsJsonAsync($"/api/securities/{Id}", Model, ct);
-            if (!resp.IsSuccessStatusCode)
+            var dto = await _api.Securities_UpdateAsync(Id!.Value, new SecurityRequest
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Name = Model.Name,
+                Identifier = Model.Identifier,
+                Description = Model.Description,
+                AlphaVantageCode = Model.AlphaVantageCode,
+                CurrencyCode = Model.CurrencyCode,
+                CategoryId = Model.CategoryId
+            }, ct);
+            if (dto == null)
+            {
+                Error = _api.LastError;
                 RaiseStateChanged();
                 return null;
             }
-            var dto = await resp.Content.ReadFromJsonAsync<SecurityDto>(cancellationToken: ct);
             RaiseStateChanged();
             return dto;
         }
         else
         {
-            var resp = await _http.PostAsJsonAsync("/api/securities", Model, ct);
-            if (!resp.IsSuccessStatusCode)
+            var dto = await _api.Securities_CreateAsync(new SecurityRequest
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
-                RaiseStateChanged();
-                return null;
-            }
-            var dto = await resp.Content.ReadFromJsonAsync<SecurityDto>(cancellationToken: ct);
+                Name = Model.Name,
+                Identifier = Model.Identifier,
+                Description = Model.Description,
+                AlphaVantageCode = Model.AlphaVantageCode,
+                CurrencyCode = Model.CurrencyCode,
+                CategoryId = Model.CategoryId
+            }, ct);
             RaiseStateChanged();
             return dto;
         }
@@ -110,10 +116,10 @@ public sealed class SecurityEditViewModel : ViewModelBase
     public async Task<bool> ArchiveAsync(CancellationToken ct = default)
     {
         if (!IsEdit || Id == null || !Display.IsActive) { return false; }
-        var resp = await _http.PostAsync($"/api/securities/{Id}/archive", content: null, ct);
-        if (!resp.IsSuccessStatusCode)
+        var ok = await _api.Securities_ArchiveAsync(Id.Value, ct);
+        if (!ok)
         {
-            Error = await resp.Content.ReadAsStringAsync(ct);
+            Error = _api.LastError;
             RaiseStateChanged();
             return false;
         }
@@ -123,10 +129,10 @@ public sealed class SecurityEditViewModel : ViewModelBase
     public async Task<bool> DeleteAsync(CancellationToken ct = default)
     {
         if (!IsEdit || Id == null || Display.IsActive) { return false; }
-        var resp = await _http.DeleteAsync($"/api/securities/{Id}", ct);
-        if (!resp.IsSuccessStatusCode)
+        var ok = await _api.Securities_DeleteAsync(Id.Value, ct);
+        if (!ok)
         {
-            Error = await resp.Content.ReadAsStringAsync(ct);
+            Error = _api.LastError;
             RaiseStateChanged();
             return false;
         }

@@ -750,17 +750,19 @@ else
         if (!ShowSecuritySection && _vm?.Entry.SecurityId == null) { return; }
         if (_securities.Count > 0) { return; }
 
-        var resp = await Http.GetAsync("/api/securities?onlyActive=true");
-        if (!resp.IsSuccessStatusCode)
+        try
         {
-            _securityError = await resp.Content.ReadAsStringAsync();
+            var list = await Api.Securities_ListAsync(onlyActive: true);
+            _securities = list
+                .Select(s => new SecurityVm { Id = s.Id, Name = s.Name, Identifier = s.Identifier })
+                .OrderBy(s => s.Name)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _securityError = ex.Message;
             return;
         }
-        var list = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>() ?? new();
-        _securities = list
-            .Select(s => new SecurityVm { Id = s.Id, Name = s.Name, Identifier = s.Identifier })
-            .OrderBy(s => s.Name)
-            .ToList();
     }
 
     private void ShowSavingsPlanDropdown(FocusEventArgs _) { _savingsPlanDropdownVisible = true; BuildRibbon(); }

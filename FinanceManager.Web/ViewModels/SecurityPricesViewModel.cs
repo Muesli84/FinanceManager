@@ -4,10 +4,12 @@ namespace FinanceManager.Web.ViewModels;
 public sealed class SecurityPricesViewModel : ViewModelBase
 {
     private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
     public SecurityPricesViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
     {
         _http = httpFactory.CreateClient("Api");
+        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(_http);
     }
 
     public Guid SecurityId { get; private set; }
@@ -77,14 +79,10 @@ public sealed class SecurityPricesViewModel : ViewModelBase
         Loading = true;
         try
         {
-            var resp = await _http.GetAsync($"/api/securities/{SecurityId}/prices?skip={Skip}&take=100", ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var chunk = await resp.Content.ReadFromJsonAsync<List<SecurityPriceDto>>(cancellationToken: ct) ?? new();
-                Items.AddRange(chunk);
-                Skip += chunk.Count;
-                if (chunk.Count < 100) { CanLoadMore = false; }
-            }
+            var chunk = await _api.Securities_GetPricesAsync(SecurityId, skip: Skip, take: 100, ct) ?? new List<SecurityPriceDto>();
+            Items.AddRange(chunk);
+            Skip += chunk.Count;
+            if (chunk.Count < 100) { CanLoadMore = false; }
         }
         finally
         {
@@ -135,9 +133,8 @@ public sealed class SecurityPricesViewModel : ViewModelBase
         Submitting = true;
         try
         {
-            var payload = new { SecurityId = (Guid?)SecurityId, FromDateUtc = (DateTime?)from, ToDateUtc = (DateTime?)to };
-            var resp = await _http.PostAsJsonAsync("/api/securities/backfill", payload, ct);
-            if (!resp.IsSuccessStatusCode)
+            var info = await _api.Securities_EnqueueBackfillAsync(SecurityId, from, to, ct);
+            if (info == null)
             {
                 DialogErrorKey = "Dlg_EnqueueFailed";
                 return;

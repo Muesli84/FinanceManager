@@ -426,12 +426,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                     }
                     else if (kind == PostingKind.Security) // Security
                     {
-                        var resp = await _http.GetAsync("/api/securities?onlyActive=false", ct);
-                        if (resp.IsSuccessStatusCode)
-                        {
-                            var sec = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>(cancellationToken: ct) ?? new();
-                            list = sec.Select(s => new SimpleOption { Id = s.Id, Name = s.Name }).ToList();
-                        }
+                        var sec = await _api.Securities_ListAsync(onlyActive: false, ct);
+                        list = sec.Select(s => new SimpleOption { Id = s.Id, Name = s.Name }).ToList();
                     }
                 }
                 FilterOptionsByKind[k] = list;

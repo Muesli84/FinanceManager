@@ -718,18 +718,14 @@ else
         {
             try
             {
-                var resp = await Http.GetAsync("/api/securities?onlyActive=false");
-                if (resp.IsSuccessStatusCode)
+                var list = await Api.Securities_ListAsync(onlyActive: false);
+                foreach (var s in list)
                 {
-                    var list = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>() ?? new List<SecurityDto>();
-                    foreach (var s in list)
+                    if (securityIds.Contains(s.Id))
                     {
-                        if (securityIds.Contains(s.Id))
-                        {
-                            Guid? display = s.SymbolAttachmentId;
-                            if (!display.HasValue && s.CategoryId.HasValue && _securityCategorySymbolById.TryGetValue(s.CategoryId.Value, out var catSym)) display = catSym;
-                            _securityDisplaySymbolById[s.Id] = display;
-                        }
+                        Guid? display = s.SymbolAttachmentId;
+                        if (!display.HasValue && s.CategoryId.HasValue && _securityCategorySymbolById.TryGetValue(s.CategoryId.Value, out var catSym)) display = catSym;
+                        _securityDisplaySymbolById[s.Id] = display;
                     }
                 }
             }
