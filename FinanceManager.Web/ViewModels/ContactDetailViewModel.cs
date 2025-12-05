@@ -1,8 +1,7 @@
+using FinanceManager.Shared; // IApiClient
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
-using FinanceManager.Shared.Dtos.Contacts; // use shared ContactDto, ContactCategoryDto, AliasNameDto, ContactCreateRequest, ContactUpdateRequest
-using FinanceManager.Shared; // IApiClient
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -10,10 +9,9 @@ public sealed class ContactDetailViewModel : ViewModelBase
 {
     private readonly IApiClient _api;
 
-    public ContactDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public ContactDetailViewModel(IServiceProvider sp) : base(sp)
     {
-        var http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<IApiClient>() ?? new ApiClient(http);
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     // Identity / status

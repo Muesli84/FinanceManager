@@ -1,9 +1,3 @@
-using System.Net.Http.Headers;
-using FinanceManager.Shared;
-using FinanceManager.Shared.Dtos.Accounts;
-using FinanceManager.Shared.Dtos.Contacts;
-using FinanceManager.Shared.Dtos.Statements;
-using FinanceManager.Shared.Dtos.Users;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;

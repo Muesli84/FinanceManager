@@ -1,19 +1,15 @@
-using Microsoft.Extensions.Localization;
-using FinanceManager.Shared.Dtos.Accounts; // use shared AccountDto
-using FinanceManager.Shared.Dtos.Contacts; // use shared ContactDto and ContactCategoryDto
 using FinanceManager.Shared; // IApiClient
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class AccountsViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
     private readonly IApiClient _api;
 
-    public AccountsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public AccountsViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public bool Loaded { get; private set; }

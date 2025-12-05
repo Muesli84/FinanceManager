@@ -7,16 +7,9 @@ public sealed class SetupAttachmentCategoriesViewModel : ViewModelBase
 {
     private readonly IApiClient _api;
 
-    // Backward-compatible ctor used in tests: build ApiClient from named HttpClient
-    public SetupAttachmentCategoriesViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SetupAttachmentCategoriesViewModel(IServiceProvider sp) : base(sp)
     {
-        var http = httpFactory.CreateClient("Api");
-        _api = new ApiClient(http);
-    }
-
-    public SetupAttachmentCategoriesViewModel(IServiceProvider sp, IHttpClientFactory httpFactory, IApiClient api) : base(sp)
-    {
-        _api = api;
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public List<AttachmentCategoryDto> Items { get; } = new();

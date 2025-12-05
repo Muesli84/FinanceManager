@@ -1,6 +1,7 @@
-using System.Data.Common;
+using FinanceManager.Application; // BackgroundTaskRunner
 using FinanceManager.Infrastructure;
 using FinanceManager.Web;
+using FinanceManager.Web.Services; // SecurityPriceWorker
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -8,8 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting; // for IHostedService
-using FinanceManager.Application; // BackgroundTaskRunner
-using FinanceManager.Web.Services; // SecurityPriceWorker
+using System.Data.Common;
 
 namespace FinanceManager.Tests.Integration;
 

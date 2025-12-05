@@ -1,6 +1,5 @@
 using FinanceManager.Application;
 using FinanceManager.Shared; // IApiClient
-using FinanceManager.Shared.Dtos.Security; // shared ip block dtos
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -9,9 +8,9 @@ public sealed class SetupIpBlocksViewModel : ViewModelBase
     private readonly IApiClient _api;
     private readonly ICurrentUserService _current;
 
-    public SetupIpBlocksViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SetupIpBlocksViewModel(IServiceProvider sp) : base(sp)
     {
-        _api = sp.GetService<IApiClient>() ?? new ApiClient(httpFactory.CreateClient("Api"));
+        _api = sp.GetRequiredService<IApiClient>();
         _current = sp.GetRequiredService<ICurrentUserService>();
     }
 

@@ -1,40 +1,14 @@
 using FinanceManager.Application;
+using FinanceManager.Shared;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using System.Net;
-using System.Net.Http.Json;
-using System.Text.RegularExpressions;
+using Moq;
 
 namespace FinanceManager.Tests.Web;
 
 public sealed class UsersViewModelTests
 {
-    private sealed class RouteHandler : HttpMessageHandler
-    {
-        private readonly List<(HttpMethod method, Regex path, Func<HttpRequestMessage, HttpResponseMessage> handler)> _routes = new();
-        public void Map(HttpMethod method, string pathPattern, Func<HttpRequestMessage, HttpResponseMessage> handler)
-        {
-            _routes.Add((method, new Regex(pathPattern, RegexOptions.Compiled | RegexOptions.IgnoreCase), handler));
-        }
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var match = _routes.FirstOrDefault(r => r.method == request.Method && r.path.IsMatch(request.RequestUri!.AbsolutePath));
-            if (match.handler != null)
-            {
-                return Task.FromResult(match.handler(request));
-            }
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
-        }
-    }
-
-    private sealed class TestHttpClientFactory : IHttpClientFactory
-    {
-        private readonly HttpClient _client;
-        public TestHttpClientFactory(HttpClient client) { _client = client; }
-        public HttpClient CreateClient(string name) => _client;
-    }
-
     private sealed class TestCurrentUserService : ICurrentUserService
     {
         public Guid UserId { get; set; } = Guid.NewGuid();
@@ -43,25 +17,27 @@ public sealed class UsersViewModelTests
         public bool IsAdmin { get; set; } = true;
     }
 
-    private static (UsersViewModel vm, RouteHandler handler) CreateVmWithRoutes()
+    private static (UsersViewModel vm, Mock<IApiClient> apiMock) CreateVm()
     {
-        var handler = new RouteHandler();
-        var client = new HttpClient(handler) { BaseAddress = new Uri("http://localhost") };
-        var factory = new TestHttpClientFactory(client);
-        // Minimal service provider with current user
+        var apiMock = new Mock<IApiClient>();
         var services = new ServiceCollection()
             .AddSingleton<ICurrentUserService>(new TestCurrentUserService())
+            .AddSingleton(apiMock.Object)
             .BuildServiceProvider();
-        var vm = new UsersViewModel(services, factory);
-        return (vm, handler);
+        var vm = new UsersViewModel(services);
+        return (vm, apiMock);
     }
 
     [Fact]
     public async Task InitializeAsync_ShouldLoadUsers_AndSetLoaded()
     {
-        var (vm, router) = CreateVmWithRoutes();
-        var users = new[] { new UsersViewModel.UserVm { Id = Guid.NewGuid(), Username = "u1", Active = true } };
-        router.Map(HttpMethod.Get, "/api/admin/users$", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(users) });
+        var (vm, apiMock) = CreateVm();
+        var users = new List<UserAdminDto>
+        {
+            new UserAdminDto(Guid.NewGuid(), "u1", false, true, null, DateTime.UtcNow, null)
+        };
+        apiMock.Setup(a => a.Admin_ListUsersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(users);
 
         await vm.InitializeAsync();
 
@@ -74,10 +50,13 @@ public sealed class UsersViewModelTests
     [Fact]
     public async Task CreateAsync_ShouldPostAppendAndReset()
     {
-        var (vm, router) = CreateVmWithRoutes();
-        router.Map(HttpMethod.Get, "/api/admin/users$", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<UsersViewModel.UserVm>()) });
-        var created = new UsersViewModel.UserVm { Id = Guid.NewGuid(), Username = "new", Active = true };
-        router.Map(HttpMethod.Post, "/api/admin/users$", req => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(created) });
+        var (vm, apiMock) = CreateVm();
+        apiMock.Setup(a => a.Admin_ListUsersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<UserAdminDto>());
+
+        var createdId = Guid.NewGuid();
+        apiMock.Setup(a => a.Admin_CreateUserAsync(It.IsAny<CreateUserRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserAdminDto(createdId, "new", true, true, null, DateTime.UtcNow, null));
 
         await vm.InitializeAsync();
         vm.Create.Username = "new"; vm.Create.Password = "secret123"; vm.Create.IsAdmin = true;
@@ -93,17 +72,23 @@ public sealed class UsersViewModelTests
     [Fact]
     public async Task BeginEdit_SaveEditAsync_ShouldUpdateUser_AndClearEdit()
     {
-        var (vm, router) = CreateVmWithRoutes();
-        var user = new UsersViewModel.UserVm { Id = Guid.NewGuid(), Username = "old", Active = true };
-        router.Map(HttpMethod.Get, "/api/admin/users$", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { user }) });
-        var updated = new UsersViewModel.UserVm { Id = user.Id, Username = "updated", Active = false };
-        router.Map(HttpMethod.Put, $"/api/admin/users/{user.Id}$", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(updated) });
+        var (vm, apiMock) = CreateVm();
+        var userId = Guid.NewGuid();
+        var users = new List<UserAdminDto>
+        {
+            new UserAdminDto(userId, "old", false, true, null, DateTime.UtcNow, null)
+        };
+        apiMock.Setup(a => a.Admin_ListUsersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(users);
+
+        apiMock.Setup(a => a.Admin_UpdateUserAsync(userId, It.IsAny<UpdateUserRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserAdminDto(userId, "updated", false, false, null, DateTime.UtcNow, null));
 
         await vm.InitializeAsync();
         vm.BeginEdit(vm.Users[0]);
         vm.EditUsername = "updated"; vm.EditActive = false;
 
-        await vm.SaveEditAsync(user.Id);
+        await vm.SaveEditAsync(userId);
 
         Assert.Equal("updated", vm.Users.Single().Username);
         Assert.Null(vm.Edit);
@@ -113,11 +98,16 @@ public sealed class UsersViewModelTests
     [Fact]
     public async Task DeleteAsync_ShouldRemoveUser()
     {
-        var (vm, router) = CreateVmWithRoutes();
+        var (vm, apiMock) = CreateVm();
         var id = Guid.NewGuid();
-        var list = new[] { new UsersViewModel.UserVm { Id = id, Username = "to-del", Active = true } };
-        router.Map(HttpMethod.Get, "/api/admin/users$", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(list) });
-        router.Map(HttpMethod.Delete, $"/api/admin/users/{id}$", _ => new HttpResponseMessage(HttpStatusCode.OK));
+        var users = new List<UserAdminDto>
+        {
+            new UserAdminDto(id, "to-del", false, true, null, DateTime.UtcNow, null)
+        };
+        apiMock.Setup(a => a.Admin_ListUsersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(users);
+        apiMock.Setup(a => a.Admin_DeleteUserAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         await vm.InitializeAsync();
         Assert.Single(vm.Users);
@@ -131,10 +121,13 @@ public sealed class UsersViewModelTests
     [Fact]
     public async Task ResetPasswordAsync_ShouldSetLastResetFields()
     {
-        var (vm, router) = CreateVmWithRoutes();
-        router.Map(HttpMethod.Get, "/api/admin/users$", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Array.Empty<UsersViewModel.UserVm>()) });
+        var (vm, apiMock) = CreateVm();
+        apiMock.Setup(a => a.Admin_ListUsersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<UserAdminDto>());
+
         var id = Guid.NewGuid();
-        router.Map(HttpMethod.Post, $"/api/admin/users/{id}/reset-password$", _ => new HttpResponseMessage(HttpStatusCode.OK));
+        apiMock.Setup(a => a.Admin_ResetPasswordAsync(id, It.IsAny<ResetPasswordRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         await vm.InitializeAsync();
         await vm.ResetPasswordAsync(id);
@@ -151,11 +144,16 @@ public sealed class UsersViewModelTests
     [Fact]
     public async Task UnlockAsync_ShouldClearLockoutEnd()
     {
-        var (vm, router) = CreateVmWithRoutes();
+        var (vm, apiMock) = CreateVm();
         var id = Guid.NewGuid();
-        var user = new UsersViewModel.UserVm { Id = id, Username = "u", Active = true, LockoutEnd = DateTime.UtcNow.AddHours(1) };
-        router.Map(HttpMethod.Get, "/api/admin/users$", _ => new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new[] { user }) });
-        router.Map(HttpMethod.Post, $"/api/admin/users/{id}/unlock$", _ => new HttpResponseMessage(HttpStatusCode.OK));
+        var users = new List<UserAdminDto>
+        {
+            new UserAdminDto(id, "u", false, true, DateTime.UtcNow.AddHours(1), DateTime.UtcNow, null)
+        };
+        apiMock.Setup(a => a.Admin_ListUsersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(users);
+        apiMock.Setup(a => a.Admin_UnlockUserAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         await vm.InitializeAsync();
         Assert.NotNull(vm.Users.Single().LockoutEnd);
@@ -168,8 +166,7 @@ public sealed class UsersViewModelTests
     [Fact]
     public void GetRibbon_ShouldComposeGroups_ByState()
     {
-        var (vm, router) = CreateVmWithRoutes();
-        // no HTTP required
+        var (vm, _) = CreateVm();
         var loc = new FakeLocalizer();
 
         // base state
@@ -186,8 +183,6 @@ public sealed class UsersViewModelTests
 
         // with last reset password
         vm.CancelEdit();
-        // simulate last reset
-        var field = typeof(UsersViewModel).GetProperty("LastResetUserId");
         vm.GetType().GetProperty("LastResetUserId")!.SetValue(vm, Guid.NewGuid());
         vm.GetType().GetProperty("LastResetPassword")!.SetValue(vm, "abcdef123456");
         groups = vm.GetRibbon(loc);
@@ -196,24 +191,8 @@ public sealed class UsersViewModelTests
 
     private sealed class FakeLocalizer : IStringLocalizer
     {
-        public LocalizedString this[string name]
-        {
-            get => new(name, name);
-        }
-
-        public LocalizedString this[string name, params object[] arguments]
-        {
-            get => new(name, string.Format(name, arguments));
-        }
-
-        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
-        {
-            yield break;
-        }
-
-        public IStringLocalizer WithCulture(System.Globalization.CultureInfo culture)
-        {
-            return this;
-        }
+        public LocalizedString this[string name] => new(name, name);
+        public LocalizedString this[string name, params object[] arguments] => new(name, string.Format(name, arguments));
+        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) { yield break; }
     }
 }

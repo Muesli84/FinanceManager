@@ -1,15 +1,14 @@
 using FinanceManager.Application;
+using FinanceManager.Application.Reports; // export service + time series
+using FinanceManager.Domain.Postings; // PostingKind for export and aggregates
 using FinanceManager.Infrastructure;
+using FinanceManager.Web.Infrastructure; // StreamCallbackResult
 using FinanceManager.Web.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
-using FinanceManager.Shared.Dtos.Postings; // shared posting DTOs
-using FinanceManager.Application.Reports; // export service + time series
-using FinanceManager.Web.Infrastructure; // StreamCallbackResult
-using FinanceManager.Domain.Postings; // PostingKind for export and aggregates
 
 namespace FinanceManager.Web.Controllers;
 

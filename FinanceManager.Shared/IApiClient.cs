@@ -1,17 +1,3 @@
-using FinanceManager.Shared.Dtos.Accounts;
-using FinanceManager.Shared.Dtos.Users;
-using FinanceManager.Shared.Dtos.Securities;
-using FinanceManager.Shared.Dtos.Attachments;
-using FinanceManager.Shared.Dtos.Common;
-using FinanceManager.Shared.Dtos.Admin; // added for BackgroundTaskInfo/Type/Status
-using FinanceManager.Shared.Dtos.Backups; // add backups dtos
-using FinanceManager.Shared.Dtos.Contacts; // contact categories dtos
-using FinanceManager.Shared.Dtos.HomeKpi; // home kpi dtos
-using FinanceManager.Shared.Dtos.Postings; // postings dtos
-using FinanceManager.Shared.Dtos.Reports; // reports dtos
-using FinanceManager.Shared.Dtos.SavingsPlans; // savings plans dtos
-using FinanceManager.Shared.Dtos.Statements; // statements dtos
-
 namespace FinanceManager.Shared;
 
 /// <summary>

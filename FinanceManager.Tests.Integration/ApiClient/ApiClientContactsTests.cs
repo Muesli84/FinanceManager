@@ -1,6 +1,3 @@
-using FinanceManager.Shared;
-using FinanceManager.Shared.Dtos.Contacts;
-using FinanceManager.Web;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;

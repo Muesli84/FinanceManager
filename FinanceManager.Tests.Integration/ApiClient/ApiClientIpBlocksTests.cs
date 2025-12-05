@@ -1,10 +1,6 @@
-using FinanceManager.Shared;
-using FinanceManager.Shared.Dtos.Security;
-using FinanceManager.Web;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
-using System.Net;
 
 namespace FinanceManager.Tests.Integration.ApiClient;
 

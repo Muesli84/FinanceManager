@@ -1,9 +1,3 @@
-using System.Net.Http.Json;
-using FinanceManager.Shared;
-using FinanceManager.Shared.Dtos.Admin; // added
-using FinanceManager.Shared.Dtos;
-using FinanceManager.Shared.Dtos.Users;
-using FinanceManager.Web;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;

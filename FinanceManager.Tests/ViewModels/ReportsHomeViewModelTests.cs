@@ -1,34 +1,13 @@
 using FinanceManager.Application;
+using FinanceManager.Shared;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using System.Net;
-using System.Text;
-using System.Text.Json;
+using Moq;
 
 namespace FinanceManager.Tests.ViewModels;
 
 public sealed class ReportsHomeViewModelTests
 {
-    private static HttpClient CreateHttpClient(Func<HttpRequestMessage, HttpResponseMessage> responder)
-    {
-        return new HttpClient(new DelegateHandler(responder)) { BaseAddress = new Uri("http://localhost") };
-    }
-
-    private sealed class DelegateHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
-        public DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(_responder(request));
-    }
-
-    private sealed class TestHttpClientFactory : IHttpClientFactory
-    {
-        private readonly HttpClient _client;
-        public TestHttpClientFactory(HttpClient client) => _client = client;
-        public HttpClient CreateClient(string name) => _client;
-    }
-
     private sealed class TestCurrentUserService : ICurrentUserService
     {
         public Guid UserId { get; set; } = Guid.NewGuid();
@@ -37,48 +16,42 @@ public sealed class ReportsHomeViewModelTests
         public bool IsAdmin { get; set; }
     }
 
-    private static IServiceProvider CreateSp(bool authenticated = true)
+    private static (ReportsHomeViewModel vm, Mock<IApiClient> apiMock) CreateVm(bool authenticated = true)
     {
         var services = new ServiceCollection();
         services.AddSingleton<ICurrentUserService>(new TestCurrentUserService { IsAuthenticated = authenticated });
-        return services.BuildServiceProvider();
-    }
-
-    private static string FavoritesJson(int count)
-    {
-        var arr = Enumerable.Range(0, count)
-            .Select(i => new
-            {
-                Id = Guid.NewGuid(),
-                Name = $"Fav {count - i}",
-                PostingKind = 0,
-                IncludeCategory = false,
-                Interval = 0,
-                ComparePrevious = false,
-                CompareYear = false,
-                ShowChart = true,
-                Expandable = true,
-                CreatedUtc = DateTime.UtcNow.AddDays(-i).ToString("O"),
-                ModifiedUtc = (string?)null,
-                PostingKinds = new int[] { 0 }
-            })
-            .ToArray();
-        return JsonSerializer.Serialize(arr);
+        var apiMock = new Mock<IApiClient>();
+        services.AddSingleton(apiMock.Object);
+        var sp = services.BuildServiceProvider();
+        var vm = new ReportsHomeViewModel(sp);
+        return (vm, apiMock);
     }
 
     [Fact]
     public async Task Initialize_LoadsFavorites_SortsByName()
     {
-        var client = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/report-favorites")
-            {
-                var json = FavoritesJson(3);
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new ReportsHomeViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var (vm, apiMock) = CreateVm();
+        var favorites = Enumerable.Range(0, 3)
+            .Select(i => new ReportFavoriteDto(
+                Guid.NewGuid(),
+                $"Fav {3 - i}",
+                PostingKind.Bank,
+                false,
+                0,
+                24,
+                false,
+                false,
+                true,
+                true,
+                DateTime.UtcNow.AddDays(-i),
+                null,
+                new[] { PostingKind.Bank },
+                null,
+                false))
+            .ToList();
+
+        apiMock.Setup(a => a.Reports_ListFavoritesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(favorites);
 
         await vm.InitializeAsync();
 
@@ -93,8 +66,9 @@ public sealed class ReportsHomeViewModelTests
     [Fact]
     public async Task Reload_DoesNotThrow_OnError()
     {
-        var client = CreateHttpClient(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
-        var vm = new ReportsHomeViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var (vm, apiMock) = CreateVm();
+        apiMock.Setup(a => a.Reports_ListFavoritesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Error"));
 
         await vm.InitializeAsync();
         await vm.ReloadAsync();

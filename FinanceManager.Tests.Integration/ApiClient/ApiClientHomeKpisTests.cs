@@ -1,10 +1,5 @@
-using FinanceManager.Shared;
-using FinanceManager.Shared.Dtos.HomeKpi;
-using FinanceManager.Shared.Dtos.Users;
-using FinanceManager.Web;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore.Update;
 using Xunit;
 
 namespace FinanceManager.Tests.Integration.ApiClient;

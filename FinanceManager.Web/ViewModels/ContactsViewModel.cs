@@ -1,18 +1,15 @@
-using Microsoft.Extensions.Localization;
-using FinanceManager.Shared.Dtos.Contacts; // ContactDto, ContactCategoryDto
 using FinanceManager.Shared; // IApiClient
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ContactsViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
     private readonly IApiClient _api;
 
-    public ContactsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public ContactsViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public bool Loaded { get; private set; }

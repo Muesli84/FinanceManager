@@ -1,15 +1,12 @@
-using FinanceManager.Shared.Dtos.Securities; // use shared DTO
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SecurityPricesViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
     private readonly FinanceManager.Shared.IApiClient _api;
 
-    public SecurityPricesViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SecurityPricesViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(_http);
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public Guid SecurityId { get; private set; }

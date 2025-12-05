@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Localization;
-using FinanceManager.Shared.Dtos.Postings; 
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -7,10 +6,9 @@ public sealed class PostingsSecurityViewModel : ViewModelBase
 {
     private readonly FinanceManager.Shared.IApiClient _api;
 
-    public PostingsSecurityViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public PostingsSecurityViewModel(IServiceProvider sp) : base(sp)
     {
-        var http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(http);
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public Guid SecurityId { get; private set; }

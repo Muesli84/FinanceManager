@@ -1,4 +1,3 @@
-using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Postings;
 using FinanceManager.Domain.Savings;

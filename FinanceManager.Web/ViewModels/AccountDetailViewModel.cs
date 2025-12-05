@@ -1,20 +1,16 @@
+using FinanceManager.Shared; // IApiClient
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
-using FinanceManager.Shared.Dtos.Accounts; // shared AccountDto, AccountType, SavingsPlanExpectation
-using FinanceManager.Shared.Dtos.Contacts; // shared ContactDto
-using FinanceManager.Shared; // IApiClient
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class AccountDetailViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
     private readonly IApiClient _api;
 
-    public AccountDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public AccountDetailViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     // Identity / status

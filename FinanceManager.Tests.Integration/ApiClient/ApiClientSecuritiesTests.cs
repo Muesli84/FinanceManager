@@ -1,7 +1,3 @@
-using System;
-using System.IO;
-using FinanceManager.Shared;
-using FinanceManager.Shared.Dtos.Securities;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;

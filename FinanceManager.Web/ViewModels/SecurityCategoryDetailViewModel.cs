@@ -1,4 +1,3 @@
-using FinanceManager.Shared.Dtos.Securities; // use shared SecurityCategoryDto
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 
@@ -8,10 +7,9 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
 {
     private readonly FinanceManager.Shared.IApiClient _api;
 
-    public SecurityCategoryDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SecurityCategoryDetailViewModel(IServiceProvider sp) : base(sp)
     {
-        var http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(http);
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public Guid? Id { get; private set; }
@@ -76,9 +74,9 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
         if (!ok)
         {
             Error = _api.LastError;
-                RaiseStateChanged();
-                return false;
-            }
+            RaiseStateChanged();
+            return false;
+        }
         return true;
     }
 

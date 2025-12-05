@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Localization;
-using FinanceManager.Shared.Dtos.Postings; // PostingServiceDto, GroupLinksDto
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -7,10 +6,9 @@ public sealed class PostingDetailViewModel : ViewModelBase
 {
     private readonly FinanceManager.Shared.IApiClient _api;
 
-    public PostingDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public PostingDetailViewModel(IServiceProvider sp) : base(sp)
     {
-        var http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(http);
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public Guid Id { get; private set; }

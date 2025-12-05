@@ -1,18 +1,19 @@
+using FinanceManager.Shared;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ReportsHomeViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public ReportsHomeViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public ReportsHomeViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public bool Loading { get; private set; }
-    public List<FavoriteItem> Favorites { get; } = new();
+    public List<ReportFavoriteDto> Favorites { get; } = new();
 
     public override async ValueTask InitializeAsync(CancellationToken ct = default)
     {
@@ -31,7 +32,7 @@ public sealed class ReportsHomeViewModel : ViewModelBase
         Loading = true; RaiseStateChanged();
         try
         {
-            var list = await _http.GetFromJsonAsync<List<FavoriteItem>>("/api/report-favorites", ct) ?? new();
+            var list = await _api.Reports_ListFavoritesAsync(ct);
             Favorites.Clear();
             Favorites.AddRange(list.OrderBy(f => f.Name));
         }
@@ -48,6 +49,4 @@ public sealed class ReportsHomeViewModel : ViewModelBase
         });
         return new List<UiRibbonGroup> { actions };
     }
-
-    public sealed record FavoriteItem(Guid Id, string Name, int PostingKind, bool IncludeCategory, int Interval, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds);
 }

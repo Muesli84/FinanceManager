@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Mime;
-using FinanceManager.Shared.Dtos.Statements; // ensure shared dtos
 
 namespace FinanceManager.Web.Controllers;
 

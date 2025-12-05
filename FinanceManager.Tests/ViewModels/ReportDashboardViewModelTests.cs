@@ -1,36 +1,14 @@
 using FinanceManager.Application;
+using FinanceManager.Shared;
+using FinanceManager.Shared.Dtos.Reports;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
-using System.Net;
-using System.Text;
-using System.Text.Json;
-using FinanceManager.Shared.Dtos.Reports; // use shared DTOs
+using Moq;
 
 namespace FinanceManager.Tests.ViewModels;
 
 public sealed class ReportDashboardViewModelTests
 {
-    private static HttpClient CreateHttpClient(Func<HttpRequestMessage, HttpResponseMessage> responder)
-    {
-        return new HttpClient(new DelegateHandler(responder)) { BaseAddress = new Uri("http://localhost") };
-    }
-
-    private sealed class DelegateHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
-        public DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(_responder(request));
-    }
-
-    private sealed class TestHttpClientFactory : IHttpClientFactory
-    {
-        private readonly HttpClient _client;
-        public TestHttpClientFactory(HttpClient client) => _client = client;
-        public HttpClient CreateClient(string name) => _client;
-    }
-
     private sealed class TestCurrentUserService : ICurrentUserService
     {
         public Guid UserId { get; set; } = Guid.NewGuid();
@@ -39,60 +17,35 @@ public sealed class ReportDashboardViewModelTests
         public bool IsAdmin { get; set; }
     }
 
-    private static IServiceProvider CreateSp(bool authenticated = true)
+    private static (ReportDashboardViewModel vm, Mock<IApiClient> apiMock) CreateVm(bool authenticated = true)
     {
         var services = new ServiceCollection();
         services.AddSingleton<ICurrentUserService>(new TestCurrentUserService { IsAuthenticated = authenticated });
-        return services.BuildServiceProvider();
+        var apiMock = new Mock<IApiClient>();
+        services.AddSingleton(apiMock.Object);
+        var sp = services.BuildServiceProvider();
+        var vm = new ReportDashboardViewModel(sp);
+        return (vm, apiMock);
     }
 
-    private static string AggregationJson(int points)
+    private static List<ReportAggregatePointDto> CreatePoints(int count)
     {
         var start = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var arr = Enumerable.Range(0, points)
-            .Select(i => new
-            {
-                PeriodStart = start.AddMonths(i).ToString("O"),
-                GroupKey = "Type:Bank",
-                GroupName = "Bank",
-                CategoryName = (string?)null,
-                Amount = 100 + i,
-                ParentGroupKey = (string?)null,
-                PreviousAmount = (decimal?)null,
-                YearAgoAmount = (decimal?)null
-            })
-            .ToArray();
-        var obj = new { Interval = 0, Points = arr, ComparedPrevious = false, ComparedYear = false };
-        return JsonSerializer.Serialize(obj);
-    }
-
-    private static string AggregationJsonFrom(params object[] pointAnon)
-    {
-        var obj = new
-        {
-            Interval = 0,
-            Points = pointAnon,
-            ComparedPrevious = false,
-            ComparedYear = false
-        };
-        return JsonSerializer.Serialize(obj);
+        return Enumerable.Range(0, count)
+            .Select(i => new ReportAggregatePointDto(start.AddMonths(i), "Type:Bank", "Bank", null, 100 + i, null, null, null))
+            .ToList();
     }
 
     [Fact]
     public async Task LoadAsync_ReturnsPoints()
     {
-        var client = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/report-aggregates")
-            {
-                var json = AggregationJson(3);
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var (vm, apiMock) = CreateVm();
+        var result = new ReportAggregationResult(ReportInterval.Month, CreatePoints(3), false, false);
 
-        var resp = await vm.LoadAsync(0, 0, 24, false, false, false, new PostingKind[] { PostingKind.Bank }, DateTime.UtcNow, null);
+        apiMock.Setup(a => a.Reports_QueryAggregatesAsync(It.IsAny<ReportAggregatesQueryRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+
+        var resp = await vm.LoadAsync(PostingKind.Bank, 0, 24, false, false, false, new[] { PostingKind.Bank }, DateTime.UtcNow, null);
 
         Assert.Equal(3, resp.Points.Count);
     }
@@ -100,38 +53,22 @@ public sealed class ReportDashboardViewModelTests
     [Fact]
     public async Task SaveUpdateDelete_Favorites_Roundtrip()
     {
-        HttpRequestMessage? lastReq = null;
-        int postCount = 0;
-        var client = CreateHttpClient(req =>
-        {
-            lastReq = req;
-            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/report-favorites")
-            {
-                postCount++;
-                var json = JsonSerializer.Serialize(new ReportFavoriteDto(Guid.NewGuid(), "Fav", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new PostingKind[] { PostingKind.Bank }, null, false));
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-            }
-            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath.StartsWith("/api/report-favorites/"))
-            {
-                var json = JsonSerializer.Serialize(new ReportFavoriteDto(Guid.NewGuid(), "Fav2", 0, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new PostingKind[] { PostingKind.Bank }, null, false));
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-            }
-            if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath.StartsWith("/api/report-favorites/"))
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var (vm, apiMock) = CreateVm();
+        var savedFav = new ReportFavoriteDto(Guid.NewGuid(), "Fav", PostingKind.Bank, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new[] { PostingKind.Bank }, null, false);
+        var updatedFav = new ReportFavoriteDto(Guid.NewGuid(), "Fav2", PostingKind.Bank, false, 0, 24, false, false, true, true, DateTime.UtcNow, null, new[] { PostingKind.Bank }, null, false);
 
-        var saved = await vm.SaveFavoriteAsync("n", 0, false, 0, 24, false, false, true, true, new PostingKind[] { PostingKind.Bank }, null);
+        apiMock.Setup(a => a.Reports_CreateFavoriteAsync(It.IsAny<ReportFavoriteCreateApiRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(savedFav);
+        apiMock.Setup(a => a.Reports_UpdateFavoriteAsync(It.IsAny<Guid>(), It.IsAny<ReportFavoriteUpdateApiRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(updatedFav);
+        apiMock.Setup(a => a.Reports_DeleteFavoriteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var saved = await vm.SaveFavoriteAsync("n", PostingKind.Bank, false, 0, 24, false, false, true, true, new[] { PostingKind.Bank }, null);
         Assert.NotNull(saved);
-        Assert.Equal(HttpMethod.Post, lastReq!.Method);
-        Assert.Equal("/api/report-favorites", lastReq!.RequestUri!.AbsolutePath);
 
-        var updated = await vm.UpdateFavoriteAsync(Guid.NewGuid(), "n2", 0, false, 0, 24, false, false, true, true, new PostingKind[] { PostingKind.Bank }, null);
+        var updated = await vm.UpdateFavoriteAsync(Guid.NewGuid(), "n2", PostingKind.Bank, false, 0, 24, false, false, true, true, new[] { PostingKind.Bank }, null);
         Assert.NotNull(updated);
-        Assert.Equal(HttpMethod.Put, lastReq!.Method);
 
         var deleted = await vm.DeleteFavoriteAsync(Guid.NewGuid());
         Assert.True(deleted);
@@ -140,64 +77,55 @@ public sealed class ReportDashboardViewModelTests
     [Fact]
     public async Task GetChartByPeriod_ComputesSums_PerMonth()
     {
+        var (vm, apiMock) = CreateVm();
         var start = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var json = AggregationJsonFrom(
-            new { PeriodStart = start.ToString("O"), GroupKey = "Type:Bank", GroupName = "Bank", CategoryName = (string?)null, Amount = 100m, ParentGroupKey = (string?)null, PreviousAmount = (decimal?)null, YearAgoAmount = (decimal?)null },
-            new { PeriodStart = start.ToString("O"), GroupKey = "Type:Contact", GroupName = "Contact", CategoryName = (string?)null, Amount = 50m, ParentGroupKey = (string?)null, PreviousAmount = (decimal?)null, YearAgoAmount = (decimal?)null },
-            new { PeriodStart = start.AddMonths(1).ToString("O"), GroupKey = "Type:Bank", GroupName = "Bank", CategoryName = (string?)null, Amount = 200m, ParentGroupKey = (string?)null, PreviousAmount = (decimal?)null, YearAgoAmount = (decimal?)null }
-        );
-
-        var client = CreateHttpClient(req =>
+        var points = new List<ReportAggregatePointDto>
         {
-            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/report-aggregates")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client))
-        {
-            SelectedKinds = new List<PostingKind> { PostingKind.Bank, PostingKind.Contact },
-            Interval = (int)ReportInterval.Month,
-            IncludeCategory = false,
-            Take = 24
+            new ReportAggregatePointDto(start, "Type:Bank", "Bank", null, 100m, null, null, null),
+            new ReportAggregatePointDto(start, "Type:Contact", "Contact", null, 50m, null, null, null),
+            new ReportAggregatePointDto(start.AddMonths(1), "Type:Bank", "Bank", null, 200m, null, null, null)
         };
+        var result = new ReportAggregationResult(ReportInterval.Month, points, false, false);
+
+        apiMock.Setup(a => a.Reports_QueryAggregatesAsync(It.IsAny<ReportAggregatesQueryRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+
+        vm.SelectedKinds = new List<PostingKind> { PostingKind.Bank, PostingKind.Contact };
+        vm.Interval = (int)ReportInterval.Month;
+        vm.IncludeCategory = false;
+        vm.Take = 24;
 
         await vm.ReloadAsync(start);
         var byPeriod = vm.GetChartByPeriod();
+
         Assert.Equal(2, byPeriod.Count);
-        Assert.Equal(150m, byPeriod[0].Sum); // 100 + 50
+        Assert.Equal(150m, byPeriod[0].Sum);
         Assert.Equal(200m, byPeriod[1].Sum);
     }
 
     [Fact]
     public async Task Totals_And_ColumnVisibility_Work()
     {
+        var (vm, apiMock) = CreateVm();
         var start = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        // Two type points with previous/year amounts
-        var json = AggregationJsonFrom(
-            new { PeriodStart = start.ToString("O"), GroupKey = "Type:Bank", GroupName = "Bank", CategoryName = (string?)null, Amount = 120m, ParentGroupKey = (string?)null, PreviousAmount = 100m, YearAgoAmount = 80m },
-            new { PeriodStart = start.ToString("O"), GroupKey = "Type:Contact", GroupName = "Contact", CategoryName = (string?)null, Amount = 30m, ParentGroupKey = (string?)null, PreviousAmount = 25m, YearAgoAmount = 20m }
-        );
-
-        var client = CreateHttpClient(req =>
+        var points = new List<ReportAggregatePointDto>
         {
-            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/report-aggregates")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client))
-        {
-            SelectedKinds = new List<PostingKind> { PostingKind.Bank, PostingKind.Contact }, // multi
-            IncludeCategory = true,
-            ComparePrevious = true,
-            CompareYear = true,
-            Interval = (int)ReportInterval.Month
+            new ReportAggregatePointDto(start, "Type:Bank", "Bank", null, 120m, null, 100m, 80m),
+            new ReportAggregatePointDto(start, "Type:Contact", "Contact", null, 30m, null, 25m, 20m)
         };
+        var result = new ReportAggregationResult(ReportInterval.Month, points, true, true);
+
+        apiMock.Setup(a => a.Reports_QueryAggregatesAsync(It.IsAny<ReportAggregatesQueryRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+
+        vm.SelectedKinds = new List<PostingKind> { PostingKind.Bank, PostingKind.Contact };
+        vm.IncludeCategory = true;
+        vm.ComparePrevious = true;
+        vm.CompareYear = true;
+        vm.Interval = (int)ReportInterval.Month;
 
         await vm.ReloadAsync(start);
+
         Assert.True(vm.ShowCategoryColumn);
         Assert.True(vm.ShowPreviousColumns);
 
@@ -217,32 +145,25 @@ public sealed class ReportDashboardViewModelTests
     [Fact]
     public async Task PerType_Children_When_IncludeCategory_Multi()
     {
+        var (vm, apiMock) = CreateVm();
         var start = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var json = AggregationJsonFrom(
-            // Top-level types
-            new { PeriodStart = start.ToString("O"), GroupKey = "Type:Bank", GroupName = "Bank", CategoryName = (string?)null, Amount = 100m, ParentGroupKey = (string?)null, PreviousAmount = (decimal?)null, YearAgoAmount = (decimal?)null },
-            new { PeriodStart = start.ToString("O"), GroupKey = "Type:Contact", GroupName = "Contact", CategoryName = (string?)null, Amount = 50m, ParentGroupKey = (string?)null, PreviousAmount = (decimal?)null, YearAgoAmount = (decimal?)null },
-            // Bank children as entities
-            new { PeriodStart = start.ToString("O"), GroupKey = "Account:acc1", GroupName = "Checking", CategoryName = (string?)null, Amount = 60m, ParentGroupKey = "Type:Bank", PreviousAmount = (decimal?)null, YearAgoAmount = (decimal?)null },
-            // Contact children as categories
-            new { PeriodStart = start.ToString("O"), GroupKey = "Category:Contact:Food", GroupName = "Food", CategoryName = "Food", Amount = 50m, ParentGroupKey = "Type:Contact", PreviousAmount = (decimal?)null, YearAgoAmount = (decimal?)null }
-        );
-
-        var client = CreateHttpClient(req =>
+        var points = new List<ReportAggregatePointDto>
         {
-            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/report-aggregates")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new ReportDashboardViewModel(CreateSp(), new TestHttpClientFactory(client))
-        {
-            SelectedKinds = new List<PostingKind> { PostingKind.Bank, PostingKind.Contact },
-            IncludeCategory = true,
+            new ReportAggregatePointDto(start, "Type:Bank", "Bank", null, 100m, null, null, null),
+            new ReportAggregatePointDto(start, "Type:Contact", "Contact", null, 50m, null, null, null),
+            new ReportAggregatePointDto(start, "Account:acc1", "Checking", null, 60m, "Type:Bank", null, null),
+            new ReportAggregatePointDto(start, "Category:Contact:Food", "Food", "Food", 50m, "Type:Contact", null, null)
         };
+        var result = new ReportAggregationResult(ReportInterval.Month, points, false, false);
+
+        apiMock.Setup(a => a.Reports_QueryAggregatesAsync(It.IsAny<ReportAggregatesQueryRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+
+        vm.SelectedKinds = new List<PostingKind> { PostingKind.Bank, PostingKind.Contact };
+        vm.IncludeCategory = true;
 
         await vm.ReloadAsync(start);
+
         Assert.True(vm.HasChildren("Type:Bank"));
         Assert.True(vm.HasChildren("Type:Contact"));
         var bankChildren = vm.GetChildRows("Type:Bank").ToList();

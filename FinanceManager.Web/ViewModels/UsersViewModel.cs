@@ -1,7 +1,6 @@
+using FinanceManager.Shared; // IApiClient
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
-using FinanceManager.Shared; // IApiClient
-using FinanceManager.Shared.Dtos.Users; // shared admin DTOs
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -9,9 +8,9 @@ public sealed class UsersViewModel : ViewModelBase
 {
     private readonly IApiClient _api;
 
-    public UsersViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public UsersViewModel(IServiceProvider sp) : base(sp)
     {
-        _api = sp.GetService<IApiClient>() ?? new ApiClient(httpFactory.CreateClient("Api"));
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     // State

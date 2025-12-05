@@ -4,10 +4,9 @@ public sealed class SetupNotificationsViewModel : ViewModelBase
 {
     private readonly FinanceManager.Shared.IApiClient _api;
 
-    public SetupNotificationsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SetupNotificationsViewModel(IServiceProvider sp) : base(sp)
     {
-        var http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(http);
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public NotificationSettingsDto Model { get; private set; } = new();

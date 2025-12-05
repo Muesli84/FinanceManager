@@ -1,6 +1,5 @@
-using Microsoft.Extensions.Localization;
-using FinanceManager.Shared.Dtos.Statements; // added for shared DTOs
 using FinanceManager.Shared; // use ApiClient abstraction
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 

@@ -1,10 +1,10 @@
 using FinanceManager.Application;
+using FinanceManager.Shared; // added
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using FinanceManager.Shared; // added
 
 namespace FinanceManager.Tests.ViewModels;
 
@@ -19,13 +19,6 @@ public sealed class StatementDraftsViewModelTests
         public DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => Task.FromResult(_responder(request));
-    }
-
-    private sealed class TestHttpClientFactory : IHttpClientFactory
-    {
-        private readonly HttpClient _client;
-        public TestHttpClientFactory(HttpClient client) => _client = client;
-        public HttpClient CreateClient(string name) => _client;
     }
 
     private sealed class TestCurrentUserService : ICurrentUserService

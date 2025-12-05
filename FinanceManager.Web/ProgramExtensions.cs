@@ -4,6 +4,7 @@ using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Notifications;
 using FinanceManager.Infrastructure.Setup;
+using FinanceManager.Shared; // register ApiClient
 using FinanceManager.Web.Components;
 using FinanceManager.Web.Infrastructure;
 using FinanceManager.Web.Infrastructure.Attachments;
@@ -18,7 +19,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
 using System.Text;
-using FinanceManager.Shared; // register ApiClient
 
 namespace FinanceManager.Web
 {

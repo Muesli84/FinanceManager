@@ -4,13 +4,11 @@ namespace FinanceManager.Web.ViewModels;
 
 public sealed class SecuritiesListViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
     private readonly FinanceManager.Shared.IApiClient _api;
 
-    public SecuritiesListViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SecuritiesListViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<FinanceManager.Shared.IApiClient>() ?? new FinanceManager.Shared.ApiClient(_http);
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public bool Loaded { get; private set; }

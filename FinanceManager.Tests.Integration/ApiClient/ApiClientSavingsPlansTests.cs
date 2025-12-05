@@ -1,6 +1,3 @@
-using FinanceManager.Shared;
-using FinanceManager.Shared.Dtos.SavingsPlans;
-using FinanceManager.Shared.Dtos.Users;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;

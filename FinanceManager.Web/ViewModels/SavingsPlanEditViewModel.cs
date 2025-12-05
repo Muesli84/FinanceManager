@@ -1,18 +1,15 @@
-using Microsoft.Extensions.Localization;
 using FinanceManager.Shared;
-using FinanceManager.Shared.Dtos.SavingsPlans;
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SavingsPlanEditViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
     private readonly IApiClient _api;
 
-    public SavingsPlanEditViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SavingsPlanEditViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public Guid? Id { get; private set; }

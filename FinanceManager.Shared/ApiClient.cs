@@ -1,8 +1,5 @@
 using System.Net.Http.Json;
 using System.Text.Json;
-using FinanceManager.Shared.Dtos.SavingsPlans;
-using FinanceManager.Shared.Dtos.Statements;
-using FinanceManager.Shared.Dtos.Users; // added for AnyUsersResponse
 
 
 namespace FinanceManager.Shared;

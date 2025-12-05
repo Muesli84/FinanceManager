@@ -1,33 +1,15 @@
 using FinanceManager.Application;
+using FinanceManager.Shared;
+using FinanceManager.Shared.Dtos.Securities;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using System.Net;
-using System.Text;
-using System.Text.Json;
+using Moq;
 
 namespace FinanceManager.Tests.ViewModels;
 
 public sealed class SecurityCategoryDetailViewModelTests
 {
-    private static HttpClient CreateHttpClient(Func<HttpRequestMessage, HttpResponseMessage> responder)
-        => new HttpClient(new DelegateHandler(responder)) { BaseAddress = new Uri("http://localhost") };
-
-    private sealed class DelegateHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
-        public DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(_responder(request));
-    }
-
-    private sealed class TestHttpClientFactory : IHttpClientFactory
-    {
-        private readonly HttpClient _client;
-        public TestHttpClientFactory(HttpClient client) => _client = client;
-        public HttpClient CreateClient(string name) => _client;
-    }
-
     private sealed class TestCurrentUserService : ICurrentUserService
     {
         public Guid UserId { get; set; } = Guid.NewGuid();
@@ -36,32 +18,26 @@ public sealed class SecurityCategoryDetailViewModelTests
         public bool IsAdmin { get; set; }
     }
 
-    private static IServiceProvider CreateSp()
+    private static (SecurityCategoryDetailViewModel vm, Mock<IApiClient> apiMock) CreateVm()
     {
         var services = new ServiceCollection();
         services.AddSingleton<ICurrentUserService>(new TestCurrentUserService());
-        return services.BuildServiceProvider();
+        var apiMock = new Mock<IApiClient>();
+        services.AddSingleton(apiMock.Object);
+        var sp = services.BuildServiceProvider();
+        var vm = new SecurityCategoryDetailViewModel(sp);
+        return (vm, apiMock);
     }
-
-    private static string CatJson(object o) => JsonSerializer.Serialize(o);
 
     [Fact]
     public async Task Initialize_Edit_Loads_Model()
     {
+        var (vm, apiMock) = CreateVm();
         var id = Guid.NewGuid();
-        var client = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(CatJson(new { Id = id, Name = "Cat1" }), Encoding.UTF8, "application/json")
-                };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
+        var dto = new SecurityCategoryDto { Id = id, Name = "Cat1" };
+        apiMock.Setup(a => a.SecurityCategories_GetAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(dto);
 
-        var vm = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(client));
         await vm.InitializeAsync(id);
 
         Assert.True(vm.IsEdit);
@@ -73,183 +49,114 @@ public sealed class SecurityCategoryDetailViewModelTests
     [Fact]
     public async Task Initialize_Edit_NotFound_Sets_Error()
     {
+        var (vm, apiMock) = CreateVm();
         var id = Guid.NewGuid();
-        var client = CreateHttpClient(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
-        var vm = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(client));
+        apiMock.Setup(a => a.SecurityCategories_GetAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SecurityCategoryDto?)null);
+
         await vm.InitializeAsync(id);
+
         Assert.True(vm.IsEdit);
         Assert.True(vm.Loaded);
         Assert.Equal("Err_NotFound", vm.Error);
     }
 
     [Fact]
-    public async Task Save_New_Success_And_Fail()
+    public async Task Save_New_Success()
     {
-        bool postCalled = false;
-        var client = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/security-categories")
-            {
-                postCalled = true;
-                // Realistische erfolgreiche Antwort mit JSON-Body
-                var newId = Guid.NewGuid();
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(CatJson(new { Id = newId, Name = "NewCat" }), Encoding.UTF8, "application/json")
-                };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var (vm, apiMock) = CreateVm();
+        var createdDto = new SecurityCategoryDto { Id = Guid.NewGuid(), Name = "NewCat" };
+        apiMock.Setup(a => a.SecurityCategories_CreateAsync(It.IsAny<SecurityCategoryRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(createdDto);
+
         await vm.InitializeAsync(null);
         vm.Model.Name = "NewCat";
         var ok = await vm.SaveAsync();
-        Assert.True(ok);
-        Assert.True(postCalled);
-        Assert.Null(vm.Error);
 
-        // Fail
-        var clientFail = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/security-categories")
-            {
-                return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("bad", Encoding.UTF8, "text/plain") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vmFail = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(clientFail));
-        await vmFail.InitializeAsync(null);
-        vmFail.Model.Name = "X";
-        var ok2 = await vmFail.SaveAsync();
-        Assert.False(ok2);
-        Assert.Equal("bad", vmFail.Error);
+        Assert.True(ok);
+        Assert.Null(vm.Error);
+        apiMock.Verify(a => a.SecurityCategories_CreateAsync(It.Is<SecurityCategoryRequest>(r => r.Name == "NewCat"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Save_Edit_Success_And_Fail()
+    public async Task Save_New_Fail()
     {
+        var (vm, apiMock) = CreateVm();
+        apiMock.Setup(a => a.SecurityCategories_CreateAsync(It.IsAny<SecurityCategoryRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SecurityCategoryDto?)null);
+        apiMock.SetupGet(a => a.LastError).Returns("bad");
+
+        await vm.InitializeAsync(null);
+        vm.Model.Name = "X";
+        var ok = await vm.SaveAsync();
+
+        Assert.False(ok);
+        Assert.Equal("bad", vm.Error);
+    }
+
+    [Fact]
+    public async Task Save_Edit_Success()
+    {
+        var (vm, apiMock) = CreateVm();
         var id = Guid.NewGuid();
-        var client = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(CatJson(new { Id = id, Name = "Cat" }), Encoding.UTF8, "application/json")
-                };
-            }
-            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                // Realistische erfolgreiche Antwort mit JSON-Body
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(CatJson(new { Id = id, Name = "Updated" }), Encoding.UTF8, "application/json")
-                };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var existingDto = new SecurityCategoryDto { Id = id, Name = "Cat" };
+        var updatedDto = new SecurityCategoryDto { Id = id, Name = "Updated" };
+
+        apiMock.Setup(a => a.SecurityCategories_GetAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingDto);
+        apiMock.Setup(a => a.SecurityCategories_UpdateAsync(id, It.IsAny<SecurityCategoryRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(updatedDto);
+
         await vm.InitializeAsync(id);
         vm.Model.Name = "Updated";
         var ok = await vm.SaveAsync();
+
         Assert.True(ok);
         Assert.Null(vm.Error);
-
-        var clientFail = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(CatJson(new { Id = id, Name = "Cat" }), Encoding.UTF8, "application/json")
-                };
-            }
-            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("oops", Encoding.UTF8, "text/plain") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm2 = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(clientFail));
-        await vm2.InitializeAsync(id);
-        vm2.Model.Name = "Updated";
-        var ok2 = await vm2.SaveAsync();
-        Assert.False(ok2);
-        Assert.Equal("oops", vm2.Error);
     }
 
     [Fact]
-    public async Task Delete_Success_And_Fail()
+    public async Task Delete_Success()
     {
+        var (vm, apiMock) = CreateVm();
         var id = Guid.NewGuid();
-        // Erfolg
-        var client = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(CatJson(new { Id = id, Name = "Cat" }), Encoding.UTF8, "application/json")
-                };
-            }
-            if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var existingDto = new SecurityCategoryDto { Id = id, Name = "Cat" };
+
+        apiMock.Setup(a => a.SecurityCategories_GetAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingDto);
+        apiMock.Setup(a => a.SecurityCategories_DeleteAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         await vm.InitializeAsync(id);
         var ok = await vm.DeleteAsync();
+
         Assert.True(ok);
+    }
 
-        // Fehlerfall 1: NotFound -> false + Err_NotFound
-        var clientNotFound = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
-            }
-            if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.NotFound);
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vmNotFound = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(clientNotFound));
-        await vmNotFound.InitializeAsync(id);
-        var okNotFound = await vmNotFound.DeleteAsync();
-        Assert.False(okNotFound);
+    [Fact]
+    public async Task Delete_Fail()
+    {
+        var (vm, apiMock) = CreateVm();
+        var id = Guid.NewGuid();
+        var existingDto = new SecurityCategoryDto { Id = id, Name = "Cat" };
 
-        // Fehlerfall 2: BadRequest -> InvalidOperationException
-        var clientBadReq = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent(CatJson(new { Id = id, Name = "Cat" }), Encoding.UTF8, "application/json")
-                };
-            }
-            if (req.Method == HttpMethod.Delete && req.RequestUri!.AbsolutePath == $"/api/security-categories/{id}")
-            {
-                return new HttpResponseMessage(HttpStatusCode.BadRequest)
-                {
-                    Content = new StringContent("bad", Encoding.UTF8, "text/plain")
-                };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vmBadReq = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(clientBadReq));
-        await vmBadReq.InitializeAsync(id);
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => vmBadReq.DeleteAsync());
-        Assert.Equal("bad", ex.Message);
+        apiMock.Setup(a => a.SecurityCategories_GetAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingDto);
+        apiMock.Setup(a => a.SecurityCategories_DeleteAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        apiMock.SetupGet(a => a.LastError).Returns("oops");
+
+        await vm.InitializeAsync(id);
+        var ok = await vm.DeleteAsync();
+
+        Assert.False(ok);
+        Assert.Equal("oops", vm.Error);
     }
 
     [Fact]
     public void Ribbon_Disables_Save_When_Name_Short()
     {
-        var vm = new SecurityCategoryDetailViewModel(CreateSp(), new TestHttpClientFactory(CreateHttpClient(_ => new HttpResponseMessage(HttpStatusCode.NotFound))));
+        var (vm, _) = CreateVm();
         var loc = new TestLocalizer<SecurityCategoryDetailViewModelTests>();
         var groups = vm.GetRibbon(loc);
         var edit = groups.First(g => g.Title == "Ribbon_Group_Edit");
@@ -267,6 +174,5 @@ public sealed class SecurityCategoryDetailViewModelTests
         public LocalizedString this[string name] => new(name, name);
         public LocalizedString this[string name, params object[] arguments] => new(name, string.Format(name, arguments));
         public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) { yield break; }
-        public IStringLocalizer WithCulture(System.Globalization.CultureInfo culture) => this;
     }
 }

@@ -1,4 +1,3 @@
-using FinanceManager.Application.Reports;
 using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;

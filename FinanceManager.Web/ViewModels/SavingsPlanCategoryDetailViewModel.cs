@@ -1,19 +1,16 @@
+using FinanceManager.Shared;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
-using FinanceManager.Shared.Dtos.SavingsPlans; // use shared SavingsPlanCategoryDto
-using FinanceManager.Shared;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SavingsPlanCategoryDetailViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
     private readonly IApiClient _api;
 
-    public SavingsPlanCategoryDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SavingsPlanCategoryDetailViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public Guid? Id { get; private set; }

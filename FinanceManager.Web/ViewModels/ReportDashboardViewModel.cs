@@ -1,22 +1,15 @@
-using Microsoft.Extensions.Localization;
-using FinanceManager.Shared.Dtos.Reports; // shared report DTOs
-using FinanceManager.Shared.Dtos.Accounts;
-using FinanceManager.Shared.Dtos.Contacts;
-using FinanceManager.Shared.Dtos.SavingsPlans;
-using FinanceManager.Shared.Dtos.Securities;
 using FinanceManager.Shared; // IApiClient
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ReportDashboardViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
     private readonly IApiClient _api;
 
-    public ReportDashboardViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public ReportDashboardViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
-        _api = sp.GetService<IApiClient>() ?? new ApiClient(_http);
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     // UI state moved from component
