@@ -1,3 +1,3 @@
 ﻿namespace FinanceManager.Domain;
 
-public static class DomainAssemblyMarker {}
+public static class DomainAssemblyMarker { }

@@ -1,10 +1,6 @@
 using FinanceManager.Application.Accounts;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Accounts;
-using FinanceManager.Domain.Contacts;
-using FinanceManager.Shared.Dtos;
-using Microsoft.EntityFrameworkCore;
 using FinanceManager.Domain.Attachments; // added
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Accounts;
 
@@ -16,7 +12,7 @@ public sealed class AccountService : IAccountService
     public async Task<AccountDto> CreateAsync(Guid ownerUserId, string name, AccountType type, string? iban, Guid bankContactId, CancellationToken ct)
     {
         // default expectation for older callers
-        return await CreateAsync(ownerUserId, name, type, iban, bankContactId, FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional, ct);
+        return await CreateAsync(ownerUserId, name, type, iban, bankContactId, SavingsPlanExpectation.Optional, ct);
     }
 
     public async Task<AccountDto> CreateAsync(Guid ownerUserId, string name, AccountType type, string? iban, Guid bankContactId, SavingsPlanExpectation expectation, CancellationToken ct)
@@ -35,7 +31,7 @@ public sealed class AccountService : IAccountService
             }
             iban = norm;
         }
-        var account = new Account(ownerUserId, type, name, iban, bankContactId);
+        var account = new Domain.Accounts.Account(ownerUserId, type, name, iban, bankContactId);
         account.SetSavingsPlanExpectation(expectation);
         _db.Accounts.Add(account);
         await _db.SaveChangesAsync(ct);

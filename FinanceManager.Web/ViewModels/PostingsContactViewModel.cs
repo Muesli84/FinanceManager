@@ -1,22 +1,17 @@
-using System.Net.Http.Json;
-using System.Linq;
-using FinanceManager.Domain;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class PostingsContactViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
-    public PostingsContactViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public PostingsContactViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
-    public Guid SecurityId { get; private set; }
+    public Guid ContactId { get; private set; }
     public bool Loaded { get; private set; }
 
     public string Search { get; private set; } = string.Empty;
@@ -33,9 +28,9 @@ public sealed class PostingsContactViewModel : ViewModelBase
 
     public List<PostingItem> Items { get; } = new();
 
-    public void Configure(Guid securityId)
+    public void Configure(Guid contactId)
     {
-        SecurityId = securityId;
+        ContactId = contactId;
     }
 
     public override async ValueTask InitializeAsync(CancellationToken ct = default)
@@ -73,14 +68,11 @@ public sealed class PostingsContactViewModel : ViewModelBase
         try
         {
             var firstPage = Skip == 0;
-            var parts = new List<string> { $"skip={Skip}", "take=50" };
-            if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
-            var url = $"/api/postings/contact/{SecurityId}?{string.Join('&', parts)}";
-            // Use shared PostingServiceDto from shared project
-            var chunk = await _http.GetFromJsonAsync<List<PostingServiceDto>>(url, ct) ?? new();
-            Items.AddRange(chunk.Select(Map));
-            Skip += chunk.Count;
-            if (chunk.Count == 0 || (!firstPage && chunk.Count < 50)) { CanLoadMore = false; }
+            var chunk = await _api.Postings_GetContactAsync(ContactId, Skip, 50, Search, null, null, ct);
+            var list = chunk ?? Array.Empty<PostingServiceDto>();
+            Items.AddRange(list.Select(Map));
+            Skip += list.Count;
+            if (list.Count == 0 || (!firstPage && list.Count < 50)) { CanLoadMore = false; }
         }
         catch { }
         finally { Loading = false; RaiseStateChanged(); }
@@ -116,7 +108,7 @@ public sealed class PostingsContactViewModel : ViewModelBase
         }
         try
         {
-            var dto = await _http.GetFromJsonAsync<GroupLinksResponse>($"/api/postings/group/{sel.GroupId}", CancellationToken);
+            var dto = await _api.Postings_GetGroupLinksAsync(sel.GroupId, CancellationToken);
             LinkedAccountId = dto?.AccountId; LinkedContactId = dto?.ContactId; LinkedPlanId = dto?.SavingsPlanId; LinkedSecurityId = dto?.SecurityId;
         }
         catch { }
@@ -128,7 +120,7 @@ public sealed class PostingsContactViewModel : ViewModelBase
         var parts = new List<string> { $"format={Uri.EscapeDataString(format)}" };
         if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
         var qs = parts.Count > 0 ? ("?" + string.Join('&', parts)) : string.Empty;
-        return $"/api/postings/security/{SecurityId}/export{qs}";
+        return $"/api/postings/contact/{ContactId}/export{qs}";
     }
 
     public override IReadOnlyList<UiRibbonGroup> GetRibbon(IStringLocalizer localizer)

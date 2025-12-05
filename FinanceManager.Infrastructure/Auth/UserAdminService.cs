@@ -1,11 +1,9 @@
 using FinanceManager.Application.Users;
+using FinanceManager.Domain.Contacts; // added
 using FinanceManager.Domain.Users;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using FinanceManager.Domain.Contacts; // added
-using FinanceManager.Domain;
-using FinanceManager.Shared.Dtos; // added for ContactType
-using Microsoft.AspNetCore.Identity;
 
 namespace FinanceManager.Infrastructure.Auth;
 
@@ -86,6 +84,9 @@ public sealed class UserAdminService : IUserAdminService
         }
 
         var user = new User(username, _passwordHasher.Hash(password), false);
+        user.LockoutEnabled = !isAdmin;
+        if (string.IsNullOrEmpty(user.SecurityStamp)) user.SecurityStamp = Guid.NewGuid().ToString("N");
+        if (string.IsNullOrEmpty(user.ConcurrencyStamp)) user.ConcurrencyStamp = Guid.NewGuid().ToString("N");
         _db.Users.Add(user);
         await _db.SaveChangesAsync(ct);
 

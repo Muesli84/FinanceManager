@@ -1,18 +1,10 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
-using FinanceManager.Web.Controllers;
+using FinanceManager.Domain.Users;
+using FinanceManager.Infrastructure;
+using FinanceManager.Tests.TestHelpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
-using FinanceManager.Infrastructure;
-using FinanceManager.Domain.Users;
-using FinanceManager.Domain;
-using FinanceManager.Tests.TestHelpers;
 
 namespace FinanceManager.Tests.Controllers;
 

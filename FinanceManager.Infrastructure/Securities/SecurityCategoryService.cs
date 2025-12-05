@@ -1,6 +1,5 @@
 using FinanceManager.Application.Securities;
 using FinanceManager.Domain.Securities;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Securities;
@@ -57,6 +56,17 @@ public sealed class SecurityCategoryService : ISecurityCategoryService
     {
         var cat = await _db.SecurityCategories.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == ownerUserId, ct);
         if (cat == null) throw new ArgumentException("Category not found", nameof(id));
+
+        if (attachmentId.HasValue)
+        {
+            var exists = await _db.Attachments.AsNoTracking()
+                .AnyAsync(a => a.Id == attachmentId.Value && a.OwnerUserId == ownerUserId, ct);
+            if (!exists)
+            {
+                throw new ArgumentException("Attachment not found", nameof(attachmentId));
+            }
+        }
+
         cat.SetSymbolAttachment(attachmentId);
         await _db.SaveChangesAsync(ct);
     }

@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Shared.Dtos;
-
 namespace FinanceManager.Application.Attachments;
 
 public interface IAttachmentCategoryService

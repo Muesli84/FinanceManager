@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application.Attachments;
 using FinanceManager.Domain.Attachments;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Attachments;
@@ -57,7 +51,8 @@ public sealed class AttachmentCategoryService : IAttachmentCategoryService
         if (cat == null) { return null; }
         if (cat.IsSystem)
         {
-            throw new InvalidOperationException("System category cannot be renamed"); }
+            throw new InvalidOperationException("System category cannot be renamed");
+        }
         var exists = await _db.AttachmentCategories.AsNoTracking().AnyAsync(c => c.OwnerUserId == ownerUserId && c.Name == name && c.Id != id, ct);
         if (exists)
         {

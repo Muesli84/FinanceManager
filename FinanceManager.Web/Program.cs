@@ -1,21 +1,27 @@
-using FinanceManager.Web;
-using FinanceManager.Infrastructure;
-using FinanceManager.Domain.Users;
-using Microsoft.AspNetCore.Identity;
+namespace FinanceManager.Web
+{
 
-var builder = WebApplication.CreateBuilder(args);
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
 
-// configure logging and services moved to extensions
-builder.ConfigureLogging();
-builder.RegisterAppServices();
+            // configure logging and services moved to extensions
+            builder.ConfigureLogging();
+            builder.RegisterAppServices();
 
-var app = builder.Build();
+            var app = builder.Build();
 
-// apply migrations and seeding
-app.ApplyMigrationsAndSeed();
+            // apply migrations and seeding
+            app.ApplyMigrationsAndSeed();
 
-// configure localization and middleware
-app.ConfigureLocalization();
-app.ConfigureMiddleware();
+            // configure localization and middleware
+            app.ConfigureLocalization();
+            app.ConfigureMiddleware();
 
-app.Run();
+            app.Run();
+        }
+    }
+
+}

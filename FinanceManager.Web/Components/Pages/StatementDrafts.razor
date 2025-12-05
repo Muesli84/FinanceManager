@@ -16,7 +16,7 @@
 <h3>@Localizer["Nav_StatementDrafts"]</h3>
 
 <!-- Status panel only for classification or booking tasks -->
-<BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="2000" AllowedTypes="new[]{ BackgroundTaskType.ClassifyAllDrafts, BackgroundTaskType.BookAllDrafts }" />
+<BackgroundTaskStatusPanel PollInterval="2000" AllowedTypes="new[]{ BackgroundTaskType.ClassifyAllDrafts, BackgroundTaskType.BookAllDrafts }" />
 
 @if (_showDeleteAllDialog)
 {
@@ -34,8 +34,8 @@
 
 @if ((_vm?.BookingIssues?.Count ?? 0) > 0 && !(_vm?.IsBooking ?? false))
 {
-    var errorCount = _vm!.BookingIssues.Count(i => i.code != null && i.code.StartsWith("SECURITY_") || i.code == "NO_ACCOUNT" || i.code == "ENTRY_NO_CONTACT" || i.code == "INTERMEDIARY_NO_SPLIT" || i.code == "SPLIT_AMOUNT_MISMATCH");
-    var warnCount = _vm!.BookingIssues.Count(i => i.code != null && i.code.Contains("SAVINGSPLAN_", StringComparison.OrdinalIgnoreCase) && !i.code.EndsWith("_ARCHIVE_MISMATCH", StringComparison.OrdinalIgnoreCase));
+    var errorCount = _vm!.BookingIssues.Count(i => i.Code != null && i.Code.StartsWith("SECURITY_") || i.Code == "NO_ACCOUNT" || i.Code == "ENTRY_NO_CONTACT" || i.Code == "INTERMEDIARY_NO_SPLIT" || i.Code == "SPLIT_AMOUNT_MISMATCH");
+    var warnCount = _vm!.BookingIssues.Count(i => i.Code != null && i.Code.Contains("SAVINGSPLAN_", StringComparison.OrdinalIgnoreCase) && !i.Code.EndsWith("_ARCHIVE_MISMATCH", StringComparison.OrdinalIgnoreCase));
     <div class="alert" style="margin-top:1rem;border:1px solid #444;background:#181818;padding:.6rem .8rem;">
         <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;font-size:.8rem;">
             <strong>@Localizer["Booking_ResultTitle"]</strong>
@@ -45,8 +45,8 @@
         <ul style="margin:.5rem 0 0 1rem;font-size:.7rem;">
             @foreach (var issue in _vm!.BookingIssues)
             {
-                var c = issue.code != null && (issue.code.Contains("ERROR", StringComparison.OrdinalIgnoreCase) || issue.code is "NO_ACCOUNT" or "ENTRY_NO_CONTACT" or "INTERMEDIARY_NO_SPLIT" or "SPLIT_AMOUNT_MISMATCH") ? "#e66" : "#cc6";
-                <li style="margin:.2rem 0;color:@c;">@Localizer["IssueForDraft"] @issue.draftId: @issue.message</li>
+                var c = issue.Code != null && (issue.Code.Contains("ERROR", StringComparison.OrdinalIgnoreCase) || issue.Code is "NO_ACCOUNT" or "ENTRY_NO_CONTACT" or "INTERMEDIARY_NO_SPLIT" or "SPLIT_AMOUNT_MISMATCH") ? "#e66" : "#cc6";
+                <li style="margin:.2rem 0;color:@c;">@Localizer["IssueForDraft"] @issue.DraftId: @issue.Message</li>
             }
         </ul>
     </div>
@@ -355,12 +355,7 @@ else
 
     // DTO + helper records
     private sealed class TempStatus { public bool running { get; set; } public int processed { get; set; } public int total { get; set; } public string? message { get; set; } }
-    private sealed class BookIssue { public Guid draftId { get; set; } public Guid? entryId { get; set; } public string code { get; set; } = string.Empty; public string message { get; set; } = string.Empty; }
-    private sealed class BookStatus { public bool running { get; set; } public int processed { get; set; } public int failed { get; set; } public int total { get; set; } public int warnings { get; set; } public int errors { get; set; } public string? message { get; set; } public List<BookIssue>? issues { get; set; } }
-    private sealed class StatementDraftDto { public Guid DraftId { get; set; } public string OriginalFileName { get; set; } = string.Empty; public string? Description { get; set; } public FinanceManager.Domain.StatementDraftStatus Status { get; set; } public List<StatementDraftEntryDto> Entries { get; set; } = new(); }
-    private sealed class StatementDraftEntryDto { public Guid Id { get; set; } public FinanceManager.Domain.Statements.StatementDraftEntryStatus Status { get; set; } }
-    
-     private sealed record UploadResultDto(StatementDraftDto? FirstDraft, object? SplitInfo);
+    // removed local BookIssue/BookStatus/StatementDraftDto/StatementDraftEntryDto/UploadResultDto (now using shared types via ViewModel)
  }
 
 <!-- Single always-present file input for iOS Safari: off-screen but not display:none/visibility:hidden -->

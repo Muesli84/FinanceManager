@@ -1,6 +1,4 @@
 using FinanceManager.Domain.Savings;
-using FinanceManager.Infrastructure;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure;

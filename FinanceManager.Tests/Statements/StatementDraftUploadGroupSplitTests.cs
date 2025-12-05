@@ -1,8 +1,3 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Domain; // for AccountType, PostingKind, StatementDraftStatus
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Statements;
@@ -11,8 +6,6 @@ using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
-using ContactType = FinanceManager.Shared.Dtos.ContactType; // shared enum
 
 namespace FinanceManager.Tests.Statements;
 

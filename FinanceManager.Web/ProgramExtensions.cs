@@ -1,29 +1,24 @@
-using System.Globalization;
-using System.Text;
-using System.Linq;
-using System;
-using System.Threading.Tasks;
 using FinanceManager.Application;
+using FinanceManager.Application.Notifications;
+using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Notifications;
 using FinanceManager.Infrastructure.Setup;
+using FinanceManager.Shared; // register ApiClient
 using FinanceManager.Web.Components;
 using FinanceManager.Web.Infrastructure;
-using FinanceManager.Web.Services;
+using FinanceManager.Web.Infrastructure.Attachments;
 using FinanceManager.Web.Infrastructure.Auth;
 using FinanceManager.Web.Infrastructure.Logging;
-using FinanceManager.Web.Infrastructure.Attachments;
-using FinanceManager.Application.Notifications;
-using FinanceManager.Infrastructure.Notifications;
-using FinanceManager.Domain.Users;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Localization;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.IdentityModel.Tokens;
+using FinanceManager.Web.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Globalization;
+using System.Text;
 
 namespace FinanceManager.Web
 {
@@ -34,8 +29,14 @@ namespace FinanceManager.Web
             builder.Logging.ClearProviders();
             builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
             builder.Logging.AddConsole();
-            builder.Services.Configure<FileLoggerOptions>(builder.Configuration.GetSection("FileLogging"));
-            builder.Logging.AddFile();
+
+            // File logging optional via config flag
+            var fileLoggingEnabled = builder.Configuration.GetValue<bool?>("FileLogging:Enabled") ?? true;
+            if (fileLoggingEnabled)
+            {
+                builder.Services.Configure<FileLoggerOptions>(builder.Configuration.GetSection("FileLogging"));
+                builder.Logging.AddFile();
+            }
         }
 
         public static void RegisterAppServices(this WebApplicationBuilder builder)
@@ -65,7 +66,12 @@ namespace FinanceManager.Web
             builder.Services.AddSingleton<IBackgroundTaskExecutor, BackupRestoreTaskExecutor>();
             builder.Services.AddSingleton<IBackgroundTaskExecutor, SecurityPricesBackfillExecutor>();
             builder.Services.AddSingleton<IBackgroundTaskExecutor, RebuildAggregatesTaskExecutor>();
-            builder.Services.AddHostedService<BackgroundTaskRunner>();
+            // Conditionally enable BackgroundTaskRunner via config flag
+            var enableTaskRunner = builder.Configuration.GetValue<bool?>("BackgroundTasks:Enabled") ?? true;
+            if (enableTaskRunner)
+            {
+                builder.Services.AddHostedService<BackgroundTaskRunner>();
+            }
 
             // Holidays
             builder.Services.AddMemoryCache();
@@ -97,6 +103,7 @@ namespace FinanceManager.Web
                 client.BaseAddress = new Uri(baseUri);
             }).AddHttpMessageHandler<AuthenticatedHttpClientHandler>();
             builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
+            builder.Services.AddScoped<IApiClient>(sp => new ApiClient(sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api")));
 
             // AlphaVantage
             builder.Services.AddHttpClient("AlphaVantage", client =>
@@ -107,7 +114,12 @@ namespace FinanceManager.Web
             });
             builder.Services.AddScoped<IAlphaVantageKeyResolver, AlphaVantageKeyResolver>();
             builder.Services.AddScoped<IPriceProvider, AlphaVantagePriceProvider>();
-            builder.Services.AddHostedService<SecurityPriceWorker>();
+            // Conditionally enable SecurityPriceWorker via config flag
+            var enableSecurityPriceWorker = builder.Configuration.GetValue<bool?>("Workers:SecurityPriceWorker:Enabled") ?? true;
+            if (enableSecurityPriceWorker)
+            {
+                builder.Services.AddHostedService<SecurityPriceWorker>();
+            }
             builder.Services.Configure<AlphaVantageQuotaOptions>(builder.Configuration.GetSection("AlphaVantage:Quota"));
 
             // JWT + Identity

@@ -1,6 +1,7 @@
 @using FinanceManager.Domain.Attachments
 @using FinanceManager.Shared.Dtos
-@inject HttpClient Http
+@using FinanceManager.Shared.Dtos.Attachments
+@inject FinanceManager.Shared.IApiClient Api
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.AttachmentsPanel> Localizer
 @inject IJSRuntime JS
 
@@ -136,7 +137,7 @@ else
     [Parameter] public string[]? AllowedMimeTypes { get; set; }
 
     private readonly List<AttachmentDto> _items = new();
-    private readonly List<CategoryDto> _categories = new();
+    private readonly List<AttachmentCategoryDto> _categories = new();
     private readonly Dictionary<Guid, string> _categoryNames = new();
     private string _selectedCategoryId = string.Empty;
     private bool _loaded;
@@ -231,13 +232,6 @@ else
         }
     }
 
-    private sealed class PageEnvelope<T>
-    {
-        public List<T> Items { get; set; } = new();
-        public bool HasMore { get; set; }
-        public int? Total { get; set; }
-    }
-
     private async Task LoadAsync(bool reset)
     {
         if (reset)
@@ -249,11 +243,11 @@ else
             if (reset)
             {
                 // Load categories first on full refresh
-                var cats = await Http.GetFromJsonAsync<List<AttachmentCategoryDto>>("/api/attachments/categories");
+                var cats = await Api.Attachments_ListCategoriesAsync();
                 _categories.Clear(); _categoryNames.Clear();
-                foreach (var c in cats ?? new())
+                foreach (var c in (cats ?? Array.Empty<AttachmentCategoryDto>()))
                 {
-                    _categories.Add(new CategoryDto { Id = c.Id, Name = c.Name });
+                    _categories.Add(c);
                     _categoryNames[c.Id] = c.Name;
                 }
                 _items.Clear();
@@ -263,13 +257,10 @@ else
             if (_hasMore)
             {
                 var skip = _items.Count;
-                var url = $"/api/attachments/{(short)ParentKind}/{ParentId}?skip={skip}&take={_pageSize}";
-                if (Guid.TryParse(_selectedCategoryId, out var cat))
-                {
-                    url += $"&categoryId={cat}";
-                }
-                var page = await Http.GetFromJsonAsync<PageEnvelope<AttachmentDto>>(url) ?? new PageEnvelope<AttachmentDto>();
-                _items.AddRange(page.Items ?? new());
+                Guid? catId = null;
+                if (Guid.TryParse(_selectedCategoryId, out var cat)) { catId = cat; }
+                var page = await Api.Attachments_ListAsync((short)ParentKind, ParentId, skip, _pageSize, catId);
+                foreach (var it in page.Items ?? new()) { _items.Add(it); }
                 _hasMore = page.HasMore;
             }
         }
@@ -298,28 +289,26 @@ else
             var name = await JS.InvokeAsync<string>("prompt", Localizer["Prompt_NewCategory"].Value);
             name = name?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(name)) { return; }
-            var resp = await Http.PostAsJsonAsync("/api/attachments/categories", new { Name = name });
-            if (!resp.IsSuccessStatusCode)
+            AttachmentCategoryDto dto;
+            try
             {
-                var msg = await resp.Content.ReadAsStringAsync();
-                _uploadError = string.IsNullOrWhiteSpace(msg) ? Localizer["Err_CreateCategoryFailed"] : msg;
+                dto = await Api.Attachments_CreateCategoryAsync(name);
+            }
+            catch (Exception ex)
+            {
+                _uploadError = string.IsNullOrWhiteSpace(ex.Message) ? Localizer["Err_CreateCategoryFailed"] : ex.Message;
                 StateHasChanged();
                 return;
             }
-            var dto = await resp.Content.ReadFromJsonAsync<AttachmentCategoryDto>();
-            if (dto != null)
+            var cats = await Api.Attachments_ListCategoriesAsync();
+            _categories.Clear(); _categoryNames.Clear();
+            foreach (var c in (cats ?? Array.Empty<AttachmentCategoryDto>()))
             {
-                // Refresh categories list and select the new one for editing
-                var cats = await Http.GetFromJsonAsync<List<AttachmentCategoryDto>>("/api/attachments/categories");
-                _categories.Clear(); _categoryNames.Clear();
-                foreach (var c in cats ?? new())
-                {
-                    _categories.Add(new CategoryDto { Id = c.Id, Name = c.Name });
-                    _categoryNames[c.Id] = c.Name;
-                }
-                _editCategoryId = dto.Id.ToString();
-                StateHasChanged();
+                _categories.Add(c);
+                _categoryNames[c.Id] = c.Name;
             }
+            _editCategoryId = dto.Id.ToString();
+            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -363,25 +352,11 @@ else
 
     private async Task<Guid?> UploadFileAsync(IBrowserFile file)
     {
-        using var content = new MultipartFormDataContent();
         await using var stream = file.OpenReadStream(1024L * 1024L * 1024L); // 1 GB limit per file
-        var fileContent = new StreamContent(stream);
-        // Ensure the file part carries the browser-provided content type so the server binder populates FormFile.ContentType
         var ct = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
-        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(ct);
-        content.Add(fileContent, "file", file.Name);
-        if (Guid.TryParse(_selectedCategoryId, out var cat))
-        {
-            content.Add(new StringContent(cat.ToString()), "categoryId");
-        }
-        var url = $"/api/attachments/{(short)ParentKind}/{ParentId}";
-        var resp = await Http.PostAsync(url, content);
-        if (!resp.IsSuccessStatusCode)
-        {
-            var msg = await resp.Content.ReadAsStringAsync();
-            throw new InvalidOperationException(MapServerError(msg));
-        }
-        var dto = await resp.Content.ReadFromJsonAsync<AttachmentDto>();
+        Guid? catId = null;
+        if (Guid.TryParse(_selectedCategoryId, out var cat)) { catId = cat; }
+        var dto = await Api.Attachments_UploadFileAsync((short)ParentKind, ParentId, stream, file.Name, ct, catId);
         return dto?.Id;
     }
 
@@ -402,12 +377,12 @@ else
     {
         try
         {
-            var payload = new { FileName = string.IsNullOrWhiteSpace(_editFileName) ? (string?)null : _editFileName, CategoryId = Guid.TryParse(_editCategoryId, out var cat) ? (Guid?)cat : null };
-            var resp = await Http.PutAsJsonAsync($"/api/attachments/{id}", payload);
-            if (!resp.IsSuccessStatusCode)
+            var fileName = string.IsNullOrWhiteSpace(_editFileName) ? null : _editFileName;
+            Guid? catId = Guid.TryParse(_editCategoryId, out var cat) ? cat : null;
+            var ok = await Api.Attachments_UpdateCoreAsync(id, fileName, catId);
+            if (!ok)
             {
-                var msg = await resp.Content.ReadAsStringAsync();
-                _uploadError = string.IsNullOrWhiteSpace(msg) ? Localizer["Err_UpdateFailed"] : msg;
+                _uploadError = Localizer["Err_UpdateFailed"];
                 return;
             }
             _editingId = null; _editCategoryId = string.Empty; _editFileName = string.Empty;
@@ -426,11 +401,10 @@ else
             bool ok = true;
             try { ok = await JS.InvokeAsync<bool>("confirm", Localizer["Confirm_Delete"].Value); } catch { }
             if (!ok) { return; }
-            var resp = await Http.DeleteAsync($"/api/attachments/{id}");
-            if (!resp.IsSuccessStatusCode)
+            var done = await Api.Attachments_DeleteAsync(id);
+            if (!done)
             {
-                var msg = await resp.Content.ReadAsStringAsync();
-                _uploadError = string.IsNullOrWhiteSpace(msg) ? Localizer["Err_DeleteFailed"] : msg;
+                _uploadError = Localizer["Err_DeleteFailed"];
                 return;
             }
             await LoadAsync(reset: true);
@@ -501,6 +475,4 @@ else
         try { if (_module is IAsyncDisposable m) { await m.DisposeAsync(); } } catch { }
         try { _selfRef?.Dispose(); } catch { }
     }
-
-    private sealed class CategoryDto { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 }

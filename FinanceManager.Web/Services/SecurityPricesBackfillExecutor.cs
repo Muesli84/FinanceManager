@@ -1,11 +1,8 @@
-using System.Text.Json;
 using FinanceManager.Application;
 using FinanceManager.Infrastructure;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace FinanceManager.Web.Services;
 

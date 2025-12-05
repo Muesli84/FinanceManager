@@ -1,13 +1,7 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Contacts;
-using FinanceManager.Shared.Dtos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace FinanceManager.Tests.Infrastructure;
 
@@ -36,7 +30,7 @@ public sealed class ContactServiceMergeTests
         await db.SaveChangesAsync();
 
         // Seed a posting that references the source contact
-        var posting = new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), FinanceManager.Domain.PostingKind.Contact,
+        var posting = new FinanceManager.Domain.Postings.Posting(Guid.NewGuid(), PostingKind.Contact,
             accountId: null, contactId: src.Id, savingsPlanId: null, securityId: null,
             bookingDate: DateTime.UtcNow.Date, amount: 10m, subject: "S", recipientName: null, description: null, securitySubType: null);
         db.Postings.Add(posting);
@@ -78,7 +72,7 @@ public sealed class ContactServiceMergeTests
 
         // Existing target aggregate for Contact kind at period
         var targetAgg = new FinanceManager.Domain.Postings.PostingAggregate(
-            FinanceManager.Domain.PostingKind.Contact,
+            PostingKind.Contact,
             accountId: null,
             contactId: tgt.Id,
             savingsPlanId: null,
@@ -91,7 +85,7 @@ public sealed class ContactServiceMergeTests
 
         // Source aggregate with same key (should merge into targetAgg)
         var srcAggSameKey = new FinanceManager.Domain.Postings.PostingAggregate(
-            FinanceManager.Domain.PostingKind.Contact,
+            PostingKind.Contact,
             accountId: null,
             contactId: src.Id,
             savingsPlanId: null,
@@ -103,7 +97,7 @@ public sealed class ContactServiceMergeTests
 
         // Another source aggregate with different period (should be reassigned without merge)
         var srcAggOther = new FinanceManager.Domain.Postings.PostingAggregate(
-            FinanceManager.Domain.PostingKind.Contact,
+            PostingKind.Contact,
             accountId: null,
             contactId: src.Id,
             savingsPlanId: null,
@@ -118,7 +112,7 @@ public sealed class ContactServiceMergeTests
         var svc = new ContactService(db);
         await svc.MergeAsync(owner, src.Id, tgt.Id, CancellationToken.None);
 
-        var aggs = await db.PostingAggregates.AsNoTracking().Where(a => a.Kind == FinanceManager.Domain.PostingKind.Contact).ToListAsync();
+        var aggs = await db.PostingAggregates.AsNoTracking().Where(a => a.Kind == PostingKind.Contact).ToListAsync();
         // Source aggregate with same key should be removed, target amount summed (100 + 50)
         var merged = aggs.Single(a => a.ContactId == tgt.Id && a.PeriodStart == keyPeriodStart && a.Period == period);
         Assert.Equal(150m, merged.Amount);

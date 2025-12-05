@@ -1,4 +1,3 @@
-using FinanceManager.Domain;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Savings;
@@ -7,14 +6,8 @@ using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Shared.Dtos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace FinanceManager.Tests.Statements;
 
@@ -117,7 +110,7 @@ public sealed class StatementDraftBookingTests
         db.Entry(entry).State = EntityState.Added;
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
 
         Assert.False(res.Success);
         Assert.True(res.Validation.Messages.Any(m => m.Code == "NO_ACCOUNT"));
@@ -134,7 +127,7 @@ public sealed class StatementDraftBookingTests
         db.Entry(entry).State = EntityState.Added;
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
 
         Assert.False(res.Success);
         Assert.True(res.Validation.Messages.Any(m => m.Code == "ENTRY_NO_CONTACT"));
@@ -153,12 +146,12 @@ public sealed class StatementDraftBookingTests
         entry.MarkAccounted(self.Id);
         await db.SaveChangesAsync();
 
-        var res1 = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res1 = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
         Assert.False(res1.Success);
         Assert.True(res1.HasWarnings);
         Assert.True(res1.Validation.Messages.Any(m => m.Code == "SAVINGSPLAN_MISSING_FOR_SELF"));
 
-        var res2 = await sut.BookAsync(draft.Id, null,owner, true, CancellationToken.None);
+        var res2 = await sut.BookAsync(draft.Id, null, owner, true, CancellationToken.None);
         Assert.True(res2.Success);
         Assert.Equal(2, db.Postings.Count());
         Assert.Equal(1, db.Postings.Count(p => p.Kind == PostingKind.Bank));
@@ -186,7 +179,7 @@ public sealed class StatementDraftBookingTests
         db.Entry(e).State = EntityState.Added;
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
         Assert.True(res.Success);
         Assert.Equal(3, db.Postings.Count());
         Assert.Equal(1, db.Postings.Count(p => p.Kind == PostingKind.Bank));
@@ -214,7 +207,7 @@ public sealed class StatementDraftBookingTests
         e.MarkAccounted(intermediary.Id);
         await db.SaveChangesAsync();
 
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
         Assert.False(res.Success);
         Assert.True(res.Validation.Messages.Any(m => m.Code == "INTERMEDIARY_NO_SPLIT"));
         conn.Dispose();
@@ -468,7 +461,7 @@ public sealed class StatementDraftBookingTests
 
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, null, null, null, null, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
         Assert.False(res.Success);
         Assert.True(res.Validation.Messages.Any(m => m.Code == "SECURITY_MISSING_TXTYPE"));
         conn.Dispose();
@@ -492,7 +485,7 @@ public sealed class StatementDraftBookingTests
 
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, null, null, null, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
         Assert.False(res.Success);
         Assert.True(res.Validation.Messages.Any(m => m.Code == "SECURITY_MISSING_QUANTITY"));
         conn.Dispose();
@@ -519,7 +512,7 @@ public sealed class StatementDraftBookingTests
         // Set security with Buy, quantity present, but fee+tax exceed entry amount
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, 1.0m, 70.00m, 40.00m, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
         Assert.False(res.Success);
         Assert.True(res.Validation.Messages.Any(m => m.Code == "SECURITY_FEE_TAX_EXCEEDS_AMOUNT"));
         conn.Dispose();
@@ -544,7 +537,7 @@ public sealed class StatementDraftBookingTests
 
         await sut.SetEntrySecurityAsync(draft.Id, entry.Id, sec.Id, SecurityTransactionType.Buy, 1.123456m, 2.50m, 5.00m, owner, CancellationToken.None);
 
-        var res = await sut.BookAsync(draft.Id, null,owner, false, CancellationToken.None);
+        var res = await sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None);
         Assert.True(res.Success);
         Assert.Equal(3, db.Postings.Count(p => p.Kind == PostingKind.Security));
 

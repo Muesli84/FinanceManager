@@ -1,34 +1,33 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Accounts;
+using FinanceManager.Application.Aggregates;
+using FinanceManager.Application.Attachments; // new
+using FinanceManager.Application.Backups;
 using FinanceManager.Application.Contacts;
+using FinanceManager.Application.Notifications; // new
+using FinanceManager.Application.Reports;
 using FinanceManager.Application.Savings;
 using FinanceManager.Application.Securities;
+using FinanceManager.Application.Security; // new
 using FinanceManager.Application.Statements;
-using FinanceManager.Domain;
+using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure.Accounts;
+using FinanceManager.Infrastructure.Aggregates;
+using FinanceManager.Infrastructure.Attachments; // new
 using FinanceManager.Infrastructure.Auth;
+using FinanceManager.Infrastructure.Backups;
 using FinanceManager.Infrastructure.Contacts;
+using FinanceManager.Infrastructure.Notifications; // new
+using FinanceManager.Infrastructure.Reports;
 using FinanceManager.Infrastructure.Savings;
 using FinanceManager.Infrastructure.Securities;
+using FinanceManager.Infrastructure.Security; // new
 using FinanceManager.Infrastructure.Setup;
 using FinanceManager.Infrastructure.Statements;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore; // required for RoleStore
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using FinanceManager.Application.Backups;
-using FinanceManager.Infrastructure.Backups;
-using FinanceManager.Application.Aggregates;
-using FinanceManager.Infrastructure.Aggregates;
-using FinanceManager.Application.Reports;
-using FinanceManager.Infrastructure.Reports;
-using FinanceManager.Application.Security; // new
-using FinanceManager.Infrastructure.Security; // new
-using FinanceManager.Application.Notifications; // new
-using FinanceManager.Infrastructure.Notifications; // new
-using FinanceManager.Application.Attachments; // new
-using FinanceManager.Infrastructure.Attachments; // new
-using Microsoft.AspNetCore.Identity;
-using FinanceManager.Domain.Users;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore; // required for RoleStore
 
 namespace FinanceManager.Infrastructure;
 
@@ -60,7 +59,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISetupImportService, SetupImportService>();
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<ISecurityCategoryService, SecurityCategoryService>();
-        services.AddScoped<IAutoInitializationService , AutoInitializationService>();
+        services.AddScoped<IAutoInitializationService, AutoInitializationService>();
         services.AddScoped<IBackupService, BackupService>();
         services.AddScoped<IPostingAggregateService, PostingAggregateService>();
         services.AddScoped<IPostingTimeSeriesService, PostingTimeSeriesService>();

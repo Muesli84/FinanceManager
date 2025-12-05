@@ -1,5 +1,3 @@
-using System;
-
 namespace FinanceManager.Domain.Savings;
 
 public sealed class SavingsPlanCategory

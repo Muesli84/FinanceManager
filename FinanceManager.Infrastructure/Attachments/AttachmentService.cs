@@ -1,9 +1,8 @@
-using System.Security.Cryptography;
 using FinanceManager.Application.Attachments;
 using FinanceManager.Domain.Attachments;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 
 namespace FinanceManager.Infrastructure.Attachments;
 

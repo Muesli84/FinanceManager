@@ -12,7 +12,7 @@
 @inject IStringLocalizer<Components.Pages.SecurityCategoryEdit> Localizer
 @using FinanceManager.Domain.Attachments
 @using FinanceManager.Shared.Dtos
-@inject IHttpClientFactory ClientFactory
+@inject FinanceManager.Shared.IApiClient Api
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SecurityCategoryEdit.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -42,7 +42,7 @@ else
     <div style="margin-top:1rem;">
         <label>@Localizer["LabelSymbol"]</label>
         <div style="margin-top:.4rem;">
-            <SymbolPicker ParentKind="AttachmentEntityKind.SecurityCategory" ParentId="@_vm!.Id" CurrentAttachmentId="_vm!.Model.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
+            <SymbolPicker ParentKind="AttachmentEntityKind.SecurityCategory" ParentId="@_vm!.Id" CurrentAttachmentId="@_vm!.Model.SymbolAttachmentId" OnUploaded="OnSymbolUploaded" OnClear="OnSymbolCleared" />
         </div>
     </div>
 }
@@ -139,6 +139,29 @@ else
         }
     }
 
-    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/security-categories/{_vm.Id}/symbol/{aid}", null); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
-    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/security-categories/{_vm.Id}/symbol"); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
+    private async Task OnSymbolUploaded(Guid aid)
+    {
+        if (_vm?.Id != null)
+        {
+            var ok = await Api.SecurityCategories_SetSymbolAsync(_vm.Id.Value, aid);
+            if (ok)
+            {
+                _vm!.Model.SymbolAttachmentId = aid;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OnSymbolCleared()
+    {
+        if (_vm?.Id != null)
+        {
+            var ok = await Api.SecurityCategories_ClearSymbolAsync(_vm.Id.Value);
+            if (ok)
+            {
+                _vm!.Model.SymbolAttachmentId = null;
+                StateHasChanged();
+            }
+        }
+    }
 }

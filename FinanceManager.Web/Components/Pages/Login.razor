@@ -36,18 +36,23 @@
     </div>
 </EditForm>
 
-<p style="margin-top:1rem;font-size:.8rem;">
-    @Localizer["Link_RegisterPrompt"] <a href="/register">@Localizer["Link_RegisterNow"]</a>
-</p>
-
 @code {
     private readonly LoginVm _model = new();
     private bool _busy;
     private string? _error;
+    private bool _shouldRedirectToRegister;
 
     protected override async Task OnInitializedAsync()
     {
         if (!await UserRead.HasAnyUsersAsync(CancellationToken.None))
+        {
+            _shouldRedirectToRegister = true;
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && _shouldRedirectToRegister)
         {
             Nav.NavigateTo("/register", forceLoad: true);
         }
@@ -66,7 +71,7 @@
             {
                 _error = string.IsNullOrWhiteSpace(result.error)
                     ? Localizer["Error_LoginFailed"]
-                    : result.error; // Backend-Fehler evtl. später auch mappen
+                    : result.error;
             }
             else
             {

@@ -1,8 +1,4 @@
-using FinanceManager.Domain;
 using FinanceManager.Domain.Statements;
-using FinanceManager.Shared.Dtos;
-using System.Threading.Tasks;
-using FinanceManager.Domain.Securities;
 
 namespace FinanceManager.Application.Statements;
 
@@ -60,65 +56,5 @@ public interface IStatementDraftService
     Task<StatementDraftEntryDto?> ResetDuplicateEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct);
 }
 
-public sealed record StatementDraftEntryDto(
-    Guid Id,
-    DateTime BookingDate,
-    DateTime? ValutaDate,
-    decimal Amount,
-    string CurrencyCode,
-    string Subject,
-    string? RecipientName,
-    string? BookingDescription,
-    bool IsAnnounced,
-    bool IsCostNeutral,
-    StatementDraftEntryStatus Status,
-    Guid? ContactId,
-    Guid? SavingsPlanId,
-    bool ArchiveSavingsPlanOnBooking,
-    Guid? SplitDraftId,
-    Guid? SecurityId,
-    SecurityTransactionType? SecurityTransactionType,
-    decimal? SecurityQuantity,
-    decimal? SecurityFeeAmount,
-    decimal? SecurityTaxAmount
-);
 
-/// <summary>
-/// Repräsentiert einen Statement Draft (Import-Entwurf) inkl. optionaler Split- und Upload-Gruppen-Informationen.
-/// </summary>
-public sealed record StatementDraftDto(
-    Guid DraftId,
-    string OriginalFileName,
-    string? Description,
-    Guid? DetectedAccountId,
-    StatementDraftStatus Status,
-    decimal TotalAmount,
-    bool IsSplitDraft,
-    Guid? ParentDraftId,
-    Guid? ParentEntryId,
-    decimal? ParentEntryAmount,
-    Guid? UploadGroupId,
-    IReadOnlyList<StatementDraftEntryDto> Entries);
 
-public sealed record CommitResult(Guid StatementImportId, int TotalEntries);
-
-// Validation DTOs
-public sealed record DraftValidationMessageDto(
-    string Code,
-    string Severity, // Error | Warning
-    string Message,
-    Guid DraftId,
-    Guid? EntryId);
-
-public sealed record DraftValidationResultDto(
-    Guid DraftId,
-    bool IsValid,
-    IReadOnlyList<DraftValidationMessageDto> Messages);
-
-public sealed record BookingResult(
-    bool Success,
-    bool HasWarnings,
-    DraftValidationResultDto Validation,
-    Guid? StatementImportId,
-    int? TotalEntries,
-    Guid? nextDraftId);

@@ -1,22 +1,11 @@
-using FinanceManager.Application.Statements;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Shared.Dtos;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel;
-using System;
-using System.Diagnostics.Metrics;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace FinanceManager.Tests.Statements;
 
@@ -58,7 +47,7 @@ public sealed class StatementDraftPersistenceTests
     public async Task GetDraftAsync_ShouldReturnPersistedDraft()
     {
         var (sut, db, owner) = Create();
-        var account = new Account(owner, FinanceManager.Domain.AccountType.Giro, "A", null, Guid.NewGuid());
+        var account = new Account(owner, AccountType.Giro, "A", null, Guid.NewGuid());
         db.Accounts.Add(account);
         await db.SaveChangesAsync();
 
@@ -78,7 +67,7 @@ public sealed class StatementDraftPersistenceTests
     public async Task AddEntryAsync_ShouldAppendEntry()
     {
         var (sut, db, owner) = Create();
-        var account = new Account(owner, FinanceManager.Domain.AccountType.Giro, "A", null, Guid.NewGuid());
+        var account = new Account(owner, AccountType.Giro, "A", null, Guid.NewGuid());
         db.Accounts.Add(account);
         await db.SaveChangesAsync();
 
@@ -100,7 +89,7 @@ public sealed class StatementDraftPersistenceTests
     public async Task CancelAsync_ShouldRemoveDraft()
     {
         var (sut, db, owner) = Create();
-        var account = new Account(owner, FinanceManager.Domain.AccountType.Giro, "A", null, Guid.NewGuid());
+        var account = new Account(owner, AccountType.Giro, "A", null, Guid.NewGuid());
         db.Accounts.Add(account);
         var counter = 0;
         var bytes = Encoding.UTF8.GetBytes($"{{\"Type\":\"Backup\",\"Version\":2}}\n{{ \"BankAccounts\": [{{ \"IBAN\": \"{account.Iban}\"}}], \"BankAccountLedgerEntries\": [], \"BankAccountJournalLines\": [{{\"Id\": 1,\"PostingDate\": \"2017-07-15T00:00:00\",\"ValutaDate\": \"2017-07-15T00:00:00\",\"PostingDescription\": \"Lastschrift\",\"SourceName\": \"GEZ\",\"Description\": \"GEZ Gebuehr\",\"CurrencyCode\": \"EUR\",\"Amount\": -97.95,\"CreatedAt\": \"2017-07-16T12:33:42.000041\"}}] }}");
@@ -120,7 +109,7 @@ public sealed class StatementDraftPersistenceTests
     public async Task CommitAsync_ShouldPersistImportAndEntries_AndMarkDraftCommitted()
     {
         var (sut, db, owner) = Create();
-        var account = new Account(owner, FinanceManager.Domain.AccountType.Giro, "Acc", null, Guid.NewGuid());
+        var account = new Account(owner, AccountType.Giro, "Acc", null, Guid.NewGuid());
         db.Accounts.Add(account);
         await db.SaveChangesAsync();
 
@@ -128,13 +117,13 @@ public sealed class StatementDraftPersistenceTests
         var bytes = Encoding.UTF8.GetBytes($"{{\"Type\":\"Backup\",\"Version\":2}}\n{{ \"BankAccounts\": [{{ \"IBAN\": \"{account.Iban}\"}}], \"BankAccountLedgerEntries\": [], \"BankAccountJournalLines\": [{{\"Id\": 1,\"PostingDate\": \"2017-07-15T00:00:00\",\"ValutaDate\": \"2017-07-15T00:00:00\",\"PostingDescription\": \"Lastschrift\",\"SourceName\": \"GEZ\",\"Description\": \"GEZ Gebuehr\",\"CurrencyCode\": \"EUR\",\"Amount\": -97.95,\"CreatedAt\": \"2017-07-16T12:33:42.000041\"}}] }}");
         await foreach (var draft in sut.CreateDraftAsync(owner, "c.csv", bytes, CancellationToken.None))
         {
-            var result = await sut.CommitAsync(draft.DraftId, owner, account.Id, FinanceManager.Domain.ImportFormat.Csv, CancellationToken.None);
+            var result = await sut.CommitAsync(draft.DraftId, owner, account.Id, ImportFormat.Csv, CancellationToken.None);
 
             Assert.NotNull(result);
             Assert.Equal(1, db.StatementImports.Count());
             Assert.Equal(draft.Entries.Count, db.StatementEntries.Count());
             var persistedDraft = await sut.GetDraftAsync(draft.DraftId, owner, CancellationToken.None);
-            Assert.Equal(FinanceManager.Domain.StatementDraftStatus.Committed, persistedDraft!.Status);
+            Assert.Equal(StatementDraftStatus.Committed, persistedDraft!.Status);
             counter++;
         }
         Assert.Equal(1, counter);

@@ -1,6 +1,6 @@
 namespace FinanceManager.Domain.Postings;
 
-using FinanceManager.Shared.Dtos; // for SecurityPostingSubType
+using FinanceManager.Shared.Dtos.Securities;
 
 public enum AggregatePeriod
 {

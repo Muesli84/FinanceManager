@@ -9,22 +9,22 @@ public sealed class ReportFavoriteService : IReportFavoriteService
     private readonly AppDbContext _db;
     public ReportFavoriteService(AppDbContext db) => _db = db;
 
-    private static IReadOnlyCollection<int> EffectiveKinds(ReportFavorite entity)
+    private static IReadOnlyCollection<PostingKind> EffectiveKinds(ReportFavorite entity)
         => entity.GetPostingKinds();
 
-    private static IReadOnlyCollection<int> ParseKinds(string? csv, int fallback)
+    private static IReadOnlyCollection<PostingKind> ParseKinds(string? csv, PostingKind fallback)
     {
         if (string.IsNullOrWhiteSpace(csv))
         {
-            return new[] { fallback };
+            return new PostingKind[] { fallback };
         }
         var parts = csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var list = new List<int>(parts.Length);
+        var list = new List<PostingKind>(parts.Length);
         foreach (var p in parts)
         {
             if (int.TryParse(p, out var v))
             {
-                list.Add(v);
+                list.Add((PostingKind)v);
             }
         }
         return list.Count == 0 ? new[] { fallback } : list.Distinct().ToArray();

@@ -1,8 +1,8 @@
-﻿using FinanceManager.Infrastructure;
+﻿using FinanceManager.Application.Notifications; // NEW
+using FinanceManager.Domain.Notifications;    // NEW
+using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using FinanceManager.Application.Notifications; // NEW
-using FinanceManager.Domain.Notifications;    // NEW
 
 namespace FinanceManager.Web.Services;
 

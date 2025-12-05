@@ -1,6 +1,6 @@
 using FinanceManager.Application;
-using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt; // for JwtRegisteredClaimNames
+using System.Security.Claims;
 
 namespace FinanceManager.Web.Services;
 

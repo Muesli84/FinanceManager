@@ -1,19 +1,11 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
+using FinanceManager.Domain.Users;
+using FinanceManager.Infrastructure;
+using FinanceManager.Infrastructure.Auth;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Identity;
 using Moq;
-using Xunit;
-using FinanceManager.Infrastructure;
-using FinanceManager.Infrastructure.Auth;
-using FinanceManager.Domain.Users;
-using FinanceManager.Domain.Contacts;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Tests.Auth
 {

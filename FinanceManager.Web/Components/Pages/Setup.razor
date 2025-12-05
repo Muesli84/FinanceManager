@@ -15,7 +15,7 @@
 
 <h3>@Localizer["Heading"]</h3>
 
-<BackgroundTaskStatusPanel TaskListEndpoint="/api/background-tasks/active" PollInterval="1500" AllowedTypes="new[]{ BackgroundTaskType.BackupRestore, BackgroundTaskType.RebuildAggregates }" />
+<BackgroundTaskStatusPanel PollInterval="1500" AllowedTypes="new[]{ BackgroundTaskType.BackupRestore, BackgroundTaskType.RebuildAggregates }" />
 
 <div class="fm-tabs">
     <button class="fm-tab @(_vm!.IsActiveSection(SetupViewModel.TabBackup)?"active":null)" @onclick="() => Activate(SetupViewModel.TabBackup)">@Localizer["Tab_Backup"]</button>
@@ -120,12 +120,12 @@
     private bool IsActiveSection(string section) => _vm!.IsActiveSection(section);
     private void Back() => Navigation.NavigateTo("/");
 
-    [Inject] private HttpClient Http { get; set; } = default!;
+    [Inject] private FinanceManager.Shared.IApiClient Api { get; set; } = default!;
     private async Task QueueRebuildAggregates()
     {
         try
         {
-            await Http.PostAsync("/api/aggregates/rebuild", content: null);
+            await Api.Aggregates_RebuildAsync(allowDuplicate: false);
         }
         catch { }
     }

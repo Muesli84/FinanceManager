@@ -1,5 +1,6 @@
 @using System.Net.Http.Json
 @inject HttpClient Http
+@inject FinanceManager.Shared.IApiClient Api
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.HomeNotifications> L
 @inject NavigationManager Nav
@@ -40,7 +41,7 @@
 }
 
 @code {
-    private List<FinanceManager.Shared.Dtos.NotificationDto> _items = new();
+    private List<NotificationDto> _items = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -54,8 +55,9 @@
     {
         try
         {
-            var list = await Http.GetFromJsonAsync<List<FinanceManager.Shared.Dtos.NotificationDto>>("/api/notifications");
-            _items = (list ?? new()).Where(n => n.Target == 0 /* HomePage */).ToList();
+            var result = await Api.Notifications_ListAsync();
+            _items = result?.ToList() ?? new List<NotificationDto>();
+            _items = _items.Where(n => n.Target == 0 /* HomePage */).ToList();
         }
         catch { }
     }
@@ -64,8 +66,8 @@
     {
         try
         {
-            var resp = await Http.PostAsync($"/api/notifications/{id}/dismiss", null);
-            if (resp.IsSuccessStatusCode)
+            var ok = await Api.Notifications_DismissAsync(id);
+            if (ok)
             {
                 _items.RemoveAll(x => x.Id == id);
             }

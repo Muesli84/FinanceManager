@@ -1,11 +1,14 @@
 @using System.Net.Http.Json
+@using FinanceManager.Application.Reports
 @using FinanceManager.Domain.Reports
+@using FinanceManager.Shared.Dtos.Postings
+@using FinanceManager.Shared.Dtos.Reports
+@using FinanceManager.Shared.Dtos.HomeKpi
+@using FinanceManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.Extensions.Localization
-@using FinanceManager.Application.Reports
-@using FinanceManager.Web.Components.Shared
 
-@inject HttpClient Http
+@inject FinanceManager.Shared.IApiClient Api
 @inject IStringLocalizer<FinanceManager.Web.Components.Pages.Home> Localizer
 @inject NavigationManager Nav
 
@@ -106,18 +109,17 @@
 {
     [Parameter] public bool EditMode { get; set; }
 
-    // State
     private List<HomeKpiDto> _kpis = new();
     private Dictionary<Guid, FavKpiData> _favData = new();
     private HashSet<Guid> _favLoading = new();
     private HashSet<Guid> _kpiMoving = new();
 
     private bool _showAddKpiDialog;
-    private bool _addTabFavorites; // false = predefined
+    private bool _addTabFavorites;
     private HomeKpiPredefined _selPredefined = HomeKpiPredefined.AccountsAggregates;
     private HomeKpiDisplayMode _selDisplay = HomeKpiDisplayMode.TotalOnly;
     private Guid? _selFavoriteId;
-    private List<ReportFavoriteLite> _favorites = new();
+    private List<ReportFavoriteDto> _favorites = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -128,8 +130,8 @@
     {
         try
         {
-            var list = await Http.GetFromJsonAsync<List<HomeKpiDto>>("/api/home-kpis");
-            _kpis = list ?? new();
+            var list = await Api.HomeKpis_ListAsync();
+            _kpis = list.ToList();
         }
         catch { }
         StateHasChanged();
@@ -149,8 +151,8 @@
     {
         try
         {
-            var list = await Http.GetFromJsonAsync<List<ReportFavoriteLite>>("/api/report-favorites");
-            _favorites = (list ?? new()).OrderBy(f => f.Name).ToList();
+            var list = await Api.Reports_ListFavoritesAsync();
+            _favorites = (list ?? Array.Empty<ReportFavoriteDto>()).OrderBy(f => f.Name).ToList();
         }
         catch { }
         StateHasChanged();
@@ -163,12 +165,8 @@
         var payload = new HomeKpiCreateRequest(kind, _addTabFavorites ? _selFavoriteId : null, _addTabFavorites ? null : _selPredefined, null, _selDisplay, sort);
         try
         {
-            var resp = await Http.PostAsJsonAsync("/api/home-kpis", payload);
-            if (resp.IsSuccessStatusCode)
-            {
-                var dto = await resp.Content.ReadFromJsonAsync<HomeKpiDto>();
-                if (dto != null) { _kpis.Add(dto); }
-            }
+            var dto = await Api.HomeKpis_CreateAsync(payload);
+            if (dto != null) { _kpis.Add(dto); }
         }
         catch { }
         finally
@@ -181,8 +179,8 @@
     {
         try
         {
-            var resp = await Http.DeleteAsync($"/api/home-kpis/{id}");
-            if (resp.IsSuccessStatusCode)
+            var ok = await Api.HomeKpis_DeleteAsync(id);
+            if (ok)
             {
                 _kpis.RemoveAll(k => k.Id == id);
                 _favData.Remove(id);
@@ -203,7 +201,6 @@
             if (targetIdx < 0 || targetIdx >= ordered.Count) { return; }
             var other = ordered[targetIdx];
 
-            // swap
             var aNew = other.SortOrder;
             var bNew = kpi.SortOrder;
 
@@ -218,27 +215,18 @@
             var reqA = new HomeKpiUpdateRequest(kpi.Kind, kpi.ReportFavoriteId, kpi.PredefinedType, kpi.Title, kpi.DisplayMode, aNew);
             var reqB = new HomeKpiUpdateRequest(other.Kind, other.ReportFavoriteId, other.PredefinedType, other.Title, other.DisplayMode, bNew);
 
-            var respA = await Http.PutAsJsonAsync($"/api/home-kpis/{kpi.Id}", reqA);
-            var respB = await Http.PutAsJsonAsync($"/api/home-kpis/{other.Id}", reqB);
+            var dtoA = await Api.HomeKpis_UpdateAsync(kpi.Id, reqA);
+            var dtoB = await Api.HomeKpis_UpdateAsync(other.Id, reqB);
 
-            if (respA.IsSuccessStatusCode && respB.IsSuccessStatusCode)
+            if (dtoA != null && dtoB != null)
             {
-                var dtoA = await respA.Content.ReadFromJsonAsync<HomeKpiDto>();
-                var dtoB = await respB.Content.ReadFromJsonAsync<HomeKpiDto>();
-                if (dtoA != null)
-                {
-                    var iA = _kpis.FindIndex(x => x.Id == dtoA.Id);
-                    if (iA >= 0) { _kpis[iA] = dtoA; }
-                }
-                if (dtoB != null)
-                {
-                    var iB = _kpis.FindIndex(x => x.Id == dtoB.Id);
-                    if (iB >= 0) { _kpis[iB] = dtoB; }
-                }
+                var iA = _kpis.FindIndex(x => x.Id == dtoA.Id);
+                if (iA >= 0) { _kpis[iA] = dtoA; }
+                var iB = _kpis.FindIndex(x => x.Id == dtoB.Id);
+                if (iB >= 0) { _kpis[iB] = dtoB; }
             }
             else
             {
-                // revert on failure
                 if (iKpi >= 0) { _kpis[iKpi] = kpi; }
                 if (iOther >= 0) { _kpis[iOther] = other; }
             }
@@ -251,11 +239,26 @@
         }
     }
 
+    private async Task OnTitleChangedAsync(HomeKpiDto k, string? newTitle)
+    {
+        try
+        {
+            var req = new HomeKpiUpdateRequest(k.Kind, k.ReportFavoriteId, k.PredefinedType, newTitle, k.DisplayMode, k.SortOrder);
+            var updated = await Api.HomeKpis_UpdateAsync(k.Id, req);
+            if (updated != null)
+            {
+                var idx = _kpis.FindIndex(x => x.Id == k.Id);
+                if (idx >= 0) { _kpis[idx] = updated; }
+            }
+        }
+        catch { }
+        StateHasChanged();
+    }
+
     private RenderFragment RenderKpiTile(HomeKpiDto k) => builder =>
     {
         var i = 0;
 
-        // Predefined
         if (k.Kind == HomeKpiKind.Predefined)
         {
             var predefined = k.PredefinedType ?? (HomeKpiPredefined)(k.SortOrder % 3);
@@ -328,7 +331,6 @@
                     builder.CloseComponent();
                     break;
                 case HomeKpiPredefined.ActiveSavingsPlansCount:
-                    // decorative background icon centered in full tile (positioned relative to .kpi-tile)
                     builder.OpenElement(i++, "svg"); builder.AddAttribute(i++, "class", "kpi-bg-ico kpi-savings"); builder.AddMarkupContent(i++, "<use href='/icons/sprite.svg#save' />"); builder.CloseElement();
                     builder.OpenElement(i++, "div");
                     builder.AddAttribute(i++, "class", "kpi-body");
@@ -342,12 +344,12 @@
                     {
                         var j = 0;
                         builder2.OpenComponent<NumericKpi>(j++);
-                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/savings-plans/count?onlyActive=true"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var cnt = await Api.SavingsPlans_CountAsync(true); return cnt; } catch { return 0; } }));
                         builder2.CloseComponent();
                     }));
                     builder.CloseElement();
-                    builder.CloseElement(); // a
-                    builder.CloseElement(); // kpi-body
+                    builder.CloseElement();
+                    builder.CloseElement();
                     break;
                 case HomeKpiPredefined.ContactsCount:
                     builder.OpenElement(i++, "svg"); builder.AddAttribute(i++, "class", "kpi-bg-ico kpi-contacts"); builder.AddMarkupContent(i++, "<use href='/icons/sprite.svg#groups' />"); builder.CloseElement();
@@ -363,12 +365,12 @@
                     {
                         var j = 0;
                         builder2.OpenComponent<NumericKpi>(j++);
-                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/contacts/count"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var cnt = await Api.Contacts_CountAsync(); return cnt; } catch { return 0; } }));
                         builder2.CloseComponent();
                     }));
                     builder.CloseElement();
-                    builder.CloseElement(); // a
-                    builder.CloseElement(); // kpi-body
+                    builder.CloseElement();
+                    builder.CloseElement();
                     break;
                 case HomeKpiPredefined.SecuritiesCount:
                     builder.OpenElement(i++, "svg"); builder.AddAttribute(i++, "class", "kpi-bg-ico kpi-securities"); builder.AddMarkupContent(i++, "<use href='/icons/sprite.svg#postings' />"); builder.CloseElement();
@@ -384,12 +386,12 @@
                     {
                         var j = 0;
                         builder2.OpenComponent<NumericKpi>(j++);
-                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/securities/count?onlyActive=true"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var cnt = await Api.Securities_CountAsync(true); return cnt; } catch { return 0; } }));
                         builder2.CloseComponent();
                     }));
                     builder.CloseElement();
-                    builder.CloseElement(); // a
-                    builder.CloseElement(); // kpi-body
+                    builder.CloseElement();
+                    builder.CloseElement();
                     break;
                 case HomeKpiPredefined.OpenStatementDraftsCount:
                     builder.OpenElement(i++, "svg"); builder.AddAttribute(i++, "class", "kpi-bg-ico kpi-drafts"); builder.AddMarkupContent(i++, "<use href='/icons/sprite.svg#upload' />"); builder.CloseElement();
@@ -405,19 +407,18 @@
                     {
                         var j = 0;
                         builder2.OpenComponent<NumericKpi>(j++);
-                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/statement-drafts/count"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var cnt = await Api.StatementDrafts_GetOpenCountAsync(); return cnt; } catch { return 0; } }));
                         builder2.CloseComponent();
                     }));
                     builder.CloseElement();
-                    builder.CloseElement(); // a
-                    builder.CloseElement(); // kpi-body
+                    builder.CloseElement();
+                    builder.CloseElement();
                     break;
             }
             builder.CloseElement();
             return;
         }
 
-        // Report Favorite
         var name = string.IsNullOrWhiteSpace(k.Title) ? (k.ReportFavoriteName ?? Localizer["Favorite"]) : k.Title;
 
         builder.OpenElement(i++, "div");
@@ -468,7 +469,7 @@
             builder.OpenElement(i++, "div"); builder.AddAttribute(i++, "class", "small-loading"); builder.AddContent(i++, Localizer["Loading"]); builder.CloseElement();
         }
 
-        builder.CloseElement(); // fav-kpi
+        builder.CloseElement();
     };
 
     private void OnOpenFavorite(HomeKpiDto k)
@@ -479,54 +480,32 @@
         }
     }
 
-    private async Task OnTitleChangedAsync(HomeKpiDto k, string? newTitle)
-    {
-        try
-        {
-            var req = new HomeKpiUpdateRequest(k.Kind, k.ReportFavoriteId, k.PredefinedType, newTitle, k.DisplayMode, k.SortOrder);
-            var resp = await Http.PutAsJsonAsync($"/api/home-kpis/{k.Id}", req);
-            if (resp.IsSuccessStatusCode)
-            {
-                var updated = await resp.Content.ReadFromJsonAsync<HomeKpiDto>();
-                if (updated != null)
-                {
-                    var idx = _kpis.FindIndex(x => x.Id == k.Id);
-                    if (idx >= 0) { _kpis[idx] = updated; }
-                }
-            }
-        }
-        catch { }
-        StateHasChanged();
-    }
-
     private async Task LoadFavoriteKpiDataAsync(HomeKpiDto k)
     {
         try
         {
             if (!k.ReportFavoriteId.HasValue) { return; }
-            var fav = await Http.GetFromJsonAsync<ReportFavoriteFull>($"/api/report-favorites/{k.ReportFavoriteId.Value}");
+            var fav = await Api.Reports_GetFavoriteAsync(k.ReportFavoriteId.Value);
             if (fav == null) { return; }
             var disablePrev = fav.Interval == ReportInterval.Ytd || fav.Interval == ReportInterval.Year;
-            var req = new QueryRequest(
+            var req = new ReportAggregatesQueryRequest(
                 fav.PostingKind,
                 fav.Interval,
                 fav.Take,
                 fav.IncludeCategory,
                 disablePrev ? false : fav.ComparePrevious,
                 fav.CompareYear,
+                fav.UseValutaDate,
                 fav.PostingKinds?.Count > 0 ? fav.PostingKinds : null,
                 null,
-                fav.UseValutaDate,
-                fav.Filters == null ? null : new FiltersRequest(
+                fav.Filters == null ? null : new ReportAggregatesFiltersRequest(
                     fav.Filters.AccountIds, fav.Filters.ContactIds, fav.Filters.SavingsPlanIds, fav.Filters.SecurityIds,
                     fav.Filters.ContactCategoryIds, fav.Filters.SavingsPlanCategoryIds, fav.Filters.SecurityCategoryIds, fav.Filters.SecuritySubTypes,
                     fav.Filters.IncludeDividendRelated)
             );
-            var resp = await Http.PostAsJsonAsync("/api/report-aggregates", req);
-            if (!resp.IsSuccessStatusCode) { return; }
-            var agg = await resp.Content.ReadFromJsonAsync<AggregationResponse>();
+            var agg = await Api.Reports_QueryAggregatesAsync(req);
             if (agg == null) { return; }
-            var points = (agg.Points ?? new()).OrderBy(p => p.GroupKey).ThenBy(p => p.PeriodStart).ToList();
+            var points = (agg.Points ?? new List<ReportAggregatePointDto>()).OrderBy(p => p.GroupKey).ThenBy(p => p.PeriodStart).ToList();
             var series = points.Where(p => p.ParentGroupKey == null || p.GroupKey.StartsWith("Type:"))
                                .GroupBy(p => p.PeriodStart)
                                .Select(g => new SeriesPoint(g.Key, g.Where(x => x.ParentGroupKey == null || x.GroupKey.StartsWith("Type:")).Sum(x => x.Amount)))
@@ -550,7 +529,7 @@
                               .OrderBy(g => g.Key).LastOrDefault()?
                               .Where(p => p.YearAgoAmount.HasValue).Sum(p => p.YearAgoAmount!.Value);
             }
-            _favData[k.Id] = new FavKpiData(amount, prev, year, series, fav.PostingKind);
+            _favData[k.Id] = new FavKpiData(amount, prev, year, series, (int)fav.PostingKind);
         }
         catch { }
         finally
@@ -560,21 +539,7 @@
         }
     }
 
-    // --- Inline DTOs used by this component (keine externen Abhängigkeiten nötig) ---
-    private sealed record HomeKpiDto(Guid Id, HomeKpiKind Kind, Guid? ReportFavoriteId, string? ReportFavoriteName, HomeKpiPredefined? PredefinedType, string? Title, HomeKpiDisplayMode DisplayMode, int SortOrder, DateTime CreatedUtc);
-    private sealed record HomeKpiCreateRequest(HomeKpiKind Kind, Guid? ReportFavoriteId, HomeKpiPredefined? PredefinedType, string? Title, HomeKpiDisplayMode DisplayMode, int SortOrder);
-    private sealed record HomeKpiUpdateRequest(HomeKpiKind Kind, Guid? ReportFavoriteId, HomeKpiPredefined? PredefinedType, string? Title, HomeKpiDisplayMode DisplayMode, int SortOrder);
-
-    private sealed record ReportFavoriteLite(Guid Id, string Name);
-    private sealed record ReportFavoriteFull(Guid Id, string Name, int PostingKind, bool IncludeCategory, ReportInterval Interval, int Take, bool ComparePrevious, bool CompareYear, bool ShowChart, bool Expandable, DateTime CreatedUtc, DateTime? ModifiedUtc, IReadOnlyCollection<int> PostingKinds, FavFiltersDto? Filters, bool UseValutaDate);
-    private sealed record FavFiltersDto(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds, IReadOnlyCollection<int>? SecuritySubTypes, bool? IncludeDividendRelated);
-    private sealed record QueryRequest(int PostingKind, ReportInterval Interval, int Take, bool IncludeCategory, bool ComparePrevious, bool CompareYear, IReadOnlyCollection<int>? PostingKinds, DateTime? AnalysisDate, bool UseValutaDate, FiltersRequest? Filters);
-    private sealed record FiltersRequest(IReadOnlyCollection<Guid>? AccountIds, IReadOnlyCollection<Guid>? ContactIds, IReadOnlyCollection<Guid>? SavingsPlanIds, IReadOnlyCollection<Guid>? SecurityIds, IReadOnlyCollection<Guid>? ContactCategoryIds, IReadOnlyCollection<Guid>? SavingsPlanCategoryIds, IReadOnlyCollection<Guid>? SecurityCategoryIds, IReadOnlyCollection<int>? SecuritySubTypes, bool? IncludeDividendRelated);
-    private sealed record AggregationResponse(ReportInterval Interval, List<PointDto> Points, bool ComparedPrevious, bool ComparedYear);
-    private sealed record PointDto(DateTime PeriodStart, string GroupKey, string GroupName, string? CategoryName, decimal Amount, string? ParentGroupKey, decimal? PreviousAmount, decimal? YearAgoAmount);
-
     private sealed record FavKpiData(decimal Amount, decimal? Prev, decimal? Year, List<SeriesPoint> Series, int Kind);
-    private sealed record CountResp(int count);
     private sealed record SeriesPoint(DateTime Date, decimal Amount);
 }
 

@@ -1,15 +1,8 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
-using FinanceManager.Shared.Dtos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace FinanceManager.Tests.Aggregates;
 

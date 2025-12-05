@@ -1,25 +1,16 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Application;
+﻿using FinanceManager.Application;
 using FinanceManager.Application.Users;
 using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Auth;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Moq;
-using Xunit;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Contacts; // added
-using FinanceManager.Domain.Security; // new
-using FinanceManager.Application.Security; // added
-using System;
-using System.Collections.Generic;
+using Moq;
 
 namespace FinanceManager.Tests.Auth;
 
@@ -46,7 +37,7 @@ public sealed class UserAuthServiceTests
         var signInManagerMock = new Mock<SignInManager<User>>(userManagerMock.Object, httpContextAccessorMock.Object, claimsFactoryMock.Object, options, loggerSignInMock.Object, schemesMock.Object, confirmationMock.Object);
 
         // default: only password 'pw' is valid for check via PasswordSignInAsync
-        signInManagerMock.Setup(s => s.PasswordSignInAsync(It.IsAny<User>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>() ))
+        signInManagerMock.Setup(s => s.PasswordSignInAsync(It.IsAny<User>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<bool>()))
             .ReturnsAsync((User user, string pwd, bool pers, bool lockout) => pwd == "pw" ? SignInResult.Success : SignInResult.Failed);
 
         userManagerMock.Setup(u => u.CheckPasswordAsync(It.IsAny<User>(), It.IsAny<string>()))

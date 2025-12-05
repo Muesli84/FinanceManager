@@ -1,5 +1,3 @@
-using System;
-
 namespace FinanceManager.Infrastructure.Backups;
 
 public sealed class BackupRecord

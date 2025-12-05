@@ -1,23 +1,20 @@
-﻿using FinanceManager.Domain.Users;
-using FinanceManager.Domain.Accounts;
-using FinanceManager.Domain.Contacts;
-using FinanceManager.Domain.Statements;
-using FinanceManager.Domain.Postings;
-using Microsoft.EntityFrameworkCore;
-using FinanceManager.Domain.Savings;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using FinanceManager.Shared.Dtos;
-using FinanceManager.Domain.Securities;
-using FinanceManager.Infrastructure.Backups;
-using System.Threading.Tasks;
-using System.Threading;
-using FinanceManager.Domain.Reports; // added
-using FinanceManager.Domain.Security; // new
-using FinanceManager.Domain.Notifications; // new
-using FinanceManager.Infrastructure.Notifications; // new
+﻿using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Attachments; // new
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using FinanceManager.Domain.Contacts;
+using FinanceManager.Domain.Notifications; // new
+using FinanceManager.Domain.Postings;
+using FinanceManager.Domain.Reports; // added
+using FinanceManager.Domain.Savings;
+using FinanceManager.Domain.Securities;
+using FinanceManager.Domain.Security; // new
+using FinanceManager.Domain.Statements;
+using FinanceManager.Domain.Users;
+using FinanceManager.Infrastructure.Backups;
+using FinanceManager.Infrastructure.Notifications; // new
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace FinanceManager.Infrastructure;
 
@@ -213,7 +210,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
         modelBuilder.Entity<PostingAggregate>(b =>
         {
             b.HasKey(x => x.Id);
-            b.Property(x => x.Amount).HasPrecision(18,2);
+            b.Property(x => x.Amount).HasPrecision(18, 2);
             b.Property(x => x.SecuritySubType);
             b.Property(x => x.DateKind);
             // broad unique index including subtype and date kind (only matters for security)
@@ -236,9 +233,9 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
         {
             b.Property<Guid?>("SecurityId");
             b.Property<SecurityTransactionType?>("SecurityTransactionType");
-            b.Property<decimal?>("SecurityQuantity").HasPrecision(18,6);
-            b.Property<decimal?>("SecurityFeeAmount").HasPrecision(18,2);
-            b.Property<decimal?>("SecurityTaxAmount").HasPrecision(18,2);
+            b.Property<decimal?>("SecurityQuantity").HasPrecision(18, 6);
+            b.Property<decimal?>("SecurityFeeAmount").HasPrecision(18, 2);
+            b.Property<decimal?>("SecurityTaxAmount").HasPrecision(18, 2);
             b.HasIndex("SecurityId");
         });
 
@@ -247,7 +244,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.SecurityId, x.Date }).IsUnique();
             b.Property(x => x.Date).IsRequired();
-            b.Property(x => x.Close).HasPrecision(18,4).IsRequired();
+            b.Property(x => x.Close).HasPrecision(18, 4).IsRequired();
         });
 
         modelBuilder.Entity<BackupRecord>(b =>
@@ -281,12 +278,12 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             b.Property(x => x.SortOrder).IsRequired();
             b.Property(x => x.Title).HasMaxLength(120);
             b.Property(x => x.PredefinedType).HasConversion<int?>();
-             // Optional FK to ReportFavorite; on delete favorite -> cascade remove dependent KPIs
-             b.HasOne<ReportFavorite>()
-                 .WithMany()
-                 .HasForeignKey(x => x.ReportFavoriteId)
-                 .OnDelete(DeleteBehavior.Cascade);
-         });
+            // Optional FK to ReportFavorite; on delete favorite -> cascade remove dependent KPIs
+            b.HasOne<ReportFavorite>()
+                .WithMany()
+                .HasForeignKey(x => x.ReportFavoriteId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // IpBlock configuration
         modelBuilder.Entity<IpBlock>(b =>
@@ -346,8 +343,8 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
         await HomeKpis
             .Where(h => h.OwnerUserId == userId)
             .ExecuteDeleteAsync(ct);
-        progressCallback(++count, total); 
-        
+        progressCallback(++count, total);
+
         await ReportFavorites
             .Where(r => r.OwnerUserId == userId)
             .ExecuteDeleteAsync(ct);

@@ -1,16 +1,14 @@
-using System.Net.Http.Json;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Shared;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SetupImportSplitViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public SetupImportSplitViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SetupImportSplitViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public ImportSplitSettingsDto? Model { get; private set; }
@@ -35,7 +33,7 @@ public sealed class SetupImportSplitViewModel : ViewModelBase
         Loading = true; Error = null; SaveError = null; SavedOk = false; RaiseStateChanged();
         try
         {
-            var dto = await _http.GetFromJsonAsync<ImportSplitSettingsDto>("/api/user/import-split-settings", ct);
+            var dto = await _api.UserSettings_GetImportSplitAsync(ct);
             Model = dto ?? new ImportSplitSettingsDto();
             _original = Clone(Model);
             RecomputeDirty();
@@ -55,8 +53,15 @@ public sealed class SetupImportSplitViewModel : ViewModelBase
         Saving = true; SavedOk = false; SaveError = null; RaiseStateChanged();
         try
         {
-            using var resp = await _http.PutAsJsonAsync("/api/user/import-split-settings", Model, ct);
-            if (resp.IsSuccessStatusCode)
+            var request = new ImportSplitSettingsUpdateRequest(
+                Mode: Model.Mode,
+                MaxEntriesPerDraft: Model.MaxEntriesPerDraft,
+                MonthlySplitThreshold: Model.MonthlySplitThreshold,
+                MinEntriesPerDraft: Model.MinEntriesPerDraft
+            );
+
+            var ok = await _api.UserSettings_UpdateImportSplitAsync(request, ct);
+            if (ok)
             {
                 _original = Clone(Model);
                 SavedOk = true;
@@ -64,7 +69,7 @@ public sealed class SetupImportSplitViewModel : ViewModelBase
             }
             else
             {
-                SaveError = await resp.Content.ReadAsStringAsync(ct);
+                SaveError = _api.LastError ?? "Save failed";
             }
         }
         catch (Exception ex)

@@ -1,16 +1,7 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Application.Reports;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Reports;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
-using FinanceManager.Shared.Dtos; // SecurityPostingSubType
 
 namespace FinanceManager.Tests.Reports;
 
@@ -33,7 +24,7 @@ public sealed class SecurityDividendNetYtdSimpleTests
         var ct = CancellationToken.None;
 
         // Arrange: owner and one owned security
-        var user = new FinanceManager.Domain.Users.User("owner","pw", false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync(ct);
 
@@ -116,7 +107,7 @@ public sealed class SecurityDividendNetYtdSimpleTests
         var analysis = new DateTime(year, 6, 1);
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Security,
+            PostingKind: PostingKind.Security,
             Interval: ReportInterval.Ytd,
             Take: 12,
             IncludeCategory: false,

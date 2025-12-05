@@ -1,6 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-
 namespace FinanceManager.Web.Infrastructure.Logging;
 
 public static class FileLoggingBuilderExtensions

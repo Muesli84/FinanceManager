@@ -1,16 +1,14 @@
-using System.Net.Http.Json;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class PostingDetailViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
-    public PostingDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public PostingDetailViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public Guid Id { get; private set; }
@@ -18,7 +16,7 @@ public sealed class PostingDetailViewModel : ViewModelBase
     public bool Loading { get; private set; }
     public bool LinksLoading { get; private set; }
 
-    public PostingDto? Detail { get; private set; }
+    public PostingServiceDto? Detail { get; private set; }
 
     public Guid? LinkedAccountId { get; private set; }
     public Guid? LinkedContactId { get; private set; }
@@ -47,7 +45,7 @@ public sealed class PostingDetailViewModel : ViewModelBase
         Loading = true; RaiseStateChanged();
         try
         {
-            var dto = await _http.GetFromJsonAsync<PostingDto>($"/api/postings/{Id}", ct);
+            var dto = await _api.Postings_GetByIdAsync(Id, ct);
             Detail = dto;
             if (Detail != null)
             {
@@ -68,7 +66,7 @@ public sealed class PostingDetailViewModel : ViewModelBase
         try
         {
             LinksLoading = true; RaiseStateChanged();
-            var dto = await _http.GetFromJsonAsync<GroupLinksResponse>($"/api/postings/group/{Detail.GroupId}", ct);
+            var dto = await _api.Postings_GetGroupLinksAsync(Detail.GroupId, ct);
             if (dto != null)
             {
                 LinkedAccountId = dto.AccountId ?? LinkedAccountId;
@@ -98,7 +96,4 @@ public sealed class PostingDetailViewModel : ViewModelBase
     }
 
     private static bool HasId(Guid? id) => id.HasValue && id.Value != Guid.Empty;
-
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, int Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, int? SecuritySubType, decimal? Quantity, Guid GroupId);
-    public sealed record GroupLinksResponse(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 }

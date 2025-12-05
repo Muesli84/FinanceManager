@@ -1,7 +1,5 @@
-using System.Runtime.CompilerServices;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using FinanceManager.Application;
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 

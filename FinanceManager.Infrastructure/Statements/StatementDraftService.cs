@@ -1,22 +1,16 @@
-﻿using FinanceManager.Application.Statements;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Contacts;
-using FinanceManager.Domain.Postings;
-using FinanceManager.Domain.Savings;
-using FinanceManager.Domain.Securities;
-using FinanceManager.Domain.Statements;
+﻿using FinanceManager.Application.Aggregates;
+using FinanceManager.Application.Attachments; // added
+using FinanceManager.Application.Statements;
 using FinanceManager.Domain.Accounts; // added for Account type
-using FinanceManager.Infrastructure.Migrations;
+using FinanceManager.Domain.Attachments; // added
+using FinanceManager.Domain.Contacts;
+using FinanceManager.Domain.Statements;
 using FinanceManager.Infrastructure.Statements.Reader;
-using FinanceManager.Shared.Dtos;
+using FinanceManager.Shared.Extensions;
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Application.Aggregates;
 using Microsoft.Extensions.Logging; // added
 using Microsoft.Extensions.Logging.Abstractions; // added
-using FinanceManager.Application.Attachments; // added
-using FinanceManager.Domain.Attachments; // added
 using System.Globalization;
-using FinanceManager.Shared.Extensions; // added
 
 namespace FinanceManager.Infrastructure.Statements;
 
@@ -210,7 +204,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 var entries = draftEntries.ToList();
                 if (entries.Count == 0) continue;
 
-                if (entries.Count > 1) {
+                if (entries.Count > 1)
+                {
                     var entry2 = entries.FirstOrDefault();
                     entry2.SetSecurity(entry2.SecurityId, line.PostingDescription switch
                     {
@@ -233,7 +228,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
                         await _db.SaveChangesAsync();
                     }
                     continue;
-                };
+                }
+                ;
                 var entry = entries.FirstOrDefault();
                 entry.SetSecurity(entry.SecurityId, line.PostingDescription switch
                 {
@@ -241,7 +237,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     "Sell" => SecurityTransactionType.Sell,
                     "Buy" => SecurityTransactionType.Buy,
                     _ => entry.SecurityTransactionType
-                }, line.PostingDescription switch {
+                }, line.PostingDescription switch
+                {
                     "Dividend" => null,
                     "Sell" => line.Quantity ?? entry.SecurityQuantity,
                     "Buy" => line.Quantity ?? entry.SecurityQuantity,
@@ -869,11 +866,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
 
     public Task<int> GetOpenDraftsCountAsync(Guid userId, CancellationToken token)
     {
-       return _db.StatementDrafts
-            .Include(d => d.Entries)
-            .Where(d => d.OwnerUserId == userId && d.Status == StatementDraftStatus.Draft)            
-            .AsNoTracking()
-            .CountAsync();
+        return _db.StatementDrafts
+             .Include(d => d.Entries)
+             .Where(d => d.OwnerUserId == userId && d.Status == StatementDraftStatus.Draft)
+             .AsNoTracking()
+             .CountAsync();
     }
 
     public async Task<StatementDraftDto?> GetDraftAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
@@ -1309,9 +1306,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     {
                         var sev = account.SavingsPlanExpectation switch
                         {
-                            FinanceManager.Domain.Accounts.SavingsPlanExpectation.Required => "Error",
-                            FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional => "Warning",
-                            FinanceManager.Domain.Accounts.SavingsPlanExpectation.None => null,
+                            SavingsPlanExpectation.Required => "Error",
+                            SavingsPlanExpectation.Optional => "Warning",
+                            SavingsPlanExpectation.None => null,
                             _ => "Warning"
                         };
                         if (sev != null)
@@ -1392,9 +1389,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
                         {
                             var sev = account.SavingsPlanExpectation switch
                             {
-                                FinanceManager.Domain.Accounts.SavingsPlanExpectation.Required => "Error",
-                                FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional => "Warning",
-                                FinanceManager.Domain.Accounts.SavingsPlanExpectation.None => null,
+                                SavingsPlanExpectation.Required => "Error",
+                                SavingsPlanExpectation.Optional => "Warning",
+                                SavingsPlanExpectation.None => null,
                                 _ => "Warning"
                             };
                             if (sev != null)
@@ -1405,7 +1402,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     }
                     else if (account != null && account.Type == AccountType.Savings)
                     {
-                        Add("SAVINGSPLAN_INVALID_ACCOUNT", "Error", "Sparplan auf Sparkonto ist nicht zulässig.",   null, e.Id);
+                        Add("SAVINGSPLAN_INVALID_ACCOUNT", "Error", "Sparplan auf Sparkonto ist nicht zulässig.", null, e.Id);
                     }
                 }
                 if (e.SecurityId != null && account != null)
@@ -1851,7 +1848,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 }
                 async Task CreateSecurityAsync(StatementDraftEntry e, Guid gid)
                 {
-                    if (e.SecurityId == null) return;
+                    if (e.SecurityId == null) { return; }
                     var fee = Math.Abs(e.SecurityFeeAmount ?? 0m); var tax = Math.Abs(e.SecurityTaxAmount ?? 0m);
                     if (e.Amount < 0) { fee = -fee; tax = -tax; }
                     var factor = e.SecurityTransactionType switch { SecurityTransactionType.Buy => 1, SecurityTransactionType.Sell => -1, SecurityTransactionType.Dividend => -1, _ => -1 };

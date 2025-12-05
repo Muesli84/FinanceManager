@@ -1,17 +1,15 @@
-using System.Net.Http.Json;
-using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Shared; // IApiClient
 using Microsoft.Extensions.Localization;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ContactsViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public ContactsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public ContactsViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public bool Loaded { get; private set; }
@@ -42,17 +40,13 @@ public sealed class ContactsViewModel : ViewModelBase
     {
         try
         {
-            var resp = await _http.GetAsync("/api/contact-categories", ct);
-            if (resp.IsSuccessStatusCode)
+            var list = await _api.ContactCategories_ListAsync(ct);
+            _categoryNames.Clear();
+            _categorySymbols.Clear();
+            foreach (var c in list)
             {
-                var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>(cancellationToken: ct) ?? new();
-                _categoryNames.Clear();
-                _categorySymbols.Clear();
-                foreach (var c in list)
-                {
-                    _categoryNames[c.Id] = c.Name;
-                    _categorySymbols[c.Id] = c.SymbolAttachmentId;
-                }
+                _categoryNames[c.Id] = c.Name;
+                _categorySymbols[c.Id] = c.SymbolAttachmentId;
             }
         }
         catch { }
@@ -66,36 +60,27 @@ public sealed class ContactsViewModel : ViewModelBase
         try
         {
             var pageSize = 50;
-            var url = $"/api/contacts?skip={Contacts.Count}&take={pageSize}";
-            if (!string.IsNullOrWhiteSpace(Filter))
+            var list = await _api.Contacts_ListAsync(skip: Contacts.Count, take: pageSize, type: null, all: false, nameFilter: string.IsNullOrWhiteSpace(Filter) ? null : Filter, ct);
+            if (list.Count < pageSize)
             {
-                url += $"&q={Uri.EscapeDataString(Filter)}";
+                AllLoaded = true;
             }
-            var resp = await _http.GetAsync(url, ct);
-            if (resp.IsSuccessStatusCode)
+            foreach (var dto in list)
             {
-                var more = await resp.Content.ReadFromJsonAsync<List<ContactDto>>(cancellationToken: ct) ?? new();
-                if (more.Count < pageSize)
+                Guid? categoryId = dto.CategoryId;
+                Contacts.Add(new ContactItem
                 {
-                    AllLoaded = true;
-                }
-                foreach (var dto in more)
-                {
-                    Guid? categoryId = dto.CategoryId;
-                    Contacts.Add(new ContactItem
-                    {
-                        Id = dto.Id,
-                        Name = dto.Name,
-                        Type = dto.Type.ToString(),
-                        CategoryName = categoryId.HasValue && _categoryNames.TryGetValue(categoryId.Value, out var cat)
-                            ? cat
-                            : string.Empty,
-                        SymbolAttachmentId = dto.SymbolAttachmentId,
-                        CategorySymbolAttachmentId = categoryId.HasValue && _categorySymbols.TryGetValue(categoryId.Value, out var cs)
-                            ? cs
-                            : null
-                    });
-                }
+                    Id = dto.Id,
+                    Name = dto.Name,
+                    Type = dto.Type.ToString(),
+                    CategoryName = categoryId.HasValue && _categoryNames.TryGetValue(categoryId.Value, out var cat)
+                        ? cat
+                        : string.Empty,
+                    SymbolAttachmentId = dto.SymbolAttachmentId,
+                    CategorySymbolAttachmentId = categoryId.HasValue && _categorySymbols.TryGetValue(categoryId.Value, out var cs)
+                        ? cs
+                        : null
+                });
             }
         }
         catch { }
@@ -130,7 +115,6 @@ public sealed class ContactsViewModel : ViewModelBase
         {
             items.Add(new UiRibbonItem(localizer["Ribbon_ClearFilter"], "<svg><use href='/icons/sprite.svg#clear'/></svg>", UiRibbonItemSize.Small, false, "ClearFilter"));
         }
-        // Add link to contact categories management
         items.Add(new UiRibbonItem(localizer["Ribbon_Categories"], "<svg><use href='/icons/sprite.svg#groups'/></svg>", UiRibbonItemSize.Small, false, "Categories"));
         return new List<UiRibbonGroup>
         {
@@ -148,7 +132,4 @@ public sealed class ContactsViewModel : ViewModelBase
         public Guid? CategorySymbolAttachmentId { get; set; }
         public Guid? DisplaySymbolAttachmentId => SymbolAttachmentId ?? CategorySymbolAttachmentId;
     }
-
-    public sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, string? Description, bool IsPaymentIntermediary, Guid? SymbolAttachmentId);
-    public sealed record ContactCategoryDto(Guid Id, string Name, Guid? SymbolAttachmentId);
 }

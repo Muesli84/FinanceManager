@@ -1,18 +1,14 @@
-using System.Net.Http.Json;
-using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SecuritiesListViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
-    public SecuritiesListViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SecuritiesListViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public bool Loaded { get; private set; }
@@ -37,30 +33,29 @@ public sealed class SecuritiesListViewModel : ViewModelBase
     public async Task LoadAsync(CancellationToken ct = default)
     {
         if (!IsAuthenticated) { return; }
-        var resp = await _http.GetAsync($"/api/securities?onlyActive={OnlyActive}", ct);
-        if (!resp.IsSuccessStatusCode)
+        try
+        {
+            var list = await _api.Securities_ListAsync(OnlyActive, ct);
+            Items = list.ToList();
+        }
+        catch
         {
             Items = new();
             _displaySymbolBySecurity.Clear();
             RaiseStateChanged();
             return;
         }
-        Items = await resp.Content.ReadFromJsonAsync<List<SecurityDto>>(cancellationToken: ct) ?? new();
 
         // Load categories to get category symbol fallbacks
         var categorySymbolMap = new Dictionary<Guid, Guid?>();
         try
         {
-            var creq = await _http.GetAsync("/api/security-categories", ct);
-            if (creq.IsSuccessStatusCode)
+            var clist = await _api.SecurityCategories_ListAsync(ct);
+            foreach (var c in clist)
             {
-                var clist = await creq.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>(cancellationToken: ct) ?? new();
-                foreach (var c in clist)
+                if (c.Id != Guid.Empty)
                 {
-                    if (c.Id != Guid.Empty)
-                    {
-                        categorySymbolMap[c.Id] = c.SymbolAttachmentId;
-                    }
+                    categorySymbolMap[c.Id] = c.SymbolAttachmentId;
                 }
             }
         }

@@ -1,11 +1,5 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Application.Statements;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.Services

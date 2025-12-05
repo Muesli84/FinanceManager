@@ -1,12 +1,6 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Contacts;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace FinanceManager.Tests.Infrastructure;

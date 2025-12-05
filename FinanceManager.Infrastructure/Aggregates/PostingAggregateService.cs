@@ -1,9 +1,6 @@
 using FinanceManager.Application.Aggregates;
-using FinanceManager.Domain;
 using FinanceManager.Domain.Postings;
-using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using FinanceManager.Shared.Dtos; // added for SecurityPostingSubType
 
 namespace FinanceManager.Infrastructure.Aggregates;
 
@@ -138,10 +135,10 @@ public sealed class PostingAggregateService : IPostingAggregateService
 
                 (Guid? acc, Guid? con, Guid? sav, Guid? sec, SecurityPostingSubType? sub) dim = p.Kind switch
                 {
-                    PostingKind.Bank       => (p.AccountId, null, null, null, null),
-                    PostingKind.Contact    => (null, p.ContactId, null, null, null),
-                    PostingKind.SavingsPlan=> (null, null, p.SavingsPlanId, null, null),
-                    PostingKind.Security   => (null, null, null, p.SecurityId, p.SecuritySubType),
+                    PostingKind.Bank => (p.AccountId, null, null, null, null),
+                    PostingKind.Contact => (null, p.ContactId, null, null, null),
+                    PostingKind.SavingsPlan => (null, null, p.SavingsPlanId, null, null),
+                    PostingKind.Security => (null, null, null, p.SecurityId, p.SecuritySubType),
                     _ => (null, null, null, null, null)
                 };
 

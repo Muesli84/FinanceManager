@@ -2,11 +2,12 @@
 @inject NavigationManager Nav
 @inject IServiceProvider Services
 @rendermode InteractiveServer
+@using System.Linq
 @using FinanceManager.Shared.Dtos
-@using Microsoft.Extensions.Localization
+@using FinanceManager.Shared.Dtos.SavingsPlans
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Web.ViewModels
-@using System.Linq
+@using Microsoft.Extensions.Localization
 @inject IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanList> Localizer
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 

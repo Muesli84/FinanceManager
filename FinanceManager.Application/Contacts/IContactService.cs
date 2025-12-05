@@ -1,7 +1,3 @@
-using FinanceManager.Domain;
-using FinanceManager.Domain.Contacts;
-using FinanceManager.Shared.Dtos;
-
 namespace FinanceManager.Application.Contacts;
 
 public interface IContactService

@@ -1,18 +1,15 @@
-using System.Net.Http.Json;
-using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Shared;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SavingsPlansViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public SavingsPlansViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SavingsPlansViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public bool Loaded { get; private set; }
@@ -58,27 +55,26 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         _analysisByPlan.Clear();
         _displaySymbolByPlan.Clear();
 
-        var resp = await _http.GetAsync($"/api/savings-plans?onlyActive={ShowActiveOnly}", ct);
-        if (!resp.IsSuccessStatusCode)
+        try
+        {
+            var list = await _api.SavingsPlans_ListAsync(ShowActiveOnly, ct);
+            Plans = list.ToList();
+        }
+        catch
         {
             return;
         }
-        Plans = await resp.Content.ReadFromJsonAsync<List<SavingsPlanDto>>(cancellationToken: ct) ?? new();
 
         // Load category symbols to use as fallback
         var categorySymbolMap = new Dictionary<Guid, Guid?>();
         try
         {
-            var creq = await _http.GetAsync("/api/savings-plan-categories", ct);
-            if (creq.IsSuccessStatusCode)
+            var clist = await _api.SavingsPlanCategories_ListAsync(ct);
+            foreach (var c in clist)
             {
-                var clist = await creq.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? new();
-                foreach (var c in clist)
+                if (c.Id != Guid.Empty)
                 {
-                    if (c.Id != Guid.Empty)
-                    {
-                        categorySymbolMap[c.Id] = c.SymbolAttachmentId;
-                    }
+                    categorySymbolMap[c.Id] = c.SymbolAttachmentId;
                 }
             }
         }
@@ -110,12 +106,8 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         {
             try
             {
-                var r = await _http.GetAsync($"/api/savings-plans/{p.Id}/analysis", ct);
-                if (r.IsSuccessStatusCode)
-                {
-                    var dto = await r.Content.ReadFromJsonAsync<SavingsPlanAnalysisDto>(cancellationToken: ct);
-                    if (dto != null) { _analysisByPlan[p.Id] = dto; }
-                }
+                var dto = await _api.SavingsPlans_AnalyzeAsync(p.Id, ct);
+                if (dto != null) { _analysisByPlan[p.Id] = dto; }
             }
             catch { }
         });
@@ -179,7 +171,7 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         if (plan == null) return false;
         if (plan.Type == SavingsPlanType.Open) return false;
         if (!_analysisByPlan.TryGetValue(plan.Id, out var a)) return false;
-        if (a.TargetAmount is null) return false;        
+        if (a.TargetAmount is null) return false;
         // completed when accumulated already reached or exceeded target
         return a.AccumulatedAmount >= a.TargetAmount.Value;
     }
@@ -208,7 +200,7 @@ public sealed class SavingsPlansViewModel : ViewModelBase
         if (plan.TargetDate == DateTime.MinValue) return false;
         if (plan.TargetDate > DateTime.Now) return false;
         var remainingAmount = GetRemainingAmount(plan) ?? 0;
-        if (remainingAmount <= 0) return false;        
+        if (remainingAmount <= 0) return false;
         return true;
     }
 }

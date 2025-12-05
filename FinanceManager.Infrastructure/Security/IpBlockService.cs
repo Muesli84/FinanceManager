@@ -2,7 +2,6 @@ using FinanceManager.Application.Notifications;
 using FinanceManager.Application.Security;
 using FinanceManager.Domain.Notifications;
 using FinanceManager.Domain.Security;
-using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

@@ -1,17 +1,14 @@
-using System.Net.Http.Json;
-using System.Linq;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class PostingsSavingsPlanViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
-    public PostingsSavingsPlanViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public PostingsSavingsPlanViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public Guid PlanId { get; private set; }
@@ -62,13 +59,11 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
         try
         {
             var firstPage = Skip == 0;
-            var parts = new List<string> { $"skip={Skip}", "take=50" };
-            if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
-            var url = $"/api/postings/savings-plan/{PlanId}?{string.Join('&', parts)}";
-            var chunk = await _http.GetFromJsonAsync<List<PostingDto>>(url, ct) ?? new();
-            Items.AddRange(chunk.Select(Map));
-            Skip += chunk.Count;
-            if (chunk.Count == 0 || (!firstPage && chunk.Count < 50)) { CanLoadMore = false; }
+            var chunk = await _api.Postings_GetSavingsPlanAsync(PlanId, Skip, 50, null, null, Search, ct);
+            var list = chunk ?? Array.Empty<PostingServiceDto>();
+            Items.AddRange(list.Select(Map));
+            Skip += list.Count;
+            if (list.Count == 0 || (!firstPage && list.Count < 50)) { CanLoadMore = false; }
         }
         catch { }
         finally { Loading = false; RaiseStateChanged(); }
@@ -106,7 +101,7 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
         return new List<UiRibbonGroup> { nav, filter, export };
     }
 
-    private static PostingItem Map(PostingDto p) => new()
+    private static PostingItem Map(PostingServiceDto p) => new()
     {
         Id = p.Id,
         BookingDate = p.BookingDate,
@@ -117,18 +112,14 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
         ContactId = p.ContactId,
         SavingsPlanId = p.SavingsPlanId,
         SecurityId = p.SecurityId,
-        GroupId = p.GroupId ?? Guid.Empty,
+        GroupId = p.GroupId,
         SourceId = p.SourceId,
         Subject = p.Subject,
         RecipientName = p.RecipientName,
         Description = p.Description,
-        SecuritySubType = p.SecuritySubType
+        SecuritySubType = p.SecuritySubType,
+        Quantity = p.Quantity
     };
-
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid? GroupId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType);
-
-    public enum PostingKind { Bank=0, Contact=1, SavingsPlan=2, Security=3 }
-    public enum SecurityPostingSubType { Buy=0, Sell=1, Dividend=2, Fee=3, Tax=4 }
 
     public sealed class PostingItem
     {
@@ -147,5 +138,6 @@ public sealed class PostingsSavingsPlanViewModel : ViewModelBase
         public string? RecipientName { get; set; }
         public string? Description { get; set; }
         public SecurityPostingSubType? SecuritySubType { get; set; }
+        public decimal? Quantity { get; set; }
     }
 }

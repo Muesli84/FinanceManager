@@ -1,19 +1,10 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Application.Reports;
-using FinanceManager.Domain;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Postings;
-using FinanceManager.Domain.Reports;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Reports;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace FinanceManager.Tests.Reports;
 
@@ -31,14 +22,14 @@ public sealed class ReportAggregationServiceMultiKindTests
 
     private static Contact NewContact(AppDbContext db, Guid ownerId, string name, ContactCategory? cat = null)
     {
-        var c = new Contact(ownerId, name, FinanceManager.Shared.Dtos.ContactType.Person, cat?.Id, null);
+        var c = new Contact(ownerId, name, ContactType.Person, cat?.Id, null);
         db.Contacts.Add(c);
         return c;
     }
 
     private static SavingsPlan NewSavingsPlan(AppDbContext db, Guid ownerId, string name, Guid? categoryId = null)
     {
-        var sp = new SavingsPlan(ownerId, name, FinanceManager.Shared.Dtos.SavingsPlanType.Recurring, null, null, null, categoryId);
+        var sp = new SavingsPlan(ownerId, name, SavingsPlanType.Recurring, null, null, null, categoryId);
         db.SavingsPlans.Add(sp);
         return sp;
     }
@@ -47,7 +38,7 @@ public sealed class ReportAggregationServiceMultiKindTests
     public async Task QueryAsync_MultiKinds_WithCategories_ShouldCreateTypeCategoryEntityHierarchy()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw", false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         var contactCat = new ContactCategory(user.Id, "Friends");
         db.ContactCategories.Add(contactCat);
@@ -57,8 +48,8 @@ public sealed class ReportAggregationServiceMultiKindTests
         var sp = NewSavingsPlan(db, user.Id, "ETF Plan");
         await db.SaveChangesAsync();
 
-        var jan = new DateTime(2025,1,1);
-        var feb = new DateTime(2025,2,1);
+        var jan = new DateTime(2025, 1, 1);
+        var feb = new DateTime(2025, 2, 1);
         db.PostingAggregates.AddRange(
             new PostingAggregate(PostingKind.Contact, null, c.Id, null, null, jan, AggregatePeriod.Month).WithAdd(10).WithAdd(10),
             new PostingAggregate(PostingKind.Contact, null, c.Id, null, null, feb, AggregatePeriod.Month).WithAdd(10).WithAdd(10),
@@ -68,7 +59,7 @@ public sealed class ReportAggregationServiceMultiKindTests
         await db.SaveChangesAsync();
 
         var sut = new ReportAggregationService(db);
-        var query = new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: true, ComparePrevious: false, CompareYear: false, PostingKinds: new []{ (int)PostingKind.Contact, (int)PostingKind.SavingsPlan });
+        var query = new ReportAggregationQuery(user.Id, PostingKind.Contact, ReportInterval.Month, 12, IncludeCategory: true, ComparePrevious: false, CompareYear: false, PostingKinds: new[] { PostingKind.Contact, PostingKind.SavingsPlan });
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
         // Expect type rows for both kinds in latest month (feb)
@@ -96,7 +87,7 @@ public sealed class ReportAggregationServiceMultiKindTests
     public async Task QueryAsync_MultiKinds_WithoutCategories_ShouldCreateTypeRowsWithEntityChildren()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw", false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
@@ -104,7 +95,7 @@ public sealed class ReportAggregationServiceMultiKindTests
         var sp = NewSavingsPlan(db, user.Id, "Depot Plan");
         await db.SaveChangesAsync();
 
-        var feb = new DateTime(2025,2,1);
+        var feb = new DateTime(2025, 2, 1);
         db.PostingAggregates.AddRange(
             new PostingAggregate(PostingKind.Contact, null, c.Id, null, null, feb, AggregatePeriod.Month).WithAdd(12).WithAdd(8), // 20
             new PostingAggregate(PostingKind.SavingsPlan, null, null, sp.Id, null, feb, AggregatePeriod.Month).WithAdd(5).WithAdd(7) // 12
@@ -112,7 +103,7 @@ public sealed class ReportAggregationServiceMultiKindTests
         await db.SaveChangesAsync();
 
         var sut = new ReportAggregationService(db);
-        var query = new ReportAggregationQuery(user.Id, (int)PostingKind.Contact, ReportInterval.Month, 6, IncludeCategory: false, ComparePrevious: false, CompareYear: false, PostingKinds: new []{ (int)PostingKind.Contact, (int)PostingKind.SavingsPlan });
+        var query = new ReportAggregationQuery(user.Id, PostingKind.Contact, ReportInterval.Month, 6, IncludeCategory: false, ComparePrevious: false, CompareYear: false, PostingKinds: new[] { PostingKind.Contact, PostingKind.SavingsPlan });
         var result = await sut.QueryAsync(query, CancellationToken.None);
 
         // Type rows exist and sum entity amounts

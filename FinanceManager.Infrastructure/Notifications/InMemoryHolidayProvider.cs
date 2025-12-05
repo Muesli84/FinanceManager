@@ -13,11 +13,11 @@ public sealed class InMemoryHolidayProvider : IHolidayProvider
 
     // Minimal seed: New Year's Day, Labour Day, Christmas (country-level examples)
     // For production, extend via configuration or external API (Nager.Date) wrapper.
-    private static readonly Dictionary<string, HashSet<(int Month,int Day)>> Defaults = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, HashSet<(int Month, int Day)>> Defaults = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["DE"] = new(new[] { (1,1), (5,1), (12,25), (12,26) }),
-        ["US"] = new(new[] { (1,1), (7,4), (12,25) }),
-        ["GB"] = new(new[] { (1,1), (12,25), (12,26) }),
+        ["DE"] = new(new[] { (1, 1), (5, 1), (12, 25), (12, 26) }),
+        ["US"] = new(new[] { (1, 1), (7, 4), (12, 25) }),
+        ["GB"] = new(new[] { (1, 1), (12, 25), (12, 26) }),
     };
 
     public InMemoryHolidayProvider(IMemoryCache cache)
@@ -42,7 +42,7 @@ public sealed class InMemoryHolidayProvider : IHolidayProvider
             var hs = new HashSet<DateTime>();
             if (Defaults.TryGetValue(code, out var md))
             {
-                foreach (var (m,d) in md)
+                foreach (var (m, d) in md)
                 {
                     hs.Add(new DateTime(year, m, d));
                 }

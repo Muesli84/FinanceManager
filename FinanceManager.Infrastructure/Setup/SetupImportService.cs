@@ -1,26 +1,19 @@
+using FinanceManager.Application.Aggregates;
+using FinanceManager.Application.Attachments; // new
 using FinanceManager.Application.Statements;
-using FinanceManager.Domain; // for enums like AccountType, PostingKind
 using FinanceManager.Domain.Accounts;
+using FinanceManager.Domain.Attachments;
 using FinanceManager.Domain.Contacts;
+using FinanceManager.Domain.Postings; // AggregatePeriod, PostingAggregate
+using FinanceManager.Domain.Reports;
 using FinanceManager.Domain.Savings;
 using FinanceManager.Domain.Securities;
 using FinanceManager.Domain.Statements; // for StatementDraft
-using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
-using FinanceManager.Shared.Dtos;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
-using System.IO;
-using System.Linq;
-using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
-using FinanceManager.Domain.Postings; // AggregatePeriod, PostingAggregate
-using FinanceManager.Application.Aggregates;
-using FinanceManager.Domain.Reports;
-using FinanceManager.Application.Attachments; // new
-using FinanceManager.Domain.Attachments; // new
 
 public sealed class SetupImportService : ISetupImportService
 {
@@ -159,7 +152,8 @@ public sealed class SetupImportService : ISetupImportService
         if (replaceExisting)
         {
             ProgressChanged?.Invoke(this, progress.SetDescription("Clearing user data"));
-            await _db.ClearUserDataAsync(userId, (step, count) => {
+            await _db.ClearUserDataAsync(userId, (step, count) =>
+            {
                 progress.SubStep = step;
                 progress.SubTotal = count;
                 ProgressChanged?.Invoke(this, progress);
@@ -230,7 +224,7 @@ public sealed class SetupImportService : ISetupImportService
                         existing.Rename(entity.Name);
                         existing.SetPaymentIntermediary(entity.IsPaymentIntermediary);
                         existing.SetDescription(entity.Description);
-                        entity = existing;                        
+                        entity = existing;
                     }
                 }
                 else
@@ -490,7 +484,7 @@ public sealed class SetupImportService : ISetupImportService
                 var description = d.TryGetProperty("Description", out var de) && de.ValueKind == JsonValueKind.String ? de.GetString() : null;
                 var statusValue = d.TryGetProperty("Status", out var st) && st.ValueKind == JsonValueKind.Number ? st.GetInt32() : -1;
                 var status = (StatementDraftStatus)statusValue;
-                var entity = new StatementDraft(userId, originalFileName!, accountName, description, statusValue == -1 ? StatementDraftStatus.Draft: status);
+                var entity = new StatementDraft(userId, originalFileName!, accountName, description, statusValue == -1 ? StatementDraftStatus.Draft : status);
                 if (d.TryGetProperty("DetectedAccountId", out var da) && da.ValueKind == JsonValueKind.String)
                 {
                     var old = da.GetGuid(); if (accountMap.TryGetValue(old, out var mapped)) entity.SetDetectedAccount(mapped);
@@ -540,7 +534,7 @@ public sealed class SetupImportService : ISetupImportService
                 var bookingDesc = e.TryGetProperty("BookingDescription", out var bd) && bd.ValueKind == JsonValueKind.String ? bd.GetString() : null;
                 var isAnnounced = e.TryGetProperty("IsAnnounced", out var ia) && ia.ValueKind == JsonValueKind.True;
                 var isCostNeutral = e.TryGetProperty("IsCostNeutral", out var ic) && ic.ValueKind == JsonValueKind.True;
-                var status = e.TryGetProperty("Status", out var st) && st.ValueKind == JsonValueKind.Number ? (StatementDraftEntryStatus)st.GetInt32(): isAnnounced ? StatementDraftEntryStatus.Announced : StatementDraftEntryStatus.Open;
+                var status = e.TryGetProperty("Status", out var st) && st.ValueKind == JsonValueKind.Number ? (StatementDraftEntryStatus)st.GetInt32() : isAnnounced ? StatementDraftEntryStatus.Announced : StatementDraftEntryStatus.Open;
 
 
                 // Load draft entity
@@ -587,7 +581,7 @@ public sealed class SetupImportService : ISetupImportService
                     if (e.TryGetProperty("SecurityTaxAmount", out var t) && t.ValueKind != JsonValueKind.Null) tax = t.GetDecimal();
                     entry.SetSecurity(mapped, tx, qty, fee, tax);
                 }
-                if (progress.SubStep % 100 ==  0)
+                if (progress.SubStep % 100 == 0)
                     await _db.SaveChangesAsync(ct);
                 ProgressChanged?.Invoke(this, progress.IncSub());
             }
@@ -601,7 +595,7 @@ public sealed class SetupImportService : ISetupImportService
             {
                 var id = f.GetProperty("Id").GetGuid();
                 var name = f.GetProperty("Name").GetString() ?? string.Empty;
-                var postingKind = f.GetProperty("PostingKind").GetInt32();
+                var postingKind = (PostingKind)f.GetProperty("PostingKind").GetInt32();
                 var includeCategory = f.GetProperty("IncludeCategory").GetBoolean();
                 var interval = (ReportInterval)f.GetProperty("Interval").GetInt32();
                 var take = f.TryGetProperty("Take", out var takeEl) ? takeEl.GetInt32() : 24;
@@ -620,7 +614,7 @@ public sealed class SetupImportService : ISetupImportService
                     {
                         var kinds = kindsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                             .Select(s => int.TryParse(s, out var v) ? v : (int?)null)
-                            .Where(v => v.HasValue).Select(v => v!.Value).ToArray();
+                            .Where(v => v.HasValue).Select(v => (PostingKind)v!.Value).ToArray();
                         if (kinds.Length > 0) { entity.SetPostingKinds(kinds); }
                     }
                 }
@@ -673,7 +667,7 @@ public sealed class SetupImportService : ISetupImportService
                 Guid? favId = null;
                 if (k.TryGetProperty("ReportFavoriteId", out var rfEl) && rfEl.ValueKind == JsonValueKind.String && Guid.TryParse(rfEl.GetString(), out var rf))
                 {
-                    favId = reportMap[rf];                    
+                    favId = reportMap[rf];
                 }
                 var entity = new HomeKpi(userId, kind, display, sortOrder, favId);
                 if (k.TryGetProperty("Title", out var tEl))
@@ -705,7 +699,8 @@ public sealed class SetupImportService : ISetupImportService
 
         ProgressChanged?.Invoke(this, progress.SetDescription("Build Aggregate Postings"));
         ProgressChanged?.Invoke(this, progress.InitSub(postingCount));
-        await _aggregateService.RebuildForUserAsync(userId, (step, count) => {
+        await _aggregateService.RebuildForUserAsync(userId, (step, count) =>
+        {
             progress.SubStep = step;
             progress.SubTotal = count;
             ProgressChanged?.Invoke(this, progress);
@@ -870,14 +865,15 @@ public sealed class SetupImportService : ISetupImportService
             BankAccountLedgerEntries = bankAccountLedgerEntries.Select(entry =>
             {
                 if (entry.SourceContact is not null)
-                    entry.SourceContact.UID = contacts.FirstOrDefault(c => c.Key == entry.SourceContact?.Id).Value;                
+                    entry.SourceContact.UID = contacts.FirstOrDefault(c => c.Key == entry.SourceContact?.Id).Value;
                 var stockEntries = stockLedgerEntries.EnumerateArray().Where(e =>
                 {
                     return e.GetProperty("SourceLedgerEntry").GetProperty("Id").GetInt32() == entry.Id;
                 }).ToArray();
                 if (stockEntries.Length > 1)
                     throw new ApplicationException("Darf es nicht geben!?!");
-                if (stockEntries.FirstOrDefault() is JsonElement stockEntry){
+                if (stockEntries.FirstOrDefault() is JsonElement stockEntry)
+                {
                     if (stockEntry.ValueKind == JsonValueKind.Object)
                     {
                         var stockId = stockEntry.GetProperty("Stock").GetProperty("Id").GetInt32();
@@ -901,7 +897,7 @@ public sealed class SetupImportService : ISetupImportService
                     throw new ApplicationException("Darf es nicht geben!?!");
                 if (fixedAssetEntries.FirstOrDefault() is JsonElement fixedAssetEntry)
                 {
-                    var sourceContact = (entry.SourceContact is null) ? null: _db.Contacts.FirstOrDefault(c => c.Id == entry.SourceContact.UID);
+                    var sourceContact = (entry.SourceContact is null) ? null : _db.Contacts.FirstOrDefault(c => c.Id == entry.SourceContact.UID);
                     if (fixedAssetEntry.ValueKind == JsonValueKind.Object && sourceContact is not null && sourceContact.Type == ContactType.Self)
                     {
                         var savingsPlanId = fixedAssetEntry.GetProperty("FixedAsset").GetProperty("Id").GetInt32();
@@ -1037,7 +1033,7 @@ public sealed class SetupImportService : ISetupImportService
                 }
                 else
                 {
-                    var newAccount = new Account(userId, isEmpty ? FinanceManager.Domain.AccountType.Giro : FinanceManager.Domain.AccountType.Savings, name, iban, contact.Id);
+                    var newAccount = new Account(userId, isEmpty ? AccountType.Giro : AccountType.Savings, name, iban, contact.Id);
                     _db.Accounts.Add(newAccount);
                     yield return new KeyValuePair<string, Guid>(iban, newAccount.Id);
                 }
@@ -1078,7 +1074,7 @@ public sealed class SetupImportService : ISetupImportService
                     interval == 0 ? null : (SavingsPlanInterval)(interval - 1));
                 newSavingsPlan.SetContractNumber(contractNo);
                 //if (status == 3)
-                  //  newSavingsPlan.Archive();
+                //  newSavingsPlan.Archive();
 
                 if (fixedAsset.TryGetProperty("Category", out var categoryProp))
                     if (categoryProp.TryGetProperty("Id", out var categoryIdProp) && categoryIdProp.ValueKind == JsonValueKind.Number)
@@ -1149,12 +1145,12 @@ public sealed class SetupImportService : ISetupImportService
                 }
 
                 var contactNames = contact.GetProperty("Names");
-                switch(contactNames.ValueKind)
+                switch (contactNames.ValueKind)
                 {
                     case JsonValueKind.Array:
                         foreach (var alias in contactNames.EnumerateArray().Select(n =>
                         {
-                            switch(n.ValueKind)
+                            switch (n.ValueKind)
                             {
                                 case JsonValueKind.String:
                                     return n.GetString();
@@ -1168,7 +1164,7 @@ public sealed class SetupImportService : ISetupImportService
                             _db.AliasNames.Add(new AliasName(newContact.Id, alias));
                         break;
                 }
-                                    
+
                 yield return new KeyValuePair<int, Guid>(dataId, newContact.Id);
             }
             existingContacts = _db.Contacts.ToArray();

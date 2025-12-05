@@ -1,13 +1,7 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Infrastructure;
-using FinanceManager.Infrastructure.Reports;
 using FinanceManager.Domain.Reports;
+using FinanceManager.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace FinanceManager.Tests.Reports;
 
@@ -27,10 +21,10 @@ public sealed class HomeKpiTests
     public async Task Create_HomeKpi_ForFavorite_ShouldRequireFavoriteId()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw", false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user); await db.SaveChangesAsync();
 
-        var fav = new ReportFavorite(user.Id, "Fav", 1, false, ReportInterval.Month, false, false, false, true);
+        var fav = new ReportFavorite(user.Id, "Fav", PostingKind.Contact, false, ReportInterval.Month, false, false, false, true);
         db.ReportFavorites.Add(fav); await db.SaveChangesAsync();
 
         // valid
@@ -47,9 +41,9 @@ public sealed class HomeKpiTests
     public async Task CascadeDelete_Favorite_ShouldRemoveRelatedHomeKpis()
     {
         using var db = CreateDb();
-        var user = new FinanceManager.Domain.Users.User("owner","pw", false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user); await db.SaveChangesAsync();
-        var fav = new ReportFavorite(user.Id, "Fav", 1, false, ReportInterval.Month, false, false, false, true);
+        var fav = new ReportFavorite(user.Id, "Fav", PostingKind.Contact, false, ReportInterval.Month, false, false, false, true);
         db.ReportFavorites.Add(fav); await db.SaveChangesAsync();
 
         db.HomeKpis.Add(new HomeKpi(user.Id, HomeKpiKind.ReportFavorite, HomeKpiDisplayMode.TotalOnly, 0, fav.Id));

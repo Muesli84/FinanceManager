@@ -1,5 +1,4 @@
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain.Reports;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceManager.Infrastructure.Reports;
@@ -9,8 +8,18 @@ public sealed class HomeKpiService : IHomeKpiService
     private readonly AppDbContext _db;
     public HomeKpiService(AppDbContext db) => _db = db;
 
-    private static HomeKpiDto Map(HomeKpi e, string? favName)
-        => new(e.Id, e.Kind, e.ReportFavoriteId, favName, e.Title, e.PredefinedType, e.DisplayMode, e.SortOrder, e.CreatedUtc, e.ModifiedUtc);
+    private static HomeKpiDto Map(FinanceManager.Domain.Reports.HomeKpi e, string? favName)
+        => new(
+            e.Id,
+            e.Kind,
+            e.ReportFavoriteId,
+            favName,
+            e.Title,
+            e.PredefinedType,
+            e.DisplayMode,
+            e.SortOrder,
+            e.CreatedUtc,
+            e.ModifiedUtc);
 
     public async Task<IReadOnlyList<HomeKpiDto>> ListAsync(Guid ownerUserId, CancellationToken ct)
     {
@@ -33,7 +42,7 @@ public sealed class HomeKpiService : IHomeKpiService
             var owned = await _db.ReportFavorites.AsNoTracking().AnyAsync(f => f.Id == request.ReportFavoriteId.Value && f.OwnerUserId == ownerUserId, ct);
             if (!owned) { throw new InvalidOperationException("Favorite not found or not owned"); }
         }
-        var entity = new HomeKpi(ownerUserId, request.Kind, request.DisplayMode, request.SortOrder, request.ReportFavoriteId);
+        var entity = new FinanceManager.Domain.Reports.HomeKpi(ownerUserId, request.Kind, request.DisplayMode, request.SortOrder, request.ReportFavoriteId);
         // For predefined KPIs, ensure a default when omitted (back-compat): cycle by sort index
         if (request.Kind == HomeKpiKind.Predefined && request.PredefinedType == null)
         {
@@ -65,7 +74,7 @@ public sealed class HomeKpiService : IHomeKpiService
             if (!owned) { throw new InvalidOperationException("Favorite not found or not owned"); }
         }
         entity.SetFavorite(request.ReportFavoriteId);
-        // Preserve existing predefined type if not supplied
+        entity.SetTitle(request.Title ?? entity.Title);
         entity.SetPredefined(request.PredefinedType ?? entity.PredefinedType);
         entity.SetDisplayMode(request.DisplayMode);
         entity.SetSortOrder(request.SortOrder);

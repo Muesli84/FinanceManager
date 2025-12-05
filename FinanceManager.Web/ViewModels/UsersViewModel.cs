@@ -1,17 +1,16 @@
-using System.Net.Http.Json;
-using System.ComponentModel.DataAnnotations;
-using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Shared; // IApiClient
 using Microsoft.Extensions.Localization;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class UsersViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public UsersViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public UsersViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     // State
@@ -47,9 +46,21 @@ public sealed class UsersViewModel : ViewModelBase
         try
         {
             Error = null;
-            var data = await _http.GetFromJsonAsync<List<UserVm>>("/api/admin/users", ct);
+            var data = await _api.Admin_ListUsersAsync(ct);
             Users.Clear();
-            if (data != null) { Users.AddRange(data); }
+            if (data != null)
+            {
+                Users.AddRange(data.Select(d => new UserVm
+                {
+                    Id = d.Id,
+                    Username = d.Username,
+                    IsAdmin = d.IsAdmin,
+                    Active = d.Active,
+                    LockoutEnd = d.LockoutEnd,
+                    LastLoginUtc = d.LastLoginUtc,
+                    PreferredLanguage = d.PreferredLanguage
+                }));
+            }
         }
         catch (Exception ex)
         {
@@ -83,18 +94,29 @@ public sealed class UsersViewModel : ViewModelBase
         BusyRow = true; Error = null; RaiseStateChanged();
         try
         {
-            var req = new UpdateUserRequest { Username = EditUsername, IsAdmin = EditIsAdmin, Active = EditActive };
-            using var resp = await _http.PutAsJsonAsync($"/api/admin/users/{id}", req, ct);
-            if (resp.IsSuccessStatusCode)
+            var req = new UpdateUserRequest(EditUsername, EditIsAdmin, EditActive, null);
+            var updated = await _api.Admin_UpdateUserAsync(id, req, ct);
+            if (updated != null)
             {
-                var updated = await resp.Content.ReadFromJsonAsync<UserVm>(cancellationToken: ct);
                 var idx = Users.FindIndex(x => x.Id == id);
-                if (idx >= 0 && updated != null) { Users[idx] = updated; }
+                if (idx >= 0)
+                {
+                    Users[idx] = new UserVm
+                    {
+                        Id = updated.Id,
+                        Username = updated.Username,
+                        IsAdmin = updated.IsAdmin,
+                        Active = updated.Active,
+                        LockoutEnd = updated.LockoutEnd,
+                        LastLoginUtc = updated.LastLoginUtc,
+                        PreferredLanguage = updated.PreferredLanguage
+                    };
+                }
                 Edit = null;
             }
             else
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Error = "NotFound";
             }
         }
         catch (Exception ex)
@@ -112,17 +134,21 @@ public sealed class UsersViewModel : ViewModelBase
         BusyCreate = true; Error = null; RaiseStateChanged();
         try
         {
-            var req = new CreateUserRequest { Username = Create.Username.Trim(), Password = Create.Password, IsAdmin = Create.IsAdmin };
-            using var resp = await _http.PostAsJsonAsync("/api/admin/users", req, ct);
-            if (resp.IsSuccessStatusCode)
+            var req = new CreateUserRequest(Create.Username.Trim(), Create.Password, Create.IsAdmin);
+            var created = await _api.Admin_CreateUserAsync(req, ct);
+            if (created != null)
             {
-                var created = await resp.Content.ReadFromJsonAsync<UserVm>(cancellationToken: ct);
-                if (created != null) { Users.Add(created); }
+                Users.Add(new UserVm
+                {
+                    Id = created.Id,
+                    Username = created.Username,
+                    IsAdmin = created.IsAdmin,
+                    Active = created.Active,
+                    LockoutEnd = created.LockoutEnd,
+                    LastLoginUtc = created.LastLoginUtc,
+                    PreferredLanguage = created.PreferredLanguage
+                });
                 Create = new();
-            }
-            else
-            {
-                Error = await resp.Content.ReadAsStringAsync(ct);
             }
         }
         catch (Exception ex)
@@ -140,12 +166,12 @@ public sealed class UsersViewModel : ViewModelBase
         BusyRow = true; RaiseStateChanged();
         try
         {
-            using var resp = await _http.DeleteAsync($"/api/admin/users/{id}", ct);
-            if (resp.IsSuccessStatusCode)
+            var ok = await _api.Admin_DeleteUserAsync(id, ct);
+            if (ok)
             {
                 Users.RemoveAll(u => u.Id == id);
             }
-            else { Error = await resp.Content.ReadAsStringAsync(ct); }
+            else { Error = "NotFound"; }
         }
         catch (Exception ex) { Error = ex.Message; }
         finally { BusyRow = false; RaiseStateChanged(); }
@@ -157,9 +183,9 @@ public sealed class UsersViewModel : ViewModelBase
         BusyRow = true; RaiseStateChanged();
         try
         {
-            using var resp = await _http.PostAsJsonAsync($"/api/admin/users/{id}/reset-password", new ResetPasswordRequest { NewPassword = newPw }, ct);
-            if (resp.IsSuccessStatusCode) { LastResetUserId = id; LastResetPassword = newPw; }
-            else { Error = await resp.Content.ReadAsStringAsync(ct); }
+            var ok = await _api.Admin_ResetPasswordAsync(id, new ResetPasswordRequest(newPw), ct);
+            if (ok) { LastResetUserId = id; LastResetPassword = newPw; }
+            else { Error = "NotFound"; }
         }
         catch (Exception ex) { Error = ex.Message; }
         finally { BusyRow = false; RaiseStateChanged(); }
@@ -170,13 +196,13 @@ public sealed class UsersViewModel : ViewModelBase
         BusyRow = true; RaiseStateChanged();
         try
         {
-            using var resp = await _http.PostAsync($"/api/admin/users/{id}/unlock", content: null, ct);
-            if (resp.IsSuccessStatusCode)
+            var ok = await _api.Admin_UnlockUserAsync(id, ct);
+            if (ok)
             {
                 var found = Users.FirstOrDefault(x => x.Id == id);
                 if (found != null) { found.LockoutEnd = null; }
             }
-            else { Error = await resp.Content.ReadAsStringAsync(ct); }
+            else { Error = "NotFound"; }
         }
         catch (Exception ex) { Error = ex.Message; }
         finally { BusyRow = false; RaiseStateChanged(); }
@@ -219,8 +245,5 @@ public sealed class UsersViewModel : ViewModelBase
         [Required, MinLength(6)] public string Password { get; set; } = string.Empty;
         public bool IsAdmin { get; set; }
     }
-    public sealed class CreateUserRequest { public string Username { get; set; } = string.Empty; public string Password { get; set; } = string.Empty; public bool IsAdmin { get; set; } }
-    public sealed class UpdateUserRequest { public string? Username { get; set; } public bool? IsAdmin { get; set; } public bool? Active { get; set; } }
-    public sealed class ResetPasswordRequest { public string NewPassword { get; set; } = string.Empty; }
     public sealed class UserVm { public Guid Id { get; set; } public string Username { get; set; } = string.Empty; public bool IsAdmin { get; set; } public bool Active { get; set; } public DateTime? LockoutEnd { get; set; } public DateTime LastLoginUtc { get; set; } public string? PreferredLanguage { get; set; } }
 }

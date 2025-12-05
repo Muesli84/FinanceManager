@@ -37,7 +37,7 @@ else
                 <tr style="cursor:pointer;" @onclick="(()=> OpenDetail(p.Id))">
                     <td>@p.BookingDate.ToShortDateString()</td>
                     <td style="text-align:right;">@p.Amount</td>
-                    <td>@(p.Kind == PostingsSavingsPlanViewModel.PostingKind.Security && p.SecuritySubType!=null ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
+                    <td>@(p.Kind == PostingKind.Security && p.SecuritySubType!=null ? $"Security-{p.SecuritySubType}" : p.Kind.ToString())</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.RecipientName)?"-":p.RecipientName)</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.Subject)?"-":p.Subject)</td>
                     <td class="wrap">@(string.IsNullOrWhiteSpace(p.Description)?"-":p.Description)</td>

@@ -1,21 +1,9 @@
-﻿using FinanceManager.Application.Accounts;
-using FinanceManager.Application.Contacts;
+﻿using FinanceManager.Application.Contacts;
 using FinanceManager.Application.Statements;
-using FinanceManager.Domain.Contacts;
-using FinanceManager.Domain.Savings;
-using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Identity;
 
 namespace FinanceManager.Infrastructure.Setup
 {
@@ -260,7 +248,7 @@ namespace FinanceManager.Infrastructure.Setup
                                     var savingsPlan = await _db.SavingsPlans.FirstOrDefaultAsync(p => p.Name == action[1], ct);
                                     if (savingsPlan is not null)
                                     {
-                                        savingsPlan.SetContractNumber(action[2].Trim());                                        
+                                        savingsPlan.SetContractNumber(action[2].Trim());
                                         await _db.SaveChangesAsync(ct);
                                     }
                                 }
@@ -336,7 +324,7 @@ namespace FinanceManager.Infrastructure.Setup
                             case "statement-reclassify":
                                 {
                                     foreach (var draft in drafts)
-                                    {                                        
+                                    {
                                         var draft2 = await _statementDraftService.ClassifyAsync(draft.DraftId, null, admin.Id, ct);
                                         if (draft2 is not null)
                                             MarkDuplicates(draft2);

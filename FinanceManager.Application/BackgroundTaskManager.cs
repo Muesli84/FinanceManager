@@ -1,8 +1,4 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Threading;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Application
 {
@@ -30,10 +26,10 @@ namespace FinanceManager.Application
         {
             lock (_lock)
             {
-                // Idempotenz: Prüfe, ob Task gleichen Typs bereits läuft oder queued ist
+                // Idempotenz: Prüfe, ob Task gleichen Typs für denselben Benutzer bereits läuft oder queued ist
                 foreach (var info in _tasks.Values)
                 {
-                    if (info.Type == type && (info.Status == BackgroundTaskStatus.Running || info.Status == BackgroundTaskStatus.Queued))
+                    if (info.Type == type && info.UserId == userId && (info.Status == BackgroundTaskStatus.Running || info.Status == BackgroundTaskStatus.Queued))
                     {
                         if (!allowDuplicate)
                             return info;

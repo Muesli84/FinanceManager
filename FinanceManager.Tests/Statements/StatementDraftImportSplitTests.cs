@@ -1,19 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using Bunit; // added for Self contact
+using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Shared.Dtos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
-using FinanceManager.Domain.Contacts;
-using Bunit; // added for Self contact
+using System.Text;
 
 namespace FinanceManager.Tests.Statements;
 
@@ -120,7 +113,7 @@ public sealed class StatementDraftImportSplitTests
     public async Task MonthlyMode_ShouldSplitMonth_WhenExceedsMax()
     {
         var (sut, db, conn, user) = Create();
-        var lines = Enumerable.Range(0,5).Select(i => (new DateTime(2024,4,1).AddDays(i), 1m + i, $"X{i}"));
+        var lines = Enumerable.Range(0, 5).Select(i => (new DateTime(2024, 4, 1).AddDays(i), 1m + i, $"X{i}"));
         var payload = BuildBackupPayload(lines);
         var u = await db.Users.SingleAsync();
         u.SetImportSplitSettings(ImportSplitMode.Monthly, 2, null, 1);
@@ -138,8 +131,8 @@ public sealed class StatementDraftImportSplitTests
     public async Task HybridMode_UsesMonthly_WhenTotalGreaterThanThreshold_CurrentImplementation()
     {
         var (sut, db, conn, user) = Create();
-        var lines = Enumerable.Range(0,6).Select(i => (new DateTime(2024,1,1).AddDays(i), 1m, $"J{i}"))
-            .Concat(Enumerable.Range(0,6).Select(i => (new DateTime(2024,2,1).AddDays(i), 1m, $"K{i}")));
+        var lines = Enumerable.Range(0, 6).Select(i => (new DateTime(2024, 1, 1).AddDays(i), 1m, $"J{i}"))
+            .Concat(Enumerable.Range(0, 6).Select(i => (new DateTime(2024, 2, 1).AddDays(i), 1m, $"K{i}")));
         var payload = BuildBackupPayload(lines);
         var u = await db.Users.SingleAsync();
         u.SetImportSplitSettings(ImportSplitMode.MonthlyOrFixed, 8, 8, 1);
@@ -154,7 +147,7 @@ public sealed class StatementDraftImportSplitTests
     public async Task HybridMode_UsesFixed_WhenTotalNotGreaterThanThreshold_CurrentImplementation()
     {
         var (sut, db, conn, user) = Create();
-        var lines = Enumerable.Range(0,6).Select(i => (new DateTime(2024,3,1).AddDays(i), 1m, $"H{i}"));
+        var lines = Enumerable.Range(0, 6).Select(i => (new DateTime(2024, 3, 1).AddDays(i), 1m, $"H{i}"));
         var payload = BuildBackupPayload(lines);
         var u = await db.Users.SingleAsync();
         u.SetImportSplitSettings(ImportSplitMode.MonthlyOrFixed, 10, 10, 1);
@@ -171,8 +164,8 @@ public sealed class StatementDraftImportSplitTests
     {
         var (sut, db, conn, user) = Create();
         var lines = new List<(DateTime, decimal, string)>();
-        lines.Add((new DateTime(2024,5,15), 5m, "Solo"));
-        lines.AddRange(Enumerable.Range(0,9).Select(i => (new DateTime(2024,6,1).AddDays(i), 1m + i, $"M{i}")));
+        lines.Add((new DateTime(2024, 5, 15), 5m, "Solo"));
+        lines.AddRange(Enumerable.Range(0, 9).Select(i => (new DateTime(2024, 6, 1).AddDays(i), 1m + i, $"M{i}")));
         var payload = BuildBackupPayload(lines);
         var u = await db.Users.SingleAsync();
         u.SetImportSplitSettings(ImportSplitMode.Monthly, 50, null, 1);

@@ -10,7 +10,7 @@
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.SavingsPlanCategoryDetail> Localizer
 @using FinanceManager.Domain.Attachments
 @using FinanceManager.Shared.Dtos
-@inject IHttpClientFactory ClientFactory
+@inject FinanceManager.Shared.IApiClient Api
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SavingsPlanCategoryDetail.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -138,6 +138,28 @@ else
         }
     }
 
-    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/savings-plan-categories/{_vm.Id}/symbol/{aid}", null); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
-    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/savings-plan-categories/{_vm.Id}/symbol"); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
+    private async Task OnSymbolUploaded(Guid aid)
+    {
+        if (_vm?.Id != null)
+        {
+            var ok = await Api.SavingsPlanCategories_SetSymbolAsync(_vm.Id.Value, aid);
+            if (ok)
+            {
+                _vm!.Model.SymbolAttachmentId = aid;
+                StateHasChanged();
+            }
+        }
+    }
+    private async Task OnSymbolCleared()
+    {
+        if (_vm?.Id != null)
+        {
+            var ok = await Api.SavingsPlanCategories_ClearSymbolAsync(_vm.Id.Value);
+            if (ok)
+            {
+                _vm!.Model.SymbolAttachmentId = null;
+                StateHasChanged();
+            }
+        }
+    }
 }

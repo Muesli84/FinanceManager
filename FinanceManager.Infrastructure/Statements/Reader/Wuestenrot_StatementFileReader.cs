@@ -5,7 +5,7 @@ using System.Xml;
 
 namespace FinanceManager.Infrastructure.Statements.Reader
 {
-    public class Wuestenrot_StatementFileReader: PDFStatementFilereader, IStatementFileReader
+    public class Wuestenrot_StatementFileReader : PDFStatementFilereader, IStatementFileReader
     {
         private string[] _Templates = new string[]
         {
@@ -81,7 +81,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
         {
             var pattern = field.Attributes["pattern"].Value;
             var type = field.Attributes.GetNamedItem("type")?.Value;
-            var maxoccur = (field.Attributes.GetNamedItem("maxoccur")?.Value??"-").ToInt32();
+            var maxoccur = (field.Attributes.GetNamedItem("maxoccur")?.Value ?? "-").ToInt32();
             if (type != "additional")
             {
                 var record = base.ParseTableRecord(input);

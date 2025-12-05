@@ -7,13 +7,13 @@
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Domain.Attachments
 @rendermode InteractiveServer
-@inject IHttpClientFactory ClientFactory
 @inject NavigationManager Navigation
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ContactDetail> Localizer
 @using FinanceManager.Web.ViewModels
 @inject IServiceProvider Services
 @using System.Net.Http
+@inject FinanceManager.Shared.IApiClient Api
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="ContactDetail.TabId"
@@ -262,9 +262,8 @@ else
         {
             try
             {
-                var http = ClientFactory.CreateClient("Api");
-                var payload = new { ContactId = (Guid?)contactId };
-                await http.PostAsJsonAsync($"/api/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}/contact", payload);
+                var payload = new StatementDraftSetContactRequest((Guid?)contactId);
+                await Api.StatementDrafts_SetEntryContactAsync(_prefillDraftId.Value, _prefillEntryId.Value, payload);
             }
             catch { }
             Navigation.NavigateTo($"/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}", forceLoad: true);
@@ -352,14 +351,10 @@ else
         if (Id == null) { return; }
         try
         {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.PostAsync($"/api/contacts/{Id}/symbol/{attachmentId}", null);
-            if (resp.IsSuccessStatusCode)
+            var ok = await Api.Contacts_SetSymbolAsync(Id.Value, attachmentId);
+            if (ok && _vm != null)
             {
-                if (_vm != null)
-                {
-                    _vm.SymbolAttachmentId = attachmentId;
-                }
+                _vm.SymbolAttachmentId = attachmentId;
             }
         }
         catch { }
@@ -370,14 +365,10 @@ else
         if (Id == null) { return; }
         try
         {
-            var http = ClientFactory.CreateClient("Api");
-            var resp = await http.DeleteAsync($"/api/contacts/{Id}/symbol");
-            if (resp.IsSuccessStatusCode)
+            var ok = await Api.Contacts_ClearSymbolAsync(Id.Value);
+            if (ok && _vm != null)
             {
-                if (_vm != null)
-                {
-                    _vm.SymbolAttachmentId = null;
-                }
+                _vm.SymbolAttachmentId = null;
             }
         }
         catch { }

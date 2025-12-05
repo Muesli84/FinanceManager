@@ -1,9 +1,5 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Bunit;
 using FinanceManager.Web.Components.Shared;
-using Xunit;
 
 namespace FinanceManager.Tests.Components;
 

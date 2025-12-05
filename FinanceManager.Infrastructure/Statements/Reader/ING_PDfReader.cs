@@ -1,9 +1,5 @@
 ﻿using FinanceManager.Application.Statements;
-using FinanceManager.Shared.Dtos;
 using FinanceManager.Shared.Extensions;
-using iText.Kernel.Pdf;
-using iText.Kernel.Pdf.Canvas.Parser;
-using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -85,7 +81,7 @@ namespace FinanceManager.Infrastructure.Statements.Reader
 
                 // Transaktionsart (Kauf/Verkauf)
                 var rxSell = new Regex(@"^Wertpapierabrechnung\s+(Verkauf(\s+aus\s+Kapitalmaßnahme)?|Verkauf)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-                var rxBuy  = new Regex(@"^Wertpapierabrechnung\s+(Kauf(\s+aus\s+Sparplan)?|Kauf)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+                var rxBuy = new Regex(@"^Wertpapierabrechnung\s+(Kauf(\s+aus\s+Sparplan)?|Kauf)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
                 var rxOrder = new Regex(@"^Ordernummer\s+(?<orderno>[0-9\.]+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
                 SecurityTransactionType? txType = null;

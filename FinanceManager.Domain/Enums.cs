@@ -1,11 +1,5 @@
 namespace FinanceManager.Domain;
 
-public enum AccountType
-{
-    Giro = 0,
-    Savings = 1
-}
-
 public enum AccountShareRole
 {
     Read = 0,
@@ -13,11 +7,6 @@ public enum AccountShareRole
     Admin = 2
 }
 
-public enum ImportFormat
-{
-    Csv = 0,
-    Pdf = 1
-}
 
 public enum StatementEntryStatus
 {
@@ -26,17 +15,6 @@ public enum StatementEntryStatus
     IgnoredDuplicate = 2
 }
 
-public enum StatementDraftStatus
-{
-    Draft = 0,
-    Committed = 1,
-    Expired = 2
-}
 
-public enum PostingKind
-{
-    Bank = 0,
-    Contact = 1,
-    SavingsPlan = 2,
-    Security = 3
-}
+
+

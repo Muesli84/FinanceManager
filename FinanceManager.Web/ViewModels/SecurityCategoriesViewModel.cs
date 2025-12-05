@@ -1,18 +1,14 @@
-using System.Net.Http.Json;
-using FinanceManager.Application;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SecurityCategoriesViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
-    public SecurityCategoriesViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SecurityCategoriesViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public bool Loaded { get; private set; }
@@ -33,14 +29,7 @@ public sealed class SecurityCategoriesViewModel : ViewModelBase
     public async Task LoadAsync(CancellationToken ct = default)
     {
         if (!IsAuthenticated) { return; }
-        var resp = await _http.GetAsync("/api/security-categories", ct);
-        if (!resp.IsSuccessStatusCode)
-        {
-            Categories.Clear();
-            RaiseStateChanged();
-            return;
-        }
-        var list = await resp.Content.ReadFromJsonAsync<List<SecurityCategoryDto>>(cancellationToken: ct) ?? new();
+        var list = await _api.SecurityCategories_ListAsync(ct);
         Categories.Clear();
         Categories.AddRange(list.Select(c => new CategoryItem { Id = c.Id, Name = c.Name, SymbolAttachmentId = c.SymbolAttachmentId }).OrderBy(c => c.Name));
         RaiseStateChanged();

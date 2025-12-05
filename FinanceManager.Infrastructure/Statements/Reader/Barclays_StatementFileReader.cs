@@ -87,6 +87,6 @@ namespace FinanceManager.Infrastructure.Statements.Reader
 </template>
 "};
         protected override string[] Templates => _Templates;
-        
+
     }
 }

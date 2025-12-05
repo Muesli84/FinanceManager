@@ -1,8 +1,7 @@
-using System.Net.Http; // for IHttpClientFactory
-using System.Net.Http.Json;
 using FinanceManager.Application.Notifications;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using System.Net.Http.Json;
 
 namespace FinanceManager.Infrastructure.Notifications;
 

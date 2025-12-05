@@ -1,35 +1,14 @@
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 using FinanceManager.Application;
+using FinanceManager.Shared;
+using FinanceManager.Shared.Dtos.Security;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
+using Moq;
 
 namespace FinanceManager.Tests.ViewModels;
 
 public sealed class SetupIpBlocksViewModelTests
 {
-    private static HttpClient CreateHttpClient(Func<HttpRequestMessage, HttpResponseMessage> responder)
-        => new HttpClient(new DelegateHandler(responder)) { BaseAddress = new Uri("http://localhost") };
-
-    private sealed class DelegateHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
-        public DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(_responder(request));
-    }
-
-    private sealed class TestHttpClientFactory : IHttpClientFactory
-    {
-        private readonly HttpClient _client;
-        public TestHttpClientFactory(HttpClient client) => _client = client;
-        public HttpClient CreateClient(string name) => _client;
-    }
-
     private sealed class TestCurrentUserService : ICurrentUserService
     {
         public Guid UserId { get; set; } = Guid.NewGuid();
@@ -38,29 +17,29 @@ public sealed class SetupIpBlocksViewModelTests
         public bool IsAdmin { get; set; } = true;
     }
 
-    private static IServiceProvider CreateSp()
+    private static (SetupIpBlocksViewModel vm, Mock<IApiClient> apiMock) CreateVm()
     {
         var services = new ServiceCollection();
         services.AddSingleton<ICurrentUserService>(new TestCurrentUserService());
-        return services.BuildServiceProvider();
+        var apiMock = new Mock<IApiClient>();
+        services.AddSingleton(apiMock.Object);
+        var sp = services.BuildServiceProvider();
+        var vm = new SetupIpBlocksViewModel(sp);
+        return (vm, apiMock);
     }
-
-    private static string ListJson(params object[] items) => JsonSerializer.Serialize(items);
 
     [Fact]
     public async Task Initialize_Loads_List_When_Admin()
     {
-        var item = new { Id = Guid.NewGuid(), IpAddress = "1.2.3.4", IsBlocked = false };
-        var client = CreateHttpClient(req =>
+        var (vm, apiMock) = CreateVm();
+        IReadOnlyList<IpBlockDto> items = new List<IpBlockDto>
         {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/admin/ip-blocks")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ListJson(item), Encoding.UTF8, "application/json") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
+            new IpBlockDto(Guid.NewGuid(), "1.2.3.4", false, null, null, 0, null, DateTime.UtcNow, null)
+        };
 
-        var vm = new SetupIpBlocksViewModel(CreateSp(), new TestHttpClientFactory(client));
+        apiMock.Setup(a => a.Admin_ListIpBlocksAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(items);
+
         await vm.InitializeAsync();
 
         Assert.Single(vm.Items);
@@ -70,26 +49,20 @@ public sealed class SetupIpBlocksViewModelTests
     [Fact]
     public async Task Create_Clears_Form_On_Success()
     {
-        bool postCalled = false;
-        var client = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == "/api/admin/ip-blocks")
-            {
-                postCalled = true;
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            }
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/admin/ip-blocks")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(ListJson(), Encoding.UTF8, "application/json") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new SetupIpBlocksViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var (vm, apiMock) = CreateVm();
+        var createdDto = new IpBlockDto(Guid.NewGuid(), "1.2.3.4", true, null, "test", 0, null, DateTime.UtcNow, null);
+
+        apiMock.Setup(a => a.Admin_CreateIpBlockAsync(It.IsAny<IpBlockCreateRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(createdDto);
+        apiMock.Setup(a => a.Admin_ListIpBlocksAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<IpBlockDto>)new List<IpBlockDto>());
+
         vm.Ip = "1.2.3.4";
         vm.Reason = "test";
 
         await vm.CreateAsync();
-        Assert.True(postCalled);
+
+        apiMock.Verify(a => a.Admin_CreateIpBlockAsync(It.Is<IpBlockCreateRequest>(r => r.IpAddress == "1.2.3.4"), It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(string.Empty, vm.Ip);
         Assert.Null(vm.Reason);
         Assert.True(vm.BlockOnCreate);

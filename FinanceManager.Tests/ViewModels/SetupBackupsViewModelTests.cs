@@ -1,12 +1,9 @@
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 using FinanceManager.Application;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 
 namespace FinanceManager.Tests.ViewModels;
 
@@ -21,13 +18,6 @@ public sealed class SetupBackupsViewModelTests
         public DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => Task.FromResult(_responder(request));
-    }
-
-    private sealed class TestHttpClientFactory : IHttpClientFactory
-    {
-        private readonly HttpClient _client;
-        public TestHttpClientFactory(HttpClient client) => _client = client;
-        public HttpClient CreateClient(string name) => _client;
     }
 
     private sealed class TestCurrentUserService : ICurrentUserService
@@ -47,11 +37,17 @@ public sealed class SetupBackupsViewModelTests
 
     private static string ListJson(params object[] items) => JsonSerializer.Serialize(items);
 
+    private static FinanceManager.Shared.IApiClient CreateApiClient(Func<HttpRequestMessage, HttpResponseMessage> responder)
+    {
+        var http = CreateHttpClient(responder);
+        return new FinanceManager.Shared.ApiClient(http);
+    }
+
     [Fact]
     public async Task Initialize_Loads_List()
     {
         var item = new { Id = Guid.NewGuid(), CreatedUtc = DateTime.UtcNow, FileName = "b1.zip", SizeBytes = 123L, Source = "Manual" };
-        var client = CreateHttpClient(req =>
+        var api = CreateApiClient(req =>
         {
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/setup/backups")
             {
@@ -60,7 +56,7 @@ public sealed class SetupBackupsViewModelTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
 
-        var vm = new SetupBackupsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var vm = new SetupBackupsViewModel(CreateSp(), api);
         await vm.InitializeAsync();
 
         Assert.NotNull(vm.Backups);
@@ -72,7 +68,7 @@ public sealed class SetupBackupsViewModelTests
     public async Task Create_Inserts_Item_And_Delete_Removes()
     {
         var created = new { Id = Guid.NewGuid(), CreatedUtc = DateTime.UtcNow, FileName = "b2.zip", SizeBytes = 456L, Source = "Manual" };
-        var client = CreateHttpClient(req =>
+        var api = CreateApiClient(req =>
         {
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/setup/backups")
             {
@@ -89,7 +85,7 @@ public sealed class SetupBackupsViewModelTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
 
-        var vm = new SetupBackupsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var vm = new SetupBackupsViewModel(CreateSp(), api);
         await vm.InitializeAsync();
 
         await vm.CreateAsync();
@@ -104,7 +100,7 @@ public sealed class SetupBackupsViewModelTests
     public async Task StartApply_Sets_Flag_On_Success()
     {
         var id = Guid.NewGuid();
-        var client = CreateHttpClient(req =>
+        var api = CreateApiClient(req =>
         {
             if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/setup/backups")
             {
@@ -112,11 +108,12 @@ public sealed class SetupBackupsViewModelTests
             }
             if (req.Method == HttpMethod.Post && req.RequestUri!.AbsolutePath == $"/api/setup/backups/{id}/apply/start")
             {
-                return new HttpResponseMessage(HttpStatusCode.OK);
+                var status = new FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto(true, 0, 1, null, null, 0, 0, null);
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(status), Encoding.UTF8, "application/json") };
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
-        var vm = new SetupBackupsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var vm = new SetupBackupsViewModel(CreateSp(), api);
         await vm.InitializeAsync();
 
         await vm.StartApplyAsync(id);

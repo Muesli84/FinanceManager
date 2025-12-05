@@ -1,19 +1,14 @@
-using System.Net.Http.Json;
-using System.Linq;
-using FinanceManager.Domain;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class PostingsSecurityViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
-    public PostingsSecurityViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public PostingsSecurityViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public Guid SecurityId { get; private set; }
@@ -73,13 +68,11 @@ public sealed class PostingsSecurityViewModel : ViewModelBase
         try
         {
             var firstPage = Skip == 0;
-            var parts = new List<string> { $"skip={Skip}", "take=50" };
-            if (!string.IsNullOrWhiteSpace(Search)) { parts.Add($"q={Uri.EscapeDataString(Search)}"); }
-            var url = $"/api/postings/security/{SecurityId}?{string.Join('&', parts)}";
-            var chunk = await _http.GetFromJsonAsync<List<PostingDto>>(url, ct) ?? new();
-            Items.AddRange(chunk.Select(Map));
-            Skip += chunk.Count;
-            if (chunk.Count == 0 || (!firstPage && chunk.Count < 50)) { CanLoadMore = false; }
+            var chunk = await _api.Postings_GetSecurityAsync(SecurityId, Skip, 50, null, null, ct);
+            var list = chunk ?? Array.Empty<PostingServiceDto>();
+            Items.AddRange(list.Select(Map));
+            Skip += list.Count;
+            if (list.Count == 0 || (!firstPage && list.Count < 50)) { CanLoadMore = false; }
         }
         catch { }
         finally { Loading = false; RaiseStateChanged(); }
@@ -115,7 +108,7 @@ public sealed class PostingsSecurityViewModel : ViewModelBase
         }
         try
         {
-            var dto = await _http.GetFromJsonAsync<GroupLinksResponse>($"/api/postings/group/{sel.GroupId}", CancellationToken);
+            var dto = await _api.Postings_GetGroupLinksAsync(sel.GroupId, CancellationToken);
             LinkedAccountId = dto?.AccountId; LinkedContactId = dto?.ContactId; LinkedPlanId = dto?.SavingsPlanId; LinkedSecurityId = dto?.SecurityId;
         }
         catch { }
@@ -148,7 +141,7 @@ public sealed class PostingsSecurityViewModel : ViewModelBase
         return new List<UiRibbonGroup> { nav, filter, export };
     }
 
-    private static PostingItem Map(PostingDto p) => new()
+    private static PostingItem Map(PostingServiceDto p) => new()
     {
         Id = p.Id,
         BookingDate = p.BookingDate,
@@ -167,9 +160,6 @@ public sealed class PostingsSecurityViewModel : ViewModelBase
         SecuritySubType = p.SecuritySubType,
         Quantity = p.Quantity
     };
-
-    public sealed record PostingDto(Guid Id, DateTime BookingDate, DateTime ValutaDate, decimal Amount, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, Guid SourceId, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid GroupId);
-    public sealed record GroupLinksResponse(Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId);
 
     public sealed class PostingItem
     {

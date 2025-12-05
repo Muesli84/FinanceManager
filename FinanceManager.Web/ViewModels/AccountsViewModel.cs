@@ -1,17 +1,15 @@
-using System.Net.Http.Json;
-using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Shared; // IApiClient
 using Microsoft.Extensions.Localization;
-using FinanceManager.Shared.Dtos;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class AccountsViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public AccountsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public AccountsViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public bool Loaded { get; private set; }
@@ -43,103 +41,97 @@ public sealed class AccountsViewModel : ViewModelBase
     public async Task LoadAsync(CancellationToken ct = default)
     {
         if (!IsAuthenticated) { return; }
-        var url = "/api/accounts";
-        if (FilterBankContactId.HasValue) { url += $"?bankContactId={FilterBankContactId}"; }
         try
         {
-            var resp = await _http.GetAsync(url, ct);
-            if (resp.IsSuccessStatusCode)
+            var list = await _api.GetAccountsAsync(skip: 0, take: 100, bankContactId: FilterBankContactId, ct);
+            Accounts.Clear();
+            Accounts.AddRange(list.Select(d => new AccountItem
             {
-                var list = await resp.Content.ReadFromJsonAsync<List<AccountDto>>(cancellationToken: ct) ?? new();
-                Accounts.Clear();
-                Accounts.AddRange(list.Select(d => new AccountItem
-                {
-                    Id = d.Id,
-                    Name = d.Name,
-                    Type = d.Type.ToString(),
-                    Iban = d.Iban,
-                    CurrentBalance = d.CurrentBalance,
-                    SymbolAttachmentId = d.SymbolAttachmentId,
-                    BankContactId = d.BankContactId
-                }));
+                Id = d.Id,
+                Name = d.Name,
+                Type = d.Type.ToString(),
+                Iban = d.Iban,
+                CurrentBalance = d.CurrentBalance,
+                SymbolAttachmentId = d.SymbolAttachmentId,
+                BankContactId = d.BankContactId
+            }));
 
-                // For accounts without a symbol, try to fetch the symbol from the associated bank contact
-                var needContactIds = Accounts
-                    .Where(a => a.SymbolAttachmentId == null && a.BankContactId != Guid.Empty)
-                    .Select(a => a.BankContactId)
+            // For accounts without a symbol, try to fetch the symbol from the associated bank contact
+            var needContactIds = Accounts
+                .Where(a => a.SymbolAttachmentId == null && a.BankContactId != Guid.Empty)
+                .Select(a => a.BankContactId)
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToList();
+
+            if (needContactIds.Count > 0)
+            {
+                var tasks = needContactIds.Select(async cid =>
+                {
+                    try
+                    {
+                        var contact = await _api.Contacts_GetAsync(cid, ct);
+                        return (cid, contact?.SymbolAttachmentId, contact?.CategoryId);
+                    }
+                    catch
+                    {
+                        return (cid, (Guid?)null, (Guid?)null);
+                    }
+                });
+
+                var results = await Task.WhenAll(tasks);
+
+                // Map contactId -> contactSymbol and contactId -> categoryId
+                var contactSymbolMap = results.Where(r => r.Item2.HasValue).ToDictionary(r => r.cid, r => r.Item2.Value);
+                var contactCategoryMap = results.Where(r => r.Item3.HasValue).ToDictionary(r => r.cid, r => r.Item3.Value);
+
+                // collect category ids we need to query
+                var needCategoryIds = contactCategoryMap.Values
                     .Where(id => id != Guid.Empty)
                     .Distinct()
                     .ToList();
 
-                if (needContactIds.Count > 0)
+                Dictionary<Guid, Guid?> categorySymbolMap = new();
+
+                if (needCategoryIds.Count > 0)
                 {
-                    var tasks = needContactIds.Select(async cid =>
+                    var catTasks = needCategoryIds.Select(async catId =>
                     {
                         try
                         {
-                            var contact = await _http.GetFromJsonAsync<ContactDto>($"/api/contacts/{cid}", ct);
-                            return (cid, contact?.SymbolAttachmentId, contact?.CategoryId);
+                            var cat = await _api.ContactCategories_GetAsync(catId, ct);
+                            return (catId, cat?.SymbolAttachmentId);
                         }
                         catch
                         {
-                            return (cid, (Guid?)null, (Guid?)null);
+                            return (catId, (Guid?)null);
                         }
                     });
 
-                    var results = await Task.WhenAll(tasks);
+                    var catResults = await Task.WhenAll(catTasks);
+                    categorySymbolMap = catResults.ToDictionary(r => r.catId, r => r.Item2);
+                }
 
-                    // Map contactId -> contactSymbol and contactId -> categoryId
-                    var contactSymbolMap = results.Where(r => r.Item2.HasValue).ToDictionary(r => r.cid, r => r.Item2.Value);
-                    var contactCategoryMap = results.Where(r => r.Item3.HasValue).ToDictionary(r => r.cid, r => r.Item3.Value);
-
-                    // collect category ids we need to query
-                    var needCategoryIds = contactCategoryMap.Values
-                        .Where(id => id != Guid.Empty)
-                        .Distinct()
-                        .ToList();
-
-                    Dictionary<Guid, Guid?> categorySymbolMap = new();
-
-                    if (needCategoryIds.Count > 0)
+                foreach (var acc in Accounts)
+                {
+                    if (acc.SymbolAttachmentId == null && acc.BankContactId != Guid.Empty)
                     {
-                        var catTasks = needCategoryIds.Select(async catId =>
+                        if (contactSymbolMap.TryGetValue(acc.BankContactId, out var csid))
                         {
-                            try
-                            {
-                                var cat = await _http.GetFromJsonAsync<ContactCategoryDto>($"/api/contact-categories/{catId}", ct);
-                                return (catId, cat?.SymbolAttachmentId);
-                            }
-                            catch
-                            {
-                                return (catId, (Guid?)null);
-                            }
-                        });
-
-                        var catResults = await Task.WhenAll(catTasks);
-                        categorySymbolMap = catResults.ToDictionary(r => r.catId, r => r.Item2);
-                    }
-
-                    foreach (var acc in Accounts)
-                    {
-                        if (acc.SymbolAttachmentId == null && acc.BankContactId != Guid.Empty)
+                            acc.ContactSymbolAttachmentId = csid;
+                        }
+                        else if (contactCategoryMap.TryGetValue(acc.BankContactId, out var catId) && catId != Guid.Empty)
                         {
-                            if (contactSymbolMap.TryGetValue(acc.BankContactId, out var csid))
+                            if (categorySymbolMap.TryGetValue(catId, out var catSym) && catSym.HasValue)
                             {
-                                acc.ContactSymbolAttachmentId = csid;
-                            }
-                            else if (contactCategoryMap.TryGetValue(acc.BankContactId, out var catId) && catId != Guid.Empty)
-                            {
-                                if (categorySymbolMap.TryGetValue(catId, out var catSym) && catSym.HasValue)
-                                {
-                                    acc.CategorySymbolAttachmentId = catSym.Value;
-                                }
+                                acc.CategorySymbolAttachmentId = catSym.Value;
                             }
                         }
                     }
                 }
-
-                RaiseStateChanged();
             }
+
+            RaiseStateChanged();
         }
         catch { }
     }
@@ -178,7 +170,4 @@ public sealed class AccountsViewModel : ViewModelBase
 
         public Guid? DisplaySymbolAttachmentId => SymbolAttachmentId ?? ContactSymbolAttachmentId ?? CategorySymbolAttachmentId;
     }
-
-    // include SymbolAttachmentId in DTO to match server API
-    public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid BankContactId, Guid? SymbolAttachmentId);
 }

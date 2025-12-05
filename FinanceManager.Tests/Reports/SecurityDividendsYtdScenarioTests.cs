@@ -1,23 +1,13 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Application.Aggregates;
-using FinanceManager.Application.Reports;
-using FinanceManager.Domain;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Securities;
 using FinanceManager.Domain.Statements;
-using FinanceManager.Domain.Reports;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Aggregates;
 using FinanceManager.Infrastructure.Reports;
 using FinanceManager.Infrastructure.Statements;
-using FinanceManager.Shared.Dtos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 using Xunit.Abstractions;
 
 namespace FinanceManager.Tests.Reports;
@@ -51,7 +41,7 @@ public sealed class SecurityDividendsYtdScenarioTests
         var ct = CancellationToken.None;
 
         // Owner and base entities
-        var user = new FinanceManager.Domain.Users.User("owner","pw",false);
+        var user = new FinanceManager.Domain.Users.User("owner", "pw", false);
         db.Users.Add(user);
         await db.SaveChangesAsync(ct);
 
@@ -174,7 +164,7 @@ public sealed class SecurityDividendsYtdScenarioTests
         var analysis = new DateTime(2025, 10, 8);
         var query = new ReportAggregationQuery(
             OwnerUserId: user.Id,
-            PostingKind: (int)PostingKind.Security,
+            PostingKind: PostingKind.Security,
             Interval: ReportInterval.Ytd,
             Take: 24,
             IncludeCategory: false,

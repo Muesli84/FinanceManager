@@ -1,18 +1,12 @@
-using System.Buffers;
-using System.Globalization;
-using System.IO;
-using System.IO.Packaging;
-using System.Linq;
-using System.Text;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain;
-using FinanceManager.Domain.Postings;
-using FinanceManager.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Buffers;
+using System.Globalization;
+using System.Text;
 
 namespace FinanceManager.Infrastructure.Reports;
 

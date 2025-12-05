@@ -1,18 +1,16 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Http.Json;
-using FinanceManager.Domain.Attachments;
-using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Shared; // IApiClient
 using Microsoft.Extensions.Localization;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class AccountDetailViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public AccountDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public AccountDetailViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     // Identity / status
@@ -52,8 +50,8 @@ public sealed class AccountDetailViewModel : ViewModelBase
     private Guid? _symbolAttachmentId;
 
     // New: SavingsPlanExpectation
-    public FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation { get => _savingsPlanExpectation; set { if (_savingsPlanExpectation != value) { _savingsPlanExpectation = value; RaiseStateChanged(); } } }
-    private FinanceManager.Domain.Accounts.SavingsPlanExpectation _savingsPlanExpectation = FinanceManager.Domain.Accounts.SavingsPlanExpectation.Optional;
+    public SavingsPlanExpectation SavingsPlanExpectation { get => _savingsPlanExpectation; set { if (_savingsPlanExpectation != value) { _savingsPlanExpectation = value; RaiseStateChanged(); } } }
+    private SavingsPlanExpectation _savingsPlanExpectation = SavingsPlanExpectation.Optional;
 
     // Related state
     private bool _showAttachments;
@@ -80,14 +78,10 @@ public sealed class AccountDetailViewModel : ViewModelBase
     {
         try
         {
-            var resp = await _http.GetAsync("/api/contacts?type=Bank&all=true", ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var list = await resp.Content.ReadFromJsonAsync<List<ContactDto>>(cancellationToken: ct) ?? new();
-                BankContacts.Clear();
-                BankContacts.AddRange(list.Select(c => new BankContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name));
-                RaiseStateChanged();
-            }
+            var list = await _api.Contacts_ListAsync(skip: 0, take: 200, type: ContactType.Bank, all: true, nameFilter: null, ct);
+            BankContacts.Clear();
+            BankContacts.AddRange(list.Select(c => new BankContactVm { Id = c.Id, Name = c.Name }).OrderBy(c => c.Name));
+            RaiseStateChanged();
         }
         catch { }
     }
@@ -97,27 +91,19 @@ public sealed class AccountDetailViewModel : ViewModelBase
         if (!AccountId.HasValue) { return; }
         try
         {
-            var resp = await _http.GetAsync($"/api/accounts/{AccountId}", ct);
-            if (resp.IsSuccessStatusCode)
+            var dto = await _api.GetAccountAsync(AccountId.Value, ct);
+            if (dto != null)
             {
-                var dto = await resp.Content.ReadFromJsonAsync<AccountDto>(cancellationToken: ct);
-                if (dto != null)
-                {
-                    Name = dto.Name;
-                    Type = dto.Type;
-                    Iban = dto.Iban;
-                    BankContactId = dto.BankContactId;
-                    SymbolAttachmentId = dto.SymbolAttachmentId; // new
-                    SavingsPlanExpectation = dto.SavingsPlanExpectation; // new
-                }
-            }
-            else if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                Error = "ErrorNotFound"; // Page localizes
+                Name = dto.Name;
+                Type = dto.Type;
+                Iban = dto.Iban;
+                BankContactId = dto.BankContactId;
+                SymbolAttachmentId = dto.SymbolAttachmentId; // new
+                SavingsPlanExpectation = dto.SavingsPlanExpectation; // new
             }
             else
             {
-                Error = "ErrorLoadFailed";
+                Error = "ErrorNotFound"; // Page localizes
             }
         }
         catch (Exception ex)
@@ -133,39 +119,18 @@ public sealed class AccountDetailViewModel : ViewModelBase
         Busy = true; Error = null;
         try
         {
-            var payload = new
-            {
-                Name,
-                Type,
-                Iban,
-                BankContactId,
-                NewBankContactName,
-                SymbolAttachmentId, // include symbol attachment id
-                SavingsPlanExpectation // include expectation
-            };
             if (IsNew)
             {
-                var resp = await _http.PostAsJsonAsync("/api/accounts", payload, ct);
-                if (resp.IsSuccessStatusCode)
-                {
-                    var dto = await resp.Content.ReadFromJsonAsync<AccountDto>(cancellationToken: ct);
-                    if (dto != null)
-                    {
-                        AccountId = dto.Id; // update context
-                        return dto.Id;
-                    }
-                }
-                else
-                {
-                    Error = await resp.Content.ReadAsStringAsync(ct);
-                }
+                var dto = await _api.CreateAccountAsync(new AccountCreateRequest(Name, Type, Iban, BankContactId, NewBankContactName, SymbolAttachmentId, SavingsPlanExpectation), ct);
+                AccountId = dto.Id; // update context
+                return dto.Id;
             }
             else
             {
-                var resp = await _http.PutAsJsonAsync($"/api/accounts/{AccountId}", new { Name, Iban, BankContactId, NewBankContactName, SymbolAttachmentId, SavingsPlanExpectation }, ct);
-                if (!resp.IsSuccessStatusCode)
+                var updated = await _api.UpdateAccountAsync(AccountId!.Value, new AccountUpdateRequest(Name, Type, Iban, BankContactId, NewBankContactName, SymbolAttachmentId, SavingsPlanExpectation, Archived: false), ct);
+                if (updated == null)
                 {
-                    Error = await resp.Content.ReadAsStringAsync(ct);
+                    Error = "ErrorNotFound";
                 }
             }
         }
@@ -186,10 +151,10 @@ public sealed class AccountDetailViewModel : ViewModelBase
         Busy = true; Error = null;
         try
         {
-            var resp = await _http.DeleteAsync($"/api/accounts/{AccountId}", ct);
-            if (!resp.IsSuccessStatusCode)
+            var ok = await _api.DeleteAccountAsync(AccountId.Value, ct);
+            if (!ok)
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Error = "ErrorNotFound";
             }
         }
         catch (Exception ex)
@@ -238,10 +203,6 @@ public sealed class AccountDetailViewModel : ViewModelBase
         return groups;
     }
 
-    // DTOs / VMs used by VM
-    public sealed record AccountDto(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid? BankContactId, Guid? SymbolAttachmentId, FinanceManager.Domain.Accounts.SavingsPlanExpectation SavingsPlanExpectation);
-    public sealed record ContactDto(Guid Id, string Name);
+    // VMs used by VM
     public sealed class BankContactVm { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; }
 }
-
-public enum AccountType { Giro = 0, Savings = 1 }

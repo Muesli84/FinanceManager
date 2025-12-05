@@ -1,17 +1,18 @@
 @page "/savings-plans/new"
 @page "/savings-plans/{Id:guid}"
 @rendermode InteractiveServer
-@using FinanceManager.Shared.Dtos
 @using System.ComponentModel.DataAnnotations
-@using Microsoft.Extensions.Localization
-@using Microsoft.AspNetCore.WebUtilities
-@using FinanceManager.Web.Components.Shared
 @using FinanceManager.Domain.Attachments
+@using FinanceManager.Shared.Dtos
+@using FinanceManager.Shared.Dtos.SavingsPlans
+@using FinanceManager.Web.Components.Shared
 @using FinanceManager.Web.ViewModels
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.Extensions.Localization
 @inject NavigationManager Nav
 @inject IServiceProvider Services
 @inject IStringLocalizer<Components.Pages.SavingsPlanEdit> Localizer
-@inject IHttpClientFactory ClientFactory
+@inject FinanceManager.Shared.IApiClient Api
 <PageTitle>@Localizer["PageTitle"]</PageTitle>
 
 <Ribbon TTabEnum="SavingsPlanEdit.TabId" Tabs="_tabs" ActiveTab="_activeTab" ActiveTabChanged="OnActiveTabChanged" />
@@ -236,9 +237,8 @@
             {
                 try
                 {
-                    var client = ClientFactory.CreateClient("Api");
-                    var assignPayload = new { SavingsPlanId = (Guid?)dto.Id };
-                    await client.PostAsJsonAsync($"/api/statement-drafts/{_vm!.ReturnDraftId}/entries/{_vm!.ReturnEntryId}/savingsplan", assignPayload);
+                    var assignPayload = new StatementDraftSetSavingsPlanRequest((Guid?)dto.Id);
+                    await Api.StatementDrafts_SetEntrySavingsPlanAsync(_vm!.ReturnDraftId.Value, _vm!.ReturnEntryId.Value, assignPayload);
                 }
                 catch { }
                 Nav.NavigateTo($"/statement-drafts/{_vm!.ReturnDraftId}/entries/{_vm!.ReturnEntryId}", true);
@@ -297,6 +297,6 @@
     }
     private void OpenAttachments(){ if (_vm!.Id.HasValue){ _showAttachments = true; StateHasChanged(); } }
 
-    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.PostAsync($"/api/savings-plans/{_vm.Id}/symbol/{aid}", null); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
-    private async Task OnSymbolCleared() { if (_vm?.Id != null) { var client = ClientFactory.CreateClient("Api"); await client.DeleteAsync($"/api/savings-plans/{_vm.Id}/symbol"); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
-}
+    private async Task OnSymbolUploaded(Guid aid) { if (_vm?.Id != null) { await Api.SavingsPlans_SetSymbolAsync(_vm.Id!.Value, aid); _vm!.Model.SymbolAttachmentId = aid; StateHasChanged(); } }
+    private async Task OnSymbolCleared() { if (_vm?.Id != null) { await Api.SavingsPlans_ClearSymbolAsync(_vm.Id!.Value); _vm!.Model.SymbolAttachmentId = null; StateHasChanged(); } }
+}}

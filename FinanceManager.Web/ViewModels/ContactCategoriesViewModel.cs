@@ -1,17 +1,16 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Http.Json;
-using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Shared; // IApiClient
 using Microsoft.Extensions.Localization;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ContactCategoriesViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public ContactCategoriesViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public ContactCategoriesViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public bool Loaded { get; private set; }
@@ -41,14 +40,10 @@ public sealed class ContactCategoriesViewModel : ViewModelBase
         if (!IsAuthenticated) { return; }
         try
         {
-            var resp = await _http.GetAsync("/api/contact-categories", ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var list = await resp.Content.ReadFromJsonAsync<List<ContactCategoryDto>>(cancellationToken: ct) ?? new();
-                Categories.Clear();
-                Categories.AddRange(list.Select(l => new CategoryItem { Id = l.Id, Name = l.Name, SymbolAttachmentId = l.SymbolAttachmentId }).OrderBy(c => c.Name));
-                RaiseStateChanged();
-            }
+            var list = await _api.ContactCategories_ListAsync(ct);
+            Categories.Clear();
+            Categories.AddRange(list.Select(l => new CategoryItem { Id = l.Id, Name = l.Name, SymbolAttachmentId = l.SymbolAttachmentId }).OrderBy(c => c.Name));
+            RaiseStateChanged();
         }
         catch { }
     }
@@ -61,15 +56,11 @@ public sealed class ContactCategoriesViewModel : ViewModelBase
         await Task.Yield();
         try
         {
-            var resp = await _http.PostAsJsonAsync("/api/contact-categories", new { Name = CreateName }, ct);
-            if (resp.IsSuccessStatusCode)
+            var created = await _api.ContactCategories_CreateAsync(new ContactCategoryCreateRequest(CreateName), ct);
+            if (created is not null)
             {
                 CreateName = string.Empty;
                 await LoadAsync(ct);
-            }
-            else
-            {
-                Error = await resp.Content.ReadAsStringAsync(ct);
             }
         }
         catch (Exception ex)
@@ -98,5 +89,4 @@ public sealed class ContactCategoriesViewModel : ViewModelBase
     }
 
     public sealed class CategoryItem { public Guid Id { get; set; } public string Name { get; set; } = string.Empty; public Guid? SymbolAttachmentId { get; set; } }
-    public sealed record ContactCategoryDto(Guid Id, string Name, Guid? SymbolAttachmentId);
 }

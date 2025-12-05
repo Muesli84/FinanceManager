@@ -1,9 +1,6 @@
-using System;
-using System.Linq;
-using FinanceManager.Infrastructure.Auth;
-using Xunit;
-using Microsoft.AspNetCore.Identity;
 using FinanceManager.Domain.Users;
+using FinanceManager.Infrastructure.Auth;
+using Microsoft.AspNetCore.Identity;
 
 namespace FinanceManager.Tests.Auth;
 

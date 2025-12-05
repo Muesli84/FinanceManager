@@ -1,22 +1,15 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using FinanceManager.Application;
 using FinanceManager.Application.Attachments;
 using FinanceManager.Domain.Attachments;
-using FinanceManager.Shared.Dtos;
 using FinanceManager.Web.Controllers;
 using FinanceManager.Web.Infrastructure.Attachments;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
-using Xunit;
-using Microsoft.Extensions.Localization;
-using Microsoft.AspNetCore.DataProtection;
 
 namespace FinanceManager.Tests.Controllers;
 
@@ -275,7 +268,7 @@ public sealed class AttachmentsControllerTests
         var id = Guid.NewGuid();
         service.Setup(s => s.UpdateCoreAsync(current.UserId, id, "name.pdf", null, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var resp = await controller.UpdateAsync(id, new AttachmentsController.UpdateCoreRequest("name.pdf", null), CancellationToken.None);
+        var resp = await controller.UpdateAsync(id, new AttachmentUpdateCoreRequest("name.pdf", null), CancellationToken.None);
         Assert.IsType<NoContentResult>(resp);
         service.VerifyAll();
     }
@@ -287,7 +280,7 @@ public sealed class AttachmentsControllerTests
         var id = Guid.NewGuid();
         service.Setup(s => s.UpdateCoreAsync(current.UserId, id, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var resp = await controller.UpdateAsync(id, new AttachmentsController.UpdateCoreRequest(null, null), CancellationToken.None);
+        var resp = await controller.UpdateAsync(id, new AttachmentUpdateCoreRequest(null, null), CancellationToken.None);
         Assert.IsType<NotFoundResult>(resp);
         service.VerifyAll();
     }
@@ -300,7 +293,7 @@ public sealed class AttachmentsControllerTests
         var cat = Guid.NewGuid();
         service.Setup(s => s.UpdateCategoryAsync(current.UserId, id, cat, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var resp = await controller.UpdateCategoryAsync(id, new AttachmentsController.UpdateCategoryRequest(cat), CancellationToken.None);
+        var resp = await controller.UpdateCategoryAsync(id, new AttachmentUpdateCategoryRequest(cat), CancellationToken.None);
         Assert.IsType<NoContentResult>(resp);
         service.VerifyAll();
     }
@@ -312,7 +305,7 @@ public sealed class AttachmentsControllerTests
         var id = Guid.NewGuid();
         service.Setup(s => s.UpdateCategoryAsync(current.UserId, id, null, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var resp = await controller.UpdateCategoryAsync(id, new AttachmentsController.UpdateCategoryRequest(null), CancellationToken.None);
+        var resp = await controller.UpdateCategoryAsync(id, new AttachmentUpdateCategoryRequest(null), CancellationToken.None);
         Assert.IsType<NotFoundResult>(resp);
         service.VerifyAll();
     }
@@ -364,7 +357,7 @@ public sealed class AttachmentsControllerTests
         var dto = new AttachmentCategoryDto(Guid.NewGuid(), "Invoices", false, false);
         cats.Setup(s => s.CreateAsync(current.UserId, "Invoices", It.IsAny<CancellationToken>())).ReturnsAsync(dto);
 
-        var resp = await controller.CreateCategoryAsync(new AttachmentsController.CreateCategoryRequest("Invoices"), CancellationToken.None);
+        var resp = await controller.CreateCategoryAsync(new AttachmentCreateCategoryRequest("Invoices"), CancellationToken.None);
         var created = Assert.IsType<CreatedResult>(resp);
         Assert.Equal(dto, created.Value);
         Assert.Equal("/api/attachments/categories", created.Location);
@@ -378,7 +371,7 @@ public sealed class AttachmentsControllerTests
         var (controller, _, cats, _) = Create();
         controller.ModelState.AddModelError("Name", "Required");
 
-        var resp = await controller.CreateCategoryAsync(new AttachmentsController.CreateCategoryRequest(""), CancellationToken.None);
+        var resp = await controller.CreateCategoryAsync(new AttachmentCreateCategoryRequest(""), CancellationToken.None);
         Assert.IsType<ObjectResult>(resp); // ValidationProblem returns ObjectResult in unit tests
         cats.VerifyNoOtherCalls();
     }
@@ -391,7 +384,7 @@ public sealed class AttachmentsControllerTests
         var dto = new AttachmentCategoryDto(id, "NewName", false, true);
         cats.Setup(s => s.UpdateAsync(current.UserId, id, "NewName", It.IsAny<CancellationToken>())).ReturnsAsync(dto);
 
-        var resp = await controller.UpdateCategoryNameAsync(id, new AttachmentsController.UpdateCategoryNameRequest("NewName"), CancellationToken.None);
+        var resp = await controller.UpdateCategoryNameAsync(id, new AttachmentUpdateCategoryNameRequest("NewName"), CancellationToken.None);
         var ok = Assert.IsType<OkObjectResult>(resp);
         Assert.Equal(dto, ok.Value);
         cats.VerifyAll();
@@ -404,7 +397,7 @@ public sealed class AttachmentsControllerTests
         var id = Guid.NewGuid();
         cats.Setup(s => s.UpdateAsync(current.UserId, id, "Dup", It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("duplicate"));
 
-        var resp = await controller.UpdateCategoryNameAsync(id, new AttachmentsController.UpdateCategoryNameRequest("Dup"), CancellationToken.None);
+        var resp = await controller.UpdateCategoryNameAsync(id, new AttachmentUpdateCategoryNameRequest("Dup"), CancellationToken.None);
         Assert.IsType<ConflictObjectResult>(resp);
         cats.VerifyAll();
     }
@@ -415,7 +408,7 @@ public sealed class AttachmentsControllerTests
         var (controller, _, cats, _) = Create();
         controller.ModelState.AddModelError("Name", "too short");
 
-        var resp = await controller.UpdateCategoryNameAsync(Guid.NewGuid(), new AttachmentsController.UpdateCategoryNameRequest(""), CancellationToken.None);
+        var resp = await controller.UpdateCategoryNameAsync(Guid.NewGuid(), new AttachmentUpdateCategoryNameRequest(""), CancellationToken.None);
         Assert.IsType<ObjectResult>(resp); // ValidationProblem
         cats.VerifyNoOtherCalls();
     }
@@ -427,7 +420,7 @@ public sealed class AttachmentsControllerTests
         var id = Guid.NewGuid();
         cats.Setup(s => s.UpdateAsync(current.UserId, id, "Missing", It.IsAny<CancellationToken>())).ReturnsAsync((AttachmentCategoryDto?)null);
 
-        var resp = await controller.UpdateCategoryNameAsync(id, new AttachmentsController.UpdateCategoryNameRequest("Missing"), CancellationToken.None);
+        var resp = await controller.UpdateCategoryNameAsync(id, new AttachmentUpdateCategoryNameRequest("Missing"), CancellationToken.None);
         Assert.IsType<NotFoundResult>(resp);
         cats.VerifyAll();
     }
@@ -474,7 +467,7 @@ public sealed class AttachmentsControllerTests
         var (controller, _, cats, current) = Create();
         cats.Setup(s => s.CreateAsync(current.UserId, "Bad", It.IsAny<CancellationToken>())).ThrowsAsync(new ArgumentException("bad"));
 
-        var resp = await controller.CreateCategoryAsync(new AttachmentsController.CreateCategoryRequest("Bad"), CancellationToken.None);
+        var resp = await controller.CreateCategoryAsync(new AttachmentCreateCategoryRequest("Bad"), CancellationToken.None);
         Assert.IsType<BadRequestObjectResult>(resp);
         cats.VerifyAll();
     }

@@ -1,17 +1,15 @@
-using System.Net.Http.Json;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Shared;
 using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SavingsPlanEditViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public SavingsPlanEditViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SavingsPlanEditViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public Guid? Id { get; private set; }
@@ -45,22 +43,18 @@ public sealed class SavingsPlanEditViewModel : ViewModelBase
         Analysis = null;
         if (IsEdit)
         {
-            var resp = await _http.GetAsync($"/api/savings-plans/{Id}", ct);
-            if (resp.IsSuccessStatusCode)
+            var dto = await _api.SavingsPlans_GetAsync(Id!.Value, ct);
+            if (dto != null)
             {
-                var dto = await resp.Content.ReadFromJsonAsync<SavingsPlanDto>(cancellationToken: ct);
-                if (dto != null)
-                {
-                    Model.Name = dto.Name;
-                    Model.Type = dto.Type;
-                    Model.TargetAmount = dto.TargetAmount;
-                    Model.TargetDate = dto.TargetDate;
-                    Model.Interval = dto.Interval;
-                    Model.CategoryId = dto.CategoryId;
-                    Model.ContractNumber = dto.ContractNumber;
-                    Model.SymbolAttachmentId = dto.SymbolAttachmentId;
-                    await LoadAnalysisAsync(ct);
-                }
+                Model.Name = dto.Name;
+                Model.Type = dto.Type;
+                Model.TargetAmount = dto.TargetAmount;
+                Model.TargetDate = dto.TargetDate;
+                Model.Interval = dto.Interval;
+                Model.CategoryId = dto.CategoryId;
+                Model.ContractNumber = dto.ContractNumber;
+                Model.SymbolAttachmentId = dto.SymbolAttachmentId;
+                await LoadAnalysisAsync(ct);
             }
             else
             {
@@ -82,20 +76,23 @@ public sealed class SavingsPlanEditViewModel : ViewModelBase
     public async Task LoadAnalysisAsync(CancellationToken ct = default)
     {
         if (!IsEdit || Id == null) { return; }
-        var resp = await _http.GetAsync($"/api/savings-plans/{Id}/analysis", ct);
-        if (resp.IsSuccessStatusCode)
+        try
         {
-            Analysis = await resp.Content.ReadFromJsonAsync<SavingsPlanAnalysisDto>(cancellationToken: ct);
+            Analysis = await _api.SavingsPlans_AnalyzeAsync(Id.Value, ct);
         }
+        catch { }
         RaiseStateChanged();
     }
 
     public async Task LoadCategoriesAsync(CancellationToken ct = default)
     {
-        var resp = await _http.GetAsync("/api/savings-plan-categories", ct);
-        if (resp.IsSuccessStatusCode)
+        try
         {
-            Categories = await resp.Content.ReadFromJsonAsync<List<SavingsPlanCategoryDto>>(cancellationToken: ct) ?? new();
+            Categories = (await _api.SavingsPlanCategories_ListAsync(ct)).ToList();
+        }
+        catch
+        {
+            Categories = new();
         }
         RaiseStateChanged();
     }
@@ -105,56 +102,57 @@ public sealed class SavingsPlanEditViewModel : ViewModelBase
         Error = null;
         if (IsEdit)
         {
-            var resp = await _http.PutAsJsonAsync($"/api/savings-plans/{Id}", Model, ct);
-            if (!resp.IsSuccessStatusCode)
+            var req = new SavingsPlanCreateRequest(Model.Name, Model.Type, Model.TargetAmount, Model.TargetDate, Model.Interval, Model.CategoryId, Model.ContractNumber);
+            var existing = await _api.SavingsPlans_UpdateAsync(Id!.Value, req, ct);
+            if (existing == null)
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Error = _api.LastError ?? "Error_Update";
                 RaiseStateChanged();
                 return null;
             }
-            var existing = await resp.Content.ReadFromJsonAsync<SavingsPlanDto>(cancellationToken: ct);
             RaiseStateChanged();
             return existing;
         }
         else
         {
-            var resp = await _http.PostAsJsonAsync("/api/savings-plans", Model, ct);
-            if (!resp.IsSuccessStatusCode)
+            var req = new SavingsPlanCreateRequest(Model.Name, Model.Type, Model.TargetAmount, Model.TargetDate, Model.Interval, Model.CategoryId, Model.ContractNumber);
+            try
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                var dto = await _api.SavingsPlans_CreateAsync(req, ct);
+                RaiseStateChanged();
+                return dto;
+            }
+            catch (Exception ex)
+            {
+                Error = ex.Message;
                 RaiseStateChanged();
                 return null;
             }
-            var dto = await resp.Content.ReadFromJsonAsync<SavingsPlanDto>(cancellationToken: ct);
-            RaiseStateChanged();
-            return dto;
         }
     }
 
     public async Task<bool> ArchiveAsync(CancellationToken ct = default)
     {
         if (!IsEdit || Id == null) { return false; }
-        var resp = await _http.PostAsync($"/api/savings-plans/{Id}/archive", content: null, ct);
-        if (!resp.IsSuccessStatusCode)
+        var ok = await _api.SavingsPlans_ArchiveAsync(Id.Value, ct);
+        if (!ok)
         {
-            Error = await resp.Content.ReadAsStringAsync(ct);
+            Error = _api.LastError ?? "Error_Archive";
             RaiseStateChanged();
-            return false;
         }
-        return true;
+        return ok;
     }
 
     public async Task<bool> DeleteAsync(CancellationToken ct = default)
     {
         if (!IsEdit || Id == null) { return false; }
-        var resp = await _http.DeleteAsync($"/api/savings-plans/{Id}", ct);
-        if (!resp.IsSuccessStatusCode)
+        var ok = await _api.SavingsPlans_DeleteAsync(Id.Value, ct);
+        if (!ok)
         {
-            Error = await resp.Content.ReadAsStringAsync(ct);
+            Error = _api.LastError ?? "Error_Delete";
             RaiseStateChanged();
-            return false;
         }
-        return true;
+        return ok;
     }
 
     public override IReadOnlyList<UiRibbonGroup> GetRibbon(IStringLocalizer localizer)

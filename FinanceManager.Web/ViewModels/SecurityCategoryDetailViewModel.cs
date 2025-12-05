@@ -1,17 +1,15 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Http.Json;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SecurityCategoryDetailViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly FinanceManager.Shared.IApiClient _api;
 
-    public SecurityCategoryDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SecurityCategoryDetailViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<FinanceManager.Shared.IApiClient>();
     }
 
     public Guid? Id { get; private set; }
@@ -27,15 +25,11 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
         Error = null;
         if (IsEdit)
         {
-            var resp = await _http.GetAsync($"/api/security-categories/{Id}", ct);
-            if (resp.IsSuccessStatusCode)
+            var dto = await _api.SecurityCategories_GetAsync(Id.Value, ct);
+            if (dto is not null)
             {
-                var dto = await resp.Content.ReadFromJsonAsync<SecurityCategoryDto>(cancellationToken: ct);
-                if (dto is not null)
-                {
-                    Model.Name = dto.Name ?? string.Empty;
-                    Model.SymbolAttachmentId = dto.SymbolAttachmentId;
-                }
+                Model.Name = dto.Name ?? string.Empty;
+                Model.SymbolAttachmentId = dto.SymbolAttachmentId;
             }
             else
             {
@@ -51,10 +45,10 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
         Error = null;
         if (!IsEdit)
         {
-            var resp = await _http.PostAsJsonAsync("/api/security-categories", new SecurityCategoryDto { Name = Model.Name }, ct);
-            if (!resp.IsSuccessStatusCode)
+            var created = await _api.SecurityCategories_CreateAsync(new SecurityCategoryRequest { Name = Model.Name }, ct);
+            if (created is null)
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Error = _api.LastError;
                 RaiseStateChanged();
                 return false;
             }
@@ -62,10 +56,10 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
         }
         else
         {
-            var resp = await _http.PutAsJsonAsync($"/api/security-categories/{Id}", new SecurityCategoryDto { Id = Id!.Value, Name = Model.Name }, ct);
-            if (!resp.IsSuccessStatusCode)
+            var updated = await _api.SecurityCategories_UpdateAsync(Id!.Value, new SecurityCategoryRequest { Name = Model.Name }, ct);
+            if (updated is null)
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Error = _api.LastError;
                 RaiseStateChanged();
                 return false;
             }
@@ -76,10 +70,10 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
     public async Task<bool> DeleteAsync(CancellationToken ct = default)
     {
         if (!IsEdit || Id is null) { return false; }
-        var resp = await _http.DeleteAsync($"/api/security-categories/{Id}", ct);
-        if (!resp.IsSuccessStatusCode)
+        var ok = await _api.SecurityCategories_DeleteAsync(Id.Value, ct);
+        if (!ok)
         {
-            Error = await resp.Content.ReadAsStringAsync(ct);
+            Error = _api.LastError;
             RaiseStateChanged();
             return false;
         }
@@ -104,13 +98,6 @@ public sealed class SecurityCategoryDetailViewModel : ViewModelBase
     public sealed class EditModel
     {
         [Required, MinLength(2)]
-        public string Name { get; set; } = string.Empty;
-        public Guid? SymbolAttachmentId { get; set; }
-    }
-
-    public sealed class SecurityCategoryDto
-    {
-        public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public Guid? SymbolAttachmentId { get; set; }
     }

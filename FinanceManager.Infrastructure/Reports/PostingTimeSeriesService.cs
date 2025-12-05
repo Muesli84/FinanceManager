@@ -1,5 +1,4 @@
 using FinanceManager.Application.Reports;
-using FinanceManager.Domain; // PostingKind
 using FinanceManager.Domain.Postings;
 using Microsoft.EntityFrameworkCore;
 

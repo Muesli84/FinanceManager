@@ -1,18 +1,16 @@
-using System.ComponentModel.DataAnnotations;
-using System.Net.Http.Json;
-using FinanceManager.Domain.Attachments;
-using Microsoft.Extensions.DependencyInjection;
+using FinanceManager.Shared; // IApiClient
 using Microsoft.Extensions.Localization;
+using System.ComponentModel.DataAnnotations;
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class ContactCategoryDetailViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public ContactCategoryDetailViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public ContactCategoryDetailViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public Guid? Id { get; private set; }
@@ -28,15 +26,11 @@ public sealed class ContactCategoryDetailViewModel : ViewModelBase
         Error = null;
         if (IsEdit)
         {
-            var resp = await _http.GetAsync($"/api/contact-categories/{Id}", ct);
-            if (resp.IsSuccessStatusCode)
+            var dto = await _api.ContactCategories_GetAsync(Id!.Value, ct);
+            if (dto is not null)
             {
-                var dto = await resp.Content.ReadFromJsonAsync<ContactCategoryDto>(cancellationToken: ct);
-                if (dto is not null)
-                {
-                    Model.Name = dto.Name ?? string.Empty;
-                    Model.SymbolAttachmentId = dto.SymbolAttachmentId;
-                }
+                Model.Name = dto.Name ?? string.Empty;
+                Model.SymbolAttachmentId = dto.SymbolAttachmentId;
             }
             else
             {
@@ -52,28 +46,23 @@ public sealed class ContactCategoryDetailViewModel : ViewModelBase
         Error = null;
         if (!IsEdit)
         {
-            var resp = await _http.PostAsJsonAsync("/api/contact-categories", new { Name = Model.Name }, ct);
-            if (!resp.IsSuccessStatusCode)
+            var created = await _api.ContactCategories_CreateAsync(new ContactCategoryCreateRequest(Model.Name), ct);
+            if (created is null)
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Error = "Error_Create";
                 RaiseStateChanged();
                 return false;
             }
-            // get created id
-            var created = await resp.Content.ReadFromJsonAsync<ContactCategoryDto>(cancellationToken: ct);
-            if (created != null)
-            {
-                Id = created.Id;
-                Model.SymbolAttachmentId = created.SymbolAttachmentId;
-            }
+            Id = created.Id;
+            Model.SymbolAttachmentId = created.SymbolAttachmentId;
             return true;
         }
         else
         {
-            var resp = await _http.PutAsJsonAsync($"/api/contact-categories/{Id}", new { Name = Model.Name }, ct);
-            if (!resp.IsSuccessStatusCode)
+            var ok = await _api.ContactCategories_UpdateAsync(Id!.Value, new ContactCategoryUpdateRequest(Model.Name), ct);
+            if (!ok)
             {
-                Error = await resp.Content.ReadAsStringAsync(ct);
+                Error = "Error_Update";
                 RaiseStateChanged();
                 return false;
             }
@@ -84,10 +73,10 @@ public sealed class ContactCategoryDetailViewModel : ViewModelBase
     public async Task<bool> DeleteAsync(CancellationToken ct = default)
     {
         if (!IsEdit || Id is null) { return false; }
-        var resp = await _http.DeleteAsync($"/api/contact-categories/{Id}", ct);
-        if (!resp.IsSuccessStatusCode)
+        var ok = await _api.ContactCategories_DeleteAsync(Id!.Value, ct);
+        if (!ok)
         {
-            Error = await resp.Content.ReadAsStringAsync(ct);
+            Error = "Error_Delete";
             RaiseStateChanged();
             return false;
         }
@@ -114,6 +103,4 @@ public sealed class ContactCategoryDetailViewModel : ViewModelBase
         [Required, MinLength(2)] public string Name { get; set; } = string.Empty;
         public Guid? SymbolAttachmentId { get; set; }
     }
-
-    public sealed record ContactCategoryDto(Guid Id, string Name, Guid? SymbolAttachmentId);
 }

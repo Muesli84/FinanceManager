@@ -1,16 +1,15 @@
-using System.Net.Http.Json;
-using FinanceManager.Shared.Dtos;
-using Microsoft.Extensions.DependencyInjection;
-
 namespace FinanceManager.Web.ViewModels;
+
+using FinanceManager.Shared;
+using FinanceManager.Shared.Dtos.Attachments;
 
 public sealed class SetupAttachmentCategoriesViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public SetupAttachmentCategoriesViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SetupAttachmentCategoriesViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public List<AttachmentCategoryDto> Items { get; } = new();
@@ -43,7 +42,7 @@ public sealed class SetupAttachmentCategoriesViewModel : ViewModelBase
         Loading = true; Error = null; ActionError = null; ActionOk = false; EditId = Guid.Empty; EditName = string.Empty; RaiseStateChanged();
         try
         {
-            var list = await _http.GetFromJsonAsync<List<AttachmentCategoryDto>>("/api/attachments/categories", ct);
+            var list = await _api.Attachments_ListCategoriesAsync(ct);
             Items.Clear();
             if (list is not null)
             {
@@ -64,21 +63,13 @@ public sealed class SetupAttachmentCategoriesViewModel : ViewModelBase
         Busy = true; ActionError = null; ActionOk = false; RaiseStateChanged();
         try
         {
-            using var resp = await _http.PostAsJsonAsync("/api/attachments/categories", new { Name = name }, ct);
-            if (resp.IsSuccessStatusCode)
+            var dto = await _api.Attachments_CreateCategoryAsync(name, ct);
+            if (dto is not null)
             {
-                var dto = await resp.Content.ReadFromJsonAsync<AttachmentCategoryDto>(cancellationToken: ct);
-                if (dto is not null)
-                {
-                    Items.Add(dto);
-                    Items.Sort((a,b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
-                    NewName = string.Empty;
-                    ActionOk = true;
-                }
-            }
-            else
-            {
-                ActionError = await resp.Content.ReadAsStringAsync(ct);
+                Items.Add(dto);
+                Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+                NewName = string.Empty;
+                ActionOk = true;
             }
         }
         catch (Exception ex)
@@ -107,23 +98,15 @@ public sealed class SetupAttachmentCategoriesViewModel : ViewModelBase
         Busy = true; ActionError = null; ActionOk = false; RaiseStateChanged();
         try
         {
-            using var resp = await _http.PutAsJsonAsync($"/api/attachments/categories/{EditId}", new { Name = name }, ct);
-            if (resp.IsSuccessStatusCode)
+            var dto = await _api.Attachments_UpdateCategoryNameAsync(EditId, name, ct);
+            if (dto is not null)
             {
-                var dto = await resp.Content.ReadFromJsonAsync<AttachmentCategoryDto>(cancellationToken: ct);
-                if (dto is not null)
-                {
-                    var idx = Items.FindIndex(x => x.Id == dto.Id);
-                    if (idx >= 0) { Items[idx] = dto; }
-                    else { Items.Add(dto); }
-                    Items.Sort((a,b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
-                    ActionOk = true;
-                    CancelEdit();
-                }
-            }
-            else
-            {
-                ActionError = await resp.Content.ReadAsStringAsync(ct);
+                var idx = Items.FindIndex(x => x.Id == dto.Id);
+                if (idx >= 0) { Items[idx] = dto; }
+                else { Items.Add(dto); }
+                Items.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+                ActionOk = true;
+                CancelEdit();
             }
         }
         catch (Exception ex)
@@ -138,16 +121,12 @@ public sealed class SetupAttachmentCategoriesViewModel : ViewModelBase
         Busy = true; ActionError = null; ActionOk = false; RaiseStateChanged();
         try
         {
-            using var resp = await _http.DeleteAsync($"/api/attachments/categories/{id}", ct);
-            if (resp.IsSuccessStatusCode)
+            var ok = await _api.Attachments_DeleteCategoryAsync(id, ct);
+            if (ok)
             {
                 var idx = Items.FindIndex(x => x.Id == id);
                 if (idx >= 0) { Items.RemoveAt(idx); }
                 ActionOk = true;
-            }
-            else
-            {
-                ActionError = await resp.Content.ReadAsStringAsync(ct);
             }
         }
         catch (Exception ex)

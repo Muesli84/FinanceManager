@@ -1,21 +1,13 @@
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceManager.Domain;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Attachments;
 using FinanceManager.Domain.Contacts;
-using FinanceManager.Domain.Savings;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Accounts;
 using FinanceManager.Infrastructure.Contacts;
 using FinanceManager.Infrastructure.Savings;
 using FinanceManager.Infrastructure.Securities;
-using FinanceManager.Shared.Dtos;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace FinanceManager.Tests.Attachments;
 
@@ -48,8 +40,8 @@ public sealed class AttachmentCleanupTests
         await db.SaveChangesAsync();
 
         // add attachments for both contacts
-        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Contact, c1.Id, "a.txt", "text/plain", 1, null, null, new byte[]{1}, null));
-        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Contact, c2.Id, "b.txt", "text/plain", 1, null, null, new byte[]{2}, null));
+        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Contact, c1.Id, "a.txt", "text/plain", 1, null, null, new byte[] { 1 }, null));
+        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Contact, c2.Id, "b.txt", "text/plain", 1, null, null, new byte[] { 2 }, null));
         await db.SaveChangesAsync();
 
         Assert.Equal(2, await db.Attachments.CountAsync(a => a.EntityKind == AttachmentEntityKind.Contact));
@@ -76,8 +68,8 @@ public sealed class AttachmentCleanupTests
         await db.SaveChangesAsync();
 
         // add attachments to account and bank contact
-        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Account, acc.Id, "acc.txt", "text/plain", 1, null, null, new byte[]{1}, null));
-        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Contact, bank.Id, "bank.txt", "text/plain", 1, null, null, new byte[]{1}, null));
+        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Account, acc.Id, "acc.txt", "text/plain", 1, null, null, new byte[] { 1 }, null));
+        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Contact, bank.Id, "bank.txt", "text/plain", 1, null, null, new byte[] { 1 }, null));
         await db.SaveChangesAsync();
 
         var svc = new AccountService(db);
@@ -106,7 +98,7 @@ public sealed class AttachmentCleanupTests
         await db.SaveChangesAsync();
 
         // bank contact attachment
-        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Contact, bank.Id, "bankY.txt", "text/plain", 1, null, null, new byte[]{1}, null));
+        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Contact, bank.Id, "bankY.txt", "text/plain", 1, null, null, new byte[] { 1 }, null));
         await db.SaveChangesAsync();
 
         var svc = new AccountService(db);
@@ -136,7 +128,7 @@ public sealed class AttachmentCleanupTests
         var archived = await svc.ArchiveAsync(dto.Id, owner, CancellationToken.None);
         Assert.True(archived);
 
-        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.SavingsPlan, dto.Id, "sp.txt", "text/plain", 1, null, null, new byte[]{1}, null));
+        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.SavingsPlan, dto.Id, "sp.txt", "text/plain", 1, null, null, new byte[] { 1 }, null));
         await db.SaveChangesAsync();
 
         var ok = await svc.DeleteAsync(dto.Id, owner, CancellationToken.None);
@@ -155,7 +147,7 @@ public sealed class AttachmentCleanupTests
         var archived = await svc.ArchiveAsync(created.Id, owner, CancellationToken.None);
         Assert.True(archived);
 
-        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Security, created.Id, "sec.txt", "text/plain", 1, null, null, new byte[]{1}, null));
+        db.Attachments.Add(new Attachment(owner, AttachmentEntityKind.Security, created.Id, "sec.txt", "text/plain", 1, null, null, new byte[] { 1 }, null));
         await db.SaveChangesAsync();
 
         var ok = await svc.DeleteAsync(created.Id, owner, CancellationToken.None);

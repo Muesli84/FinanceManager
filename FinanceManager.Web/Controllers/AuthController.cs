@@ -1,10 +1,11 @@
-using System.ComponentModel.DataAnnotations;
-using System.Security.Claims;
 using FinanceManager.Application.Users;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Handles user authentication: login, registration and logout using JWT cookie tokens.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public sealed class AuthController : ControllerBase
@@ -16,6 +17,11 @@ public sealed class AuthController : ControllerBase
     public AuthController(IUserAuthService auth, IAuthTokenProvider tokenProvider)
     { _auth = auth; _tokenProvider = tokenProvider; }
 
+    /// <summary>
+    /// Authenticates a user with username and password, returning a JWT (cookie) and user info.
+    /// </summary>
+    /// <param name="request">Login request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequest request, CancellationToken ct)
     {
@@ -27,7 +33,7 @@ public sealed class AuthController : ControllerBase
         var result = await _auth.LoginAsync(new LoginCommand(request.Username, request.Password, ip, request.PreferredLanguage, request.TimeZoneId), ct);
         if (!result.Success)
         {
-            return Unauthorized(new { error = result.Error });
+            return Unauthorized(new ApiErrorDto(result.Error!));
         }
 
         // Set cookie with explicit expiry that matches token expiry
@@ -41,9 +47,14 @@ public sealed class AuthController : ControllerBase
             Expires = new DateTimeOffset(result.Value.ExpiresUtc)
         });
 
-        return Ok(new { user = result.Value.Username, isAdmin = result.Value.IsAdmin, exp = result.Value.ExpiresUtc });
+        return Ok(new AuthOkResponse(result.Value.Username, result.Value.IsAdmin, result.Value.ExpiresUtc));
     }
 
+    /// <summary>
+    /// Registers a new user account and returns a JWT (cookie) for immediate authentication.
+    /// </summary>
+    /// <param name="request">Registration request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequest request, CancellationToken ct)
     {
@@ -54,7 +65,7 @@ public sealed class AuthController : ControllerBase
         var result = await _auth.RegisterAsync(new RegisterUserCommand(request.Username, request.Password, request.PreferredLanguage, request.TimeZoneId), ct);
         if (!result.Success)
         {
-            return Conflict(new { error = result.Error });
+            return Conflict(new ApiErrorDto(result.Error!));
         }
 
         Response.Cookies.Append(AuthCookieName, result.Value!.Token, new CookieOptions
@@ -67,9 +78,12 @@ public sealed class AuthController : ControllerBase
             Expires = new DateTimeOffset(result.Value.ExpiresUtc)
         });
 
-        return Ok(new { user = result.Value.Username, isAdmin = result.Value.IsAdmin, exp = result.Value.ExpiresUtc });
+        return Ok(new AuthOkResponse(result.Value.Username, result.Value.IsAdmin, result.Value.ExpiresUtc));
     }
 
+    /// <summary>
+    /// Logs the current user out by clearing the auth cookie and in-memory token.
+    /// </summary>
     [HttpPost("logout")]
     public IActionResult Logout()
     {
@@ -88,25 +102,5 @@ public sealed class AuthController : ControllerBase
             concrete.Clear();
         }
         return Ok();
-    }
-
-    public sealed class LoginRequest
-    {
-        [Required, MinLength(3)]
-        public string Username { get; set; } = string.Empty;
-        [Required, MinLength(6)]
-        public string Password { get; set; } = string.Empty;
-        public string? PreferredLanguage { get; set; }
-        public string? TimeZoneId { get; set; }
-    }
-
-    public sealed class RegisterRequest
-    {
-        [Required, MinLength(3)]
-        public string Username { get; set; } = string.Empty;
-        [Required, MinLength(6)]
-        public string Password { get; set; } = string.Empty;
-        public string? PreferredLanguage { get; set; }
-        public string? TimeZoneId { get; set; }
     }
 }

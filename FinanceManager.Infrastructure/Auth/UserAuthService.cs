@@ -1,13 +1,12 @@
 using FinanceManager.Application;
+using FinanceManager.Application.Security;
 using FinanceManager.Application.Users;
 using FinanceManager.Domain;
-using FinanceManager.Domain.Contacts; // added
+using FinanceManager.Domain.Contacts;
 using FinanceManager.Domain.Users;
-using FinanceManager.Shared.Dtos;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using FinanceManager.Application.Security; // added
-using Microsoft.AspNetCore.Identity;
 
 namespace FinanceManager.Infrastructure.Auth;
 
@@ -29,14 +28,14 @@ public sealed class UserAuthService : IUserAuthService
     { }
 
     public UserAuthService(
-        AppDbContext db, 
-        UserManager<User> userManager, 
-        SignInManager<User> signInManager, 
-        IJwtTokenService jwt, 
-        IPasswordHashingService passwordHasher, 
-        IDateTimeProvider clock, 
-        ILogger<UserAuthService> logger, 
-        IIpBlockService ipBlocks, 
+        AppDbContext db,
+        UserManager<User> userManager,
+        SignInManager<User> signInManager,
+        IJwtTokenService jwt,
+        IPasswordHashingService passwordHasher,
+        IDateTimeProvider clock,
+        ILogger<UserAuthService> logger,
+        IIpBlockService ipBlocks,
         RoleManager<IdentityRole<Guid>>? roleManager = null)
     {
         _db = db;
@@ -69,6 +68,10 @@ public sealed class UserAuthService : IUserAuthService
 
         bool isFirst = !await _db.Users.AsNoTracking().AnyAsync(ct);
         var user = new User(command.Username, _passwordHasher.Hash(command.Password), isFirst);
+        user.LockoutEnabled = !isFirst;
+        if (string.IsNullOrEmpty(user.SecurityStamp)) user.SecurityStamp = Guid.NewGuid().ToString("N");
+        if (string.IsNullOrEmpty(user.ConcurrencyStamp)) user.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+
         if (!string.IsNullOrWhiteSpace(command.PreferredLanguage))
         {
             user.SetPreferredLanguage(command.PreferredLanguage);
@@ -84,7 +87,7 @@ public sealed class UserAuthService : IUserAuthService
             _logger.LogWarning("Registration failed for {Username}: Identity errors: {Errors}", command.Username, string.Join(';', createResult.Errors.Select(e => e.Description)));
             return Result<AuthResult>.Fail("Registration failed");
         }
-        
+
 
         // Ensure user is persisted/tracked in AppDbContext in case UserManager is mocked or uses a different store
         if (user.Id == Guid.Empty)
@@ -143,7 +146,7 @@ public sealed class UserAuthService : IUserAuthService
         }
 
         await new DemoDataService(_db).CreateDemoDataForUserAsync(user.Id, ct);
-        
+
         var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
         var token = _jwt.CreateToken(user.Id, user.UserName, isAdmin, out var expires, user.PreferredLanguage, user.TimeZoneId);
         _logger.LogInformation("User {UserId} ({Username}) registered (IsAdmin={IsAdmin})", user.Id, user.UserName, isAdmin);
