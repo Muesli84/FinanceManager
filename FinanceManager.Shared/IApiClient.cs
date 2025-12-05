@@ -416,4 +416,8 @@ public interface IApiClient
     Task<bool> StatementDrafts_CancelBookAllAsync(CancellationToken ct = default);
     /// <summary>Deletes a statement draft. Returns false when not found.</summary>
     Task<bool> StatementDrafts_DeleteAsync(Guid draftId, CancellationToken ct = default);
+
+    // Users
+    /// <summary>Checks if any users exist in the system.</summary>
+    Task<bool> Users_HasAnyAsync(CancellationToken ct = default);
 }

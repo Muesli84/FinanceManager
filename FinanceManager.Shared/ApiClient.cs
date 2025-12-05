@@ -1,7 +1,8 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using FinanceManager.Shared.Dtos.SavingsPlans;
-using FinanceManager.Shared.Dtos.Statements; // added for statement drafts
+using FinanceManager.Shared.Dtos.Statements;
+using FinanceManager.Shared.Dtos.Users; // added for AnyUsersResponse
 
 
 namespace FinanceManager.Shared;
@@ -1654,7 +1655,17 @@ public class ApiClient : IApiClient
         return resp.IsSuccessStatusCode;
     }
 
-    
-
     #endregion Statement Drafts Background Tasks
+
+    #region Users
+
+    public async Task<bool> Users_HasAnyAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/users/exists", ct);
+        resp.EnsureSuccessStatusCode();
+        var result = await resp.Content.ReadFromJsonAsync<AnyUsersResponse>(cancellationToken: ct);
+        return result?.Any ?? false;
+    }
+
+    #endregion Users
 }
