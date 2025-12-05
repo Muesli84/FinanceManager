@@ -1,0 +1,96 @@
+/* =====================================================
+   app.SavingsPlanList.css - Allgemeingültige SavingsPlanList Styles
+   ===================================================== */
+
+.savings-table {
+    margin-top: 1rem;
+}
+
+.status-archived {
+    opacity: .65;
+    font-size: .75rem;
+}
+
+/* Plan row */
+.plan-row {
+    cursor: pointer;
+}
+
+/* Column widths */
+.col-symbol {
+    width: 56px;
+}
+
+.col-status {
+    width: 64px;
+    text-align: center;
+}
+
+/* Symbol box */
+.symbol-box {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 6px;
+}
+
+.symbol-box img {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+}
+
+/* Negative amounts */
+.negative {
+    color: #e66;
+}
+
+/* Target date cell */
+.target-date-cell {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+/* Interval badge */
+.interval-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.interval-badge svg {
+    display: block;
+}
+
+/* Status item */
+.status-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem;
+    font-size: .875rem;
+}
+
+/* Bag icon */
+.bag-icon {
+    width: 1.6em;
+    height: 1.6em;
+    fill: none;
+    stroke-width: 1.5;
+}
+
+.closed {
+    stroke-linecap: round;
+}
+
+.open-warning {
+    stroke-linecap: square;
+}

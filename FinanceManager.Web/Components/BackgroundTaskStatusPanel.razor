@@ -122,7 +122,7 @@
                 {
                     var subPct = (int)Math.Round(100.0 * (ActiveTask.Processed2 ?? 0) / ActiveTask.Total2.Value);
                     <div class="bgt-progress sub">
-                        <div class="bgt-bar" title="@subPct%"><div class="bgt-bar-fill" style="background:#6aa84f;width:@subPct%"></div></div>
+                        <div class="bgt-bar" title="@subPct%"><div class="bgt-bar-fill bgt-bar-fill-sub" style="width:@subPct%"></div></div>
                         <div class="bgt-progress-label">@(ActiveTask.Processed2 ?? 0) / @(ActiveTask.Total2 ?? 0)</div>
                     </div>
                 }
@@ -132,7 +132,7 @@
                 }
                 @if (!string.IsNullOrWhiteSpace(ActiveTask.Message2))
                 {
-                    <div class="bgt-message" style="opacity:.65;">@ActiveTask.Message2</div>
+                    <div class="bgt-message bgt-message-secondary">@ActiveTask.Message2</div>
                 }
                 <div class="bgt-metrics">
                     <span class="bgt-warn">@Localizer["Bgt_Warnings"]: @ActiveTask.Warnings</span>
@@ -165,29 +165,3 @@
     </section>
 </div>
 }
-
-<style>
-    .bgt-panel { border:1px solid #444; padding:.75rem 1rem; border-radius:6px; background:#1e1e24; margin:1rem 0; }
-    .bgt-active, .bgt-queue-item { display:flex; flex-direction:column; gap:.4rem; }
-    .bgt-row { display:flex; gap:.5rem; align-items:center; }
-    .bgt-badge { padding:.1rem .5rem; border-radius:12px; font-size:.65rem; text-transform:uppercase; letter-spacing:.5px; background:#333; }
-    .bgt-running { background:#2d6cdf; }
-    .bgt-queued { background:#666; }
-    .bgt-completed { background:#3c7c3c; }
-    .bgt-failed { background:#8c3131; }
-    .bgt-cancelled { background:#555; }
-    .bgt-progress { display:flex; align-items:center; gap:.5rem; }
-    .bgt-bar { position:relative; width:180px; height:6px; background:#333; border-radius:3px; overflow:hidden; }
-    .bgt-bar-fill { position:absolute; left:0; top:0; bottom:0; background:#2d6cdf; transition:width .25s; }
-    .bgt-indeterminate { width:180px; height:6px; background:#333; position:relative; overflow:hidden; }
-    .bgt-indeterminate::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent 0%,#2d6cdf 50%,transparent 100%); animation:bgtInd 1s linear infinite; }
-    .bgt-queue { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem; }
-    .bgt-queue-item { padding:.4rem .5rem; border:1px solid #333; border-radius:4px; background:#26262c; display:flex; flex-direction:row; gap:.6rem; align-items:center; }
-    .bgt-empty { opacity:.6; font-size:.75rem; }
-    .bgt-type { font-weight:600; font-size:.75rem; }
-    .bgt-message { font-size:.7rem; opacity:.85; }
-    .bgt-metrics { display:flex; gap:1rem; font-size:.65rem; opacity:.8; }
-    .bgt-warn { color:#cc6; }
-    .bgt-err { color:#e66; }
-    .bgt-progress.sub { margin-top:.25rem; }
-</style>

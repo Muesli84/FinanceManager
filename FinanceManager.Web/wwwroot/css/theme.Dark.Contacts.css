@@ -1,0 +1,18 @@
+/* =====================================================
+   theme.Dark.Contacts.css - Dark Theme für Contacts
+   ===================================================== */
+
+.contacts-table-container {
+    border: 1px solid var(--border-color, #333);
+    background: var(--panel-bg, #1e1e1e);
+}
+
+.filter-input {
+    border: 1px solid #444;
+    background: #1f1f1f;
+    color: #eee;
+}
+
+.filter-input:focus {
+    outline: 2px solid #2d5a8a;
+}

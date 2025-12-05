@@ -363,12 +363,12 @@
 else
 {
     @if(!string.IsNullOrEmpty(_bookingError))
-    { <div style="margin:.5rem 0;color:#e66;font-size:.75rem;">@_bookingError</div> }
+    { <div class="booking-error">@_bookingError</div> }
     @if(_pendingWarningConfirmation && _lastValidation != null)
     {
-        <div style="margin:.75rem 0;padding:.6rem .8rem;border:1px solid #665500;background:#221e00;font-size:.7rem;max-width:960px;">
+        <div class="warning-confirmation">
             <strong>@_lastValidation.Messages.Count(m=>m.Severity=="Warning") @Localizer["WarningsFound"]</strong> @Localizer["ProceedAnywayQuestion"]
-            <div style="margin-top:.5rem;display:flex;gap:.5rem;">
+            <div class="warning-actions">
                 <button class="icon-btn" @onclick="ForceBook">@Localizer["Yes"]</button>
                 <button class="icon-btn" @onclick="(()=>{_pendingWarningConfirmation=false;})">@Localizer["Cancel"]</button>
             </div>
@@ -397,13 +397,13 @@ else
         var globalMessages = _validation.Messages.Where(m=>m.EntryId==null || m.DraftId != Id).ToList();
         if(globalMessages.Any())
         {
-            <div style="margin:.5rem 0 1rem 0;padding:.6rem .75rem;border:1px solid #444;border-radius:4px;background:#181818;max-width:960px;">
-                <h4 style="margin:0.1rem 0 .4rem 0;font-size:.75rem;">@Localizer["GlobalMessages"]</h4>
-                <ul style="margin:0;padding-left:1.1rem;font-size:.65rem;">
+            <div class="global-messages">
+                <h4>@Localizer["GlobalMessages"]</h4>
+                <ul>
                     @foreach(var gm in globalMessages)
                     {
-                        var c = gm.Severity=="Error"?"#e66":"#cc6";
-                        <li style="margin:.2rem 0;color:@c;">@gm.Message</li>
+                        var cssClass = gm.Severity=="Error" ? "msg-error" : "msg-warning";
+                        <li class="@cssClass">@gm.Message</li>
                     }
                 </ul>
             </div>
@@ -412,24 +412,24 @@ else
 
     <p><strong>@Localizer["TotalAmount"]:</strong> @_draft.Entries.Sum(e => e.Amount)</p>
     @if (_draft.ParentEntryAmount != null)
-    { <p style="color:#ccc;"><strong>@Localizer["ParentEntryAmount"]:</strong> @_draft.ParentEntryAmount</p> }
+    { <p class="parent-entry-amount"><strong>@Localizer["ParentEntryAmount"]:</strong> @_draft.ParentEntryAmount</p> }
 
     <h4>@Localizer["EntriesHeader"] (@_draft.Entries.Count)</h4>
     <div class="draft-entries-container">
         <table class="fm-table wide">
             <thead>
                 <tr>
-                    <th style="width:1.4rem;"></th>
-                    <th style="width:7rem;">@Localizer["Th_Date"]</th>
-                    <th style="width:7rem;">@Localizer["Th_Valuta"]</th>
-                    <th style="width:7rem;text-align:right;">@Localizer["Th_Amount"]</th>
-                    <th style="width:6rem;">@Localizer["Th_Currency"]</th>
+                    <th class="col-icon"></th>
+                    <th class="col-date">@Localizer["Th_Date"]</th>
+                    <th class="col-valuta">@Localizer["Th_Valuta"]</th>
+                    <th class="col-amount">@Localizer["Th_Amount"]</th>
+                    <th class="col-currency">@Localizer["Th_Currency"]</th>
                     <th>@Localizer["Th_Subject"]</th>
-                    <th style="width:14%;">@Localizer["Th_Recipient"]</th>
-                    <th style="width:12%;">@Localizer["Th_SavingsPlan"]</th>
+                    <th class="col-recipient">@Localizer["Th_Recipient"]</th>
+                    <th class="col-savings">@Localizer["Th_SavingsPlan"]</th>
                     <th>@Localizer["Th_Description"]</th>
-                    <th style="width:6rem;">@Localizer["Th_Announced"]</th>
-                    <th style="width:9rem;">@Localizer["Th_Status"]</th>
+                    <th class="col-announced">@Localizer["Th_Announced"]</th>
+                    <th class="col-status">@Localizer["Th_Status"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -438,33 +438,33 @@ else
                     var entryMessages = _validation?.Messages.Where(m => m.EntryId == e.Id).ToList() ?? new();
                     var entryErrors = entryMessages.Count(m=>m.Severity=="Error");
                     var entryWarnings = entryMessages.Count(m=>m.Severity=="Warning");
-                    var rowStyle = e.Status == StatementDraftEntryStatus.AlreadyBooked ? "opacity:.55;background:#141414;" : e.Status == StatementDraftEntryStatus.Announced ? "opacity:.55;background:#131313;" : string.Empty;
-                    <tr style="cursor:pointer;@rowStyle" @onclick="(() => OpenEntry(e.Id))">
+                    var rowClass = e.Status == StatementDraftEntryStatus.AlreadyBooked ? "row-booked" : e.Status == StatementDraftEntryStatus.Announced ? "row-announced" : string.Empty;
+                    <tr class="entry-row @rowClass" @onclick="(() => OpenEntry(e.Id))">
                         <td>
                             @if (e.SplitDraftId != null)
-                            { <svg title='@Localizer["LinkedSplitDraft"]' aria-label="Split" style="width:1rem;height:1rem;"><use href="/icons/sprite.svg#link" /></svg> }
+                            { <svg title='@Localizer["LinkedSplitDraft"]' aria-label="Split" class="split-icon"><use href="/icons/sprite.svg#link" /></svg> }
                         </td>
                         <td>@e.BookingDate.ToShortDateString()</td>
                         <td>@(e.ValutaDate?.ToShortDateString() ?? "")</td>
-                        <td style="text-align:right;">@e.Amount</td>
+                        <td class="amount-cell">@e.Amount</td>
                         <td>@e.CurrencyCode</td>
                         <td class="wrap">@e.Subject</td>
                         <td class="wrap">
                             @if (e.ContactId != null)
                             {
                                 var contact = _contacts.FirstOrDefault(a => a.Id == e.ContactId);
-                                <div style="display:flex;gap:.5rem;align-items:center;">
+                                <div class="entity-display">
                                     @{ var symbolId = contact != null ? GetContactDisplaySymbol(contact.Id) : null; }
                                     @if (symbolId != null)
                                     {
-                                        <div style="width:28px;height:28px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
-                                            <img src="@($"/api/attachments/{symbolId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                                        <div class="entity-symbol">
+                                            <img src="@($"/api/attachments/{symbolId}/download")" alt="symbol" />
                                         </div>
                                     }
                                     else
                                     {
-                                        <div style="width:28px;height:28px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
-                                            <svg style="width:18px;height:18px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                        <div class="entity-symbol-placeholder">
+                                            <svg><use href="/icons/sprite.svg#image" /></svg>
                                         </div>
                                     }
                                     <span>@contact?.Name</span>
@@ -476,18 +476,18 @@ else
                             @if (e.SavingsPlanId != null)
                             {
                                 var plan = _savingsPlans.FirstOrDefault(p => p.Id == e.SavingsPlanId);
-                                <div style="display:flex;gap:.5rem;align-items:center;">
+                                <div class="entity-display">
                                     @{ var sId = plan != null ? GetSavingsPlanDisplaySymbol(plan.Id) : null; }
                                     @if (sId != null)
                                     {
-                                        <div style="width:28px;height:28px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
-                                            <img src="@($"/api/attachments/{sId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                                        <div class="entity-symbol">
+                                            <img src="@($"/api/attachments/{sId}/download")" alt="symbol" />
                                         </div>
                                     }
                                     else
                                     {
-                                        <div style="width:28px;height:28px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);">
-                                            <svg style="width:18px;height:18px;opacity:.6;"><use href="/icons/sprite.svg#image" /></svg>
+                                        <div class="entity-symbol-placeholder">
+                                            <svg><use href="/icons/sprite.svg#image" /></svg>
                                         </div>
                                     }
                                     <span>@plan?.Name</span>
@@ -501,18 +501,18 @@ else
                     </tr>
                     @if(entryMessages.Any())
                     {
-                        <tr class="validation-row" style="background:#181818;@rowStyle">
-                            <td colspan="11" style="padding:.4rem .75rem;">
-                                <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
-                                    <div style="display:flex;gap:.6rem;font-size:.65rem;">
-                                        @if(entryErrors>0){<span style="color:#e66;">@Localizer["Errors"]: @entryErrors</span>}
-                                        @if(entryWarnings>0){<span style="color:#cc6;">@Localizer["Warnings"]: @entryWarnings</span>}
+                        <tr class="validation-row @rowClass">
+                            <td colspan="11">
+                                <div class="validation-content">
+                                    <div class="validation-counts">
+                                        @if(entryErrors>0){<span class="msg-error">@Localizer["Errors"]: @entryErrors</span>}
+                                        @if(entryWarnings>0){<span class="msg-warning">@Localizer["Warnings"]: @entryWarnings</span>}
                                     </div>
-                                    <ul style="margin:0;padding-left:1rem;flex:1;list-style:disc;">
+                                    <ul>
                                         @foreach(var m in entryMessages)
                                         {
-                                            var c = m.Severity=="Error"?"#e66":"#cc6";
-                                            <li style="margin:.2rem 0;color:@c;font-size:.65rem;">@m.Message</li>
+                                            var cssClass = m.Severity=="Error" ? "msg-error" : "msg-warning";
+                                            <li class="@cssClass">@m.Message</li>
                                         }
                                     </ul>
                                 </div>
@@ -528,7 +528,7 @@ else
     {
         <h4>@Localizer["AddEntryHeader"]</h4>
         <EditForm Model="_form" OnValidSubmit="AddEntryAsync">
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+            <div class="add-entry-form">
                 <InputDate @bind-Value="_form.BookingDate" />
                 <InputNumber @bind-Value="_form.Amount" />
                 <InputText @bind-Value="_form.Subject" />
@@ -538,20 +538,16 @@ else
     }
 }
 
-<div style="display:flex;align-items:flex-start;gap:1rem;">
-    <div style="flex:1;min-width:0;"></div>
+<div class="detail-layout">
+    <div class="detail-main"></div>
     @if (_showViewer && _hasFile)
     {
-        <div style="width:420px;max-width:45%;height:70vh;position:sticky;top:1rem;border:1px solid var(--border);border-radius:var(--radius);background:#111;display:flex;flex-direction:column;">
-            <div style="padding:.35rem .6rem;font-size:.7rem;letter-spacing:.05em;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div class="file-viewer">
+            <div class="file-viewer-header">
                 <span>@Localizer["OriginalFileTitle"]</span>
-                <button class="icon-btn" style="padding:.25rem .4rem;" @onclick="ToggleViewer" title='@Localizer["Btn_Close"]' aria-label='@Localizer["Btn_Close"]'><svg><use href="/icons/sprite.svg#clear" /></svg></button>
+                <button class="icon-btn icon-btn-small" @onclick="ToggleViewer" title='@Localizer["Btn_Close"]' aria-label='@Localizer["Btn_Close"]'><svg><use href="/icons/sprite.svg#clear" /></svg></button>
             </div>
-            <iframe src="@_fileUrl" style="flex:1;border:0;width:100%;"></iframe>
+            <iframe src="@_fileUrl"></iframe>
         </div>
     }
 </div>
-
-<style>
-.fm-table tr[style*="opacity:.55"] td { color: #aaa; }
-</style>

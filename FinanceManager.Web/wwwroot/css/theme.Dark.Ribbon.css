@@ -1,0 +1,64 @@
+/* =====================================================
+   theme.Dark.Ribbon.css - Dark Theme für Ribbon
+   ===================================================== */
+
+.fm-ribbon {
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-bg, #181818);
+}
+
+/* Tabs Theme */
+.fm-ribbon-tabs {
+    border-bottom: 1px solid var(--border);
+}
+
+.fm-ribbon-tabs li button {
+    color: #ccc;
+}
+
+.fm-ribbon-tabs li.active button {
+    background: #2a2a2a;
+    color: #fff;
+}
+
+.fm-ribbon-tabs li button:focus-visible {
+    outline: 2px solid var(--accent);
+}
+
+/* Group Theme */
+.fm-ribbon-group {
+    border: 1px solid var(--border);
+    background: #141414;
+}
+
+.fm-ribbon-group-footer {
+    border-top: 1px solid #222;
+}
+
+/* Button Theme */
+.fm-ribbon-btn {
+    --rb-focus-outline: 2px solid var(--accent);
+    border: 1px solid #333;
+    background: #1e1e1e;
+    color: #ddd;
+}
+
+.fm-ribbon-btn:hover:not(:disabled) {
+    background: #2a2a2a;
+    color: #fff;
+    border-color: #444;
+}
+
+.fm-ribbon-btn:focus-visible {
+    outline: var(--rb-focus-outline);
+}
+
+/* High contrast (prefers-contrast) */
+@media (prefers-contrast: more) {
+    .fm-ribbon-btn:focus-visible {
+        outline: 2px solid #fff;
+    }
+    .fm-ribbon-tabs li button:focus-visible {
+        outline: 2px solid #fff;
+    }
+}

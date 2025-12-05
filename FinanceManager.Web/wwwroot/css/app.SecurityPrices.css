@@ -1,0 +1,95 @@
+/* =====================================================
+   app.SecurityPrices.css - Allgemeingültige SecurityPrices Styles
+   ===================================================== */
+
+/* Modal overlay (shared) */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    border-radius: 8px;
+    padding: 1rem;
+    width: min(520px, 90vw);
+    max-width: 90vw;
+    overflow: auto;
+}
+
+.row {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.row + .row {
+    margin-top: .5rem;
+}
+
+.modal input[type="date"] {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.dialog-actions {
+    display: flex;
+    gap: .5rem;
+    justify-content: flex-end;
+    margin-top: .75rem;
+}
+
+.btn {
+    border: 0;
+    border-radius: 6px;
+    padding: .4rem .75rem;
+    cursor: pointer;
+}
+
+/* Alert info */
+.alert.info {
+    border-radius: 6px;
+    padding: .5rem .75rem;
+    margin: .5rem 0;
+    font-size: .85rem;
+}
+
+/* Column widths */
+.col-date { width: 9rem; }
+.col-close { width: 9rem; text-align: right; }
+.amount-cell { text-align: right; }
+.loading-cell { opacity: .6; }
+
+/* Modal title */
+.modal-title { margin-top: 0; }
+
+/* Dialog error */
+.dialog-error {
+    font-size: .8rem;
+    margin-top: .5rem;
+}
+
+/* Table footer */
+.table-footer {
+    margin-top: .5rem;
+}
+
+.no-entries {
+    opacity: .6;
+    font-size: .75rem;
+}
+
+/* End of list */
+.end-of-list {
+    opacity: .6;
+    font-size: .65rem;
+}
+
+/* Infinite scroll sentinel */
+.infinite-sentinel {
+    height: 1px;
+}

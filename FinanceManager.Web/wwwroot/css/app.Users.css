@@ -1,0 +1,90 @@
+/* =====================================================
+   app.Users.css - Allgemeingültige Users Page Styles
+   ===================================================== */
+
+.create-user-form {
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    max-width: 620px;
+}
+
+.create-user-grid {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: .55rem .75rem;
+    align-items: center;
+}
+
+.create-user-grid label {
+    font-size: .72rem;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    opacity: .75;
+}
+
+.inline-checkbox {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.inline-checkbox .chk-label {
+    text-transform: none;
+    font-size: .85rem;
+    opacity: .9;
+    letter-spacing: 0;
+}
+
+.form-actions {
+    display: flex;
+    gap: .5rem;
+}
+
+.form-actions button {
+    min-width: 140px;
+}
+
+.full-row {
+    grid-column: 1 / -1;
+}
+
+/* User table */
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.25rem;
+}
+
+.user-table th,
+.user-table td {
+    padding: .4rem .5rem;
+}
+
+.user-table td:nth-child(2),
+.user-table td:nth-child(3),
+.user-table td:nth-child(4),
+.user-table td:nth-child(5) {
+    text-align: center;
+}
+
+.user-table td:last-child {
+    white-space: nowrap;
+}
+
+/* Password reset hint */
+.pw-reset-hint {
+    margin-top: 1rem;
+    padding: .75rem 1rem;
+    border-radius: 6px;
+    max-width: 620px;
+}
+
+.pw-reset-hint code {
+    font-family: monospace;
+    padding: .1rem .3rem;
+    border-radius: 3px;
+}
+
+.pw-reset-hint button {
+    margin-left: .75rem;
+}

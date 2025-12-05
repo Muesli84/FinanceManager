@@ -1,0 +1,207 @@
+/* =====================================================
+   app.StatementDraftDetail.css - Allgemeingültige StatementDraftDetail Styles
+   ===================================================== */
+
+.draft-entries-container {
+    overflow-x: auto;
+}
+
+.fm-table.wide {
+    min-width: 1100px;
+}
+
+.fm-table .wrap {
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* Column widths */
+.col-icon { width: 1.4rem; }
+.col-date { width: 7rem; }
+.col-valuta { width: 7rem; }
+.col-amount { width: 7rem; text-align: right; }
+.col-currency { width: 6rem; }
+.col-recipient { width: 14%; }
+.col-savings { width: 12%; }
+.col-announced { width: 6rem; }
+.col-status { width: 9rem; }
+
+.amount-cell { text-align: right; }
+
+/* Entry rows */
+.entry-row { cursor: pointer; }
+.row-booked { opacity: .55; }
+.row-announced { opacity: .55; }
+
+.split-icon { width: 1rem; height: 1rem; }
+
+/* Entity display (Contact/SavingsPlan) */
+.entity-display {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+}
+
+.entity-symbol {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 6px;
+}
+
+.entity-symbol img {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+}
+
+.entity-symbol-placeholder {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.entity-symbol-placeholder svg {
+    width: 18px;
+    height: 18px;
+    opacity: .6;
+}
+
+/* Validation rows */
+.validation-row td {
+    padding: .4rem .75rem;
+}
+
+.validation-content {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.validation-counts {
+    display: flex;
+    gap: .6rem;
+    font-size: .65rem;
+}
+
+.validation-row ul {
+    margin: 0;
+    padding-left: 1rem;
+    flex: 1;
+    list-style: disc;
+}
+
+.validation-row li {
+    margin: .2rem 0;
+    font-size: .65rem;
+}
+
+/* Global messages */
+.global-messages {
+    margin: .5rem 0 1rem 0;
+    padding: .6rem .75rem;
+    border-radius: 4px;
+    max-width: 960px;
+}
+
+.global-messages h4 {
+    margin: 0.1rem 0 .4rem 0;
+    font-size: .75rem;
+}
+
+.global-messages ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: .65rem;
+}
+
+.global-messages li {
+    margin: .2rem 0;
+}
+
+/* Error/Warning colors */
+.msg-error { color: #e66; }
+.msg-warning { color: #cc6; }
+
+/* Booking error */
+.booking-error {
+    margin: .5rem 0;
+    font-size: .75rem;
+}
+
+/* Warning confirmation */
+.warning-confirmation {
+    margin: .75rem 0;
+    padding: .6rem .8rem;
+    font-size: .7rem;
+    max-width: 960px;
+}
+
+.warning-actions {
+    margin-top: .5rem;
+    display: flex;
+    gap: .5rem;
+}
+
+/* Parent entry amount */
+.parent-entry-amount {
+    opacity: .8;
+}
+
+/* Add entry form */
+.add-entry-form {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Detail layout */
+.detail-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.detail-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* File viewer */
+.file-viewer {
+    width: 420px;
+    max-width: 45%;
+    height: 70vh;
+    position: sticky;
+    top: 1rem;
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+}
+
+.file-viewer-header {
+    padding: .35rem .6rem;
+    font-size: .7rem;
+    letter-spacing: .05em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.file-viewer iframe {
+    flex: 1;
+    border: 0;
+    width: 100%;
+}
+
+.icon-btn-small {
+    padding: .25rem .4rem;
+}

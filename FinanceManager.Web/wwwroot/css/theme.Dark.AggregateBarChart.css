@@ -1,0 +1,55 @@
+/* =====================================================
+   theme.Dark.AggregateBarChart.css - Dark Theme für AggregateBarChart
+   ===================================================== */
+
+.chart {
+    --bar-color: #2d6cdf;
+    --bar-neg: #c94;
+    --axis: #555;
+    border: 1px solid var(--border);
+}
+
+.bars-wrapper {
+    border-top: 1px solid var(--axis);
+    border-bottom: 1px solid var(--axis);
+}
+
+.bar {
+    background: var(--bar-color);
+}
+
+.bar-pos {
+    background: var(--bar-color);
+}
+
+.bar-neg {
+    background: var(--bar-neg);
+}
+
+.bar:focus-visible {
+    box-shadow: 0 0 0 2px #ffffff40, 0 0 0 4px #2d6cdf90;
+}
+
+.zero-line {
+    background: var(--axis);
+}
+
+.labels-row {
+    color: #aaa;
+}
+
+.chart-loading-overlay {
+    background: rgba(18, 18, 20, .6);
+}
+
+.spinner .seg {
+    border-top-color: var(--bar-color);
+}
+
+.chart-skeleton .skeleton-bar {
+    background: linear-gradient(180deg, #2a3036 0%, #1b1f23 100%);
+}
+
+.chart-skeleton .skeleton-label {
+    background: #262b30;
+}

@@ -1,0 +1,50 @@
+/* =====================================================
+   theme.Dark.StatementDraftDetail.css - Dark Theme für StatementDraftDetail
+   ===================================================== */
+
+.fm-table tr[style*="opacity:.55"] td {
+    color: #aaa;
+}
+
+.row-booked { background: #141414; }
+.row-announced { background: #131313; }
+
+.entity-symbol {
+    border: 1px solid var(--border);
+}
+
+.entity-symbol-placeholder {
+    border: 1px dashed var(--border);
+    color: var(--muted);
+}
+
+.validation-row {
+    background: #181818;
+}
+
+.global-messages {
+    border: 1px solid #444;
+    background: #181818;
+}
+
+.booking-error {
+    color: #e66;
+}
+
+.warning-confirmation {
+    border: 1px solid #665500;
+    background: #221e00;
+}
+
+.parent-entry-amount {
+    color: #ccc;
+}
+
+.file-viewer {
+    border: 1px solid var(--border);
+    background: #111;
+}
+
+.file-viewer-header {
+    border-bottom: 1px solid var(--border);
+}

@@ -1,0 +1,35 @@
+/* =====================================================
+   theme.Dark.HomeNotifications.css - Dark Theme für HomeNotifications
+   ===================================================== */
+
+.notif-container {
+    border: 1px solid #334;
+    background: #182028;
+}
+
+.notif-item {
+    border: 1px solid #2a323a;
+    background: #0f1419;
+}
+
+.notif-item.info {
+    border-color: #29425f;
+    background: #0f1419;
+}
+
+.notif-item.warn {
+    border-color: #5f3a29;
+    background: #19120f;
+}
+
+.notif-icon svg {
+    fill: #8fb0ff;
+}
+
+.notif-item.warn .notif-icon svg {
+    fill: #d4a72c;
+}
+
+.notif-dismiss .ico {
+    fill: #a66;
+}

@@ -4,23 +4,8 @@
 @using FinanceManager.Web.ViewModels
 @using Microsoft.Extensions.DependencyInjection
 
-<style>
-.help-box {
-    margin-top:1rem;
-    padding:.75rem .9rem;
-    background:#252a33;
-    border:1px solid #3a404a;
-    border-radius:6px;
-    font-size:.78rem;
-    line-height:1.35;
-}
-.help-box ul { margin:.4rem 0 .4rem 1.1rem; padding:0; }
-.help-box li { margin:.15rem 0; }
-.help-box em { font-style:normal; font-weight:600; }
-</style>
-
 <div>
-    <h4 style="margin-top:0;">@Localizer["ImportSplit_TabTitle"]</h4>
+    <h4 class="tab-heading">@Localizer["ImportSplit_TabTitle"]</h4>
 
     @if (_vm!.Loading)
     {
@@ -67,22 +52,22 @@
                     <li><em>@Localizer["ImportSplit_Mode_Monthly"]:</em> @Localizer["ImportSplit_Help_Mode_Monthly"]</li>
                     <li><em>@Localizer["ImportSplit_Mode_MonthlyOrFixed"]:</em> @Localizer["ImportSplit_Help_Mode_Hybrid"]</li>
                 </ul>
-                <p style="margin:.4rem 0 .3rem;"><strong>@Localizer["ImportSplit_MaxEntries"]:</strong> @Localizer["ImportSplit_Help_MaxEntries"]</p>
-                <p style="margin:.2rem 0;" hidden="@(_vm!.Model.Mode != ImportSplitMode.MonthlyOrFixed)">
+                <p class="help-field"><strong>@Localizer["ImportSplit_MaxEntries"]:</strong> @Localizer["ImportSplit_Help_MaxEntries"]</p>
+                <p class="help-field" hidden="@(_vm!.Model.Mode != ImportSplitMode.MonthlyOrFixed)">
                     <strong>@Localizer["ImportSplit_MonthlyThreshold"]:</strong> @Localizer["ImportSplit_Help_MonthlyThreshold"]
                 </p>
-                <p style="margin:.2rem 0;" hidden="@(_vm!.Model.Mode == ImportSplitMode.FixedSize)">
+                <p class="help-field" hidden="@(_vm!.Model.Mode == ImportSplitMode.FixedSize)">
                     <strong>@Localizer["ImportSplit_MinEntries"]:</strong> @Localizer["ImportSplit_Help_MinEntries"]
                 </p>
-                <p style="margin-top:.4rem;opacity:.85;">@Localizer["ImportSplit_Help_Example"]</p>
+                <p class="help-example">@Localizer["ImportSplit_Help_Example"]</p>
             </div>
 
             @if (_vm!.ValidationMessage != null)
             {
-                <div class="error" style="margin-top:.5rem;">@Localizer[_vm!.ValidationMessage]</div>
+                <div class="error error-margin">@Localizer[_vm!.ValidationMessage]</div>
             }
 
-            <div style="margin-top:1rem;display:flex;gap:.5rem;">
+            <div class="form-actions">
                 <button type="submit" class="icon-btn" disabled="@(!_vm!.Dirty || _vm!.Saving || _vm!.HasValidationError)">
                     <svg class="icon"><use href="icons/sprite.svg#save" /></svg>
                 </button>
@@ -93,11 +78,11 @@
 
             @if (_vm!.SavedOk)
             {
-                <div class="success" style="margin-top:.5rem;">@Localizer["ImportSplit_SaveSuccess"]</div>
+                <div class="success success-margin">@Localizer["ImportSplit_SaveSuccess"]</div>
             }
             else if (!string.IsNullOrWhiteSpace(_vm!.SaveError))
             {
-                <div class="error" style="margin-top:.5rem;">@_vm!.SaveError</div>
+                <div class="error error-margin">@_vm!.SaveError</div>
             }
         </EditForm>
     }

@@ -1,0 +1,68 @@
+/* =====================================================
+   app.HomeNotifications.css - Allgemeingültige HomeNotifications Styles
+   ===================================================== */
+
+.notif-container {
+    border-radius: .6rem;
+    margin: .5rem 0 1rem 0;
+    padding: .5rem .6rem;
+}
+
+.notif-title {
+    margin: .1rem 0 .35rem 0;
+    font-size: .9rem;
+    opacity: .9;
+}
+
+.notif-item {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    border-radius: .5rem;
+    margin: .35rem 0;
+}
+
+.notif-body {
+    display: flex;
+    gap: .6rem;
+    padding: .55rem .7rem;
+}
+
+.notif-icon svg {
+    width: 18px;
+    height: 18px;
+    margin-top: .2rem;
+}
+
+.notif-head {
+    font-weight: 600;
+    margin-bottom: .15rem;
+}
+
+.notif-text {
+    white-space: pre-wrap;
+}
+
+.notif-meta {
+    opacity: .7;
+    font-size: .75rem;
+    margin-top: .25rem;
+}
+
+.notif-actions {
+    margin-top: .35rem;
+}
+
+.notif-dismiss {
+    align-self: center;
+    margin: .3rem .35rem;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+
+.notif-dismiss .ico {
+    width: 14px;
+    height: 14px;
+}

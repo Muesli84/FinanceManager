@@ -1,0 +1,69 @@
+/* =====================================================
+   theme.Dark.BackgroundTaskStatusPanel.css - Dark Theme für BackgroundTaskStatusPanel
+   ===================================================== */
+
+.bgt-panel {
+    border: 1px solid #444;
+    background: #1e1e24;
+}
+
+.bgt-badge {
+    background: #333;
+}
+
+.bgt-running {
+    background: #2d6cdf;
+}
+
+.bgt-queued {
+    background: #666;
+}
+
+.bgt-completed {
+    background: #3c7c3c;
+}
+
+.bgt-failed {
+    background: #8c3131;
+}
+
+.bgt-cancelled {
+    background: #555;
+}
+
+.bgt-bar {
+    background: #333;
+}
+
+.bgt-bar-fill {
+    background: #2d6cdf;
+}
+
+.bgt-bar-fill-sub {
+    background: #6aa84f;
+}
+
+.bgt-indeterminate {
+    background: #333;
+}
+
+.bgt-indeterminate::after {
+    background: linear-gradient(90deg, transparent 0%, #2d6cdf 50%, transparent 100%);
+}
+
+.bgt-queue-item {
+    border: 1px solid #333;
+    background: #26262c;
+}
+
+.bgt-warn {
+    color: #cc6;
+}
+
+.bgt-err {
+    color: #e66;
+}
+
+.bgt-message-secondary {
+    opacity: .65;
+}

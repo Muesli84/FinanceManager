@@ -1,0 +1,26 @@
+/* =====================================================
+   theme.Dark.Setup.css - Dark Theme für Setup Page
+   ===================================================== */
+
+/* Tabs */
+.fm-tab {
+    background: #2a2d34;
+    border: 1px solid #3a3d45;
+    color: #fff;
+}
+
+.fm-tab.active {
+    background: #39404c;
+    font-weight: 600;
+}
+
+.fm-tab-panel {
+    border: 1px solid #3a3d45;
+    background: #2a2d34;
+}
+
+/* Help box */
+.help-box {
+    background: #252a33;
+    border: 1px solid #3a404a;
+}

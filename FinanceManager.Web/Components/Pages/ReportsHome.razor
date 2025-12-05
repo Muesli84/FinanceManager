@@ -15,7 +15,7 @@
         ActiveTab="_activeTab"
         ActiveTabChanged="OnActiveTabChanged" />
 
-<h2 style="margin-top:0;">@Localizer["Heading"]</h2>
+<h2 class="page-heading">@Localizer["Heading"]</h2>
 
 @if(_vm?.Loading ?? true)
 {
@@ -113,15 +113,3 @@ else
         Nav.NavigateTo($"/reports/dashboard?favoriteId={id}&edit=false");
     }
 }
-
-<style>
-.fav-grid { list-style:none; padding:0; margin:0 0 1rem 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:.6rem; }
-.fav-grid li { }
-.fav-card { width:100%; text-align:left; background:#1a1f24; border:1px solid #2b3138; color:#eee; padding:.6rem .7rem; border-radius:.35rem; cursor:pointer; display:flex; flex-direction:column; gap:.25rem; }
-.fav-card:hover { background:#20262b; }
-.fav-name { font-weight:600; }
-.fav-meta { opacity:.7; font-size:.7rem; }
-.actions { margin-top:.6rem; }
-.btn { background:#2d6cdf; color:#fff; border:0; padding:.45rem .7rem; border-radius:.3rem; cursor:pointer; font-size:.7rem; }
-.empty-info { opacity:.7; font-size:.8rem; }
-</style>
