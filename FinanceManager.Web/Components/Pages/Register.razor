@@ -23,15 +23,6 @@
     <div class="error">@_error</div>
 }
 
-@if (_debugVisible)
-{
-    <div style="font-size:.7rem;opacity:.6;line-height:1.1em;">
-        <strong>@L["DebugModel_Title"]</strong><br />
-        @L["DebugModel_Username"]: @_model.Username<br />
-        @L["DebugModel_PasswordLength"]: @_model.Password?.Length
-    </div>
-}
-
 <EditForm Model="_model"
           OnValidSubmit="RegisterAsync"
           OnInvalidSubmit="InvalidSubmit">
@@ -58,7 +49,6 @@
         <button type="submit" disabled="@_busy">
             @(_busy ? L["Button_Wait"] : L["Button_Register"]) 
         </button>
-        <button type="button" @onclick="ToggleDebug" style="background:#444;">@(_debugVisible ? L["Debug_Off"] : L["Debug_On"])</button>
     </div>
 </EditForm>
 
@@ -91,7 +81,6 @@
     private readonly RegisterVm _model = new();
     private bool _busy;
     private string? _error;
-    private bool _debugVisible;
     private IJSObjectReference? _profileModule;
 
     protected override void OnInitialized()
@@ -156,7 +145,6 @@
     }
 
     private void InvalidSubmit(EditContext ctx) { }
-    private void ToggleDebug() => _debugVisible = !_debugVisible;
     private void OnUsernameChanged()
     {
         var value = _model.Username;
