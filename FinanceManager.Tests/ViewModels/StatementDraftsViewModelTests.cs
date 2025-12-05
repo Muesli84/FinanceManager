@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using FinanceManager.Shared; // added
 
 namespace FinanceManager.Tests.ViewModels;
 
@@ -65,7 +66,8 @@ public sealed class StatementDraftsViewModelTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
 
-        var vm = new StatementDraftsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var api = new ApiClient(client);
+        var vm = new StatementDraftsViewModel(CreateSp(), api);
         await vm.InitializeAsync();
 
         Assert.Equal(3, vm.Items.Count);
@@ -100,7 +102,8 @@ public sealed class StatementDraftsViewModelTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
 
-        var vm = new StatementDraftsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var api = new ApiClient(client);
+        var vm = new StatementDraftsViewModel(CreateSp(), api);
         await vm.InitializeAsync();
         Assert.Equal(3, vm.Items.Count);
         Assert.True(vm.CanLoadMore);
@@ -129,7 +132,8 @@ public sealed class StatementDraftsViewModelTests
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
-        var vm = new StatementDraftsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var api = new ApiClient(client);
+        var vm = new StatementDraftsViewModel(CreateSp(), api);
         await vm.InitializeAsync();
         Assert.Single(vm.Items);
 
@@ -155,7 +159,8 @@ public sealed class StatementDraftsViewModelTests
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
-        var vm = new StatementDraftsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var api = new ApiClient(client);
+        var vm = new StatementDraftsViewModel(CreateSp(), api);
         await using var stream = new MemoryStream(new byte[] { 1, 2, 3 });
         var id = await vm.UploadAsync(stream, "x.pdf");
         Assert.Equal(firstId, id);
@@ -197,7 +202,8 @@ public sealed class StatementDraftsViewModelTests
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
-        var vm = new StatementDraftsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var api = new ApiClient(client);
+        var vm = new StatementDraftsViewModel(CreateSp(), api);
         await vm.InitializeAsync();
         Assert.Single(vm.Items);
 
@@ -248,7 +254,8 @@ public sealed class StatementDraftsViewModelTests
             }
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
-        var vm = new StatementDraftsViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var api = new ApiClient(client);
+        var vm = new StatementDraftsViewModel(CreateSp(), api);
         await vm.InitializeAsync();
         Assert.Single(vm.Items);
 

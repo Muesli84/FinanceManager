@@ -1,15 +1,16 @@
 using Microsoft.Extensions.Localization;
 using FinanceManager.Shared.Dtos.Statements; // added for shared DTOs
+using FinanceManager.Shared; // use ApiClient abstraction
 
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class StatementDraftsViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public StatementDraftsViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public StatementDraftsViewModel(IServiceProvider sp, IApiClient api) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = api;
     }
 
     public sealed class DraftItem
@@ -32,7 +33,6 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     public int ClassifyProcessed { get; private set; }
     public int ClassifyTotal { get; private set; }
     public string? ClassifyMessage { get; private set; }
-    private CancellationTokenSource? _classifyCts;
 
     // Booking state
     public bool IsBooking { get; private set; }
@@ -43,11 +43,12 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     public int BookingErrors { get; private set; }
     public int BookingWarnings { get; private set; }
     public List<StatementDraftMassBookIssueDto> BookingIssues { get; private set; } = new();
-    private CancellationTokenSource? _bookingCts;
 
     public override async ValueTask InitializeAsync(CancellationToken ct = default)
     {
         await LoadMoreAsync(ct);
+        await RefreshClassifyStatusAsync(false, ct);
+        await RefreshBookStatusAsync(false, ct);
     }
 
     public async Task LoadMoreAsync(CancellationToken ct = default)
@@ -56,13 +57,13 @@ public sealed class StatementDraftsViewModel : ViewModelBase
         Loading = true; RaiseStateChanged();
         try
         {
-            var url = $"api/statement-drafts?skip={_skip}&take={PageSize}";
-            var batch = await _http.GetFromJsonAsync<List<StatementDraftDto>>(url, ct) ?? new();
-            if (batch.Count < PageSize)
+            var batch = await _api.StatementDrafts_ListOpenAsync(_skip, PageSize, ct);
+            var list = batch?.ToList() ?? new List<StatementDraftDto>();
+            if (list.Count < PageSize)
             {
                 CanLoadMore = false;
             }
-            foreach (var d in batch)
+            foreach (var d in list)
             {
                 var pending = d.Entries.Count(e => e.Status != StatementDraftEntryStatus.AlreadyBooked);
                 Items.Add(new DraftItem
@@ -74,7 +75,7 @@ public sealed class StatementDraftsViewModel : ViewModelBase
                     PendingEntries = pending
                 });
             }
-            _skip += batch.Count;
+            _skip += list.Count;
         }
         finally
         {
@@ -84,8 +85,8 @@ public sealed class StatementDraftsViewModel : ViewModelBase
 
     public async Task<bool> DeleteAllAsync(CancellationToken ct = default)
     {
-        var resp = await _http.DeleteAsync("api/statement-drafts/all", ct);
-        if (!resp.IsSuccessStatusCode)
+        var ok = await _api.StatementDrafts_DeleteAllAsync(ct);
+        if (!ok)
         {
             return false;
         }
@@ -135,46 +136,30 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     }
 
     // Upload handling
-    private sealed class UploadResponse { public StatementDraftUploadResult? Result { get; set; } public StatementDraftUploadResult? Legacy { get; set; } public StatementDraftDto? FirstDraft { get; set; } public ImportSplitInfoDto? SplitInfo { get; set; } }
     public async Task<Guid?> UploadAsync(Stream stream, string fileName, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        using var content = new MultipartFormDataContent();
-        content.Add(new StreamContent(stream), "file", fileName);
-        using var resp = await _http.PostAsync("/api/statement-drafts/upload", content, ct);
-        if (!resp.IsSuccessStatusCode)
-        {
-            return null;
-        }
-        var raw = await resp.Content.ReadFromJsonAsync<UploadResponse>(cancellationToken: ct);
-        if (raw?.Result != null) return raw.Result.FirstDraft?.DraftId;
-        if (raw?.Legacy != null) return raw.Legacy.FirstDraft?.DraftId;
-        if (raw?.FirstDraft != null) return raw.FirstDraft.DraftId;
+        var result = await _api.StatementDrafts_UploadAsync(stream, fileName, ct);
+        if (result?.FirstDraft != null) return result.FirstDraft.DraftId;
         return null;
     }
 
     // Classification
-    private sealed class TempStatus { public bool running { get; set; } public int processed { get; set; } public int total { get; set; } public string? message { get; set; } }
     public async Task StartClassifyAsync(CancellationToken ct = default)
     {
-        _classifyCts ??= new CancellationTokenSource();
-        using var resp = await _http.PostAsync("api/statement-drafts/classify", content: null, _classifyCts.Token);
-        if (resp.StatusCode == System.Net.HttpStatusCode.Accepted)
+        var status = await _api.StatementDrafts_StartClassifyAsync(ct);
+        if (status == null)
         {
-            IsClassifying = true;
-            var payload = await resp.Content.ReadFromJsonAsync<TempStatus>(_classifyCts.Token);
-            UpdateClassifyUi(payload);
-            _ = PollClassifyUntilFinishedAsync();
-        }
-        else if (resp.IsSuccessStatusCode)
-        {
-            IsClassifying = false; ClassifyMessage = null; await ReloadAfterActionAsync();
-        }
-        else
-        {
-            ClassifyMessage = await resp.Content.ReadAsStringAsync(_classifyCts.Token);
+            ClassifyMessage = _api.LastError;
             RaiseStateChanged();
+            return;
         }
+        IsClassifying = status.running;
+        ClassifyProcessed = status.processed;
+        ClassifyTotal = status.total;
+        ClassifyMessage = status.message ?? (IsClassifying ? "Working..." : null);
+        RaiseStateChanged();
+        if (IsClassifying) { _ = PollClassifyUntilFinishedAsync(); }
     }
     private async Task PollClassifyUntilFinishedAsync()
     {
@@ -186,11 +171,15 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     }
     public async Task RefreshClassifyStatusAsync(bool reloadOnFinish = true, CancellationToken ct = default)
     {
-        var s = await _http.GetFromJsonAsync<TempStatus>("api/statement-drafts/classify/status", ct);
+        var s = await _api.StatementDrafts_GetClassifyStatusAsync(ct);
         if (s != null)
         {
             var wasRunning = IsClassifying;
-            UpdateClassifyUi(s);
+            IsClassifying = s.running;
+            ClassifyProcessed = s.processed;
+            ClassifyTotal = s.total;
+            ClassifyMessage = s.message ?? (IsClassifying ? "Working..." : null);
+            RaiseStateChanged();
             if (!wasRunning && IsClassifying)
             {
                 _ = PollClassifyUntilFinishedAsync();
@@ -201,38 +190,19 @@ public sealed class StatementDraftsViewModel : ViewModelBase
             }
         }
     }
-    private void UpdateClassifyUi(TempStatus? s)
-    {
-        if (s == null) { return; }
-        IsClassifying = s.running;
-        ClassifyProcessed = s.processed;
-        ClassifyTotal = s.total;
-        ClassifyMessage = s.message ?? (IsClassifying ? "Working..." : null);
-        RaiseStateChanged();
-    }
 
     // Booking
     public async Task StartBookAllAsync(bool ignoreWarnings, bool abortOnFirstIssue, bool bookEntriesIndividually, CancellationToken ct = default)
     {
-        _bookingCts ??= new CancellationTokenSource();
-        var payload = new { ignoreWarnings, abortOnFirstIssue, bookEntriesIndividually };
-        using var resp = await _http.PostAsJsonAsync("api/statement-drafts/book-all", payload, _bookingCts.Token);
-        if (resp.StatusCode == System.Net.HttpStatusCode.Accepted)
+        var s = await _api.StatementDrafts_StartBookAllAsync(ignoreWarnings, abortOnFirstIssue, bookEntriesIndividually, ct);
+        if (s == null)
         {
-            IsBooking = true;
-            var s = await resp.Content.ReadFromJsonAsync<StatementDraftMassBookStatusDto>(_bookingCts.Token);
-            UpdateBookingUi(s);
-            _ = PollBookingUntilFinishedAsync();
-        }
-        else if (resp.IsSuccessStatusCode)
-        {
-            IsBooking = false; BookingMessage = null; await ReloadAfterActionAsync(); await RefreshBookStatusAsync();
-        }
-        else
-        {
-            BookingMessage = await resp.Content.ReadAsStringAsync(_bookingCts.Token);
+            BookingMessage = _api.LastError;
             RaiseStateChanged();
+            return;
         }
+        UpdateBookingUi(s);
+        if (IsBooking) { _ = PollBookingUntilFinishedAsync(); }
     }
     private async Task PollBookingUntilFinishedAsync()
     {
@@ -244,7 +214,7 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     }
     public async Task RefreshBookStatusAsync(bool reloadOnFinish = true, CancellationToken ct = default)
     {
-        var s = await _http.GetFromJsonAsync<StatementDraftMassBookStatusDto>("api/statement-drafts/book-all/status", ct);
+        var s = await _api.StatementDrafts_GetBookAllStatusAsync(ct);
         if (s != null)
         {
             var wasRunning = IsBooking;
@@ -274,7 +244,7 @@ public sealed class StatementDraftsViewModel : ViewModelBase
     }
     public async Task CancelBookingAsync(CancellationToken ct = default)
     {
-        try { await _http.PostAsync("api/statement-drafts/book-all/cancel", content: null, ct); } catch { }
+        try { await _api.StatementDrafts_CancelBookAllAsync(ct); } catch { }
     }
 
     private async Task ReloadAfterActionAsync(CancellationToken ct = default)

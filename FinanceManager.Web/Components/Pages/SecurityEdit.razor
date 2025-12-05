@@ -185,9 +185,8 @@
         {
             try
             {
-                var http = ClientFactory.CreateClient("Api");
-                var payload = new { SecurityId = (Guid?)securityId, TransactionType = (string?)null, Quantity = (decimal?)null, FeeAmount = (decimal?)null, TaxAmount = (decimal?)null };
-                await http.PostAsJsonAsync($"/api/statement-drafts/{_vm!.ReturnDraftId}/entries/{_vm!.ReturnEntryId}/security", payload);
+                var payload = new StatementDraftSetEntrySecurityRequest((Guid?)securityId, null, null, null, null);
+                await Api.StatementDrafts_SetEntrySecurityAsync(_vm!.ReturnDraftId.Value, _vm!.ReturnEntryId.Value, payload);
             }
             catch { }
             Back();

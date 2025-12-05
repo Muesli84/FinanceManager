@@ -8,7 +8,6 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.Extensions.Localization
 
-@inject HttpClient Http
 @inject FinanceManager.Shared.IApiClient Api
 @inject IStringLocalizer<FinanceManager.Web.Components.Pages.Home> Localizer
 @inject NavigationManager Nav
@@ -408,7 +407,7 @@
                     {
                         var j = 0;
                         builder2.OpenComponent<NumericKpi>(j++);
-                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var obj = await Http.GetFromJsonAsync<CountResp>("/api/statement-drafts/count"); return obj?.count ?? 0; } catch { return 0; } }));
+                        builder2.AddAttribute(j++, "Load", (Func<Task<int>>)(async () => { try { var cnt = await Api.StatementDrafts_GetOpenCountAsync(); return cnt; } catch { return 0; } }));
                         builder2.CloseComponent();
                     }));
                     builder.CloseElement();
@@ -541,7 +540,6 @@
     }
 
     private sealed record FavKpiData(decimal Amount, decimal? Prev, decimal? Year, List<SeriesPoint> Series, int Kind);
-    private sealed record CountResp(int count);
     private sealed record SeriesPoint(DateTime Date, decimal Amount);
 }
 

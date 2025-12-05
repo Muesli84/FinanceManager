@@ -263,9 +263,8 @@ else
         {
             try
             {
-                var http = ClientFactory.CreateClient("Api");
-                var payload = new { ContactId = (Guid?)contactId };
-                await http.PostAsJsonAsync($"/api/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}/contact", payload);
+                var payload = new StatementDraftSetContactRequest((Guid?)contactId);
+                await Api.StatementDrafts_SetEntryContactAsync(_prefillDraftId.Value, _prefillEntryId.Value, payload);
             }
             catch { }
             Navigation.NavigateTo($"/statement-drafts/{_prefillDraftId}/entries/{_prefillEntryId}", forceLoad: true);

@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using FinanceManager.Shared.Dtos.SavingsPlans;
+using FinanceManager.Shared.Dtos.Statements; // added for statement drafts
 
 
 namespace FinanceManager.Shared;
@@ -1346,4 +1347,314 @@ public class ApiClient : IApiClient
     }
 
     #endregion Security Categories
+
+    #region Statement Drafts
+
+    public async Task<IReadOnlyList<StatementDraftDto>> StatementDrafts_ListOpenAsync(int skip = 0, int take = 3, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/statement-drafts?skip={skip}&take={take}", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<IReadOnlyList<StatementDraftDto>>(cancellationToken: ct) ?? Array.Empty<StatementDraftDto>();
+    }
+
+    public async Task<int> StatementDrafts_GetOpenCountAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/statement-drafts/count", ct);
+        resp.EnsureSuccessStatusCode();
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        if (json.TryGetProperty("count", out var prop) && prop.TryGetInt32(out var cnt)) return cnt;
+        return 0;
+    }
+
+    public async Task<bool> StatementDrafts_DeleteAllAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync("/api/statement-drafts/all", ct);
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task<StatementDraftUploadResult?> StatementDrafts_UploadAsync(Stream stream, string fileName, CancellationToken ct = default)
+    {
+        using var content = new MultipartFormDataContent();
+        content.Add(new StreamContent(stream), "file", fileName);
+        var resp = await _http.PostAsync("/api/statement-drafts/upload", content, ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        // Controller may return different shapes; try primary type first
+        var primary = await resp.Content.ReadFromJsonAsync<StatementDraftUploadResult>(cancellationToken: ct);
+        if (primary != null) return primary;
+        // Fallback to union-like wrapper used in ViewModel
+        var wrapper = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        if (wrapper.ValueKind == JsonValueKind.Object)
+        {
+            if (wrapper.TryGetProperty("Result", out var r) && r.ValueKind == JsonValueKind.Object)
+            {
+                var result = r.Deserialize<StatementDraftUploadResult>();
+                if (result != null) return result;
+            }
+            if (wrapper.TryGetProperty("Legacy", out var l) && l.ValueKind == JsonValueKind.Object)
+            {
+                var legacy = l.Deserialize<StatementDraftUploadResult>();
+                if (legacy != null) return legacy;
+            }
+            if (wrapper.TryGetProperty("FirstDraft", out var fd) && fd.ValueKind == JsonValueKind.Object)
+            {
+                var first = fd.Deserialize<StatementDraftDto>();
+                return new StatementDraftUploadResult(first, null);
+            }
+        }
+        return null;
+    }
+
+    public async Task<StatementDraftDetailDto?> StatementDrafts_GetAsync(Guid draftId, bool headerOnly = false, string? src = null, Guid? fromEntryDraftId = null, Guid? fromEntryId = null, CancellationToken ct = default)
+    {
+        var url = $"/api/statement-drafts/{draftId}?headerOnly={(headerOnly ? "true" : "false")}";
+        if (!string.IsNullOrWhiteSpace(src)) url += $"&src={Uri.EscapeDataString(src)}";
+        if (fromEntryDraftId.HasValue) url += $"&fromEntryDraftId={fromEntryDraftId.Value}";
+        if (fromEntryId.HasValue) url += $"&fromEntryId={fromEntryId.Value}";
+        var resp = await _http.GetAsync(url, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftDetailDto>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftEntryDetailDto?> StatementDrafts_GetEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/statement-drafts/{draftId}/entries/{entryId}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftEntryDetailDto>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftDetailDto?> StatementDrafts_AddEntryAsync(Guid draftId, StatementDraftAddEntryRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync($"/api/statement-drafts/{draftId}/entries", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftDetailDto>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftDetailDto?> StatementDrafts_ClassifyAsync(Guid draftId, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/statement-drafts/{draftId}/classify", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftDetailDto>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftDetailDto?> StatementDrafts_SetAccountAsync(Guid draftId, Guid accountId, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/statement-drafts/{draftId}/account/{accountId}", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftDetailDto>(cancellationToken: ct);
+    }
+
+    public async Task<object?> StatementDrafts_CommitAsync(Guid draftId, StatementDraftCommitRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync($"/api/statement-drafts/{draftId}/commit", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+        return json;
+    }
+
+    public async Task<StatementDraftEntryDto?> StatementDrafts_SetEntryContactAsync(Guid draftId, Guid entryId, StatementDraftSetContactRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/contact", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftEntryDto>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftEntryDto?> StatementDrafts_SetEntryCostNeutralAsync(Guid draftId, Guid entryId, StatementDraftSetCostNeutralRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/costneutral", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftEntryDto>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftEntryDto?> StatementDrafts_SetEntrySavingsPlanAsync(Guid draftId, Guid entryId, StatementDraftSetSavingsPlanRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/savingsplan", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftEntryDto>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftEntryDto?> StatementDrafts_SetEntrySecurityAsync(Guid draftId, Guid entryId, StatementDraftSetEntrySecurityRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/security", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftEntryDto>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftEntryDto?> StatementDrafts_SetEntryArchiveOnBookingAsync(Guid draftId, Guid entryId, StatementDraftSetArchiveSavingsPlanOnBookingRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/savingsplan/archive-on-booking", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftEntryDto>(cancellationToken: ct);
+    }
+
+    public async Task<DraftValidationResultDto?> StatementDrafts_ValidateAsync(Guid draftId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/statement-drafts/{draftId}/validate", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<DraftValidationResultDto>(cancellationToken: ct);
+    }
+
+    public async Task<DraftValidationResultDto?> StatementDrafts_ValidateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/validate", ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<DraftValidationResultDto>(cancellationToken: ct);
+    }
+
+    public async Task<BookingResult?> StatementDrafts_BookAsync(Guid draftId, bool forceWarnings = false, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/statement-drafts/{draftId}/book?forceWarnings={(forceWarnings ? "true" : "false")}", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            // validation errors
+            return await resp.Content.ReadFromJsonAsync<BookingResult>(cancellationToken: ct);
+        }
+        if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
+        {
+            return await resp.Content.ReadFromJsonAsync<BookingResult>(cancellationToken: ct);
+        }
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<BookingResult>(cancellationToken: ct);
+    }
+
+    public async Task<BookingResult?> StatementDrafts_BookEntryAsync(Guid draftId, Guid entryId, bool forceWarnings = false, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/book?forceWarnings={(forceWarnings ? "true" : "false")}", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            return await resp.Content.ReadFromJsonAsync<BookingResult>(cancellationToken: ct);
+        }
+        if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
+        {
+            return await resp.Content.ReadFromJsonAsync<BookingResult>(cancellationToken: ct);
+        }
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<BookingResult>(cancellationToken: ct);
+    }
+
+    public async Task<object?> StatementDrafts_SaveEntryAllAsync(Guid draftId, Guid entryId, StatementDraftSaveEntryAllRequest req, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsJsonAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/save-all", req, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+    }
+
+    public async Task<bool> StatementDrafts_DeleteEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/statement-drafts/{draftId}/entries/{entryId}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    public async Task<object?> StatementDrafts_ResetDuplicateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/reset-duplicate", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftDetailDto?> StatementDrafts_ClassifyEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync($"/api/statement-drafts/{draftId}/entries/{entryId}/classify-entry", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.BadRequest) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<StatementDraftDetailDto>(cancellationToken: ct);
+    }
+
+    public async Task<Stream?> StatementDrafts_DownloadOriginalAsync(Guid draftId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync($"/api/statement-drafts/{draftId}/file", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        var ms = new MemoryStream();
+        await resp.Content.CopyToAsync(ms, ct);
+        ms.Position = 0;
+        return ms;
+    }
+    public async Task<bool> StatementDrafts_DeleteAsync(Guid draftId, CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync($"/api/statement-drafts/{draftId}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+        resp.EnsureSuccessStatusCode();
+        return true;
+    }
+    #endregion Statement Drafts
+
+    #region Statement Drafts Background Tasks
+
+    public sealed class StatementDraftsClassifyStatus
+    {
+        public bool running { get; set; }
+        public int processed { get; set; }
+        public int total { get; set; }
+        public string? message { get; set; }
+    }
+
+    public async Task<StatementDraftsClassifyStatus?> StatementDrafts_StartClassifyAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync("/api/statement-drafts/classify", content: null, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.Accepted)
+        {
+            return await resp.Content.ReadFromJsonAsync<StatementDraftsClassifyStatus>(cancellationToken: ct);
+        }
+        if (resp.IsSuccessStatusCode)
+        {
+            return new StatementDraftsClassifyStatus { running = false, processed = 0, total = 0, message = null };
+        }
+        LastError = await resp.Content.ReadAsStringAsync(ct);
+        return null;
+    }
+
+    public async Task<StatementDraftsClassifyStatus?> StatementDrafts_GetClassifyStatusAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/statement-drafts/classify/status", ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadFromJsonAsync<StatementDraftsClassifyStatus>(cancellationToken: ct);
+    }
+
+    public async Task<StatementDraftMassBookStatusDto?> StatementDrafts_StartBookAllAsync(bool ignoreWarnings, bool abortOnFirstIssue, bool bookEntriesIndividually, CancellationToken ct = default)
+    {
+        var payload = new { ignoreWarnings, abortOnFirstIssue, bookEntriesIndividually };
+        var resp = await _http.PostAsJsonAsync("/api/statement-drafts/book-all", payload, ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.Accepted || resp.IsSuccessStatusCode)
+        {
+            return await resp.Content.ReadFromJsonAsync<StatementDraftMassBookStatusDto>(cancellationToken: ct);
+        }
+        LastError = await resp.Content.ReadAsStringAsync(ct);
+        return null;
+    }
+
+    public async Task<StatementDraftMassBookStatusDto?> StatementDrafts_GetBookAllStatusAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/statement-drafts/book-all/status", ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadFromJsonAsync<StatementDraftMassBookStatusDto>(cancellationToken: ct);
+    }
+
+    public async Task<bool> StatementDrafts_CancelBookAllAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.PostAsync("/api/statement-drafts/book-all/cancel", content: null, ct);
+        return resp.IsSuccessStatusCode;
+    }
+
+    
+
+    #endregion Statement Drafts Background Tasks
 }

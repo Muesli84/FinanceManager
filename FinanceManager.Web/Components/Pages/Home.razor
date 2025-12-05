@@ -3,7 +3,7 @@
 @rendermode InteractiveServer
 @inject IHttpContextAccessor httpContextAccessor
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.Home> Localizer
-@inject HttpClient Http
+@inject FinanceManager.Shared.IApiClient Api
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -211,21 +211,15 @@ else
             _currentFileName = file.Name;
             StateHasChanged();
 
-            using var content = new MultipartFormDataContent();
             await using var stream = file.OpenReadStream(10_000_000);
-            content.Add(new StreamContent(stream), "file", file.Name);
-            var resp = await Http.PostAsync("/api/statement-drafts/upload", content);
-            if (resp.IsSuccessStatusCode)
+            var result = await Api.StatementDrafts_UploadAsync(stream, file.Name);
+            if (result?.FirstDraft != null && !firstDraftId.HasValue)
             {
-                var result = await resp.Content.ReadFromJsonAsync<StatementDraftUploadResult>();
-                if (result?.FirstDraft != null && !firstDraftId.HasValue)
-                {
-                    firstDraftId = result.FirstDraft.DraftId;
-                }
-                if (result?.SplitInfo != null)
-                {
-                    lastSplitInfo = result.SplitInfo;
-                }
+                firstDraftId = result.FirstDraft.DraftId;
+            }
+            if (result?.SplitInfo != null)
+            {
+                lastSplitInfo = result.SplitInfo;
             }
 
             _uploadDone++;

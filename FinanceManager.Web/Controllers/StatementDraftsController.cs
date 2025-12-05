@@ -478,6 +478,21 @@ public sealed class StatementDraftsController : ControllerBase
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> SaveEntryAllAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSaveEntryAllRequest body, CancellationToken ct)
     {
+        // If split request provided, route to dedicated service method and return minimal shape like other endpoints
+        if (body.SplitDraftId.HasValue || (body.ClearSplit.HasValue && body.ClearSplit.Value))
+        {
+            var newSplitId = body.ClearSplit == true ? (Guid?)null : body.SplitDraftId;
+            var draft = await _drafts.SetEntrySplitDraftAsync(draftId, entryId, newSplitId, _current.UserId, ct);
+            if (draft == null) return NotFound();
+            var entry = draft.Entries.First(e => e.Id == entryId);
+            decimal? splitSum = null; decimal? diff = null;
+            if (entry.SplitDraftId != null)
+            {
+                splitSum = await _drafts.GetSplitGroupSumAsync(entry.SplitDraftId.Value, _current.UserId, ct);
+                if (splitSum.HasValue) { diff = entry.Amount - splitSum.Value; }
+            }
+            return Ok(new { Entry = entry, SplitSum = splitSum, Difference = diff });
+        }
         var dto = await _drafts.SaveEntryAllAsync(draftId, entryId, _current.UserId, body.ContactId, body.IsCostNeutral, body.SavingsPlanId, body.ArchiveOnBooking, body.SecurityId, body.TransactionType, body.Quantity, body.FeeAmount, body.TaxAmount, ct);
         return dto == null ? NotFound() : Ok(dto);
     }

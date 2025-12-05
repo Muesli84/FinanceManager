@@ -10,6 +10,7 @@ using FinanceManager.Shared.Dtos.HomeKpi; // home kpi dtos
 using FinanceManager.Shared.Dtos.Postings; // postings dtos
 using FinanceManager.Shared.Dtos.Reports; // reports dtos
 using FinanceManager.Shared.Dtos.SavingsPlans; // savings plans dtos
+using FinanceManager.Shared.Dtos.Statements; // statements dtos
 
 namespace FinanceManager.Shared;
 
@@ -353,4 +354,66 @@ public interface IApiClient
     Task<BackgroundTaskInfo> Securities_EnqueueBackfillAsync(Guid? securityId, DateTime? fromDateUtc, DateTime? toDateUtc, CancellationToken ct = default);
     /// <summary>Lists upcoming or past dividends for a security.</summary>
     Task<IReadOnlyList<AggregatePointDto>> Securities_GetDividendsAsync(string? period = null, int? take = null, CancellationToken ct = default);
+
+    // Statement Drafts
+    /// <summary>Lists open statement drafts for the current user.</summary>
+    Task<IReadOnlyList<StatementDraftDto>> StatementDrafts_ListOpenAsync(int skip = 0, int take = 3, CancellationToken ct = default);
+    /// <summary>Gets the count of open statement drafts.</summary>
+    Task<int> StatementDrafts_GetOpenCountAsync(CancellationToken ct = default);
+    /// <summary>Deletes all statement drafts. Caution: irreversible!</summary>
+    Task<bool> StatementDrafts_DeleteAllAsync(CancellationToken ct = default);
+    /// <summary>Uploads a statement file for processing.</summary>
+    Task<StatementDraftUploadResult?> StatementDrafts_UploadAsync(Stream stream, string fileName, CancellationToken ct = default);
+    /// <summary>Gets the detail of a statement draft by id.</summary>
+    Task<StatementDraftDetailDto?> StatementDrafts_GetAsync(Guid draftId, bool headerOnly = false, string? src = null, Guid? fromEntryDraftId = null, Guid? fromEntryId = null, CancellationToken ct = default);
+    /// <summary>Gets the detail of a specific entry in a statement draft.</summary>
+    Task<StatementDraftEntryDetailDto?> StatementDrafts_GetEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
+    /// <summary>Adds a new entry to a statement draft.</summary>
+    Task<StatementDraftDetailDto?> StatementDrafts_AddEntryAsync(Guid draftId, StatementDraftAddEntryRequest req, CancellationToken ct = default);
+    /// <summary>Classifies a statement draft (automatic processing).</summary>
+    Task<StatementDraftDetailDto?> StatementDrafts_ClassifyAsync(Guid draftId, CancellationToken ct = default);
+    /// <summary>Sets the account for a statement draft.</summary>
+    Task<StatementDraftDetailDto?> StatementDrafts_SetAccountAsync(Guid draftId, Guid accountId, CancellationToken ct = default);
+    /// <summary>Commits (books) a statement draft, creating postings.</summary>
+    Task<object?> StatementDrafts_CommitAsync(Guid draftId, StatementDraftCommitRequest req, CancellationToken ct = default);
+    /// <summary>Sets the contact for an entry in a statement draft.</summary>
+    Task<StatementDraftEntryDto?> StatementDrafts_SetEntryContactAsync(Guid draftId, Guid entryId, StatementDraftSetContactRequest req, CancellationToken ct = default);
+    /// <summary>Sets a cost-neutral flag for an entry in a statement draft.</summary>
+    Task<StatementDraftEntryDto?> StatementDrafts_SetEntryCostNeutralAsync(Guid draftId, Guid entryId, StatementDraftSetCostNeutralRequest req, CancellationToken ct = default);
+    /// <summary>Sets the savings plan for an entry in a statement draft.</summary>
+    Task<StatementDraftEntryDto?> StatementDrafts_SetEntrySavingsPlanAsync(Guid draftId, Guid entryId, StatementDraftSetSavingsPlanRequest req, CancellationToken ct = default);
+    /// <summary>Sets the security for an entry in a statement draft.</summary>
+    Task<StatementDraftEntryDto?> StatementDrafts_SetEntrySecurityAsync(Guid draftId, Guid entryId, StatementDraftSetEntrySecurityRequest req, CancellationToken ct = default);
+    /// <summary>Sets an entry in a statement draft to archive on booking.</summary>
+    Task<StatementDraftEntryDto?> StatementDrafts_SetEntryArchiveOnBookingAsync(Guid draftId, Guid entryId, StatementDraftSetArchiveSavingsPlanOnBookingRequest req, CancellationToken ct = default);
+    /// <summary>Validates a statement draft (checks for errors).</summary>
+    Task<DraftValidationResultDto?> StatementDrafts_ValidateAsync(Guid draftId, CancellationToken ct = default);
+    /// <summary>Validates an entry in a statement draft.</summary>
+    Task<DraftValidationResultDto?> StatementDrafts_ValidateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
+    /// <summary>Books (commits) a statement draft, creating postings.</summary>
+    Task<BookingResult?> StatementDrafts_BookAsync(Guid draftId, bool forceWarnings = false, CancellationToken ct = default);
+    /// <summary>Books (commits) an entry in a statement draft.</summary>
+    Task<BookingResult?> StatementDrafts_BookEntryAsync(Guid draftId, Guid entryId, bool forceWarnings = false, CancellationToken ct = default);
+    /// <summary>Saves all details of an entry in a statement draft.</summary>
+    Task<object?> StatementDrafts_SaveEntryAllAsync(Guid draftId, Guid entryId, StatementDraftSaveEntryAllRequest req, CancellationToken ct = default);
+    /// <summary>Deletes an entry from a statement draft.</summary>
+    Task<bool> StatementDrafts_DeleteEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
+    /// <summary>Resets a duplicate entry in a statement draft.</summary>
+    Task<object?> StatementDrafts_ResetDuplicateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
+    /// <summary>Classifies a specific entry in a statement draft.</summary>
+    Task<StatementDraftDetailDto?> StatementDrafts_ClassifyEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
+    /// <summary>Downloads the original statement file for a draft.</summary>
+    Task<Stream?> StatementDrafts_DownloadOriginalAsync(Guid draftId, CancellationToken ct = default);
+    /// <summary>Starts the classification of statement drafts as a background task.</summary>
+    Task<ApiClient.StatementDraftsClassifyStatus?> StatementDrafts_StartClassifyAsync(CancellationToken ct = default);
+    /// <summary>Gets the status of the ongoing or last classification task for statement drafts.</summary>
+    Task<ApiClient.StatementDraftsClassifyStatus?> StatementDrafts_GetClassifyStatusAsync(CancellationToken ct = default);
+    /// <summary>Starts the booking of all statement drafts as a background task.</summary>
+    Task<StatementDraftMassBookStatusDto?> StatementDrafts_StartBookAllAsync(bool ignoreWarnings, bool abortOnFirstIssue, bool bookEntriesIndividually, CancellationToken ct = default);
+    /// <summary>Gets the status of the booking all task for statement drafts.</summary>
+    Task<StatementDraftMassBookStatusDto?> StatementDrafts_GetBookAllStatusAsync(CancellationToken ct = default);
+    /// <summary>Cancels the booking all task for statement drafts.</summary>
+    Task<bool> StatementDrafts_CancelBookAllAsync(CancellationToken ct = default);
+    /// <summary>Deletes a statement draft. Returns false when not found.</summary>
+    Task<bool> StatementDrafts_DeleteAsync(Guid draftId, CancellationToken ct = default);
 }

@@ -1,6 +1,5 @@
 ﻿@page "/statement-drafts/{Id:guid}"
 @rendermode InteractiveServer
-@inject HttpClient Http
 @inject NavigationManager Nav
 @inject FinanceManager.Shared.IApiClient Api
 @using FinanceManager.Application.Statements
@@ -17,7 +16,7 @@
 
 @code {
     [Parameter] public Guid Id { get; set; }
-    [Parameter, SupplyParameterFromQuery] public string? Src { get; set; } // "entry" when opened from entry detail
+    [Parameter, SupplyParameterFromQuery] public string? Src { get; set; }
     [Parameter, SupplyParameterFromQuery] public Guid? FromEntryDraftId { get; set; }
     [Parameter, SupplyParameterFromQuery] public Guid? FromEntryId { get; set; }
     private StatementDraftDetailDto? _draft;
@@ -30,18 +29,16 @@
     private bool _hasFile; private bool _showViewer; private string? _fileUrl;
     private DraftValidationResultDto? _validation; private bool _booking; private bool _pendingWarningConfirmation; private DraftValidationResultDto? _lastValidation; private string? _bookingError;
 
-    // symbol mappings
     private readonly Dictionary<Guid, Guid?> _contactDisplaySymbolById = new();
     private readonly Dictionary<Guid, Guid?> _savingsPlanDisplaySymbolById = new();
 
-    // Ribbon state
     private enum TabId { Statement }
     private List<Ribbon<TabId>.RibbonTab<TabId>> _tabs = new();
     private TabId _activeTab = TabId.Statement;
 
     protected override async Task OnParametersSetAsync()
     {
-        _draft = await Http.GetFromJsonAsync<StatementDraftDetailDto>($"/api/statement-drafts/{Id}");
+        _draft = await Api.StatementDrafts_GetAsync(Id);
         _hasFile = _draft != null;
         await LoadAccountsAsync();
         _selectedAccountId = _draft?.DetectedAccountId;
@@ -61,14 +58,10 @@
         var contactCategoryMap = new Dictionary<Guid, Guid?>();
         try
         {
-            var creq = await Http.GetAsync("/api/contact-categories");
-            if (creq.IsSuccessStatusCode)
+            var clist = await Api.ContactCategories_ListAsync();
+            foreach (var c in clist)
             {
-                var clist = await creq.Content.ReadFromJsonAsync<List<ContactCategoryDto>>() ?? new();
-                foreach (var c in clist)
-                {
-                    contactCategoryMap[c.Id] = c.SymbolAttachmentId;
-                }
+                contactCategoryMap[c.Id] = c.SymbolAttachmentId;
             }
         }
         catch { }
@@ -228,7 +221,7 @@
 
     private async Task ValidateDraft()
     {
-        try { _validation = await Http.GetFromJsonAsync<DraftValidationResultDto>($"/api/statement-drafts/{Id}/validate"); }
+        try { _validation = await Api.StatementDrafts_ValidateAsync(Id); }
         catch (Exception ex) { _bookingError = ex.Message; }
         finally { StateHasChanged(); }
     }
@@ -238,26 +231,20 @@
         _bookingError = null; _pendingWarningConfirmation = false; _lastValidation = null; _booking = true;
         try
         {
-            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book", null);
-            if (resp.StatusCode == System.Net.HttpStatusCode.PreconditionRequired)
+            var res = await Api.StatementDrafts_BookAsync(Id, forceWarnings: false);
+            if (res != null && res.HasWarnings)
             {
-                var res = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>();
-                _lastValidation = res?.Validation; _validation = res?.Validation; _pendingWarningConfirmation = true;
+                _lastValidation = res.Validation; _validation = res.Validation; _pendingWarningConfirmation = true;
             }
-            else if (!resp.IsSuccessStatusCode)
+            else if (res?.Success != true)
             {
-                StatementDraftBookingResultDto? resObj = null; try { resObj = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>(); } catch { }
-                if (resObj?.Validation != null) { _validation = resObj.Validation; _bookingError = Localizer["Error_FixIssues"]; }
-                else { _bookingError = await resp.Content.ReadAsStringAsync(); }
+                if (res?.Validation != null) { _validation = res.Validation; _bookingError = Localizer["Error_FixIssues"]; }
+                else { _bookingError = Api.LastError ?? Localizer["Error_Unknown"]; }
             }
             else
             {
-                var ok = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>();
-                if (ok != null && ok.Success)
-                {
-                    if (ok.NextDraftId is not null) { Nav.NavigateTo($"/statement-drafts/{ok.NextDraftId}", true); return; }
-                    Nav.NavigateTo("/statement-drafts", true); return;
-                }
+                if (res.nextDraftId is not null) { Nav.NavigateTo($"/statement-drafts/{res.nextDraftId}", true); return; }
+                Nav.NavigateTo("/statement-drafts", true); return;
             }
         }
         finally { _booking = false; BuildRibbon(); StateHasChanged(); }
@@ -268,20 +255,15 @@
         _booking = true; _bookingError = null;
         try
         {
-            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/book?forceWarnings=true", null);
-            if (!resp.IsSuccessStatusCode)
+            var res = await Api.StatementDrafts_BookAsync(Id, forceWarnings: true);
+            if (res?.Success != true)
             {
-                StatementDraftBookingResultDto? resObj = null; try { resObj = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>(); } catch { }
-                if (resObj?.Validation != null) { _validation = resObj.Validation; _bookingError = Localizer["Error_FixIssues"]; }
-                else { _bookingError = await resp.Content.ReadAsStringAsync(); }
+                if (res?.Validation != null) { _validation = res.Validation; _bookingError = Localizer["Error_FixIssues"]; }
+                else { _bookingError = Api.LastError ?? Localizer["Error_Unknown"]; }
             }
             else
             {
-                var ok = await resp.Content.ReadFromJsonAsync<StatementDraftBookingResultDto>();
-                if (ok != null && ok.Success)
-                {
-                    if (ok.NextDraftId is not null) Nav.NavigateTo($"/statement-drafts/{ok.NextDraftId}", true); else Nav.NavigateTo("/statement-drafts", true);
-                }
+                if (res.nextDraftId is not null) Nav.NavigateTo($"/statement-drafts/{res.nextDraftId}", true); else Nav.NavigateTo("/statement-drafts", true);
             }
         }
         finally { _booking = false; _pendingWarningConfirmation = false; BuildRibbon(); }
@@ -294,7 +276,10 @@
         var contacts = await Api.Contacts_ListAsync(skip: 0, take: 500, type: null, all: true, nameFilter: null);
         _contacts = contacts.ToList();
         var bankContacts = _contacts.Where(c => c.Type == ContactType.Bank).ToDictionary(c => c.Id, c => c.Name);
-        _groupedAccounts = _accounts.GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)").OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
+        _groupedAccounts = _accounts
+            .GroupBy(a => bankContacts.TryGetValue(a.BankContactId, out var n) ? n : "(Bank)")
+            .OrderBy(g => g.Key)
+            .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
     }
 
     private async Task LoadSavingsPlansAsync()
@@ -314,10 +299,10 @@
     {
         if (Guid.TryParse(e.Value?.ToString(), out var accId))
         {
-            var resp = await Http.PostAsync($"/api/statement-drafts/{Id}/account/{accId}", null);
-            if (resp.IsSuccessStatusCode)
+            var after = await Api.StatementDrafts_SetAccountAsync(Id, accId);
+            if (after != null)
             {
-                _draft = await resp.Content.ReadFromJsonAsync<StatementDraftDetailDto>();
+                _draft = after;
                 _selectedAccountId = _draft?.DetectedAccountId;
                 BuildRibbon(); StateHasChanged();
             }
@@ -326,10 +311,10 @@
 
     private async Task ClassifyAsync()
     {
-        var response = await Http.PostAsync($"/api/statement-drafts/{Id}/classify", null);
-        if (response.IsSuccessStatusCode)
+        var after = await Api.StatementDrafts_ClassifyAsync(Id);
+        if (after != null)
         {
-            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDetailDto>();
+            _draft = after;
             _selectedAccountId = _draft?.DetectedAccountId; BuildRibbon(); StateHasChanged();
         }
     }
@@ -337,9 +322,9 @@
     private async Task DeleteDraftAsync()
     {
         if (_draft == null) { return; }
-        var resp = await Http.DeleteAsync($"/api/statement-drafts/{Id}");
-        if (resp.IsSuccessStatusCode || resp.StatusCode == System.Net.HttpStatusCode.NoContent) { Nav.NavigateTo("/statement-drafts"); }
-        else { _bookingError = await resp.Content.ReadAsStringAsync(); StateHasChanged(); }
+        var ok = await Api.StatementDrafts_DeleteAsync(Id);
+        if (ok) { Nav.NavigateTo("/statement-drafts"); }
+        else { _bookingError = Api.LastError ?? Localizer["Error_Unknown"]; StateHasChanged(); }
     }
 
     private sealed class EntryForm { public DateTime BookingDate { get; set; } public decimal Amount { get; set; } public string Subject { get; set; } = string.Empty; }
@@ -359,10 +344,10 @@
 
     private async Task AddEntryAsync()
     {
-        var response = await Http.PostAsJsonAsync($"/api/statement-drafts/{Id}/entries", new { BookingDate = _form.BookingDate, Amount = _form.Amount, Subject = _form.Subject });
-        if (response.IsSuccessStatusCode)
+        var after = await Api.StatementDrafts_AddEntryAsync(Id, new StatementDraftAddEntryRequest(_form.BookingDate, _form.Amount, _form.Subject));
+        if (after != null)
         {
-            _draft = await response.Content.ReadFromJsonAsync<StatementDraftDetailDto>();
+            _draft = after;
             _form = new EntryForm { BookingDate = DateTime.Today }; BuildRibbon(); StateHasChanged();
         }
     }
