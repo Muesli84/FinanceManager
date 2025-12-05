@@ -1,0 +1,100 @@
+/* =====================================================
+   theme.Dark.HomeKpiGrid.css - Dark Theme für HomeKpiGrid
+   ===================================================== */
+
+.kpi-tile {
+    background: #141a20;
+    border: 1px solid #2a323a;
+}
+
+/* add tile */
+.kpi-tile.add-tile {
+    background: #10161c;
+    color: #88a;
+    border: 1px dashed #2a323a;
+}
+
+.add-ico {
+    fill: #8fb0ff;
+}
+
+.kpi-delete .ico {
+    fill: #a66;
+}
+
+.kpi-move .ico {
+    fill: #8fb0ff;
+}
+
+/* dialog styles */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background: #141a20;
+    border: 1px solid #2a323a;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+.tab-btn {
+    background: transparent;
+    border: 1px solid #2a323a;
+    color: #cbd5e1;
+}
+
+.tab-btn.active {
+    background: #1b2430;
+    border-color: #39506a;
+}
+
+.mk-item.line {
+    border-bottom: 1px dashed #2a323a;
+}
+
+.scroll-box {
+    border: 1px solid #2a323a;
+}
+
+.btn {
+    background: #2d6cdf;
+    color: #fff;
+}
+
+.btn.secondary {
+    background: transparent;
+    border: 1px solid #2a323a;
+    color: #cbd5e1;
+}
+
+/* KPI kind colors */
+.kpi-savings .kpi-bg-ico,
+.kpi-bg-ico.kpi-savings {
+    color: #2d9d4f;
+}
+
+.kpi-contacts .kpi-bg-ico,
+.kpi-bg-ico.kpi-contacts {
+    color: #8fb0ff;
+}
+
+.kpi-securities .kpi-bg-ico,
+.kpi-bg-ico.kpi-securities {
+    color: #d4a72c;
+}
+
+.kpi-drafts .kpi-bg-ico,
+.kpi-bg-ico.kpi-drafts {
+    color: #6aa84f;
+}

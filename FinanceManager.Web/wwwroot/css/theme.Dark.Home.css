@@ -1,0 +1,24 @@
+/* =====================================================
+   theme.Dark.Home.css - Dark Theme für Home Page
+   ===================================================== */
+
+/* Upload progress */
+.upload-progress {
+    border: 1px solid #2a323a;
+    background: #141a20;
+}
+
+.upload-progress .bar {
+    background: #0f1419;
+    border: 1px solid #2a323a;
+}
+
+.upload-progress .bar-inner {
+    background: #2d6cdf;
+}
+
+/* Split info */
+.split-info {
+    border: 1px solid #334;
+    background: #182028;
+}

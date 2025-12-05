@@ -1,7 +1,11 @@
+/* =====================================================
+   app.Contacts.css - Allgemeingültige Contacts Styles
+   ===================================================== */
+
 .page-contacts {
     display: flex;
     flex-direction: column;
-    height: 95dvh; /* volle Viewport-Höhe (dynamic viewport) */
+    height: 95dvh;
     gap: .5rem;
 }
 
@@ -16,16 +20,13 @@
 
 .contacts-table-container {
     flex: 1 1 auto;
-    min-height: 0; /* wichtig für korrektes Flex-Overflow */
+    min-height: 0;
     overflow: auto;
-    border: 1px solid var(--border-color, #333);
     border-radius: .25rem;
-    background: var(--panel-bg, #1e1e1e);
 }
 
 .page-contacts-full {
     display: block;
-    /* Keine feste Höhe, Seite wächst natürlich und die Browser-Scrollbar übernimmt */
 }
 
 .contacts-table {
@@ -34,7 +35,7 @@
 }
 
 .contacts-table th:nth-child(2),
-.contacts-table td:nth-child(2){
+.contacts-table td:nth-child(2) {
     width: 30%;
 }
 
@@ -54,14 +55,10 @@
 
 .filter-input {
     padding: .45rem .6rem;
-    border: 1px solid #444;
-    background: #1f1f1f;
-    color: #eee;
     border-radius: .35rem;
     min-width: 220px;
 }
 
 .filter-input:focus {
-    outline: 2px solid #2d5a8a;
     outline-offset: 1px;
 }

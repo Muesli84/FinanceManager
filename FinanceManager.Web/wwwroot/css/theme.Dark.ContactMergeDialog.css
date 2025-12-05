@@ -1,0 +1,41 @@
+/* =====================================================
+   theme.Dark.ContactMergeDialog.css - Dark Theme für ContactMergeDialog
+   ===================================================== */
+
+.modal-backdrop {
+    background: rgba(0, 0, 0, .55);
+}
+
+.modal {
+    background: var(--panel-bg, #1f1f1f);
+    color: var(--fg, #eee);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, .4);
+}
+
+.result-list {
+    border: 1px solid #444;
+    background: rgba(255, 255, 255, .03);
+}
+
+.result-list .row {
+    border-bottom: 1px solid #333;
+}
+
+.result-list .row.selected {
+    background: #2d5a8a;
+}
+
+.result-list .row:hover {
+    background: rgba(255, 255, 255, .06);
+}
+
+.error {
+    color: #e66;
+}
+
+/* Modal error styling */
+.modal .error {
+    background: #3a0f0f;
+    border: 1px solid #5f1d1d;
+    color: #ffe2e2;
+}

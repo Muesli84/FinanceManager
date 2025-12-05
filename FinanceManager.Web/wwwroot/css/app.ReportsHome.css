@@ -1,0 +1,49 @@
+/* =====================================================
+   app.ReportsHome.css - Allgemeingültige ReportsHome Styles
+   ===================================================== */
+
+.fav-grid {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: .6rem;
+}
+
+.fav-card {
+    width: 100%;
+    text-align: left;
+    padding: .6rem .7rem;
+    border-radius: .35rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.fav-name {
+    font-weight: 600;
+}
+
+.fav-meta {
+    opacity: .7;
+    font-size: .7rem;
+}
+
+.actions {
+    margin-top: .6rem;
+}
+
+.btn {
+    border: 0;
+    padding: .45rem .7rem;
+    border-radius: .3rem;
+    cursor: pointer;
+    font-size: .7rem;
+}
+
+.empty-info {
+    opacity: .7;
+    font-size: .8rem;
+}

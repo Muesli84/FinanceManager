@@ -1,0 +1,114 @@
+/* =====================================================
+   app.Setup.css - Allgemeingültige Setup Page Styles
+   ===================================================== */
+
+/* Tabs */
+.fm-tabs {
+    display: flex;
+    gap: .25rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.fm-tab {
+    padding: .45rem .9rem;
+    cursor: pointer;
+    font: inherit;
+    border-radius: .35rem .35rem 0 0;
+}
+
+.fm-tab-panel {
+    padding: 1rem;
+    border-radius: 0 .35rem .35rem .35rem;
+}
+
+/* Rebuild actions */
+.rebuild-actions {
+    margin-bottom: .6rem;
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+}
+
+.rebuild-hint {
+    opacity: .7;
+}
+
+/* Tab heading */
+.tab-heading {
+    margin-top: 0;
+}
+
+/* Help box (used in SetupImportSplitTab) */
+.help-box {
+    margin-top: 1rem;
+    padding: .75rem .9rem;
+    border-radius: 6px;
+    font-size: .78rem;
+    line-height: 1.35;
+}
+
+.help-box ul {
+    margin: .4rem 0 .4rem 1.1rem;
+    padding: 0;
+}
+
+.help-box li {
+    margin: .15rem 0;
+}
+
+.help-box em {
+    font-style: normal;
+    font-weight: 600;
+}
+
+.help-field {
+    margin: .4rem 0 .3rem;
+}
+
+.help-field + .help-field {
+    margin: .2rem 0;
+}
+
+.help-example {
+    margin-top: .4rem;
+    opacity: .85;
+}
+
+/* Form grid */
+.form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.form-row {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.form-row label {
+    font-size: .75rem;
+    opacity: .8;
+}
+
+/* Form actions */
+.form-actions {
+    margin-top: 1rem;
+    display: flex;
+    gap: .5rem;
+}
+
+/* Success/Error messages */
+.success {
+    color: #4caf50;
+}
+
+.success-margin {
+    margin-top: .5rem;
+}
+
+.error-margin {
+    margin-top: .5rem;
+}

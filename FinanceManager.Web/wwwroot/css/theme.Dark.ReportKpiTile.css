@@ -1,0 +1,43 @@
+/* =====================================================
+   theme.Dark.ReportKpiTile.css - Dark Theme für ReportKpiTile
+   ===================================================== */
+
+.kpi-kind-savings .kpi-bg-ico {
+    color: #2d9d4f;
+}
+
+.kpi-kind-contacts .kpi-bg-ico {
+    color: #8fb0ff;
+}
+
+.kpi-kind-securities .kpi-bg-ico {
+    color: #d4a72c;
+}
+
+.kpi-kind-bank .kpi-bg-ico {
+    color: #6aa84f;
+}
+
+/* Mini-Chart Theme */
+.mini-chart {
+    border: 1px solid var(--border);
+    padding: .4rem .5rem;
+    border-radius: .4rem;
+    background: #141618;
+}
+
+.mini-chart.split .bars.split::after {
+    background: rgba(200, 200, 200, .15);
+}
+
+.bar-inner {
+    background: #2d6cdf;
+}
+
+.bar-inner.pos {
+    background: #2d6cdf;
+}
+
+.bar-inner.neg {
+    background: #c94;
+}

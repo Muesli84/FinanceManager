@@ -1,0 +1,16 @@
+/* =====================================================
+   app.NumericKpi.css - Allgemeingültige NumericKpi Styles
+   ===================================================== */
+
+.num-kpi {
+    display: inline-block;
+}
+
+.num-kpi .loading {
+    opacity: .6;
+}
+
+.num-kpi .value {
+    font-size: 2.2rem;
+    font-weight: 700;
+}

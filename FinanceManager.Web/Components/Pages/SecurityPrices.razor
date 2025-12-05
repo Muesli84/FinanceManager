@@ -23,20 +23,20 @@
 {
     <div class="modal-overlay" @onclick="(()=> _vm!.ShowBackfillDialog = false)">
         <div class="modal" @onclick:stopPropagation="true">
-            <h3 style="margin-top:0;">@Localizer["Dlg_Backfill_Title"]</h3>
+            <h3 class="modal-title">@Localizer["Dlg_Backfill_Title"]</h3>
             <div class="row">
                 <label>@Localizer["Dlg_From"]</label>
                 <input type="date"
                        @bind-value="_vm!.FromDate"
                        @bind-value:event="onchange" />
             </div>
-            <div class="row" style="margin-top:.5rem;">
+            <div class="row">
                 <label>@Localizer["Dlg_To"]</label>
                 <input type="date" @bind-value="_vm!.ToDate" @bind-value:event="onchange" />
             </div>
             @if (!string.IsNullOrWhiteSpace(_vm?.DialogErrorKey))
             {
-                <div style="color:#e66; font-size:.8rem; margin-top:.5rem;">@Localizer[_vm.DialogErrorKey!]</div>
+                <div class="dialog-error">@Localizer[_vm.DialogErrorKey!]</div>
             }
             <div class="dialog-actions">
                 <button class="btn" disabled="@(_vm?.Submitting ?? false)" @onclick="async () => await _vm!.ConfirmBackfillAsync()">
@@ -57,8 +57,8 @@ else
     <table class="fm-table wide">
         <thead>
             <tr>
-                <th style="width:9rem;">@Localizer["Th_Date"]</th>
-                <th style="width:9rem;text-align:right;">@Localizer["Th_Close"]</th>
+                <th class="col-date">@Localizer["Th_Date"]</th>
+                <th class="col-close">@Localizer["Th_Close"]</th>
             </tr>
         </thead>
         <tbody>
@@ -68,28 +68,28 @@ else
                 {
                     <tr>
                         <td>@p.Date.ToShortDateString()</td>
-                        <td style="text-align:right;">@p.Close</td>
+                        <td class="amount-cell">@p.Close</td>
                     </tr>
                 }
             }
             @if(_vm?.Loading == true)
             {
-                <tr><td colspan="2" style="opacity:.6;">@Localizer["Loading"]</td></tr>
+                <tr><td colspan="2" class="loading-cell">@Localizer["Loading"]</td></tr>
             }
         </tbody>
     </table>
-    <div style="margin-top:.5rem;">
+    <div class="table-footer">
         @if(_vm?.CanLoadMore == true)
         {
             <div @ref="_sentinel" class="infinite-sentinel" aria-hidden="true"></div>
         }
         else if((_vm?.Items.Count ?? 0)==0 && _vm?.Loading == false)
         {
-            <span style="opacity:.6;font-size:.75rem;">@Localizer["NoEntries"]</span>
+            <span class="no-entries">@Localizer["NoEntries"]</span>
         }
         else if(_vm?.CanLoadMore == false)
         {
-            <div class="end-of-list" style="opacity:.6;font-size:.65rem;">@Localizer["EndOfList"]</div>
+            <div class="end-of-list">@Localizer["EndOfList"]</div>
         }
     </div>
 }
@@ -231,14 +231,3 @@ else
         }
     }
 }
-
-<style>
-.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
-.modal { background:#141a20; border:1px solid #2a323a; border-radius:8px; padding:1rem; box-shadow:0 10px 30px rgba(0,0,0,.6); width:min(520px, 90vw); max-width:90vw; overflow:auto; }
-.row { display:flex; flex-direction:column; gap:.25rem; }
-.modal input[type="date"] { width:100%; max-width:100%; box-sizing:border-box; }
-.dialog-actions { display:flex; gap:.5rem; justify-content:flex-end; margin-top:.75rem; }
-.btn { background:#2d6cdf; color:#fff; border:0; border-radius:6px; padding:.4rem .75rem; cursor:pointer; }
-.btn.secondary { background:transparent; border:1px solid #2a323a; color:#cbd5e1; }
-.alert.info { border:1px solid #29425f; background:#0f1419; color:#9ec1ff; border-radius:6px; padding:.5rem .75rem; margin:.5rem 0; font-size:.85rem; }
-</style>

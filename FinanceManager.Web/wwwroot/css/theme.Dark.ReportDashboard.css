@@ -1,0 +1,63 @@
+/* =====================================================
+   theme.Dark.ReportDashboard.css - Dark Theme für ReportDashboard
+   ===================================================== */
+
+.modal-overlay {
+    background: rgba(0, 0, 0, .55);
+}
+
+.modal {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 28px #000a, 0 0 0 1px #000 inset;
+}
+
+.tab-btn {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+}
+
+.tab-btn.active {
+    background: #253041;
+    border-color: var(--accent);
+}
+
+.option-list {
+    border: 1px solid var(--border);
+    background: #141519;
+}
+
+.query-overlay {
+    background: rgba(0, 0, 0, .45);
+}
+
+.filter-group {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+}
+
+.mk-item.line {
+    border-bottom: 1px solid var(--border);
+}
+
+.toggle-btn {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+}
+
+.mini-chart {
+    border: 1px solid var(--border);
+    background: var(--bg-alt);
+}
+
+.mini-chart .bar-inner {
+    background: #4dabf7;
+}
+
+.mini-chart .bar-inner.pos {
+    background: #51cf66;
+}
+
+.mini-chart .bar-inner.neg {
+    background: #ff6b6b;
+}

@@ -1,0 +1,34 @@
+/* =====================================================
+   theme.Dark.Users.css - Dark Theme für Users Page
+   ===================================================== */
+
+.create-user-form {
+    background: #1e1e24;
+    border: 1px solid #333;
+}
+
+.user-table th,
+.user-table td {
+    border-bottom: 1px solid #2c2c34;
+}
+
+.user-table tr.locked-row {
+    background: #402626;
+}
+
+.user-table tr.locked-row:hover {
+    background: #4a2d2d;
+}
+
+.user-table tr:hover {
+    background: #23232b;
+}
+
+.error {
+    color: #ffb3b3;
+}
+
+.pw-reset-hint {
+    border: 1px solid #444;
+    background: #25252d;
+}

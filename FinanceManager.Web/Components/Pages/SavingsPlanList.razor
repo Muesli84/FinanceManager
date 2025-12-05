@@ -25,9 +25,9 @@ else if(!_vm!.IsAuthenticated)
 }
 else if(_vm!.Plans.Count==0)
 {
-    <p style="opacity:.65;font-size:.75rem;">@Localizer["StatusArchived"]</p>
+    <p class="status-archived">@Localizer["StatusArchived"]</p>
 }
-<table class="fm-table wide" style="margin-top:1rem;">
+<table class="fm-table wide savings-table">
     <thead>
         <tr>
             <th></th>
@@ -53,21 +53,21 @@ else if(_vm!.Plans.Count==0)
             var symbolId = _vm!.GetDisplaySymbolAttachmentId(plan);
             var acc = _vm.GetAccumulatedAmount(plan);
             var rem = _vm.GetRemainingAmount(plan);
-            <tr style="cursor:pointer;" @onclick="() => OpenDetail(plan.Id)">
-                <td style="width:56px;">
+            <tr class="plan-row" @onclick="() => OpenDetail(plan.Id)">
+                <td class="col-symbol">
                     @if (symbolId != null)
                     {
-                        <div style="width:40px;height:40px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:6px;">
-                            <img src="@($"/api/attachments/{symbolId}/download")" alt="symbol" style="max-width:100%;max-height:100%;display:block;" />
+                        <div class="symbol-box">
+                            <img src="@($"/api/attachments/{symbolId}/download")" alt="symbol" />
                         </div>
                     }
                 </td>
                 <td>@plan.Name</td>
                 <td>@(plan.TargetAmount?.ToString("N2") ?? "")</td>
                 <td>@(acc.HasValue ? acc.Value.ToString("N2") : "")</td>
-                <td style="@(rem.HasValue && rem.Value < 0 ? "color:#e66;" : string.Empty)">@(rem.HasValue ? rem.Value.ToString("N2") : "")</td>
+                <td class="@(rem.HasValue && rem.Value < 0 ? "negative" : string.Empty)">@(rem.HasValue ? rem.Value.ToString("N2") : "")</td>
                 <td>
-                    <div style="display:flex;align-items:center;gap:.6rem;">
+                    <div class="target-date-cell">
                         <div>@(plan.TargetDate?.ToShortDateString() ?? "")</div>
                         @* interval badge: circular arrow with number (12/6/3/1) and subtle calendar background *@
                         @if (plan.Interval.HasValue)
@@ -135,7 +135,7 @@ else if(_vm!.Plans.Count==0)
                         }
                     </div>
                 </td>
-                <td style="width:64px; text-align:center;">
+                <td class="col-status">
                     @* No status for Open plans *@
                     @{
                         var isCompleted = _vm!.IsCompleted(plan);
@@ -157,15 +157,6 @@ else if(_vm!.Plans.Count==0)
         }
     </tbody>
 </table>
-
-<style>
-.interval-badge { display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); padding:2px; }
-.interval-badge svg { display:block; }
-.status-item { display:inline-flex;align-items:center;justify-content:center;gap:.25rem;font-size:.875rem;color:#333; }
-.bag-icon { width:1.6em;height:1.6em;fill:none;stroke-width:1.5; }
-.closed { stroke-linecap:round; }
-.open-warning { stroke-linecap:square; }
-</style>
 
 @code {
     // Ribbon state

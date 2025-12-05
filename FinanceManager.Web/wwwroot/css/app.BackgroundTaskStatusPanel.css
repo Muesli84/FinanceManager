@@ -1,0 +1,115 @@
+/* =====================================================
+   app.BackgroundTaskStatusPanel.css - Allgemeingültige BackgroundTaskStatusPanel Styles
+   ===================================================== */
+
+.bgt-panel {
+    padding: .75rem 1rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+}
+
+.bgt-active,
+.bgt-queue-item {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+}
+
+.bgt-row {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+}
+
+.bgt-badge {
+    padding: .1rem .5rem;
+    border-radius: 12px;
+    font-size: .65rem;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.bgt-progress {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.bgt-bar {
+    position: relative;
+    width: 180px;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.bgt-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transition: width .25s;
+}
+
+.bgt-indeterminate {
+    width: 180px;
+    height: 6px;
+    position: relative;
+    overflow: hidden;
+}
+
+.bgt-indeterminate::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    animation: bgtInd 1s linear infinite;
+}
+
+@keyframes bgtInd {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.bgt-queue {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+}
+
+.bgt-queue-item {
+    padding: .4rem .5rem;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: row;
+    gap: .6rem;
+    align-items: center;
+}
+
+.bgt-empty {
+    opacity: .6;
+    font-size: .75rem;
+}
+
+.bgt-type {
+    font-weight: 600;
+    font-size: .75rem;
+}
+
+.bgt-message {
+    font-size: .7rem;
+    opacity: .85;
+}
+
+.bgt-metrics {
+    display: flex;
+    gap: 1rem;
+    font-size: .65rem;
+    opacity: .8;
+}
+
+.bgt-progress.sub {
+    margin-top: .25rem;
+}

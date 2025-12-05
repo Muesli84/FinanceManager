@@ -6,7 +6,7 @@
 <div class="@($"aggregate-chart-wrapper{(Compact? " compact" : string.Empty)}")" aria-busy="@_loading">
     @if (!string.IsNullOrWhiteSpace(Title))
     {
-        <h4 style="margin:0 0 .5rem 0;">@Title</h4>
+        <h4 class="chart-title">@Title</h4>
     }
     @if (!HideIntervalSelector)
     {
@@ -22,7 +22,7 @@
         </div>
     }
 
-    <div class="chart">
+    <div class="chart" style="--bar-color:@PositiveColor;--bar-neg:@NegativeColor;--axis:@AxisColor;">
         @if (_loading && _data.Count == 0)
         {
             <div class="chart-skeleton" role="status" aria-live="polite" style="height:@(BarsHeightPx ?? (Compact?100:180))px;">
@@ -217,107 +217,3 @@
 
     private sealed class TimeSeriesResponse { public DateTime PeriodStart { get; set; } public decimal Amount { get; set; } }
 }
-
-<style>
-.aggregate-chart-wrapper select { min-width:95px; }
-.interval-selector { display:flex; gap:.5rem; align-items:center; margin-bottom:.4rem; }
-.interval-selector select { font-size:.75rem; }
-.interval-selector .lbl-int { font-size:.75rem; opacity:.85; }
-
-.chart {
-    --bar-color:@PositiveColor;
-    --bar-neg:@NegativeColor;
-    --axis:@AxisColor;
-    width:100%;
-    box-sizing:border-box;
-    border:1px solid var(--border);
-    padding:.45rem .6rem;
-    border-radius:.35rem;
-    min-height:190px;
-    position:relative;
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
-}
-
-.aggregate-chart-wrapper.compact .chart{ min-height:0; padding:.35rem .5rem; }
-.aggregate-chart-wrapper.compact .labels-row{ font-size:.55rem; margin-top:.15rem; }
-
-.bars-wrapper { flex:1 1 auto; display:flex; flex-direction:column; height:180px; border-top:1px solid var(--axis); border-bottom:1px solid var(--axis); gap:0; min-width:0; }
-.bar-row { flex:1 1 0; display:flex; align-items:flex-end; gap:.35rem; min-width:0; }
-.bar-row.neg { align-items:flex-start; }
-.bar { flex:1 1 0; background:var(--bar-color); border-radius:2px; min-width:2px; outline:none; transition:filter .15s; }
-.bar-pos { background:var(--bar-color); }
-.bar-neg { background:var(--bar-neg); }
-.bar:hover { filter:brightness(1.12); }
-.bar:focus-visible { box-shadow:0 0 0 2px #ffffff40, 0 0 0 4px #2d6cdf90; }
-.zero-line { height:1px; background:var(--axis); opacity:.6; }
-.labels-row { display:flex; gap:.35rem; font-size:.6rem; color:#aaa; margin-top:.25rem; min-width:0; }
-.labels-row .lbl { flex:1 1 0; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
-.labels-row .lbl.skip { visibility:hidden; }
-.nodata { opacity:.7; font-size:.8rem; }
-.chart-loading-overlay { position:absolute; inset:0; background:rgba(18,18,20,.6); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.6rem; backdrop-filter:blur(2px); border-radius:.35rem; animation:fadeIn .15s ease; }
-.spinner { width:34px; height:34px; position:relative; }
-.spinner .seg { position:absolute; inset:0; border:3px solid transparent; border-top-color:var(--bar-color); border-radius:50%; animation:spin 1s linear infinite; }
-.spinner .seg.b { animation-delay:.12s; }
-.spinner .seg.c { animation-delay:.24s; }
-.spinner .seg.d { animation-delay:.36s; }
-.loading-text { font-size:.65rem; opacity:.75; letter-spacing:.05em; text-transform:uppercase; }
-@@keyframes spin { 0% { transform:rotate(0deg); opacity:1; } 70% { opacity:.25; } 100% { transform:rotate(360deg); opacity:1; } }
-@@keyframes fadeIn { from { opacity:0; } to { opacity:1; }
-}
-.chart-skeleton {
-    display:flex;
-    flex-direction:column;
-    gap:.4rem;
-    height:180px;
-    justify-content:flex-end;
-    position:relative;
-}
-
-.chart-skeleton .skeleton-bar {
-    width:16px;
-    background:linear-gradient(180deg,#2a3036 0%,#1b1f23 100%);
-    border-radius:3px;
-    height:60px;
-    animation:pulse 1.1s ease-in-out infinite;
-    opacity:.65;
-    display:inline-block;
-    margin-right:.35rem;
-}
-
-.chart-skeleton .skeleton-labels {
-    display:flex;
-    gap:.35rem;
-    margin-top:.4rem;
-}
-
-.chart-skeleton .skeleton-label {
-    width:16px;
-    height:7px;
-    background:#262b30;
-    border-radius:2px;
-    animation:pulse 1.4s ease-in-out infinite;
-    opacity:.4;
-}
-
-.chart-skeleton > .skeleton-bar:last-child { margin-right:0; }
-
-@@keyframes pulse {
-    0% { filter:brightness(0.9); }
-    50% { filter:brightness(1.25); }
-    100% { filter:brightness(0.9); }
-}
-
-.visually-hidden {
-    position:absolute;
-    width:1px;
-    height:1px;
-    padding:0;
-    margin:-1px;
-    overflow:hidden;
-    clip:rect(0 0 0 0);
-    white-space:nowrap;
-    border:0;
-}
-</style>

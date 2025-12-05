@@ -27,9 +27,9 @@
 </div>
 
 <div class="fm-tab-panel">
-    <div style="margin-bottom:.6rem; display:flex; gap:.5rem; align-items:center;">
+    <div class="rebuild-actions">
         <button class="btn" @onclick="QueueRebuildAggregates">@Localizer["Button_RebuildAggregates"]</button>
-        <small style="opacity:.7;">@Localizer["Hint_RebuildAggregates"]</small>
+        <small class="rebuild-hint">@Localizer["Hint_RebuildAggregates"]</small>
     </div>
     @switch(_vm!.ActiveSection)
     {
@@ -53,13 +53,6 @@
             break;
     }
 </div>
-
-<style>
-    .fm-tabs { display:flex; gap:.25rem; margin-bottom:1rem; flex-wrap:wrap; }
-    .fm-tab { background:#2a2d34; border:1px solid #3a3d45; padding:.45rem .9rem; cursor:pointer; font:inherit; color:#fff; border-radius:.35rem .35rem 0 0; }
-    .fm-tab.active { background:#39404c; font-weight:600; }
-    .fm-tab-panel { border:1px solid #3a3d45; padding:1rem; border-radius:0 .35rem .35rem .35rem; background:#2a2d34; }
-</style>
 
 @code {
     // Ribbon state (single tab for now)

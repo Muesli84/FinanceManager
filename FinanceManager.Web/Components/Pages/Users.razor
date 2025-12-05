@@ -56,22 +56,22 @@ else
 
     @if (!string.IsNullOrEmpty(_vm?.Error))
     {
-        <div class="error" style="margin-top:.75rem;">@_vm!.Error</div>
+        <div class="error error-margin">@_vm!.Error</div>
     }
 
     @if ((_vm?.LastResetUserId != Guid.Empty) == true && !string.IsNullOrEmpty(_vm?.LastResetPassword))
     {
         var userName = _vm!.Users.FirstOrDefault(u => u.Id == _vm!.LastResetUserId)?.Username;
-        <div class="pw-reset-hint" style="margin-top:1rem;padding:.75rem 1rem;border:1px solid #444;background:#25252d;border-radius:6px;max-width:620px;">
-            <strong>@Localizer["PasswordReset_Title"]</strong> @Localizer["PasswordReset_For"] <span style="opacity:.85">@userName</span>: <code>@_vm!.LastResetPassword</code>
-            <button style="margin-left:.75rem;" @onclick="(()=> _vm!.ClearLastPassword())">@Localizer["PasswordReset_Hide"]</button>
+        <div class="pw-reset-hint">
+            <strong>@Localizer["PasswordReset_Title"]</strong> @Localizer["PasswordReset_For"] <span class="username">@userName</span>: <code>@_vm!.LastResetPassword</code>
+            <button @onclick="(()=> _vm!.ClearLastPassword())">@Localizer["PasswordReset_Hide"]</button>
         </div>
     }
 
-    <table class="user-table" style="width:100%;border-collapse:collapse;margin-top:1.25rem;">
+    <table class="user-table">
         <thead>
             <tr>
-                <th style="text-align:left;">@Localizer["Table_Header_Username"]</th>
+                <th>@Localizer["Table_Header_Username"]</th>
                 <th>@Localizer["Table_Header_IsAdmin"]</th>
                 <th>@Localizer["Table_Header_Active"]</th>
                 <th>@Localizer["Table_Header_LockedUntil"]</th>
@@ -88,15 +88,15 @@ else
                 <td>
                     @if (editing) { <InputText @bind-Value="_vm!.EditUsername" /> } else { @u.Username }
                 </td>
-                <td style="text-align:center;">
+                <td>
                     @if (editing) { <input type="checkbox" @bind="_vm!.EditIsAdmin" /> } else { @((MarkupString)(u.IsAdmin ? "&#10003;" : string.Empty)) }
                 </td>
-                <td style="text-align:center;">
+                <td>
                     @if (editing) { <input type="checkbox" @bind="_vm!.EditActive" /> } else { @((MarkupString)(u.Active ? "&#10003;" : "&#10007;")) }
                 </td>
-                <td style="text-align:center;">@(u.LockoutEnd?.ToString("u") ?? "-")</td>
-                <td style="text-align:center;">@((u.LastLoginUtc==default)?"-":u.LastLoginUtc.ToString("u"))</td>
-                <td style="white-space:nowrap;">
+                <td>@(u.LockoutEnd?.ToString("u") ?? "-")</td>
+                <td>@((u.LastLoginUtc==default)?"-":u.LastLoginUtc.ToString("u"))</td>
+                <td>
                     @if (editing)
                     {
                         <button @onclick="(()=>_vm!.SaveEditAsync(u.Id))" disabled="@(_vm?.BusyRow ?? false)">@Localizer["Action_Save"]</button>
@@ -118,21 +118,6 @@ else
         </tbody>
     </table>
 }
-
-<style>
-    .create-user-form { background:#1e1e24; padding:1rem 1.25rem; border:1px solid #333; border-radius:6px; max-width:620px; }
-    .create-user-grid { display:grid; grid-template-columns:160px 1fr; gap:.55rem .75rem; align-items:center; }
-    .create-user-grid label { font-size:.72rem; letter-spacing:.5px; text-transform:uppercase; opacity:.75; }
-    .inline-checkbox { display:flex; align-items:center; gap:.5rem; }
-    .inline-checkbox .chk-label { text-transform:none; font-size:.85rem; opacity:.9; letter-spacing:0; }
-    .form-actions { display:flex; gap:.5rem; }
-    .form-actions button { min-width:140px; }
-    .user-table th, .user-table td { padding:.4rem .5rem; border-bottom:1px solid #2c2c34; }
-    .user-table tr.locked-row { background:#402626; }
-    .user-table tr.locked-row:hover { background:#4a2d2d; }
-    .user-table tr:hover { background:#23232b; }
-    .error { color:#ffb3b3; }
-</style>
 
 @code {
     // Ribbon state

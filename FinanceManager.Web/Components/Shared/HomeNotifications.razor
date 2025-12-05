@@ -24,7 +24,7 @@
                         <div class="notif-meta">@L["ScheduledOn"]: @n.ScheduledDateUtc.ToLocalTime().ToString("d")</div>
                         @if (!string.IsNullOrWhiteSpace(n.TriggerEventKey))
                         {
-                            <div class="notif-actions" style="margin-top:.35rem;">
+                            <div class="notif-actions">
                                 <button class="icon-btn" @onclick="(() => NavigateToEventAsync(n.TriggerEventKey!))" title="@L["Open"]">
                                     <svg class="icon"><use href="/icons/sprite.svg#external" /></svg>
                                 </button>
@@ -111,19 +111,3 @@
         return Task.CompletedTask;
     }
 }
-
-<style>
-.notif-container{border:1px solid #334;background:#182028;border-radius:.6rem;margin:.5rem 0 1rem 0;padding:.5rem .6rem;}
-.notif-title{margin:.1rem 0 .35rem 0;font-size:.9rem;opacity:.9}
-.notif-item{position:relative;display:flex;align-items:stretch;justify-content:space-between;border:1px solid #2a323a;background:#0f1419;border-radius:.5rem;margin:.35rem 0;}
-.notif-item.info{border-color:#29425f;background:#0f1419;}
-.notif-item.warn{border-color:#5f3a29;background:#19120f;}
-.notif-body{display:flex;gap:.6rem;padding:.55rem .7rem;}
-.notif-icon svg{width:18px;height:18px;fill:#8fb0ff;margin-top:.2rem}
-.notif-item.warn .notif-icon svg{fill:#d4a72c}
-.notif-head{font-weight:600;margin-bottom:.15rem}
-.notif-text{white-space:pre-wrap}
-.notif-meta{opacity:.7;font-size:.75rem;margin-top:.25rem}
-.notif-dismiss{align-self:center;margin:.3rem .35rem;background:transparent;border:0;cursor:pointer}
-.notif-dismiss .ico{width:14px;height:14px;fill:#a66}
-</style>

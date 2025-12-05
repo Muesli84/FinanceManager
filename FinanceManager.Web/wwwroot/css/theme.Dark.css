@@ -1,0 +1,172 @@
+/* =====================================================
+   theme.Dark.css - Dark Theme Farbschema und Effekte
+   ===================================================== */
+
+:root {
+    color-scheme: dark;
+    --bg: #0f0f11;
+    --bg-alt: #191b1f;
+    --panel-bg: #181818;
+    --border: #2a2d33;
+    --text: #e2e6ea;
+    --accent: #4dabf7;
+    --accent-hover: #339af0;
+    --danger: #ff6b6b;
+    --success: #51cf66;
+}
+
+html, body { 
+    background: var(--bg); 
+    color: var(--text); 
+}
+
+.dark-mode { 
+    background: var(--bg); 
+    color: var(--text); 
+}
+
+/* Sidebar Theme */
+.sidebar { 
+    background: var(--bg-alt); 
+    border-right: 1px solid var(--border); 
+}
+
+.nav-links a { 
+    color: var(--text); 
+}
+
+.nav-links a.active, 
+.nav-links a:hover { 
+    background: var(--border); 
+    color: var(--text); 
+}
+
+/* Button Theme */
+button { 
+    background: var(--accent); 
+    color: #000; 
+}
+
+button:hover:not(:disabled) { 
+    background: var(--accent-hover); 
+}
+
+button.danger { 
+    background: var(--danger); 
+    color: #000; 
+}
+
+button.danger:hover:not(:disabled) { 
+    filter: brightness(1.15); 
+}
+
+/* Input Theme */
+input { 
+    background: var(--bg-alt); 
+    color: var(--text); 
+    border: 1px solid var(--border); 
+}
+
+/* Error Theme */
+.error { 
+    background: var(--danger); 
+    color: #000; 
+}
+
+/* Icon Button Theme */
+.icon-btn { 
+    background: var(--bg-alt); 
+    border: 1px solid var(--border); 
+    color: var(--text); 
+}
+
+.icon-btn:hover:not(:disabled) { 
+    background: var(--border); 
+}
+
+/* Login Status Theme */
+.login-status button { 
+    background: #343a40; 
+    color: var(--text); 
+}
+
+.login-status button:hover { 
+    background: #495057; 
+}
+
+/* Table Theme */
+.fm-table {
+    background: #222;
+    color: #eee;
+}
+
+.fm-table th, .fm-table td {
+    border-bottom: 1px solid #333;
+}
+
+.fm-table th {
+    background: #282828;
+}
+
+.fm-table tbody tr:hover {
+    background: #2a2a2a;
+}
+
+.table-responsive {
+    box-shadow: 0 2px 8px #0002;
+}
+
+/* Split Dialog Theme */
+.split-center { 
+    background: rgba(0,0,0,.55); 
+}
+
+.split-dialog { 
+    background: var(--bg-alt); 
+    border: 1px solid var(--border); 
+    box-shadow: 0 6px 28px #000a, 0 0 0 1px #000 inset; 
+}
+
+.split-scroll { 
+    border: 1px solid var(--border); 
+    background: #141519; 
+}
+
+.split-row { 
+    background: transparent; 
+}
+
+.split-row:hover { 
+    background: #1f2227; 
+}
+
+.split-row.active { 
+    background: #253041; 
+    border-color: var(--accent); 
+}
+
+.split-error { 
+    background: var(--danger); 
+    color: #000; 
+}
+
+/* Mobile Theme */
+.mobile-topbar { 
+    border-bottom: 1px solid var(--border); 
+    background: var(--bg); 
+}
+
+.mobile-topbar .hamburger { 
+    color: var(--text); 
+    border: 1px solid var(--border); 
+}
+
+.mobile-overlay { 
+    background: rgba(0,0,0,.5); 
+}
+
+@media (max-width: 900px) {
+    .sidebar { 
+        box-shadow: 2px 0 12px #0006; 
+    }
+}

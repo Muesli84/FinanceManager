@@ -1,0 +1,34 @@
+/* =====================================================
+   theme.Dark.SecurityPrices.css - Dark Theme für SecurityPrices
+   ===================================================== */
+
+.modal-overlay {
+    background: rgba(0, 0, 0, .5);
+}
+
+.modal {
+    background: #141a20;
+    border: 1px solid #2a323a;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
+}
+
+.btn {
+    background: #2d6cdf;
+    color: #fff;
+}
+
+.btn.secondary {
+    background: transparent;
+    border: 1px solid #2a323a;
+    color: #cbd5e1;
+}
+
+.alert.info {
+    border: 1px solid #29425f;
+    background: #0f1419;
+    color: #9ec1ff;
+}
+
+.dialog-error {
+    color: #e66;
+}
