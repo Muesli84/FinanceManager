@@ -1,32 +1,13 @@
 using FinanceManager.Application;
+using FinanceManager.Shared;
 using FinanceManager.Web.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using System.Net;
-using System.Text;
-using System.Text.Json;
+using Moq;
 
 namespace FinanceManager.Tests.ViewModels;
 
 public sealed class SetupImportSplitViewModelTests
 {
-    private static HttpClient CreateHttpClient(Func<HttpRequestMessage, HttpResponseMessage> responder)
-        => new HttpClient(new DelegateHandler(responder)) { BaseAddress = new Uri("http://localhost") };
-
-    private sealed class DelegateHandler : HttpMessageHandler
-    {
-        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
-        public DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(_responder(request));
-    }
-
-    private sealed class TestHttpClientFactory : IHttpClientFactory
-    {
-        private readonly HttpClient _client;
-        public TestHttpClientFactory(HttpClient client) => _client = client;
-        public HttpClient CreateClient(string name) => _client;
-    }
-
     private sealed class TestCurrentUserService : ICurrentUserService
     {
         public Guid UserId { get; set; } = Guid.NewGuid();
@@ -35,29 +16,22 @@ public sealed class SetupImportSplitViewModelTests
         public bool IsAdmin { get; set; }
     }
 
-    private static IServiceProvider CreateSp()
+    private static IServiceProvider CreateSp(IApiClient api)
     {
         var services = new ServiceCollection();
         services.AddSingleton<ICurrentUserService>(new TestCurrentUserService());
+        services.AddSingleton(api);
         return services.BuildServiceProvider();
     }
-
-    private static string SettingsJson(ImportSplitSettingsDto dto) => JsonSerializer.Serialize(dto);
 
     [Fact]
     public async Task Initialize_Loads_Settings()
     {
         var dto = new ImportSplitSettingsDto { Mode = ImportSplitMode.Monthly, MaxEntriesPerDraft = 200, MonthlySplitThreshold = 250, MinEntriesPerDraft = 5 };
-        var client = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/import-split")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(SettingsJson(dto), Encoding.UTF8, "application/json") };
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
+        var apiMock = new Mock<IApiClient>();
+        apiMock.Setup(a => a.UserSettings_GetImportSplitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(dto);
 
-        var vm = new SetupImportSplitViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var vm = new SetupImportSplitViewModel(CreateSp(apiMock.Object));
         await vm.InitializeAsync();
 
         Assert.False(vm.Loading);
@@ -68,11 +42,10 @@ public sealed class SetupImportSplitViewModelTests
     [Fact]
     public async Task Validate_Disallows_Invalid_Combinations()
     {
-        var client = CreateHttpClient(req => new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(SettingsJson(new ImportSplitSettingsDto()), Encoding.UTF8, "application/json")
-        });
-        var vm = new SetupImportSplitViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var apiMock = new Mock<IApiClient>();
+        apiMock.Setup(a => a.UserSettings_GetImportSplitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ImportSplitSettingsDto());
+
+        var vm = new SetupImportSplitViewModel(CreateSp(apiMock.Object));
         await vm.InitializeAsync();
 
         vm.Model!.MaxEntriesPerDraft = 10;
@@ -99,21 +72,11 @@ public sealed class SetupImportSplitViewModelTests
     public async Task Save_Sets_SavedOk_And_Resets_Dirty()
     {
         var dto = new ImportSplitSettingsDto();
-        bool putCalled = false;
-        var client = CreateHttpClient(req =>
-        {
-            if (req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath == "/api/user/settings/import-split")
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(SettingsJson(dto), Encoding.UTF8, "application/json") };
-            }
-            if (req.Method == HttpMethod.Put && req.RequestUri!.AbsolutePath == "/api/user/settings/import-split")
-            {
-                putCalled = true;
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            }
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        });
-        var vm = new SetupImportSplitViewModel(CreateSp(), new TestHttpClientFactory(client));
+        var apiMock = new Mock<IApiClient>();
+        apiMock.Setup(a => a.UserSettings_GetImportSplitAsync(It.IsAny<CancellationToken>())).ReturnsAsync(dto);
+        apiMock.Setup(a => a.UserSettings_UpdateImportSplitAsync(It.IsAny<ImportSplitSettingsUpdateRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var vm = new SetupImportSplitViewModel(CreateSp(apiMock.Object));
         await vm.InitializeAsync();
 
         vm.Model!.MaxEntriesPerDraft = 300;
@@ -121,7 +84,7 @@ public sealed class SetupImportSplitViewModelTests
         Assert.True(vm.Dirty);
 
         await vm.SaveAsync();
-        Assert.True(putCalled);
+        apiMock.Verify(a => a.UserSettings_UpdateImportSplitAsync(It.IsAny<ImportSplitSettingsUpdateRequest>(), It.IsAny<CancellationToken>()), Times.Once);
         Assert.True(vm.SavedOk);
         Assert.False(vm.Dirty);
     }

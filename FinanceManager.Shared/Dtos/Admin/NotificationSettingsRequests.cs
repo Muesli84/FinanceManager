@@ -13,9 +13,9 @@ namespace FinanceManager.Shared.Dtos.Admin;
 /// <param name="HolidaySubdivisionCode">Optional region/subdivision code.</param>
 public sealed record UserNotificationSettingsUpdateRequest(
     bool MonthlyReminderEnabled,
-    [property: Range(0, 23)] int? MonthlyReminderHour,
-    [property: Range(0, 59)] int? MonthlyReminderMinute,
-    [property: Required] string HolidayProvider,
-    [property: StringLength(10, MinimumLength = 2)] string? HolidayCountryCode,
-    [property: StringLength(20, MinimumLength = 2)] string? HolidaySubdivisionCode
+    [param: Range(0, 23)] int? MonthlyReminderHour,
+    [param: Range(0, 59)] int? MonthlyReminderMinute,
+    [param: Required] string HolidayProvider,
+    [param: StringLength(10, MinimumLength = 2)] string? HolidayCountryCode,
+    [param: StringLength(20, MinimumLength = 2)] string? HolidaySubdivisionCode
 );

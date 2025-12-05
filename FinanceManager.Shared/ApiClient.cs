@@ -1668,4 +1668,34 @@ public class ApiClient : IApiClient
     }
 
     #endregion Users
+
+    #region User Settings
+
+    public async Task<UserProfileSettingsDto?> UserSettings_GetProfileAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/user/settings/profile", ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadFromJsonAsync<UserProfileSettingsDto>(cancellationToken: ct);
+    }
+
+    public async Task<bool> UserSettings_UpdateProfileAsync(UserProfileSettingsUpdateRequest request, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync("/api/user/settings/profile", request, ct);
+        return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<ImportSplitSettingsDto?> UserSettings_GetImportSplitAsync(CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync("/api/user/settings/import-split", ct);
+        if (!resp.IsSuccessStatusCode) return null;
+        return await resp.Content.ReadFromJsonAsync<ImportSplitSettingsDto>(cancellationToken: ct);
+    }
+
+    public async Task<bool> UserSettings_UpdateImportSplitAsync(ImportSplitSettingsUpdateRequest request, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync("/api/user/settings/import-split", request, ct);
+        return resp.IsSuccessStatusCode;
+    }
+
+    #endregion User Settings
 }

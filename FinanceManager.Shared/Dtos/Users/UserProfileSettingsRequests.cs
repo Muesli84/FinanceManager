@@ -11,9 +11,9 @@ namespace FinanceManager.Shared.Dtos.Users;
 /// <param name="ClearAlphaVantageApiKey">When true, clears the stored AlphaVantage API key.</param>
 /// <param name="ShareAlphaVantageApiKey">When true, enables sharing of the admin API key (admin only).</param>
 public sealed record UserProfileSettingsUpdateRequest(
-    [property: MaxLength(10)] string? PreferredLanguage,
-    [property: MaxLength(100)] string? TimeZoneId,
-    [property: MaxLength(120)] string? AlphaVantageApiKey,
+    [param: MaxLength(10)] string? PreferredLanguage,
+    [param: MaxLength(100)] string? TimeZoneId,
+    [param: MaxLength(120)] string? AlphaVantageApiKey,
     bool? ClearAlphaVantageApiKey,
     bool? ShareAlphaVantageApiKey
 );

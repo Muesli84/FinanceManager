@@ -420,4 +420,14 @@ public interface IApiClient
     // Users
     /// <summary>Checks if any users exist in the system.</summary>
     Task<bool> Users_HasAnyAsync(CancellationToken ct = default);
+
+    // User Settings
+    /// <summary>Gets the profile settings for the current user.</summary>
+    Task<UserProfileSettingsDto?> UserSettings_GetProfileAsync(CancellationToken ct = default);
+    /// <summary>Updates the profile settings for the current user.</summary>
+    Task<bool> UserSettings_UpdateProfileAsync(UserProfileSettingsUpdateRequest request, CancellationToken ct = default);
+    /// <summary>Gets the import split settings for the current user.</summary>
+    Task<ImportSplitSettingsDto?> UserSettings_GetImportSplitAsync(CancellationToken ct = default);
+    /// <summary>Updates the import split settings for the current user.</summary>
+    Task<bool> UserSettings_UpdateImportSplitAsync(ImportSplitSettingsUpdateRequest request, CancellationToken ct = default);
 }

@@ -1,12 +1,14 @@
+using FinanceManager.Shared;
+
 namespace FinanceManager.Web.ViewModels;
 
 public sealed class SetupProfileViewModel : ViewModelBase
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public SetupProfileViewModel(IServiceProvider sp, IHttpClientFactory httpFactory) : base(sp)
+    public SetupProfileViewModel(IServiceProvider sp) : base(sp)
     {
-        _http = httpFactory.CreateClient("Api");
+        _api = sp.GetRequiredService<IApiClient>();
     }
 
     public UserProfileSettingsDto Model { get; private set; } = new();
@@ -34,7 +36,7 @@ public sealed class SetupProfileViewModel : ViewModelBase
         Loading = true; Error = null; SaveError = null; SavedOk = false; RaiseStateChanged();
         try
         {
-            var dto = await _http.GetFromJsonAsync<UserProfileSettingsDto>("/api/user/settings/profile", ct);
+            var dto = await _api.UserSettings_GetProfileAsync(ct);
             Model = dto ?? new();
             _original = Clone(Model);
 
@@ -57,25 +59,17 @@ public sealed class SetupProfileViewModel : ViewModelBase
         Saving = true; SavedOk = false; SaveError = null; RaiseStateChanged();
         try
         {
-            var payload = new Dictionary<string, object?>
-            {
-                ["PreferredLanguage"] = Model.PreferredLanguage,
-                ["TimeZoneId"] = Model.TimeZoneId,
-                ["ShareAlphaVantageApiKey"] = ShareKey
-            };
-            if (!string.IsNullOrWhiteSpace(KeyInput))
-            {
-                payload["AlphaVantageApiKey"] = KeyInput.Trim();
-            }
-            if (_clearRequested)
-            {
-                payload["ClearAlphaVantageApiKey"] = true;
-            }
+            var request = new UserProfileSettingsUpdateRequest(
+                PreferredLanguage: Model.PreferredLanguage,
+                TimeZoneId: Model.TimeZoneId,
+                AlphaVantageApiKey: string.IsNullOrWhiteSpace(KeyInput) ? null : KeyInput.Trim(),
+                ClearAlphaVantageApiKey: _clearRequested ? true : null,
+                ShareAlphaVantageApiKey: ShareKey
+            );
 
-            using var resp = await _http.PutAsJsonAsync("/api/user/settings/profile", payload, ct);
-            if (resp.IsSuccessStatusCode)
+            var ok = await _api.UserSettings_UpdateProfileAsync(request, ct);
+            if (ok)
             {
-                // Reflect saved ShareKey into the model before cloning as original
                 Model.ShareAlphaVantageApiKey = ShareKey;
                 _original = Clone(Model);
                 HasKey = !_clearRequested && (HasKey || !string.IsNullOrWhiteSpace(KeyInput));
@@ -86,7 +80,7 @@ public sealed class SetupProfileViewModel : ViewModelBase
             }
             else
             {
-                SaveError = await resp.Content.ReadAsStringAsync(ct);
+                SaveError = _api.LastError ?? "Save failed";
             }
         }
         catch (Exception ex)
