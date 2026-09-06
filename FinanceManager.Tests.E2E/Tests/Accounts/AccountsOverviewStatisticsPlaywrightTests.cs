@@ -469,7 +469,7 @@ public sealed class AccountsOverviewStatisticsPlaywrightTests
         var pattern = wholeAmount < 0
             ? $@"-\s*{Math.Abs(wholeAmount)}([,.]00)?"
             : $@"{wholeAmount}([,.]00)?";
-            await Microsoft.Playwright.Assertions.Expect(locator).ToContainTextAsync(new Regex(pattern));
+        await Microsoft.Playwright.Assertions.Expect(locator).ToContainTextAsync(new Regex(pattern));
     }
 
     private static async Task ExpectTextAsync(ILocator locator, string text)
