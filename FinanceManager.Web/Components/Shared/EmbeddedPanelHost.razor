@@ -4,13 +4,14 @@
 @inject NavigationManager NavigationManager
 @typeparam TKeyValue
 
-@if (_specs?.Count > 0)
+@{ var visibleSpecs = GetVisibleSpecs(); }
+
+@if (visibleSpecs.Count > 0)
 {
     <div style="margin-top:.5rem; display:flex;flex-direction:column;gap:.5rem;">
-        @for (int i = 0; i < _specs.Count; i++)
+        @for (int i = 0; i < visibleSpecs.Count; i++)
         {
-            var s = _specs[i];
-            if (!s.Visible) continue;
+            var s = visibleSpecs[i];
             <div>
                 @{ IDictionary<string, object?>? parms = null;
                    if (s.Parameters != null)
@@ -21,12 +22,12 @@
                                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                    }
 
-                   var idx = i; // capture
-                   Action embeddedClose = () => CloseEmbeddedPanel(idx);
+                   var spec = s;
+                   Action embeddedClose = () => CloseEmbeddedPanel(spec);
                    Action<object> embeddedOnFinished = obj =>
                    {
                        // Close the embedded panel first
-                       CloseEmbeddedPanel(idx);
+                       CloseEmbeddedPanel(spec);
 
                        try
                        {
@@ -53,12 +54,12 @@
 }
 
 @code {
-    [Parameter] public BaseCardViewModel<TKeyValue>? Provider { get; set; }
+    [Parameter] public BaseViewModel? Provider { get; set; }
     [Parameter] public EmbeddedPanelPosition Position { get; set; } = EmbeddedPanelPosition.AfterCard;
 
     private readonly List<BaseViewModel.EmbeddedPanelSpec> _specs = new();
 
-    private BaseCardViewModel<TKeyValue>? _subscribed;
+    private BaseViewModel? _subscribed;
 
     protected override void OnParametersSet()
     {
@@ -144,9 +145,19 @@
         _specs.Add(spec with { Visible = spec.Visible });
     }
 
-    private void CloseEmbeddedPanel(int index)
+    private IReadOnlyList<BaseViewModel.EmbeddedPanelSpec> GetVisibleSpecs()
     {
-        if (index < 0 || index >= _specs.Count) return;
+        var declarativeSpecs = Provider?.GetEmbeddedPanelSpecs(Position) ?? Array.Empty<BaseViewModel.EmbeddedPanelSpec>();
+        return declarativeSpecs
+            .Concat(_specs)
+            .Where(s => s.Visible && s.Position == Position)
+            .ToList();
+    }
+
+    private void CloseEmbeddedPanel(BaseViewModel.EmbeddedPanelSpec spec)
+    {
+        var index = _specs.IndexOf(spec);
+        if (index < 0) return;
         _specs[index] = _specs[index] with { Visible = false };
         // remove invisible specs to keep list tidy
         _specs.RemoveAll(s => !s.Visible);

@@ -1,0 +1,142 @@
+@using System.Globalization
+@using FinanceManager.Shared.Dtos.Accounts
+@using FinanceManager.Web.ViewModels.Accounts
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Pages> Localizer
+
+<section class="accounts-statistics" data-statistics-state="@StateName" aria-busy="@IsBusy.ToString().ToLowerInvariant()">
+    <div class="accounts-statistics-header">
+        <h4>@Localizer["AccountsStatistics_Title"]</h4>
+    </div>
+
+    @if (ViewModel.StatisticsState == AccountStatisticsLoadState.Loading || ViewModel.StatisticsState == AccountStatisticsLoadState.NotStarted)
+    {
+        <div class="accounts-statistics-kpis">
+            @foreach (var key in KpiKeys)
+            {
+                <div class="accounts-statistics-kpi loading" data-statistics-kpi="@key">
+                    <span class="accounts-statistics-skeleton label">@Localizer[$"AccountsStatistics_Kpi_{key}_Loading"]</span>
+                    <span class="accounts-statistics-skeleton value"></span>
+                </div>
+            }
+        </div>
+        <div class="accounts-statistics-charts">
+            <div class="accounts-statistics-chart loading"><span class="accounts-statistics-skeleton chart"></span></div>
+            <div class="accounts-statistics-chart loading"><span class="accounts-statistics-skeleton chart"></span></div>
+        </div>
+    }
+    else if (ViewModel.StatisticsState == AccountStatisticsLoadState.Error)
+    {
+        <div class="accounts-statistics-error" role="alert">
+            <span>@(string.IsNullOrWhiteSpace(ViewModel.StatisticsErrorMessage) ? Localizer["AccountsStatistics_Error"] : ViewModel.StatisticsErrorMessage)</span>
+            <button type="button" class="icon-btn" title="@Localizer["AccountsStatistics_Retry"]" @onclick="ViewModel.RetryStatisticsAsync">
+                <svg><use href="/icons/sprite.svg#refresh" /></svg>
+            </button>
+        </div>
+    }
+    else
+    {
+        var statistics = ViewModel.Statistics ?? AccountStatisticsDto.Empty;
+        <div class="accounts-statistics-kpis">
+            <div class="accounts-statistics-kpi" data-statistics-kpi="Total">
+                <span>@Localizer["AccountsStatistics_TotalBalance"]</span>
+                <strong>@FormatCurrency(statistics.TotalBalance)</strong>
+            </div>
+            <div class="accounts-statistics-kpi" data-statistics-kpi="Year">
+                <span>@Localizer["AccountsStatistics_YearToDateChange"]</span>
+                <strong>@FormatCurrency(statistics.YearToDateChange)</strong>
+            </div>
+            <div class="accounts-statistics-kpi" data-statistics-kpi="Month">
+                <span>@Localizer["AccountsStatistics_MonthToDateChange"]</span>
+                <strong>@FormatCurrency(statistics.MonthToDateChange)</strong>
+            </div>
+        </div>
+
+        <div class="accounts-statistics-charts">
+            <div class="accounts-statistics-chart">
+                <h5>@Localizer["AccountsStatistics_ByAccountType"] <small>@Localizer["AccountsStatistics_GrossMetric"]</small></h5>
+                @if (statistics.AccountCount == 0)
+                {
+                    <p class="accounts-statistics-empty">@Localizer["AccountsStatistics_EmptyChart"]</p>
+                }
+                else
+                {
+                    <DonutChart Slices="@BuildSlices(statistics.ByAccountType, ResolveAccountTypeLabel)"
+                                CenterValue="@FormatCurrency(statistics.TotalBalance)"
+                                CenterLabel="@Localizer["AccountsStatistics_NetBalance"]"
+                                EmptyText="@Localizer["AccountsStatistics_NoGrossVolume"]"
+                                ShowTrackWhenEmpty="false"
+                                AriaLabel="@BuildChartAria(Localizer["AccountsStatistics_ByAccountType"], statistics.TotalBalance)" />
+                }
+            </div>
+            <div class="accounts-statistics-chart">
+                <h5>@Localizer["AccountsStatistics_ByBankContact"] <small>@Localizer["AccountsStatistics_GrossMetric"]</small></h5>
+                @if (statistics.AccountCount == 0)
+                {
+                    <p class="accounts-statistics-empty">@Localizer["AccountsStatistics_EmptyChart"]</p>
+                }
+                else
+                {
+                    <DonutChart Slices="@BuildSlices(statistics.ByBankContact, ResolveBankContactLabel)"
+                                CenterValue="@FormatCurrency(statistics.TotalBalance)"
+                                CenterLabel="@Localizer["AccountsStatistics_NetBalance"]"
+                                EmptyText="@Localizer["AccountsStatistics_NoGrossVolume"]"
+                                ShowTrackWhenEmpty="false"
+                                AriaLabel="@BuildChartAria(Localizer["AccountsStatistics_ByBankContact"], statistics.TotalBalance)" />
+                }
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    private static readonly string[] KpiKeys = ["Total", "Year", "Month"];
+
+    /// <summary>
+    /// View model supplying account statistics data and actions.
+    /// </summary>
+    [Parameter, EditorRequired] public BankAccountListViewModel ViewModel { get; set; } = null!;
+
+    private bool IsBusy => ViewModel.StatisticsState is AccountStatisticsLoadState.Loading or AccountStatisticsLoadState.NotStarted;
+
+    private string StateName => ViewModel.StatisticsState.ToString();
+
+    private IReadOnlyList<DonutChart.DonutChartSlice> BuildSlices(IReadOnlyList<AccountBalanceGroupDto> groups, Func<AccountBalanceGroupDto, string> labelSelector)
+    {
+        var totalGross = ViewModel.Statistics?.TotalGrossMagnitude ?? 0m;
+        return groups.Select(g =>
+        {
+            var percent = totalGross > 0m && g.GrossMagnitude > 0m ? g.GrossMagnitude / totalGross : 0m;
+            var legend = $"{FormatCurrency(g.NetBalance)} · {percent.ToString("P1", CultureInfo.CurrentUICulture)}";
+            var details = new[]
+            {
+                $"{Localizer["AccountsStatistics_PositiveBalance"]}: {FormatCurrency(g.PositiveBalance)}",
+                $"{Localizer["AccountsStatistics_NegativeBalance"]}: {FormatCurrency(g.NegativeBalanceMagnitude)}",
+                $"{Localizer["AccountsStatistics_ZeroBalances"]}: {g.ZeroBalanceCount}",
+                $"{Localizer["AccountsStatistics_AccountCount"]}: {g.AccountCount}"
+            };
+            var aria = $"{labelSelector(g)}. {Localizer["AccountsStatistics_GrossMetric"]}: {percent.ToString("P1", CultureInfo.CurrentUICulture)}. {Localizer["AccountsStatistics_NetBalance"]}: {FormatCurrency(g.NetBalance)}.";
+            return new DonutChart.DonutChartSlice(labelSelector(g), g.GrossMagnitude, legend, details, aria, g.Key);
+        }).ToList();
+    }
+
+    private string ResolveAccountTypeLabel(AccountBalanceGroupDto group)
+    {
+        return Enum.TryParse<AccountType>(group.Key, out var accountType)
+            ? Localizer[$"EnumType_AccountType_{accountType}"].Value
+            : group.Key;
+    }
+
+    private string ResolveBankContactLabel(AccountBalanceGroupDto group)
+    {
+        return string.IsNullOrWhiteSpace(group.DisplayName)
+            ? Localizer["AccountsStatistics_UnknownBankContact"].Value
+            : group.DisplayName;
+    }
+
+    private string BuildChartAria(string chartTitle, decimal netBalance)
+    {
+        return $"{chartTitle}. {Localizer["AccountsStatistics_GrossMetric"]}. {Localizer["AccountsStatistics_NetBalance"]}: {FormatCurrency(netBalance)}.";
+    }
+
+    private static string FormatCurrency(decimal value) => value.ToString("C", CultureInfo.CurrentCulture);
+}

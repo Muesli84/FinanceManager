@@ -10,13 +10,29 @@ namespace FinanceManager.Infrastructure.Accounts;
 /// </summary>
 public sealed class AccountService : IAccountService
 {
+    private const string UnknownBankContactKey = "unknown";
     private readonly AppDbContext _db;
+    private readonly IAccountStatisticsPeriodProvider _periodProvider;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AccountService"/> class.
     /// </summary>
     /// <param name="db">Database context used to persist accounts and related entities.</param>
-    public AccountService(AppDbContext db) => _db = db;
+    public AccountService(AppDbContext db)
+        : this(db, new UtcAccountStatisticsPeriodProvider())
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AccountService"/> class.
+    /// </summary>
+    /// <param name="db">Database context used to persist accounts and related entities.</param>
+    /// <param name="periodProvider">Provider for local period boundaries used in statistics.</param>
+    public AccountService(AppDbContext db, IAccountStatisticsPeriodProvider periodProvider)
+    {
+        _db = db;
+        _periodProvider = periodProvider;
+    }
 
     /// <summary>
     /// Creates a new account for the specified owner with default savings plan expectation (<see cref="SavingsPlanExpectation.Optional"/>).
@@ -208,37 +224,19 @@ public sealed class AccountService : IAccountService
     /// <param name="ownerUserId">Owner user identifier.</param>
     /// <param name="skip">Items to skip for paging.</param>
     /// <param name="take">Items to take for paging.</param>
+    /// <param name="bankContactId">Optional bank contact id filter.</param>
+    /// <param name="q">Optional search text for account name or normalized IBAN.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>List of <see cref="AccountDto"/> instances.</returns>
-    public async Task<IReadOnlyList<AccountDto>> ListAsync(Guid ownerUserId, int skip, int take, CancellationToken ct)
+    public async Task<IReadOnlyList<AccountDto>> ListAsync(Guid ownerUserId, int skip, int take, Guid? bankContactId, string? q, CancellationToken ct)
     {
-        // Left join Accounts -> Contacts -> ContactCategories to resolve fallback symbol attachment id
-        var query = from a in _db.Accounts.AsNoTracking()
-                    where a.OwnerUserId == ownerUserId
-                    join c in _db.Contacts.AsNoTracking() on a.BankContactId equals c.Id into cj
-                    from c in cj.DefaultIfEmpty()
-                    join cat in _db.ContactCategories.AsNoTracking() on c.CategoryId equals cat.Id into catj
-                    from cat in catj.DefaultIfEmpty()
-                    orderby a.Name
-                    select new AccountDto(
-                        a.Id,
-                        a.Name,
-                        a.Type,
-                        a.Iban,
-                        a.CurrentBalance,
-                        a.BankContactId,
-                        // Treat Guid.Empty as not present and fall back to contact then category
-                        (a.SymbolAttachmentId.HasValue && a.SymbolAttachmentId!.Value != Guid.Empty) ? a.SymbolAttachmentId
-                            : (c != null && c.SymbolAttachmentId.HasValue && c.SymbolAttachmentId.Value != Guid.Empty) ? c.SymbolAttachmentId
-                            : cat.SymbolAttachmentId,
-                        a.SavingsPlanExpectation,
-                        a.SecurityProcessingEnabled
-                    )
-                    {
-                        IsCollectionAccount = a.IsCollectionAccount
-                    };
-
-        var dtos = await query.Skip(skip).Take(take).ToListAsync(ct);
+        var scopedAccounts = await LoadAccountScopeAsync(ownerUserId, bankContactId, q, ct);
+        var dtos = scopedAccounts
+            .OrderBy(a => a.Name, StringComparer.InvariantCultureIgnoreCase)
+            .Skip(skip)
+            .Take(take)
+            .Select(a => a.ToDto())
+            .ToList();
 
         // Load linked IBANs for all returned accounts in a single query
         var accountIds = dtos.Select(d => d.Id).ToList();
@@ -260,6 +258,60 @@ public sealed class AccountService : IAccountService
         }
 
         return dtos;
+    }
+
+    /// <inheritdoc/>
+    public async Task<AccountStatisticsDto> GetStatisticsAsync(Guid ownerUserId, string? q, CancellationToken ct)
+    {
+        var scopedAccounts = await LoadAccountScopeAsync(ownerUserId, bankContactId: null, q, ct);
+
+        if (scopedAccounts.Count == 0)
+        {
+            return AccountStatisticsDto.Empty;
+        }
+
+        var accountIds = scopedAccounts.Select(a => a.Id).ToList();
+        var period = await _periodProvider.GetPeriodAsync(ownerUserId, ct);
+
+        var yearToDate = await _db.Postings
+            .AsNoTracking()
+            .Where(p => p.Kind == PostingKind.Bank
+                && p.AccountId.HasValue
+                && accountIds.Contains(p.AccountId.Value)
+                && p.BookingDate >= period.YearStart
+                && p.BookingDate < period.TomorrowExclusive)
+            .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
+
+        var monthToDate = await _db.Postings
+            .AsNoTracking()
+            .Where(p => p.Kind == PostingKind.Bank
+                && p.AccountId.HasValue
+                && accountIds.Contains(p.AccountId.Value)
+                && p.BookingDate >= period.MonthStart
+                && p.BookingDate < period.TomorrowExclusive)
+            .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
+
+        var byType = BuildGroups(
+            scopedAccounts,
+            a => a.Type.ToString(),
+            a => null);
+
+        var byContact = BuildGroups(
+            scopedAccounts,
+            a => a.StatisticsBankContactId?.ToString("D") ?? UnknownBankContactKey,
+            a => a.StatisticsBankContactName);
+
+        var totalBalance = scopedAccounts.Sum(a => a.CurrentBalance);
+        var totalGrossMagnitude = byType.Sum(g => g.GrossMagnitude);
+
+        return new AccountStatisticsDto(
+            scopedAccounts.Count,
+            totalBalance,
+            yearToDate,
+            monthToDate,
+            totalGrossMagnitude,
+            byType,
+            byContact);
     }
 
     /// <summary>
@@ -413,5 +465,117 @@ public sealed class AccountService : IAccountService
             .Where(li => li.AccountId == accountId)
             .Select(li => li.Iban)
             .ToListAsync(ct);
+    }
+
+    private async Task<List<AccountScopeRow>> LoadAccountScopeAsync(Guid ownerUserId, Guid? bankContactId, string? q, CancellationToken ct)
+    {
+        var accountQuery = ApplyOwnerAndBankContactFilters(_db.Accounts.AsNoTracking(), ownerUserId, bankContactId);
+        var search = AccountSearchText.Normalize(q);
+
+        // Owner and bank-contact predicates stay database-side. The search contract is applied once here
+        // in the server process to keep Unicode name matching and normalized IBAN matching provider-stable.
+        var rows = await (
+            from a in accountQuery
+            join c in _db.Contacts.AsNoTracking() on a.BankContactId equals c.Id into contacts
+            from c in contacts.DefaultIfEmpty()
+            join cat in _db.ContactCategories.AsNoTracking() on c.CategoryId equals cat.Id into categories
+            from cat in categories.DefaultIfEmpty()
+            select new AccountScopeRow(
+                a.Id,
+                a.Name,
+                a.Iban,
+                a.Type,
+                a.CurrentBalance,
+                a.BankContactId,
+                (a.SymbolAttachmentId.HasValue && a.SymbolAttachmentId.Value != Guid.Empty) ? a.SymbolAttachmentId
+                    : (c != null && c.SymbolAttachmentId.HasValue && c.SymbolAttachmentId.Value != Guid.Empty) ? c.SymbolAttachmentId
+                    : cat.SymbolAttachmentId,
+                a.SavingsPlanExpectation,
+                a.SecurityProcessingEnabled,
+                a.IsCollectionAccount,
+                c != null && c.OwnerUserId == ownerUserId && c.Type == ContactType.Bank ? a.BankContactId : null,
+                c != null && c.OwnerUserId == ownerUserId && c.Type == ContactType.Bank ? c.Name : null))
+            .ToListAsync(ct);
+
+        return search == null
+            ? rows
+            : rows.Where(a => search.Matches(a.Name, a.Iban)).ToList();
+    }
+
+    private static IQueryable<Domain.Accounts.Account> ApplyOwnerAndBankContactFilters(IQueryable<Domain.Accounts.Account> query, Guid ownerUserId, Guid? bankContactId)
+    {
+        query = query.Where(a => a.OwnerUserId == ownerUserId);
+        if (bankContactId.HasValue)
+        {
+            query = query.Where(a => a.BankContactId == bankContactId.Value);
+        }
+
+        return query;
+    }
+
+    private static IReadOnlyList<AccountBalanceGroupDto> BuildGroups(
+        IReadOnlyList<AccountScopeRow> accounts,
+        Func<AccountScopeRow, string> keySelector,
+        Func<AccountScopeRow, string?> displayNameSelector)
+    {
+        return accounts
+            .GroupBy(keySelector)
+            .Select(g =>
+            {
+                var positive = g.Where(a => a.CurrentBalance > 0m).Sum(a => a.CurrentBalance);
+                var negative = g.Where(a => a.CurrentBalance < 0m).Sum(a => Math.Abs(a.CurrentBalance));
+                var gross = positive + negative;
+                return new AccountBalanceGroupDto(
+                    g.Key,
+                    g.Select(displayNameSelector).FirstOrDefault(name => !string.IsNullOrWhiteSpace(name)),
+                    positive - negative,
+                    positive,
+                    negative,
+                    gross,
+                    g.Count(),
+                    g.Count(a => a.CurrentBalance == 0m));
+            })
+            .OrderByDescending(g => g.GrossMagnitude)
+            .ThenBy(g => g.Key, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private sealed record AccountScopeRow(
+        Guid Id,
+        string Name,
+        string? Iban,
+        AccountType Type,
+        decimal CurrentBalance,
+        Guid BankContactId,
+        Guid? SymbolAttachmentId,
+        SavingsPlanExpectation SavingsPlanExpectation,
+        bool SecurityProcessingEnabled,
+        bool IsCollectionAccount,
+        Guid? StatisticsBankContactId,
+        string? StatisticsBankContactName)
+    {
+        public AccountDto ToDto()
+            => new(
+                Id,
+                Name,
+                Type,
+                Iban,
+                CurrentBalance,
+                BankContactId,
+                SymbolAttachmentId,
+                SavingsPlanExpectation,
+                SecurityProcessingEnabled)
+            {
+                IsCollectionAccount = IsCollectionAccount
+            };
+    }
+
+    private sealed class UtcAccountStatisticsPeriodProvider : IAccountStatisticsPeriodProvider
+    {
+        public Task<AccountStatisticsPeriod> GetPeriodAsync(Guid ownerUserId, CancellationToken ct)
+        {
+            var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Unspecified);
+            return Task.FromResult(new AccountStatisticsPeriod(today, new DateTime(today.Year, 1, 1), new DateTime(today.Year, today.Month, 1), today.AddDays(1)));
+        }
     }
 }

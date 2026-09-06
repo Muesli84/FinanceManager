@@ -45,6 +45,8 @@ else
                      EndOfListText="@Localizer["List_Result_EndOfList"]"
                      ItemClick="OnItemClick" />
 
+    <EmbeddedPanelHost TKeyValue="object" Provider="@(_provider as BaseViewModel)" Position="EmbeddedPanelPosition.AfterList" />
+
     
     @* Generic overlay rendering for list providers *@
     @if (_overlayVisible && _overlaySpec is not null)

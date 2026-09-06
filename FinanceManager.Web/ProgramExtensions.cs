@@ -412,6 +412,24 @@ namespace FinanceManager.Web
                 }
             }
 
+            if (app.Configuration.GetValue<bool>("E2E:AccountStatisticsFaultInjectionEnabled"))
+            {
+                var accountStatisticsFaultFile = app.Configuration["E2E:AccountStatisticsFaultFile"];
+                app.Use(async (context, next) =>
+                {
+                    if (context.Request.Path.Equals("/api/accounts/statistics", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(accountStatisticsFaultFile)
+                        && File.Exists(accountStatisticsFaultFile))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                        await context.Response.WriteAsJsonAsync(new { error = "E2E_AccountStatisticsFault", message = "Injected account statistics failure." });
+                        return;
+                    }
+
+                    await next();
+                });
+            }
+
             app.Use(async (context, next) =>
             {
                 if (HelpSecurityPolicy.IsHelpPath(context.Request.Path))

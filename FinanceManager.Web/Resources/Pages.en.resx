@@ -2814,4 +2814,64 @@
   <data name="BK_Progress" xml:space="preserve">
     <value>Booking</value>
   </data>
+  <data name="AccountsStatistics_Title" xml:space="preserve">
+    <value>Bank account statistics</value>
+  </data>
+  <data name="AccountsStatistics_TotalBalance" xml:space="preserve">
+    <value>Total balance</value>
+  </data>
+  <data name="AccountsStatistics_YearToDateChange" xml:space="preserve">
+    <value>Current year change</value>
+  </data>
+  <data name="AccountsStatistics_MonthToDateChange" xml:space="preserve">
+    <value>Current month change</value>
+  </data>
+  <data name="AccountsStatistics_ByAccountType" xml:space="preserve">
+    <value>By account type</value>
+  </data>
+  <data name="AccountsStatistics_ByBankContact" xml:space="preserve">
+    <value>By bank contact</value>
+  </data>
+  <data name="AccountsStatistics_GrossMetric" xml:space="preserve">
+    <value>Share of absolute balance volume</value>
+  </data>
+  <data name="AccountsStatistics_NetBalance" xml:space="preserve">
+    <value>Net balance</value>
+  </data>
+  <data name="AccountsStatistics_PositiveBalance" xml:space="preserve">
+    <value>Positive balances</value>
+  </data>
+  <data name="AccountsStatistics_NegativeBalance" xml:space="preserve">
+    <value>Negative balances</value>
+  </data>
+  <data name="AccountsStatistics_ZeroBalances" xml:space="preserve">
+    <value>Zero balances</value>
+  </data>
+  <data name="AccountsStatistics_AccountCount" xml:space="preserve">
+    <value>Accounts</value>
+  </data>
+  <data name="AccountsStatistics_UnknownBankContact" xml:space="preserve">
+    <value>Unknown bank contact</value>
+  </data>
+  <data name="AccountsStatistics_EmptyChart" xml:space="preserve">
+    <value>No accounts for this selection</value>
+  </data>
+  <data name="AccountsStatistics_NoGrossVolume" xml:space="preserve">
+    <value>No balance volume</value>
+  </data>
+  <data name="AccountsStatistics_Error" xml:space="preserve">
+    <value>Statistics could not be loaded.</value>
+  </data>
+  <data name="AccountsStatistics_Retry" xml:space="preserve">
+    <value>Reload</value>
+  </data>
+  <data name="AccountsStatistics_Kpi_Total_Loading" xml:space="preserve">
+    <value>Total balance is loading</value>
+  </data>
+  <data name="AccountsStatistics_Kpi_Year_Loading" xml:space="preserve">
+    <value>Year value is loading</value>
+  </data>
+  <data name="AccountsStatistics_Kpi_Month_Loading" xml:space="preserve">
+    <value>Month value is loading</value>
+  </data>
 </root>

@@ -38,31 +38,59 @@ public sealed class AccountsController : ControllerBase
     }
 
     /// <summary>
-    /// Returns a (paged) list of accounts owned by the current user. Optional filter by bank contact id.
+    /// Returns a (paged) list of accounts owned by the current user. Optional filter by bank contact id and search text.
     /// </summary>
     /// <param name="skip">Number of items to skip for paging.</param>
     /// <param name="take">Maximum number of items to return (clamped to 1..200).</param>
     /// <param name="bankContactId">Optional bank contact identifier to filter the accounts.</param>
+    /// <param name="q">Optional search text for account name or normalized IBAN.</param>
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 200 with a list of <see cref="AccountDto"/> matching the criteria.</returns>
     /// <exception cref="Exception">May throw on unexpected server errors which are translated to HTTP 500.</exception>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AccountDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> ListAsync([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? bankContactId = null, CancellationToken ct = default)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ListAsync([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? bankContactId = null, [FromQuery] string? q = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
         try
         {
-            var list = await _accounts.ListAsync(_current.UserId, skip, take, ct);
-            if (bankContactId.HasValue)
-            {
-                list = list.Where(a => a.BankContactId == bankContactId.Value).ToList();
-            }
+            var list = await _accounts.ListAsync(_current.UserId, skip, take, bankContactId, q, ct);
             return Ok(list);
+        }
+        catch (ArgumentOutOfRangeException ex) when (ex.ParamName == "q")
+        {
+            return BadRequest(new { error = "Err_Invalid_q", message = ex.Message });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "List accounts failed");
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Returns unpaged account statistics for the current user and optional search text.
+    /// </summary>
+    /// <param name="q">Optional search text for account name or normalized IBAN.</param>
+    /// <param name="ct">Cancellation token to cancel the operation.</param>
+    /// <returns>HTTP 200 with statistics for the filtered account scope.</returns>
+    [HttpGet("statistics")]
+    [ProducesResponseType(typeof(AccountStatisticsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> StatisticsAsync([FromQuery] string? q = null, CancellationToken ct = default)
+    {
+        try
+        {
+            return Ok(await _accounts.GetStatisticsAsync(_current.UserId, q, ct));
+        }
+        catch (ArgumentOutOfRangeException ex) when (ex.ParamName == "q")
+        {
+            return BadRequest(new { error = "Err_Invalid_q", message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Get account statistics failed");
             return Problem("Unexpected error", statusCode: 500);
         }
     }
