@@ -39,7 +39,12 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Render the embedded panel after the main card content area.
         /// </summary>
-        AfterCard
+        AfterCard,
+
+        /// <summary>
+        /// Render the embedded panel after the main list content area.
+        /// </summary>
+        AfterList
     }
 
     /// <summary>
@@ -250,6 +255,14 @@ namespace FinanceManager.Web.ViewModels.Common
         /// </summary>
         /// <param name="spec">Specification describing the embedded panel to show.</param>
         protected void RaiseUiEmbeddedPanelRequested(EmbeddedPanelSpec spec) => UiActionRequested?.Invoke(this, new UiActionEventArgs("EmbeddedPanel", spec));
+
+        /// <summary>
+        /// Returns embedded panels that should be rendered whenever a host for the specified position is present.
+        /// Derived view models can override this to expose page-local dynamic content without the page knowing the concrete view model type.
+        /// </summary>
+        /// <param name="position">Position requested by the page host.</param>
+        /// <returns>Embedded panel specifications for the requested position.</returns>
+        public virtual IReadOnlyList<EmbeddedPanelSpec> GetEmbeddedPanelSpecs(EmbeddedPanelPosition position) => Array.Empty<EmbeddedPanelSpec>();
 
         /// <summary>
         /// Background task types that a page should show for this ViewModel. Default: none.

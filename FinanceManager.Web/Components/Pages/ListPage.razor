@@ -7,7 +7,6 @@
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Web.Extensions
 @using FinanceManager.Web.ViewModels
-@using FinanceManager.Web.ViewModels.Accounts
 @using FinanceManager.Web.ViewModels.Common
 @using System.Resources
 @using System.Globalization
@@ -46,10 +45,7 @@ else
                      EndOfListText="@Localizer["List_Result_EndOfList"]"
                      ItemClick="OnItemClick" />
 
-    @if (_provider is BankAccountListViewModel bankAccounts)
-    {
-        <AccountsStatisticsTile ViewModel="bankAccounts" />
-    }
+    <EmbeddedPanelHost TKeyValue="object" Provider="@(_provider as BaseViewModel)" Position="EmbeddedPanelPosition.AfterList" />
 
     
     @* Generic overlay rendering for list providers *@

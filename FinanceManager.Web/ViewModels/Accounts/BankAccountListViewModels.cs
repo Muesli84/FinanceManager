@@ -142,6 +142,23 @@ namespace FinanceManager.Web.ViewModels.Accounts
             return new List<UiRibbonRegister> { new UiRibbonRegister(UiRibbonRegisterKind.Actions, tabs) };
         }
 
+        /// <inheritdoc />
+        public override IReadOnlyList<BaseViewModel.EmbeddedPanelSpec> GetEmbeddedPanelSpecs(EmbeddedPanelPosition position)
+        {
+            if (position != EmbeddedPanelPosition.AfterList)
+            {
+                return Array.Empty<BaseViewModel.EmbeddedPanelSpec>();
+            }
+
+            return
+            [
+                new BaseViewModel.EmbeddedPanelSpec(
+                    typeof(FinanceManager.Web.Components.Shared.AccountsStatisticsTile),
+                    new Dictionary<string, object?> { ["ViewModel"] = this },
+                    EmbeddedPanelPosition.AfterList)
+            ];
+        }
+
         private void StartStatisticsLoad(string? q)
         {
             _statisticsCts?.Cancel();
