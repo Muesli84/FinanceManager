@@ -39,10 +39,19 @@ public interface IApiClient
     /// <param name="skip">Number of items to skip for paging (>= 0).</param>
     /// <param name="take">Maximum number of items to return.</param>
     /// <param name="bankContactId">Optional bank contact id to filter accounts.</param>
+    /// <param name="q">Optional account search text.</param>
     /// <param name="ct">Cancellation token to cancel the request.</param>
     /// <returns>Read-only list of <see cref="AccountDto"/>.</returns>
     /// <exception cref="System.Net.Http.HttpRequestException">When the HTTP request fails.</exception>
-    Task<IReadOnlyList<AccountDto>> GetAccountsAsync(int skip = 0, int take = 100, Guid? bankContactId = null, CancellationToken ct = default);
+    Task<IReadOnlyList<AccountDto>> GetAccountsAsync(int skip = 0, int take = 100, Guid? bankContactId = null, string? q = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets account statistics for the current user and optional account search text.
+    /// </summary>
+    /// <param name="q">Optional account search text.</param>
+    /// <param name="ct">Cancellation token to cancel the request.</param>
+    /// <returns>Statistics for the filtered account scope.</returns>
+    Task<AccountStatisticsDto> GetAccountStatisticsAsync(string? q = null, CancellationToken ct = default);
 
     /// <summary>
     /// Gets a single account by id.

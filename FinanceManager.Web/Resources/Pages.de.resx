@@ -2814,4 +2814,64 @@
   <data name="BK_Progress" xml:space="preserve">
     <value>Buche</value>
   </data>
+  <data name="AccountsStatistics_Title" xml:space="preserve">
+    <value>Bankkonten-Statistik</value>
+  </data>
+  <data name="AccountsStatistics_TotalBalance" xml:space="preserve">
+    <value>Gesamtsaldo</value>
+  </data>
+  <data name="AccountsStatistics_YearToDateChange" xml:space="preserve">
+    <value>Veränderung aktuelles Jahr</value>
+  </data>
+  <data name="AccountsStatistics_MonthToDateChange" xml:space="preserve">
+    <value>Veränderung aktueller Monat</value>
+  </data>
+  <data name="AccountsStatistics_ByAccountType" xml:space="preserve">
+    <value>Nach Kontoart</value>
+  </data>
+  <data name="AccountsStatistics_ByBankContact" xml:space="preserve">
+    <value>Nach Bankkontakt</value>
+  </data>
+  <data name="AccountsStatistics_GrossMetric" xml:space="preserve">
+    <value>Anteil am absoluten Saldenvolumen</value>
+  </data>
+  <data name="AccountsStatistics_NetBalance" xml:space="preserve">
+    <value>Nettosaldo</value>
+  </data>
+  <data name="AccountsStatistics_PositiveBalance" xml:space="preserve">
+    <value>Positive Salden</value>
+  </data>
+  <data name="AccountsStatistics_NegativeBalance" xml:space="preserve">
+    <value>Negative Salden</value>
+  </data>
+  <data name="AccountsStatistics_ZeroBalances" xml:space="preserve">
+    <value>Nullsalden</value>
+  </data>
+  <data name="AccountsStatistics_AccountCount" xml:space="preserve">
+    <value>Konten</value>
+  </data>
+  <data name="AccountsStatistics_UnknownBankContact" xml:space="preserve">
+    <value>Unbekannter Bankkontakt</value>
+  </data>
+  <data name="AccountsStatistics_EmptyChart" xml:space="preserve">
+    <value>Keine Konten für diese Auswahl</value>
+  </data>
+  <data name="AccountsStatistics_NoGrossVolume" xml:space="preserve">
+    <value>Kein Saldenvolumen</value>
+  </data>
+  <data name="AccountsStatistics_Error" xml:space="preserve">
+    <value>Statistik konnte nicht geladen werden.</value>
+  </data>
+  <data name="AccountsStatistics_Retry" xml:space="preserve">
+    <value>Erneut laden</value>
+  </data>
+  <data name="AccountsStatistics_Kpi_Total_Loading" xml:space="preserve">
+    <value>Gesamtsaldo wird geladen</value>
+  </data>
+  <data name="AccountsStatistics_Kpi_Year_Loading" xml:space="preserve">
+    <value>Jahreswert wird geladen</value>
+  </data>
+  <data name="AccountsStatistics_Kpi_Month_Loading" xml:space="preserve">
+    <value>Monatswert wird geladen</value>
+  </data>
 </root>

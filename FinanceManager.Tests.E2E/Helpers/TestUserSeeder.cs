@@ -35,19 +35,23 @@ public sealed class TestUserSeeder
     /// <param name="username">The username to seed or look up.</param>
     /// <param name="password">The plaintext password to hash and store when a new user is created.</param>
     /// <param name="isAdmin">Whether the user should be granted the "Admin" Identity role.</param>
+    /// <param name="timeZoneId">Optional IANA time zone identifier to persist for the user.</param>
     /// <returns>A task that resolves to the existing or newly created <see cref="User"/>.</returns>
-    public async Task<User> EnsureUserAsync(string username, string password, bool isAdmin = false)
+    public async Task<User> EnsureUserAsync(string username, string password, bool isAdmin = false, string? timeZoneId = null)
     {
         using var db = CreateContext();
 
         var existing = await db.Users.FirstOrDefaultAsync(u => u.UserName == username);
         if (existing != null)
         {
+            existing.SetTimeZoneId(timeZoneId);
             await EnsureSelfContactInternalAsync(db, existing.Id, $"Self {username}");
             if (isAdmin)
             {
                 await EnsureAdminRoleAssignedAsync(db, existing.Id);
             }
+
+            await db.SaveChangesAsync();
             return existing;
         }
 
@@ -58,6 +62,7 @@ public sealed class TestUserSeeder
             ConcurrencyStamp = Guid.NewGuid().ToString("N"),
             NormalizedUserName = username.ToUpperInvariant(),
         };
+        user.SetTimeZoneId(timeZoneId);
 
         db.Users.Add(user);
         await db.SaveChangesAsync();

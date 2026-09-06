@@ -12,6 +12,7 @@ public sealed class PlaywrightBrowserSession : IAsyncDisposable
     private readonly string? _artifactPrefix;
     private readonly bool _artifactCaptureEnabled;
     private readonly bool _traceEnabled;
+    private readonly Func<ValueTask>? _onDispose;
     private readonly List<string> _browserMessages = new();
 
     /// <summary>
@@ -26,12 +27,14 @@ public sealed class PlaywrightBrowserSession : IAsyncDisposable
     /// </param>
     /// <param name="artifactCaptureEnabled">Whether to capture a screenshot, HTML snapshot, and browser console/error log on disposal.</param>
     /// <param name="traceEnabled">Whether to stop and save a Playwright trace on disposal.</param>
-    public PlaywrightBrowserSession(IBrowserContext context, IPage page, string? artifactPrefix, bool artifactCaptureEnabled, bool traceEnabled)
+    /// <param name="onDispose">Optional cleanup callback invoked when the session is disposed.</param>
+    public PlaywrightBrowserSession(IBrowserContext context, IPage page, string? artifactPrefix, bool artifactCaptureEnabled, bool traceEnabled, Func<ValueTask>? onDispose = null)
     {
         _context = context;
         _artifactPrefix = artifactPrefix;
         _artifactCaptureEnabled = artifactCaptureEnabled;
         _traceEnabled = traceEnabled;
+        _onDispose = onDispose;
         Page = page;
 
         if (_artifactCaptureEnabled)
@@ -82,6 +85,16 @@ public sealed class PlaywrightBrowserSession : IAsyncDisposable
             // Artifact capture must not hide the actual test failure.
         }
 
-        await _context.DisposeAsync();
+        try
+        {
+            await _context.DisposeAsync();
+        }
+        finally
+        {
+            if (_onDispose is not null)
+            {
+                await _onDispose();
+            }
+        }
     }
 }

@@ -24,7 +24,11 @@ internal sealed class StubAccountService : IAccountService
         => throw new NotImplementedException();
 
     /// <inheritdoc/>
-    public Task<IReadOnlyList<AccountDto>> ListAsync(Guid ownerUserId, int skip, int take, CancellationToken ct)
+    public Task<IReadOnlyList<AccountDto>> ListAsync(Guid ownerUserId, int skip, int take, Guid? bankContactId, string? q, CancellationToken ct)
+        => throw new NotImplementedException();
+
+    /// <inheritdoc/>
+    public Task<AccountStatisticsDto> GetStatisticsAsync(Guid ownerUserId, string? q, CancellationToken ct)
         => throw new NotImplementedException();
 
     /// <inheritdoc/>

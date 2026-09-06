@@ -663,7 +663,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
                 {
                     if (kind == PostingKind.Bank) // Bank
                     {
-                        var acc = await _api.GetAccountsAsync(skip: 0, take: 1000, bankContactId: null, ct);
+                        var acc = await _api.GetAccountsAsync(skip: 0, take: 1000, bankContactId: null, q: null, ct);
                         list = acc.Select(a => new SimpleOption { Id = a.Id, Name = a.Name }).ToList();
                     }
                     else if (kind == PostingKind.Contact) // Contact
