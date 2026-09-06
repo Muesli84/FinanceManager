@@ -104,9 +104,14 @@ public sealed class MonthlyBudgetExpectationPosting
     /// <summary>
     /// Gets the sum of the amounts currently assigned to this occurrence.
     /// </summary>
-    /// <param name="p">The p.</param>
     /// <returns>The result.</returns>
-    public decimal SumAssignedAmount => _assignedPostings.Sum(p => p.Amount);
+    public decimal SumAssignedAmount
+    {
+        get
+        {
+            return _assignedPostings.Sum(p => p.Amount);
+        }
+    }
 
     /// <summary>
     /// Gets the remaining capacity (absolute value) of this occurrence before it is considered exhausted.
@@ -116,11 +121,13 @@ public sealed class MonthlyBudgetExpectationPosting
 
     // Clears all currently assigned postings, allowing re-assignment (used by the finish phase when
     // several occurrences for the same purpose need to be re-assigned in posting-date order).
-    internal void Reset() => _assignedPostings.Clear();
+    internal void Reset()
+        => _assignedPostings.Clear();
 
     // Records a posting that matched this occurrence's source/period/pattern but could not be assigned
     // to it (see UnvaluedMatchedPostings).
-    internal void AddUnvaluedMatch(MonthlyBudgetRealization posting) => _unvaluedMatchedPostings.Add(posting);
+    internal void AddUnvaluedMatch(MonthlyBudgetRealization posting)
+        => _unvaluedMatchedPostings.Add(posting);
 
     // Assigns as much of 'posting' as fits into RemainingCapacity. Returns the leftover amount
     // (same sign as posting's amount) that could not be absorbed.

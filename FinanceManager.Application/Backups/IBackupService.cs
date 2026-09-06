@@ -30,7 +30,6 @@ public sealed record BackupApplyResult(BackupApplyStatus Status, string? Message
     public static BackupApplyResult Succeeded() => new(BackupApplyStatus.Succeeded);
     /// <summary>Creates a not-found restore result.</summary>
     /// <param name="message">The message.</param>
-    /// <param name="message">The message.</param>
     /// <returns>The result.</returns>
     public static BackupApplyResult NotFound(string? message = null) => new(BackupApplyStatus.NotFound, message);
     /// <summary>Creates an invalid-backup restore result.</summary>

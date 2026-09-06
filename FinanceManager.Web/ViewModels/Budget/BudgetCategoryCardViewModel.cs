@@ -108,7 +108,8 @@ public sealed class BudgetCategoryCardViewModel : BaseCardViewModel<(string Key,
     protected override bool IsSymbolUploadAllowed() => false;
 
     /// <inheritdoc />
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.None, Guid.Empty);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.None, Guid.Empty);
 
     /// <inheritdoc />
     protected override Task AssignNewSymbolAsync(Guid? attachmentId) => Task.CompletedTask;

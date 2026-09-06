@@ -59,13 +59,9 @@ public sealed class SavingsPlanCardViewModel : BaseCardViewModel<(string Key, st
     /// <summary>
     /// Editable model used to create or update a savings plan.
     /// </summary>
-    /// <param name="null">The null.</param>
-    /// <param name="null">The null.</param>
-    /// <param name="null">The null.</param>
-    /// <param name="null">The null.</param>
-    /// <param name="null">The null.</param>
     /// <returns>The result.</returns>
-    public SavingsPlanCreateRequest Model { get; private set; } = new(string.Empty, SavingsPlanType.OneTime, null, null, null, null, null);
+    public SavingsPlanCreateRequest Model { get; private set; }
+        = new(string.Empty, SavingsPlanType.OneTime, null, null, null, null, null);
 
     /// <summary>
     /// Optional navigation context returning to a draft id after save.
@@ -698,10 +694,9 @@ public sealed class SavingsPlanCardViewModel : BaseCardViewModel<(string Key, st
     /// <summary>
     /// Returns the parent attachment kind and id used for symbol uploads.
     /// </summary>
-    /// <param name="Kind">The kind.</param>
-    /// <param name="Id">Identifier of the entity.</param>
     /// <returns>Tuple with <see cref="AttachmentEntityKind.SavingsPlan"/> and the parent id (or Guid.Empty).</returns>
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.SavingsPlan, Id == Guid.Empty ? Guid.Empty : Id);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.SavingsPlan, Id == Guid.Empty ? Guid.Empty : Id);
 
     /// <summary>
     /// Assigns a new symbol attachment to the savings plan by calling the API and reloading the entity.

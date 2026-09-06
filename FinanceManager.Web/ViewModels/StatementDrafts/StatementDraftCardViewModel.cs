@@ -318,10 +318,9 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
     /// <summary>
     /// Returns the attachment parent information for symbol assignments. For statement drafts this returns <see cref="Domain.Attachments.AttachmentEntityKind.StatementDraft"/>.
     /// </summary>
-    /// <param name="Kind">The kind.</param>
-    /// <param name="DraftId">The draft id.</param>
     /// <returns>Tuple of attachment kind and parent id.</returns>
-    protected override (Domain.Attachments.AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (Domain.Attachments.AttachmentEntityKind.StatementDraft, DraftId);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(Domain.Attachments.AttachmentEntityKind.StatementDraft, DraftId);
 
     /// <summary>
     /// No-op for statement draft symbols; assignment not supported.
@@ -383,7 +382,8 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
             new UiRibbonAction("SaveQuickEdit", localizer["Ribbon_SaveQuickEdit"].Value, (Loading ? "<svg class='spin'><use href='/icons/sprite.svg#spinner'/></svg>" : "<svg><use href='/icons/sprite.svg#save'/></svg>"), UiRibbonItemSize.Small,
                 // compute Disabled dynamically using embedded list state
                 !(EmbeddedList is StatementDraftEntriesListViewModel sevm && sevm.HasPendingQuickEditChanges() && sevm.QuickEditRowsAreValid() && !Loading),
-                null, new Func<Task>(async () => { await SaveQuickEditAsync(); })) { FileCallback = null, Hidden = !(EmbeddedList is StatementDraftEntriesListViewModel saveEvm && saveEvm.IsQuickEditActive) },
+                null, new Func<Task>(async ()
+                    => { await SaveQuickEditAsync(); })) { FileCallback = null, Hidden = !(EmbeddedList is StatementDraftEntriesListViewModel saveEvm && saveEvm.IsQuickEditActive) },
             new UiRibbonAction("CancelQuickEdit", localizer["Ribbon_CancelQuickEdit"].Value, "<svg><use href='/icons/sprite.svg#close'/></svg>", UiRibbonItemSize.Small, Draft == null, null, new Func<Task>(async () => { await CancelQuickEditAsync(); })) { Hidden = !(EmbeddedList is StatementDraftEntriesListViewModel cancelEvm && cancelEvm.IsQuickEditActive) }
         };
         tabs.Add(new UiRibbonTab(localizer["Ribbon_Group_QuickEdit"].Value, quickEditItems));

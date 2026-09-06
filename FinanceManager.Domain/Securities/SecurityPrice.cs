@@ -70,12 +70,9 @@ public sealed class SecurityPrice
     /// <summary>
     /// Creates a backup DTO for this security price record.
     /// </summary>
-    /// <param name="SecurityId">The security id.</param>
-    /// <param name="Date">The date.</param>
-    /// <param name="Close">The close.</param>
-    /// <param name="CreatedUtc">The created utc.</param>
     /// <returns>A <see cref="SecurityPriceBackupDto"/> containing the serializable state of this price record.</returns>
-    public SecurityPriceBackupDto ToBackupDto() => new SecurityPriceBackupDto(Id, SecurityId, Date, Close, CreatedUtc);
+    public SecurityPriceBackupDto ToBackupDto()
+        => new SecurityPriceBackupDto(Id, SecurityId, Date, Close, CreatedUtc);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity.

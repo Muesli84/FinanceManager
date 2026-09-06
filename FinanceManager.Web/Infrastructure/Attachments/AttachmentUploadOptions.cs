@@ -20,9 +20,14 @@ public sealed class AttachmentUploadOptions
     /// <summary>
     /// Gets the effective maximum upload size after applying fallback and upper bounds.
     /// </summary>
-    /// <param name="MaxSizeBytes">The max size bytes.</param>
     /// <returns>The result.</returns>
-    public long NormalizedMaxSizeBytes => NormalizeMaxSizeBytes(MaxSizeBytes);
+    public long NormalizedMaxSizeBytes
+    {
+        get
+        {
+            return NormalizeMaxSizeBytes(MaxSizeBytes);
+        }
+    }
 
     /// <summary>
     /// Normalizes configured upload size values for all attachment request limits.

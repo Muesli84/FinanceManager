@@ -64,11 +64,9 @@ public sealed class AttachmentCategory
     /// <summary>
     /// Converts this AttachmentCategory to a backup DTO.
     /// </summary>
-    /// <param name="OwnerUserId">The owner user id.</param>
-    /// <param name="Name">The name.</param>
-    /// <param name="IsSystem">The is system.</param>
     /// <returns>A <see cref="AttachmentCategoryBackupDto"/> containing the data required to restore this category.</returns>
-    public AttachmentCategoryBackupDto ToBackupDto() => new AttachmentCategoryBackupDto(Id, OwnerUserId, Name, IsSystem);
+    public AttachmentCategoryBackupDto ToBackupDto()
+        => new AttachmentCategoryBackupDto(Id, OwnerUserId, Name, IsSystem);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity.

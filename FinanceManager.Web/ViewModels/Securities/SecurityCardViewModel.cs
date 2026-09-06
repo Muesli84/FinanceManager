@@ -466,10 +466,9 @@ public sealed class SecurityCardViewModel : BaseCardViewModel<(string Key, strin
     /// <summary>
     /// Returns the parent information used for symbol attachments.
     /// </summary>
-    /// <param name="Kind">The kind.</param>
-    /// <param name="Id">Identifier of the entity.</param>
     /// <returns>Attachment entity kind and the parent id used when uploading symbols.</returns>
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.Security, Id == Guid.Empty ? Guid.Empty : Id);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.Security, Id == Guid.Empty ? Guid.Empty : Id);
 
     /// <summary>
     /// Whether uploading a symbol is allowed in the current state.

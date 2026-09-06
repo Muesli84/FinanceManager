@@ -33,20 +33,19 @@ public sealed record JwtRefreshResult(bool Succeeded, string? Token, DateTime? E
     /// <summary>
     /// Creates a successful refresh result.
     /// </summary>
-    /// <param name="null">The null.</param>
     /// <param name="token">Renewed JWT.</param>
     /// <param name="expiresUtc">Token expiry in UTC.</param>
     /// <returns>A successful refresh result.</returns>
-    public static JwtRefreshResult Success(string token, DateTime expiresUtc) => new(true, token, expiresUtc, null);
+    public static JwtRefreshResult Success(string token, DateTime expiresUtc)
+        => new(true, token, expiresUtc, null);
 
     /// <summary>
     /// Creates a failed refresh result.
     /// </summary>
-    /// <param name="null">The null.</param>
-    /// <param name="null">The null.</param>
     /// <param name="reason">Diagnostic rejection reason.</param>
     /// <returns>A failed refresh result.</returns>
-    public static JwtRefreshResult Fail(string reason) => new(false, null, null, reason);
+    public static JwtRefreshResult Fail(string reason)
+        => new(false, null, null, reason);
 }
 
 /// <summary>

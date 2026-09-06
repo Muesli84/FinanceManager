@@ -227,9 +227,9 @@ public sealed class MassImportBatchFileResultDto
     /// <summary>
     /// All created statement draft ids for statement imports (including collection statement imports with multiple drafts).
     /// </summary>
-    /// <typeparam name="Guid">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public IReadOnlyList<Guid> StatementDraftIds { get; set; } = Array.Empty<Guid>();
+    public IReadOnlyList<Guid> StatementDraftIds { get; set; }
+        = Array.Empty<Guid>();
 
     /// <summary>
     /// Price import counters for security files.

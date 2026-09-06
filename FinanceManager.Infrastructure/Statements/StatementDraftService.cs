@@ -67,9 +67,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Metadata describing the last import split operation performed by <see cref="CreateDraftAsync"/>.
     /// </summary>
-    /// <param name="service">The service.</param>
     /// <returns>The result.</returns>
-    public ImportSplitInfo? LastImportSplitInfo { get; private set; } // exposes metadata of last CreateDraftAsync call (scoped service)
+    public ImportSplitInfo? LastImportSplitInfo { get; private set; } // exposes metadata of last CreateDraftAsync call - scoped service
 
     /// <summary>
     /// Details about how an import was split into drafts.
@@ -546,7 +545,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     }
                 }
 
-                var preliminaryGroups = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+                var preliminaryGroups = new List<MovementGroup>();
 
                 if (useMonthly)
                 {
@@ -560,13 +559,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
                         var parts = Chunk(g.ToList(), maxPerDraft).ToList();
                         if (parts.Count == 1)
                         {
-                            preliminaryGroups.Add((monthLabel, parts[0], false, g.Key.Year, g.Key.Month));
+                            preliminaryGroups.Add(new MovementGroup(monthLabel, parts[0], false, g.Key.Year, g.Key.Month));
                         }
                         else
                         {
                             for (int p = 0; p < parts.Count; p++)
                             {
-                                preliminaryGroups.Add(($"{monthLabel} (Teil {p + 1})", parts[p], true, g.Key.Year, g.Key.Month));
+                                preliminaryGroups.Add(new MovementGroup($"{monthLabel} (Teil {p + 1})", parts[p], true, g.Key.Year, g.Key.Month));
                             }
                         }
                     }
@@ -581,13 +580,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     var chunks = Chunk(allMovements, maxPerDraft).ToList();
                     if (chunks.Count == 1)
                     {
-                        preliminaryGroups.Add((string.Empty, chunks[0], false, null, null));
+                        preliminaryGroups.Add(new MovementGroup(string.Empty, chunks[0], false, null, null));
                     }
                     else
                     {
                         for (int i = 0; i < chunks.Count; i++)
                         {
-                            preliminaryGroups.Add(($"(Teil {i + 1})", chunks[i], false, null, null));
+                            preliminaryGroups.Add(new MovementGroup($"(Teil {i + 1})", chunks[i], false, null, null));
                         }
                     }
                 }
@@ -643,6 +642,17 @@ public sealed partial class StatementDraftService : IStatementDraftService
     }
 
     /// <summary>
+    /// Represents a group of statement movements that form one draft.
+    /// </summary>
+    /// <param name="Label">Display label of the group.</param>
+    /// <param name="Movements">Movements belonging to the group.</param>
+    /// <param name="IsSplitPart">Whether the group is a partial chunk of a month.</param>
+    /// <param name="Year">Year of the month group, if monthly-split.</param>
+    /// <param name="Month">Month of the month group, if monthly-split.</param>
+    /// <returns>The result.</returns>
+    private sealed record MovementGroup(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month);
+
+    /// <summary>
     /// Wendet die Mindestanzahl-Regel auf monatliche (nicht weiter gesplittete) Gruppen an.
     /// Strategien (aus Tests abgeleitet):
     /// 1. Führende kleine Monate vor erstem großen: in Blöcken >= Min bündeln; Rest mit erstem großen Monat mergen.
@@ -652,13 +662,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// 5. Reine Sequenz nur kleiner Monate -> greedy Blöcke bilden bis >= Min, letzter evtl. kleiner Block mit vorigem mergen.
     /// 6. Folge kleiner Monate vor großem Monatsblock: Baue möglichst Blöcke exakt = Min (Test 1,1,1,1,1,1,20 Min=5 -> {5,21}).
     /// </summary>
-    /// <param name="Label">The label.</param>
-    /// <param name="Movements">The movements.</param>
-    /// <param name="IsSplitPart">The is split part.</param>
-    /// <param name="Year">The year.</param>
-    /// <param name="Month">The month.</param>
-    private static List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>
-        ApplyMonthlyMinMerge(List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)> input, int min)
+    /// <param name="input">Monthly groups to merge.</param>
+    /// <param name="min">Minimum number of movements per resulting group.</param>
+    /// <returns>The merged groups.</returns>
+    private static List<MovementGroup>
+        ApplyMonthlyMinMerge(List<MovementGroup> input, int min)
     {
         // Extract only month groups, keeping order
         var list = input;
@@ -670,13 +678,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
 
         // Work on copy list
-        var result = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+        var result = new List<MovementGroup>();
 
         // Helper functions
-        static bool IsAnchor((string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month) g, int minEntries)
+        static bool IsAnchor(MovementGroup g, int minEntries)
             => !g.IsSplitPart && g.Movements.Count >= minEntries;
 
-        static bool IsSmall((string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month) g, int minEntries)
+        static bool IsSmall(MovementGroup g, int minEntries)
             => !g.IsSplitPart && g.Movements.Count < minEntries;
 
         // Full sequence of smalls without anchor?
@@ -684,7 +692,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         if (!anyAnchor)
         {
             // All are small -> greedy groups >= min
-            var buffer = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+            var buffer = new List<MovementGroup>();
             var acc = new List<StatementMovement>();
             var monthLabels = new List<string>();
 
@@ -694,7 +702,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 if (force || acc.Count >= min)
                 {
                     var label = BuildMergedLabel(monthLabels);
-                    result.Add((label, acc.ToList(), false, null, null));
+                    result.Add(new MovementGroup(label, acc.ToList(), false, null, null));
                     acc.Clear();
                     monthLabels.Clear();
                 }
@@ -717,14 +725,14 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 {
                     // Single group (too small) -> let it be (hardly relevant technically, but no anchor present)
                     var labelSingle = BuildMergedLabel(monthLabels);
-                    result.Add((labelSingle, acc, false, null, null));
+                    result.Add(new MovementGroup(labelSingle, acc, false, null, null));
                 }
                 else
                 {
                     var last = result[^1];
                     last.Movements.AddRange(acc);
                     var appendedLabel = $"{last.Label}+{string.Join('+', monthLabels)}";
-                    result[^1] = (appendedLabel, last.Movements, false, null, null);
+                    result[^1] = new MovementGroup(appendedLabel, last.Movements, false, null, null);
                 }
             }
 
@@ -747,7 +755,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             if (IsAnchor(current, min))
             {
                 // Prüfe nachfolgenden Run kleiner Monate zwischen diesem und nächstem Anchor
-                var smallRun = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+                var smallRun = new List<MovementGroup>();
                 int look = index + 1;
                 while (look < list.Count && IsSmall(list[look], min))
                 {
@@ -776,7 +784,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                         foreach (var sm in smallRun)
                         {
                             current.Movements.AddRange(sm.Movements);
-                            current = (MergeTwoLabels(current.Label, sm.Label), current.Movements, false, null, null);
+                            current = new MovementGroup(MergeTwoLabels(current.Label, sm.Label), current.Movements, false, null, null);
                         }
                         result.Add(current);
                     }
@@ -830,10 +838,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 }
 
                 // Linken Anchor aktualisieren, rechten Anchor später behandeln -> wir ersetzen rechten später vollständig
-                result.Add((leftLabel, leftMovs, false, leftAnchor.Year, leftAnchor.Month));
+                result.Add(new MovementGroup(leftLabel, leftMovs, false, leftAnchor.Year, leftAnchor.Month));
 
                 // Rechter Anchor wird übersprungen und neu eingefügt
-                list[look] = (rightLabel, rightMovs, false, rightAnchor.Year, rightAnchor.Month);
+                list[look] = new MovementGroup(rightLabel, rightMovs, false, rightAnchor.Year, rightAnchor.Month);
 
                 index = look; // fahre beim rechten Anchor fort (der jetzt evtl. noch weitere Runs hat)
                 continue;
@@ -841,7 +849,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             else
             {
                 // current ist kleiner Monat (kein Anchor) – kann nur Leading-Run sein (vor erstem Anchor) oder einzelner kleiner vor Anchor (aus Sonderfall oben)
-                var leadingRun = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+                var leadingRun = new List<MovementGroup>();
                 int l = index;
                 while (l < list.Count && IsSmall(list[l], min))
                 {
@@ -893,7 +901,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 foreach (var b in blocks)
                 {
                     var label = BuildMergedLabel(b.labels);
-                    result.Add((label, b.movs, false, null, null));
+                    result.Add(new MovementGroup(label, b.movs, false, null, null));
                 }
 
                 if (accMovs.Count > 0)
@@ -901,7 +909,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     // an Anchor anhängen -> wir modifizieren den Anchor jetzt
                     var anchor = list[l];
                     anchor.Movements.InsertRange(0, accMovs); // vorne einfügen (zeitlich frühere Monate)
-                    anchor = (MergeTwoLabels(BuildMergedLabel(accLabels), anchor.Label), anchor.Movements, false, anchor.Year, anchor.Month);
+                    anchor = new MovementGroup(MergeTwoLabels(BuildMergedLabel(accLabels), anchor.Label), anchor.Movements, false, anchor.Year, anchor.Month);
                     list[l] = anchor;
                 }
 
@@ -913,10 +921,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
 
         // Hilfen -----------------------------------------------------
 
-        static (bool attachToPrevious, List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>? groups)
-            BuildStandaloneOrAttach(List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)> run, int minEntries)
+        static (bool attachToPrevious, List<MovementGroup>? groups)
+            BuildStandaloneOrAttach(List<MovementGroup> run, int minEntries)
         {
-            var groups = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+            var groups = new List<MovementGroup>();
             var accMovs = new List<StatementMovement>();
             var accLabels = new List<string>();
 
@@ -926,7 +934,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 accLabels.Add(g.Label.Split(' ')[0]);
                 if (accMovs.Count >= minEntries)
                 {
-                    groups.Add((BuildMergedLabel(accLabels), new List<StatementMovement>(accMovs), false, null, null));
+                    groups.Add(new MovementGroup(BuildMergedLabel(accLabels), new List<StatementMovement>(accMovs), false, null, null));
                     accMovs.Clear();
                     accLabels.Clear();
                 }
@@ -942,7 +950,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 // Rest an letzte Gruppe anhängen
                 var last = groups[^1];
                 last.Movements.AddRange(accMovs);
-                last = (MergeTwoLabels(last.Label, BuildMergedLabel(accLabels)), last.Movements, false, null, null);
+                last = new MovementGroup(MergeTwoLabels(last.Label, BuildMergedLabel(accLabels)), last.Movements, false, null, null);
                 groups[^1] = last;
             }
             return (false, groups);

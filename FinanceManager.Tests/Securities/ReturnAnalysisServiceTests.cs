@@ -10,6 +10,8 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using SecurityUserPair = (FinanceManager.Domain.Securities.Security, FinanceManager.Domain.Users.User);
 using Moq;
 
 namespace FinanceManager.Tests.Securities;
@@ -86,8 +88,8 @@ public sealed class ReturnAnalysisServiceTests : IDisposable
     /// <summary>
     /// Creates a security and its owning user, persists both and returns them.
     /// </summary>
-    /// <param name="security">The security.</param>
-    private (Security security, User user) SetupSecurityAndUser()
+    /// <returns>The created security and user.</returns>
+    private SecurityUserPair SetupSecurityAndUser()
     {
         var user = new User($"user-{Guid.NewGuid():N}", "hash");
         _db.Users.Add(user);

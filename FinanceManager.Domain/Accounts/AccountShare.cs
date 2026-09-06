@@ -59,13 +59,9 @@ public sealed class AccountShare : Entity
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this account share.
     /// </summary>
-    /// <param name="AccountId">The account id.</param>
-    /// <param name="UserId">The user id.</param>
-    /// <param name="Role">The role.</param>
-    /// <param name="GrantedUtc">The granted utc.</param>
-    /// <param name="RevokedUtc">The revoked utc.</param>
     /// <returns>A <see cref="AccountShareBackupDto"/> containing values required for backup/restore.</returns>
-    public AccountShareBackupDto ToBackupDto() => new AccountShareBackupDto(Id, AccountId, UserId, Role, GrantedUtc, RevokedUtc);
+    public AccountShareBackupDto ToBackupDto()
+        => new AccountShareBackupDto(Id, AccountId, UserId, Role, GrantedUtc, RevokedUtc);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity instance.

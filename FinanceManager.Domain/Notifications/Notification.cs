@@ -93,19 +93,9 @@ public sealed class Notification
     /// <summary>
     /// Creates a backup DTO representing the serializable state of the notification.
     /// </summary>
-    /// <param name="OwnerUserId">The owner user id.</param>
-    /// <param name="Title">The title.</param>
-    /// <param name="Message">The message.</param>
-    /// <param name="Type">The type.</param>
-    /// <param name="Target">The target.</param>
-    /// <param name="ScheduledDateUtc">The scheduled date utc.</param>
-    /// <param name="IsEnabled">The is enabled.</param>
-    /// <param name="IsDismissed">The is dismissed.</param>
-    /// <param name="TriggerEventKey">The trigger event key.</param>
-    /// <param name="CreatedUtc">The created utc.</param>
-    /// <param name="ModifiedUtc">The modified utc.</param>
     /// <returns>A <see cref="NotificationBackupDto"/> containing the data required to restore this notification.</returns>
-    public NotificationBackupDto ToBackupDto() => new NotificationBackupDto(Id, OwnerUserId, Title, Message, Type, Target, ScheduledDateUtc, IsEnabled, IsDismissed, TriggerEventKey, CreatedUtc, ModifiedUtc);
+    public NotificationBackupDto ToBackupDto()
+        => new NotificationBackupDto(Id, OwnerUserId, Title, Message, Type, Target, ScheduledDateUtc, IsEnabled, IsDismissed, TriggerEventKey, CreatedUtc, ModifiedUtc);
 
     /// <summary>
     /// Assigns values from a backup DTO to this notification instance.

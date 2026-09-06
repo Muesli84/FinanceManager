@@ -20,14 +20,13 @@ public interface IBudgetPlanningRepository
     /// <summary>
     /// Loads rules and overrides relevant for the provided purpose ids and period range.
     /// </summary>
-    /// <param name="Rules">The rules.</param>
     /// <param name="ownerUserId">Owner user id.</param>
     /// <param name="purposeIds">Purpose ids.</param>
     /// <param name="from">Start period (inclusive).</param>
     /// <param name="to">End period (inclusive).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Tuple of rules and overrides.</returns>
-    Task<(IReadOnlyList<BudgetRule> Rules, IReadOnlyList<BudgetOverride> Overrides)> GetRulesAndOverridesAsync(
+    Task<(IReadOnlyList<BudgetRule>, IReadOnlyList<BudgetOverride>)> GetRulesAndOverridesAsync(
         Guid ownerUserId,
         IReadOnlyList<Guid> purposeIds,
         BudgetPeriodKey from,

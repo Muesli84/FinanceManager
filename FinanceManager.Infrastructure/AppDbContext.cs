@@ -1,4 +1,4 @@
-﻿using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Spreadsheet;
 using DocumentFormat.OpenXml.Vml;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Attachments; // new
@@ -38,132 +38,282 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     /// <summary>Bank accounts.</summary>
-    /// <typeparam name="Account">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<Account> Accounts
+    {
+        get
+        {
+            return Set<Account>();
+        }
+    }
     /// <summary>Linked sub-IBANs for collection accounts.</summary>
-    /// <typeparam name="AccountLinkedIban">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<AccountLinkedIban> AccountLinkedIbans => Set<AccountLinkedIban>();
+    public DbSet<AccountLinkedIban> AccountLinkedIbans
+    {
+        get
+        {
+            return Set<AccountLinkedIban>();
+        }
+    }
     /// <summary>Account sharing links.</summary>
-    /// <typeparam name="AccountShare">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<AccountShare> AccountShares => Set<AccountShare>();
+    public DbSet<AccountShare> AccountShares
+    {
+        get
+        {
+            return Set<AccountShare>();
+        }
+    }
     /// <summary>Contacts (counterparties, banks, self).</summary>
-    /// <typeparam name="Contact">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<Contact> Contacts => Set<Contact>();
+    public DbSet<Contact> Contacts
+    {
+        get
+        {
+            return Set<Contact>();
+        }
+    }
     /// <summary>Contact categories.</summary>
-    /// <typeparam name="ContactCategory">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<ContactCategory> ContactCategories => Set<ContactCategory>();
+    public DbSet<ContactCategory> ContactCategories
+    {
+        get
+        {
+            return Set<ContactCategory>();
+        }
+    }
     /// <summary>Alias names for contact matching.</summary>
-    /// <typeparam name="AliasName">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<AliasName> AliasNames => Set<AliasName>();
+    public DbSet<AliasName> AliasNames
+    {
+        get
+        {
+            return Set<AliasName>();
+        }
+    }
     /// <summary>Statement import batches metadata.</summary>
-    /// <typeparam name="StatementImport">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<StatementImport> StatementImports => Set<StatementImport>();
+    public DbSet<StatementImport> StatementImports
+    {
+        get
+        {
+            return Set<StatementImport>();
+        }
+    }
     /// <summary>Statement entry records created from imports.</summary>
-    /// <typeparam name="StatementEntry">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<StatementEntry> StatementEntries => Set<StatementEntry>();
+    public DbSet<StatementEntry> StatementEntries
+    {
+        get
+        {
+            return Set<StatementEntry>();
+        }
+    }
     /// <summary>Postings (ledger entries).</summary>
-    /// <typeparam name="Posting">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<Posting> Postings => Set<Posting>();
+    public DbSet<Posting> Postings
+    {
+        get
+        {
+            return Set<Posting>();
+        }
+    }
     /// <summary>Statement import drafts.</summary>
-    /// <typeparam name="StatementDraft">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<StatementDraft> StatementDrafts => Set<StatementDraft>();
+    public DbSet<StatementDraft> StatementDrafts
+    {
+        get
+        {
+            return Set<StatementDraft>();
+        }
+    }
     /// <summary>Entries inside statement drafts.</summary>
-    /// <typeparam name="StatementDraftEntry">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<StatementDraftEntry> StatementDraftEntries => Set<StatementDraftEntry>();
+    public DbSet<StatementDraftEntry> StatementDraftEntries
+    {
+        get
+        {
+            return Set<StatementDraftEntry>();
+        }
+    }
     /// <summary>Durable booking guards preventing concurrent booking of one draft.</summary>
-    /// <typeparam name="StatementDraftBookingGuard">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<StatementDraftBookingGuard> StatementDraftBookingGuards => Set<StatementDraftBookingGuard>();
+    public DbSet<StatementDraftBookingGuard> StatementDraftBookingGuards
+    {
+        get
+        {
+            return Set<StatementDraftBookingGuard>();
+        }
+    }
     /// <summary>Savings plans.</summary>
-    /// <typeparam name="SavingsPlan">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<SavingsPlan> SavingsPlans => Set<SavingsPlan>();
+    public DbSet<SavingsPlan> SavingsPlans
+    {
+        get
+        {
+            return Set<SavingsPlan>();
+        }
+    }
     /// <summary>Savings plan categories.</summary>
     public DbSet<SavingsPlanCategory> SavingsPlanCategories { get; set; } = null!;
     /// <summary>Securities / stocks.</summary>
     /// <returns>The result.</returns>
     public DbSet<FinanceManager.Domain.Securities.Security> Securities => Set<FinanceManager.Domain.Securities.Security>();
     /// <summary>Security categories.</summary>
-    /// <typeparam name="SecurityCategory">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<SecurityCategory> SecurityCategories => Set<SecurityCategory>();
+    public DbSet<SecurityCategory> SecurityCategories
+    {
+        get
+        {
+            return Set<SecurityCategory>();
+        }
+    }
     /// <summary>Aggregated posting values (pre-computed).</summary>
-    /// <typeparam name="PostingAggregate">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<PostingAggregate> PostingAggregates => Set<PostingAggregate>();
+    public DbSet<PostingAggregate> PostingAggregates
+    {
+        get
+        {
+            return Set<PostingAggregate>();
+        }
+    }
     /// <summary>Security historical prices.</summary>
-    /// <typeparam name="SecurityPrice">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<SecurityPrice> SecurityPrices => Set<SecurityPrice>();
+    public DbSet<SecurityPrice> SecurityPrices
+    {
+        get
+        {
+            return Set<SecurityPrice>();
+        }
+    }
     /// <summary>Backup records stored for the user.</summary>
-    /// <typeparam name="BackupRecord">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<BackupRecord> Backups => Set<BackupRecord>();
+    public DbSet<BackupRecord> Backups
+    {
+        get
+        {
+            return Set<BackupRecord>();
+        }
+    }
     /// <summary>Saved report favorites.</summary>
-    /// <typeparam name="ReportFavorite">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<ReportFavorite> ReportFavorites => Set<ReportFavorite>(); // new
+    public DbSet<ReportFavorite> ReportFavorites
+    {
+        get
+        {
+            return Set<ReportFavorite>();
+        }
+    } // new
     /// <summary>Home KPI configuration records.</summary>
-    /// <typeparam name="HomeKpi">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<HomeKpi> HomeKpis => Set<HomeKpi>(); // new
+    public DbSet<HomeKpi> HomeKpis
+    {
+        get
+        {
+            return Set<HomeKpi>();
+        }
+    } // new
     /// <summary>Cached report data entries.</summary>
-    /// <typeparam name="ReportCacheEntry">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<ReportCacheEntry> ReportCacheEntries => Set<ReportCacheEntry>();
+    public DbSet<ReportCacheEntry> ReportCacheEntries
+    {
+        get
+        {
+            return Set<ReportCacheEntry>();
+        }
+    }
     /// <summary>Per-user portfolio analysis report KPI tile configuration.</summary>
-    /// <typeparam name="PortfolioKpiConfiguration">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<PortfolioKpiConfiguration> PortfolioKpiConfigurations => Set<PortfolioKpiConfiguration>();
+    public DbSet<PortfolioKpiConfiguration> PortfolioKpiConfigurations
+    {
+        get
+        {
+            return Set<PortfolioKpiConfiguration>();
+        }
+    }
     /// <summary>IP blocks for rate limiting / security.</summary>
-    /// <typeparam name="IpBlock">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<IpBlock> IpBlocks => Set<IpBlock>(); // new
+    public DbSet<IpBlock> IpBlocks
+    {
+        get
+        {
+            return Set<IpBlock>();
+        }
+    } // new
     /// <summary>Security.txt settings.</summary>
-    /// <typeparam name="SecurityTxtSettings">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<SecurityTxtSettings> SecurityTxtSettings => Set<SecurityTxtSettings>();
+    public DbSet<SecurityTxtSettings> SecurityTxtSettings
+    {
+        get
+        {
+            return Set<SecurityTxtSettings>();
+        }
+    }
     /// <summary>Notification entities for user notifications.</summary>
-    /// <typeparam name="Notification">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<Notification> Notifications => Set<Notification>(); // new
+    public DbSet<Notification> Notifications
+    {
+        get
+        {
+            return Set<Notification>();
+        }
+    } // new
     /// <summary>Attachments stored in the database (binary or URL references).</summary>
-    /// <typeparam name="Attachment">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<Attachment> Attachments => Set<Attachment>(); // new
+    public DbSet<Attachment> Attachments
+    {
+        get
+        {
+            return Set<Attachment>();
+        }
+    } // new
     /// <summary>Attachment categories.</summary>
-    /// <typeparam name="AttachmentCategory">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<AttachmentCategory> AttachmentCategories => Set<AttachmentCategory>(); // new
+    public DbSet<AttachmentCategory> AttachmentCategories
+    {
+        get
+        {
+            return Set<AttachmentCategory>();
+        }
+    } // new
     /// <summary>Budget categories.</summary>
-    /// <typeparam name="BudgetCategory">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
+    public DbSet<BudgetCategory> BudgetCategories
+    {
+        get
+        {
+            return Set<BudgetCategory>();
+        }
+    }
     /// <summary>Budget purposes.</summary>
-    /// <typeparam name="BudgetPurpose">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<BudgetPurpose> BudgetPurposes => Set<BudgetPurpose>();
+    public DbSet<BudgetPurpose> BudgetPurposes
+    {
+        get
+        {
+            return Set<BudgetPurpose>();
+        }
+    }
 
     /// <summary>Budget rules.</summary>
-    /// <typeparam name="BudgetRule">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<BudgetRule> BudgetRules => Set<BudgetRule>();
+    public DbSet<BudgetRule> BudgetRules
+    {
+        get
+        {
+            return Set<BudgetRule>();
+        }
+    }
 
     /// <summary>Budget overrides.</summary>
-    /// <typeparam name="BudgetOverride">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public DbSet<BudgetOverride> BudgetOverrides => Set<BudgetOverride>();
+    public DbSet<BudgetOverride> BudgetOverrides
+    {
+        get
+        {
+            return Set<BudgetOverride>();
+        }
+    }
 
     /// <summary>
     /// Configure the EF Core model: indexes, constraints and relationships.

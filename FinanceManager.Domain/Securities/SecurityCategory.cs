@@ -84,11 +84,9 @@ public sealed class SecurityCategory
     /// <summary>
     /// Creates a backup DTO for this security category.
     /// </summary>
-    /// <param name="OwnerUserId">The owner user id.</param>
-    /// <param name="Name">The name.</param>
-    /// <param name="SymbolAttachmentId">The symbol attachment id.</param>
     /// <returns>A <see cref="SecurityCategoryBackupDto"/> containing the data required to restore this category.</returns>
-    public SecurityCategoryBackupDto ToBackupDto() => new SecurityCategoryBackupDto(Id, OwnerUserId, Name, SymbolAttachmentId);
+    public SecurityCategoryBackupDto ToBackupDto()
+        => new SecurityCategoryBackupDto(Id, OwnerUserId, Name, SymbolAttachmentId);
 
     /// <summary>
     /// Assigns values from a backup DTO to this category.

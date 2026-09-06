@@ -52,10 +52,9 @@ public sealed class BudgetCategory : Entity, IAggregateRoot
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this budget category.
     /// </summary>
-    /// <param name="OwnerUserId">The owner user id.</param>
-    /// <param name="Name">The name.</param>
     /// <returns>The result.</returns>
-    public BudgetCategoryBackupDto ToBackupDto() => new(Id, OwnerUserId, Name);
+    public BudgetCategoryBackupDto ToBackupDto()
+        => new(Id, OwnerUserId, Name);
 
     /// <summary>
     /// Applies values from the provided backup DTO to this entity.

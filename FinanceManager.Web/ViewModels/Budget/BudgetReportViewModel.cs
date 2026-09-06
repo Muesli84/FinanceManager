@@ -107,16 +107,16 @@ public sealed class BudgetReportViewModel : BaseViewModel
     /// <summary>
     /// Period rows for the chart and monthly table.
     /// </summary>
-    /// <typeparam name="BudgetReportPeriodRow">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public IReadOnlyList<BudgetReportPeriodRow> Periods { get; private set; } = Array.Empty<BudgetReportPeriodRow>();
+    public IReadOnlyList<BudgetReportPeriodRow> Periods { get; private set; }
+        = Array.Empty<BudgetReportPeriodRow>();
 
     /// <summary>
     /// Category rows for the detail table.
     /// </summary>
-    /// <typeparam name="BudgetReportCategoryRow">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public IReadOnlyList<BudgetReportCategoryRow> Categories { get; private set; } = Array.Empty<BudgetReportCategoryRow>();
+    public IReadOnlyList<BudgetReportCategoryRow> Categories { get; private set; }
+        = Array.Empty<BudgetReportCategoryRow>();
 
     /// <summary>
     /// Initializes the report and loads data.
@@ -286,7 +286,8 @@ public sealed class BudgetReportViewModel : BaseViewModel
         return list;
     }
 
-    private static DateOnly StartOfMonth(DateOnly d) => new(d.Year, d.Month, 1);
+    private static DateOnly StartOfMonth(DateOnly d)
+        => new(d.Year, d.Month, 1);
 
     private static DateOnly EndOfMonth(DateOnly d)
         => new(d.Year, d.Month, DateTime.DaysInMonth(d.Year, d.Month));
@@ -348,7 +349,8 @@ public sealed class BudgetReportViewModel : BaseViewModel
                 UiRibbonItemSize.Small,
                 false,
                 null,
-                () => ShiftAsOfMonthAsync(-1)),
+                ()
+                    => ShiftAsOfMonthAsync(-1)),
             new UiRibbonAction(
                 "ThisMonth",
                 localizer["Ribbon_ThisMonth"],
@@ -364,7 +366,8 @@ public sealed class BudgetReportViewModel : BaseViewModel
                 UiRibbonItemSize.Small,
                 false,
                 null,
-                () => ShiftAsOfMonthAsync(1)),
+                ()
+                    => ShiftAsOfMonthAsync(1)),
             new UiRibbonAction(
                 "PrevYear",
                 localizer["Ribbon_PrevYear"],
@@ -372,7 +375,8 @@ public sealed class BudgetReportViewModel : BaseViewModel
                 UiRibbonItemSize.Small,
                 false,
                 null,
-                () => ShiftAsOfYearAsync(-1)),
+                ()
+                    => ShiftAsOfYearAsync(-1)),
             new UiRibbonAction(
                 "NextYear",
                 localizer["Ribbon_NextYear"],
@@ -380,7 +384,8 @@ public sealed class BudgetReportViewModel : BaseViewModel
                 UiRibbonItemSize.Small,
                 false,
                 null,
-                () => ShiftAsOfYearAsync(1))
+                ()
+                    => ShiftAsOfYearAsync(1))
          });
 
         var export = new UiRibbonTab(localizer["Ribbon_Group_Export"], new List<UiRibbonAction>
@@ -541,9 +546,9 @@ public sealed class BudgetReportViewModel : BaseViewModel
     /// <summary>
     /// Loaded postings for <see cref="PurposePostingsPurpose"/> within the current report range.
     /// </summary>
-    /// <typeparam name="BudgetReportPostingOverlayRow">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public IReadOnlyList<BudgetReportPostingOverlayRow> PurposePostings { get; private set; } = Array.Empty<BudgetReportPostingOverlayRow>();
+    public IReadOnlyList<BudgetReportPostingOverlayRow> PurposePostings { get; private set; }
+        = Array.Empty<BudgetReportPostingOverlayRow>();
 
     /// <summary>
     /// Whether postings for <see cref="PurposePostingsPurpose"/> are currently loading.

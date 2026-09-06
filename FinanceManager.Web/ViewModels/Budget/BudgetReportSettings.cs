@@ -49,15 +49,9 @@ public sealed record BudgetReportSettings(
     /// <summary>
     /// Default settings: 12 months ending at end of current month.
     /// </summary>
-    /// <param name="true">The true.</param>
-    /// <param name="true">The true.</param>
-    /// <param name="true">The true.</param>
-    /// <param name="true">The true.</param>
-    /// <param name="true">The true.</param>
-    /// <param name="true">The true.</param>
-    /// <param name="true">The true.</param>
     /// <returns>The result.</returns>
-    public static BudgetReportSettings Default { get; } = new(
+    public static BudgetReportSettings Default { get; }
+        = new(
         AsOfDate: new DateOnly(DateTime.Today.Year, DateTime.Today.Month, DateTime.DaysInMonth(DateTime.Today.Year, DateTime.Today.Month)),
         Months: 12,
         Interval: BudgetReportInterval.Month,

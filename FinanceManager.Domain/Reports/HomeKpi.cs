@@ -170,17 +170,9 @@ public sealed class HomeKpi : Entity, IAggregateRoot
     /// <summary>
     /// Creates a backup DTO representing this <see cref="HomeKpi"/>.
     /// </summary>
-    /// <param name="OwnerUserId">The owner user id.</param>
-    /// <param name="Kind">The kind.</param>
-    /// <param name="ReportFavoriteId">The report favorite id.</param>
-    /// <param name="DisplayMode">The display mode.</param>
-    /// <param name="SortOrder">The sort order.</param>
-    /// <param name="Title">The title.</param>
-    /// <param name="PredefinedType">The predefined type.</param>
-    /// <param name="CreatedUtc">The created utc.</param>
-    /// <param name="ModifiedUtc">The modified utc.</param>
     /// <returns>A <see cref="HomeKpiBackupDto"/> containing the serializable state of this KPI.</returns>
-    public HomeKpiBackupDto ToBackupDto() => new HomeKpiBackupDto(Id, OwnerUserId, Kind, ReportFavoriteId, DisplayMode, SortOrder, Title, PredefinedType, CreatedUtc, ModifiedUtc);
+    public HomeKpiBackupDto ToBackupDto()
+        => new HomeKpiBackupDto(Id, OwnerUserId, Kind, ReportFavoriteId, DisplayMode, SortOrder, Title, PredefinedType, CreatedUtc, ModifiedUtc);
 
     /// <summary>
     /// Assigns values from the provided backup DTO to this <see cref="HomeKpi"/> instance.

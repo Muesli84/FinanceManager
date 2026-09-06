@@ -138,7 +138,8 @@ public sealed class SavingsPlan : Entity
     /// Sets the contract number. Leading/trailing whitespace is trimmed; whitespace-only values clear the contract number.
     /// </summary>
     /// <param name="contractNumber">The contract number string or <c>null</c> to clear.</param>
-    public void SetContractNumber(string? contractNumber) => ContractNumber = string.IsNullOrWhiteSpace(contractNumber) ? null : contractNumber.Trim();
+    public void SetContractNumber(string? contractNumber)
+        => ContractNumber = string.IsNullOrWhiteSpace(contractNumber) ? null : contractNumber.Trim();
 
     /// <summary>
     /// Sets or clears the symbol attachment reference. Passing <see cref="Guid.Empty"/> is treated as <c>null</c>.
@@ -250,21 +251,9 @@ public sealed class SavingsPlan : Entity
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this savings plan.
     /// </summary>
-    /// <param name="OwnerUserId">The owner user id.</param>
-    /// <param name="Name">The name.</param>
-    /// <param name="Type">The type.</param>
-    /// <param name="TargetAmount">The target amount.</param>
-    /// <param name="TargetDate">The target date.</param>
-    /// <param name="Interval">The interval.</param>
-    /// <param name="IsActive">The is active.</param>
-    /// <param name="CreatedUtc">The created utc.</param>
-    /// <param name="ModifiedUtc">The modified utc.</param>
-    /// <param name="ArchivedUtc">The archived utc.</param>
-    /// <param name="CategoryId">The category id.</param>
-    /// <param name="ContractNumber">The contract number.</param>
-    /// <param name="SymbolAttachmentId">The symbol attachment id.</param>
     /// <returns>A <see cref="SavingsPlanBackupDto"/> containing the values required to restore this plan.</returns>
-    public SavingsPlanBackupDto ToBackupDto() => new SavingsPlanBackupDto(Id, OwnerUserId, Name, Type, TargetAmount, TargetDate, Interval, IsActive, CreatedUtc, ModifiedUtc, ArchivedUtc, CategoryId, ContractNumber, SymbolAttachmentId);
+    public SavingsPlanBackupDto ToBackupDto()
+        => new SavingsPlanBackupDto(Id, OwnerUserId, Name, Type, TargetAmount, TargetDate, Interval, IsActive, CreatedUtc, ModifiedUtc, ArchivedUtc, CategoryId, ContractNumber, SymbolAttachmentId);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity.

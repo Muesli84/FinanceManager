@@ -200,20 +200,9 @@ public sealed class Account : Entity, IAggregateRoot
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this account.
     /// </summary>
-    /// <param name="OwnerUserId">The owner user id.</param>
-    /// <param name="Type">The type.</param>
-    /// <param name="Name">The name.</param>
-    /// <param name="Iban">The iban.</param>
-    /// <param name="CurrentBalance">The current balance.</param>
-    /// <param name="BankContactId">The bank contact id.</param>
-    /// <param name="SymbolAttachmentId">The symbol attachment id.</param>
-    /// <param name="SavingsPlanExpectation">The savings plan expectation.</param>
-    /// <param name="CreatedUtc">The created utc.</param>
-    /// <param name="ModifiedUtc">The modified utc.</param>
-    /// <param name="SecurityProcessingEnabled">The security processing enabled.</param>
-    /// <param name="IsCollectionAccount">The is collection account.</param>
     /// <returns>A <see cref="AccountBackupDto"/> containing values needed to restore the account.</returns>
-    public AccountBackupDto ToBackupDto() => new AccountBackupDto(Id, OwnerUserId, Type, Name, Iban, CurrentBalance, BankContactId, SymbolAttachmentId, SavingsPlanExpectation, CreatedUtc, ModifiedUtc, SecurityProcessingEnabled, IsCollectionAccount);
+    public AccountBackupDto ToBackupDto()
+        => new AccountBackupDto(Id, OwnerUserId, Type, Name, Iban, CurrentBalance, BankContactId, SymbolAttachmentId, SavingsPlanExpectation, CreatedUtc, ModifiedUtc, SecurityProcessingEnabled, IsCollectionAccount);
 
     /// <summary>
     /// Applies values from a backup DTO to this account instance.

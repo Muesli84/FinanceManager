@@ -66,16 +66,16 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Column metadata used by the generic list renderer.
         /// </summary>
-        /// <typeparam name="ListColumn">The type parameter.</typeparam>
         /// <returns>The result.</returns>
-        public IReadOnlyList<ListColumn> Columns { get; protected set; } = Array.Empty<ListColumn>();
+        public IReadOnlyList<ListColumn> Columns { get; protected set; }
+            = Array.Empty<ListColumn>();
 
         /// <summary>
         /// Rendered records derived from <see cref="Items"/> and <see cref="Columns"/>.
         /// </summary>
-        /// <typeparam name="ListRecord">The type parameter.</typeparam>
         /// <returns>The result.</returns>
-        public IReadOnlyList<ListRecord> Records { get; protected set; } = Array.Empty<ListRecord>();
+        public IReadOnlyList<ListRecord> Records { get; protected set; }
+            = Array.Empty<ListRecord>();
 
         /// <summary>
         /// Controls whether date range filtering is allowed for this list. Default is <c>true</c>.
@@ -169,8 +169,10 @@ namespace FinanceManager.Web.ViewModels.Common
             Records = Items.Select(i => new ListRecord(new[] { new ListCell(ListCellKind.Text, Text: i?.ToString() ?? string.Empty) }, i)).ToList();
         }
 
-        void IListProvider.SetSearch(string value) => SetSearch(value);
-        void IListProvider.SetRange(DateTime? from, DateTime? to) => SetRange(from, to);
+        void IListProvider.SetSearch(string value)
+            => SetSearch(value);
+        void IListProvider.SetRange(DateTime? from, DateTime? to)
+            => SetRange(from, to);
 
         /// <summary>
         /// Sets the search string used to filter results. This only updates the internal state; callers must trigger loading.
@@ -184,7 +186,8 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Clears the current search string.
         /// </summary>
-        public void ClearSearch() => SetSearch(string.Empty);
+        public void ClearSearch()
+            => SetSearch(string.Empty);
 
         /// <summary>
         /// Sets the inclusive date range used for filtering items.
@@ -199,8 +202,8 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Clears any applied date range filters.
         /// </summary>
-        /// <param name="null">The null.</param>
-        public void ClearRange() => SetRange(null, null);
+        public void ClearRange()
+            => SetRange(null, null);
 
         /// <summary>
         /// Resets internal items and marks the list as able to load more pages. Callers typically call this before performing a search.

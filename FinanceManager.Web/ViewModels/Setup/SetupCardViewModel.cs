@@ -374,7 +374,8 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
                     UiRibbonItemSize.Small,
                     Saving || !HasPendingChanges,
                     null,
-                    new Func<Task>(async () => await SaveAllAsync()))
+                    new Func<Task>(async ()
+                        => await SaveAllAsync()))
                 { MobileShortcut = true },
                 new UiRibbonAction(
                     "Reset",
@@ -383,7 +384,8 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
                     UiRibbonItemSize.Small,
                     Saving || !HasPendingChanges,
                     null,
-                    new Func<Task>(() => { ResetAll(); return Task.CompletedTask; }))
+                    new Func<Task>(()
+                        => { ResetAll(); return Task.CompletedTask; }))
                 { MobileShortcut = true },
                 new UiRibbonAction(
                     "RebuildAggregates",
@@ -435,10 +437,9 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
     /// Returns the attachment parent kind and parent id used when uploading symbols for this card.
     /// For the setup card a placeholder of statement draft with empty id is returned.
     /// </summary>
-    /// <param name="Kind">The kind.</param>
     /// <returns>A tuple containing the attachment entity kind and parent id.</returns>
-    protected override (Domain.Attachments.AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent()
-        => (Domain.Attachments.AttachmentEntityKind.StatementDraft, Guid.Empty);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(Domain.Attachments.AttachmentEntityKind.StatementDraft, Guid.Empty);
 
     /// <summary>
     /// Assigns a newly uploaded symbol to the current card record.

@@ -21,22 +21,22 @@ public sealed record BudgetReportRawDataDto
     /// <summary>
     /// Gets the categorized purposes.
     /// </summary>
-    /// <typeparam name="BudgetReportCategoryRawDataDto">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public BudgetReportCategoryRawDataDto[] Categories { get; init; } = Array.Empty<BudgetReportCategoryRawDataDto>();
+    public BudgetReportCategoryRawDataDto[] Categories { get; init; }
+        = Array.Empty<BudgetReportCategoryRawDataDto>();
 
     /// <summary>
     /// Gets purposes that are not assigned to any budget category.
     /// </summary>
-    /// <typeparam name="BudgetReportPurposeRawDataDto">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public BudgetReportPurposeRawDataDto[] UncategorizedPurposes { get; init; } = Array.Empty<BudgetReportPurposeRawDataDto>();
+    public BudgetReportPurposeRawDataDto[] UncategorizedPurposes { get; init; }
+        = Array.Empty<BudgetReportPurposeRawDataDto>();
     /// <summary>
     /// Gets or sets the collection of postings that are not associated with any budget category.
     /// </summary>
-    /// <typeparam name="BudgetReportPostingRawDataDto">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public BudgetReportPostingRawDataDto[] UnbudgetedPostings { get; set; } = Array.Empty<BudgetReportPostingRawDataDto>();
+    public BudgetReportPostingRawDataDto[] UnbudgetedPostings { get; set; }
+        = Array.Empty<BudgetReportPostingRawDataDto>();
 }
 
 /// <summary>
@@ -79,9 +79,9 @@ public sealed record BudgetReportCategoryRawDataDto
     /// <summary>
     /// Gets the purposes assigned to the category.
     /// </summary>
-    /// <typeparam name="BudgetReportPurposeRawDataDto">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public BudgetReportPurposeRawDataDto[] Purposes { get; init; } = Array.Empty<BudgetReportPurposeRawDataDto>();
+    public BudgetReportPurposeRawDataDto[] Purposes { get; init; }
+        = Array.Empty<BudgetReportPurposeRawDataDto>();
 }
 
 /// <summary>
@@ -139,9 +139,9 @@ public sealed record BudgetReportPurposeRawDataDto
     /// <summary>
     /// Gets the contributing postings for the purpose in the requested period.
     /// </summary>
-    /// <typeparam name="BudgetReportPostingRawDataDto">The type parameter.</typeparam>
     /// <returns>The result.</returns>
-    public BudgetReportPostingRawDataDto[] Postings { get; init; } = Array.Empty<BudgetReportPostingRawDataDto>();
+    public BudgetReportPostingRawDataDto[] Postings { get; init; }
+        = Array.Empty<BudgetReportPostingRawDataDto>();
 }
 
 /// <summary>

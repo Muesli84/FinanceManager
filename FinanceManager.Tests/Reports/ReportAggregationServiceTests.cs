@@ -9,6 +9,8 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using MonthlyExpected = (decimal Current, decimal? Prev, decimal? Year);
+
 namespace FinanceManager.Tests.Reports;
 
 /// <summary>
@@ -703,10 +705,15 @@ public sealed class ReportAggregationServiceTests
     /// <summary>
     /// Hilfsfunktion: Erwartete Monats?Summe je Entität und Vergleichswerte (Vormonat, Vorjahr) aus Seed?Lookup berechnen.
     /// </summary>
-    /// <param name="current">The current.</param>
-    /// <param name="prev">The prev.</param>
-    /// <param name="year">The year.</param>
-    private static (decimal current, decimal? prev, decimal? year)
+    /// <param name="seed">Seeded lookup values.</param>
+    /// <param name="kind">Posting kind.</param>
+    /// <param name="accountId">Account id filter.</param>
+    /// <param name="contactId">Contact id filter.</param>
+    /// <param name="savId">Savings plan id filter.</param>
+    /// <param name="secId">Security id filter.</param>
+    /// <param name="analysis">Analysis date.</param>
+    /// <returns>Current, previous-month and year-ago sums.</returns>
+    private static MonthlyExpected
         GetMonthlyExpected(
             SeedResult seed,
             PostingKind kind,

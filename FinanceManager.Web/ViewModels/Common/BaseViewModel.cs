@@ -112,16 +112,26 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Lazily resolved API client instance taken from the service provider.
         /// </summary>
-        /// <typeparam name="IApiClient">The type parameter.</typeparam>
         /// <returns>The result.</returns>
-        protected IApiClient ApiClient => _ApiClient ??= ServiceProvider.GetRequiredService<IApiClient>();
+        protected IApiClient ApiClient
+        {
+            get
+            {
+                return _ApiClient ??= ServiceProvider.GetRequiredService<IApiClient>();
+            }
+        }
 
         /// <summary>
         /// Lazily resolved navigation manager used for composing navigation URLs.
         /// </summary>
-        /// <typeparam name="NavigationManager">The type parameter.</typeparam>
         /// <returns>The result.</returns>
-        protected NavigationManager Navigation => _Navigation ??= ServiceProvider.GetRequiredService<NavigationManager>();
+        protected NavigationManager Navigation
+        {
+            get
+            {
+                return _Navigation ??= ServiceProvider.GetRequiredService<NavigationManager>();
+            }
+        }
 
         // Lazy-resolved localizer. Resolve on first access and swallow resolution errors (e.g. provider disposed).
         private IStringLocalizer<Pages>? _localizerCache;
@@ -234,34 +244,39 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Raises <see cref="StateChanged"/> so consumers update the UI state.
         /// </summary>
-        protected void RaiseStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+        protected void RaiseStateChanged()
+            => StateChanged?.Invoke(this, EventArgs.Empty);
 
         /// <summary>
         /// Requests a UI action with no payload.
         /// </summary>
         /// <param name="action">Action identifier.</param>
-        protected void RaiseUiActionRequested(string? action) => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, null));
+        protected void RaiseUiActionRequested(string? action)
+            => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, null));
 
         /// <summary>
         /// Requests a UI action with a string payload.
         /// </summary>
         /// <param name="action">Action identifier.</param>
         /// <param name="payload">String payload to pass to the UI.</param>
-        protected void RaiseUiActionRequested(string? action, string? payload) => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, payload));
+        protected void RaiseUiActionRequested(string? action, string? payload)
+            => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, payload));
 
         /// <summary>
         /// Requests a UI action with an arbitrary object payload.
         /// </summary>
         /// <param name="action">Action identifier.</param>
         /// <param name="payloadObject">Object payload passed to the UI subscriber.</param>
-        protected void RaiseUiActionRequested(string? action, object? payloadObject) => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, payloadObject));
+        protected void RaiseUiActionRequested(string? action, object? payloadObject)
+            => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, payloadObject));
 
         /// <summary>
         /// Convenience helper to request an embedded inline panel on the Card page.
         /// View pages will render the supplied <see cref="EmbeddedPanelSpec"/> at the requested position.
         /// </summary>
         /// <param name="spec">Specification describing the embedded panel to show.</param>
-        protected void RaiseUiEmbeddedPanelRequested(EmbeddedPanelSpec spec) => UiActionRequested?.Invoke(this, new UiActionEventArgs("EmbeddedPanel", spec));
+        protected void RaiseUiEmbeddedPanelRequested(EmbeddedPanelSpec spec)
+            => UiActionRequested?.Invoke(this, new UiActionEventArgs("EmbeddedPanel", spec));
 
         /// <summary>
         /// Returns embedded panels that should be rendered whenever a host for the specified position is present.
@@ -269,14 +284,20 @@ namespace FinanceManager.Web.ViewModels.Common
         /// </summary>
         /// <param name="position">Position requested by the page host.</param>
         /// <returns>Embedded panel specifications for the requested position.</returns>
-        public virtual IReadOnlyList<EmbeddedPanelSpec> GetEmbeddedPanelSpecs(EmbeddedPanelPosition position) => Array.Empty<EmbeddedPanelSpec>();
+        public virtual IReadOnlyList<EmbeddedPanelSpec> GetEmbeddedPanelSpecs(EmbeddedPanelPosition position)
+            => Array.Empty<EmbeddedPanelSpec>();
 
         /// <summary>
         /// Background task types that a page should show for this ViewModel. Default: none.
         /// </summary>
-        /// <typeparam name="BackgroundTaskType">The type parameter.</typeparam>
         /// <returns>The result.</returns>
-        public virtual BackgroundTaskType[]? VisibleBackgroundTaskTypes => Array.Empty<BackgroundTaskType>();
+        public virtual BackgroundTaskType[]? VisibleBackgroundTaskTypes
+        {
+            get
+            {
+                return Array.Empty<BackgroundTaskType>();
+            }
+        }
 
         /// <summary>
         /// Convenience helper for requesting the Attachments overlay from any ViewModel.
@@ -617,7 +638,8 @@ namespace FinanceManager.Web.ViewModels.Common
         /// </summary>
         /// <param name="localizer">Localizer used to resolve labels.</param>
         /// <returns>Ribbon registers or <c>null</c>.</returns>
-        public IReadOnlyList<UiRibbonRegister>? GetRibbon(IStringLocalizer localizer) => GetRibbonRegisterDefinition(localizer);
+        public IReadOnlyList<UiRibbonRegister>? GetRibbon(IStringLocalizer localizer)
+            => GetRibbonRegisterDefinition(localizer);
 
         /// <summary>
         /// Sets the currently active ribbon tab. Default implementation is a no-op; override as needed.

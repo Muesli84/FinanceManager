@@ -74,15 +74,9 @@ public sealed class StatementImport : Entity, IAggregateRoot
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this statement import.
     /// </summary>
-    /// <param name="AccountId">The account id.</param>
-    /// <param name="Format">The format.</param>
-    /// <param name="ImportedAtUtc">The imported at utc.</param>
-    /// <param name="OriginalFileName">The original file name.</param>
-    /// <param name="TotalEntries">The total entries.</param>
-    /// <param name="CreatedUtc">The created utc.</param>
-    /// <param name="ModifiedUtc">The modified utc.</param>
     /// <returns>A <see cref="StatementImportBackupDto"/> containing values required to restore this import.</returns>
-    public StatementImportBackupDto ToBackupDto() => new StatementImportBackupDto(Id, AccountId, Format, ImportedAtUtc, OriginalFileName, TotalEntries, CreatedUtc, ModifiedUtc);
+    public StatementImportBackupDto ToBackupDto()
+        => new StatementImportBackupDto(Id, AccountId, Format, ImportedAtUtc, OriginalFileName, TotalEntries, CreatedUtc, ModifiedUtc);
 
     /// <summary>
     /// Assigns values from the provided backup DTO to this <see cref="StatementImport"/> instance.

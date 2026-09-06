@@ -43,9 +43,9 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// Selected reporting interval stored as integer mapped to <see cref="ReportInterval"/>.
     /// </summary>
-    /// <param name="int">The int.</param>
     /// <returns>The result.</returns>
-    public int Interval { get; set; } = (int)ReportInterval.Month;
+    public int Interval { get; set; }
+        = (int)ReportInterval.Month;
 
     /// <summary>
     /// When true include category grouping in the aggregates.
@@ -177,10 +177,10 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// Returns whether the specified grouping key is expanded.
     /// </summary>
-    /// <param name="v">The v.</param>
     /// <param name="key">Grouping key.</param>
     /// <returns><c>true</c> when expanded; otherwise <c>false</c>.</returns>
-    public bool IsExpanded(string key) => Expanded.TryGetValue(key, out var v) && v;
+    public bool IsExpanded(string key)
+        => Expanded.TryGetValue(key, out var v) && v;
 
     /// <summary>
     /// Primary kind derived from currently selected kinds (first entry).
@@ -201,9 +201,14 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// True when projection can be requested for the current UI state.
     /// </summary>
-    /// <param name="ReportInterval">The report interval.</param>
     /// <returns>Whether the operation succeeded.</returns>
-    public bool CanCompareProjection => IsSecurityOnlySelection && (ReportInterval)Interval != ReportInterval.AllHistory;
+    public bool CanCompareProjection
+    {
+        get
+        {
+            return IsSecurityOnlySelection && (ReportInterval)Interval != ReportInterval.AllHistory;
+        }
+    }
 
     /// <summary>
     /// Returns whether the provided posting kind supports category grouping.
@@ -218,9 +223,14 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// True when category grouping is enabled and applicable for the primary kind.
     /// </summary>
-    /// <param name="PrimaryKind">The primary kind.</param>
     /// <returns>Whether the operation succeeded.</returns>
-    public bool IsCategoryGroupingSingle => !IsMulti && IncludeCategory && IsCategorySupported(PrimaryKind);
+    public bool IsCategoryGroupingSingle
+    {
+        get
+        {
+            return !IsMulti && IncludeCategory && IsCategorySupported(PrimaryKind);
+        }
+    }
 
     /// <summary>
     /// Latest aggregate point per non-hierarchical group used to display summary rows.
@@ -360,7 +370,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// </summary>
     /// <param name="parentKey">Parent grouping key.</param>
     /// <returns>Sequence of child <see cref="ReportAggregatePointDto"/> rows.</returns>
-    public IEnumerable<ReportAggregatePointDto> GetChildRows(string parentKey) => GetChildRowsImpl(parentKey);
+    public IEnumerable<ReportAggregatePointDto> GetChildRows(string parentKey)
+        => GetChildRowsImpl(parentKey);
 
     private IEnumerable<ReportAggregatePointDto> GetChildRowsImpl(string parentKey)
     {
@@ -411,7 +422,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// </summary>
     /// <param name="key">Grouping key.</param>
     /// <returns><c>true</c> when children exist.</returns>
-    public bool HasChildren(string key) => GetChildRowsImpl(key).Any();
+    public bool HasChildren(string key)
+        => GetChildRowsImpl(key).Any();
 
     // Derived UI helpers
     /// <summary>
@@ -427,25 +439,27 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// Whether the projection column should be shown in the table.
     /// </summary>
-    /// <param name="CanCompareProjection">The can compare projection.</param>
     /// <returns>Whether the operation succeeded.</returns>
-    public bool ShowProjectionColumn => ComparedProjection || (CompareProjection && CanCompareProjection);
+    public bool ShowProjectionColumn
+    {
+        get
+        {
+            return ComparedProjection || (CompareProjection && CanCompareProjection);
+        }
+    }
 
     /// <summary>
     /// Computes totals for the currently visible top-level rows including optional previous/year comparisons.
     /// </summary>
-    /// <param name="Amount">The amount.</param>
-    /// <param name="Projection">The projection.</param>
-    /// <param name="Prev">The prev.</param>
     /// <returns>Tuple with current sum, previous sum (or <c>null</c>) and year-ago sum (or <c>null</c>).</returns>
-    public (decimal Amount, decimal? Projection, decimal? Prev, decimal? Year) GetTotals()
+    public ReportTotals GetTotals()
     {
         var rows = GetTopLevelRows().ToList();
         var amount = rows.Sum(r => r.Amount);
         decimal? projection = ShowProjectionColumn ? rows.Where(r => r.ProjectionAmount.HasValue).Sum(r => r.ProjectionAmount!.Value) : null;
         decimal? prev = ShowPreviousColumns ? rows.Where(r => r.PreviousAmount.HasValue).Sum(r => r.PreviousAmount!.Value) : null;
         decimal? year = CompareYear ? rows.Where(r => r.YearAgoAmount.HasValue).Sum(r => r.YearAgoAmount!.Value) : null;
-        return (amount, projection, prev, year);
+        return new ReportTotals(amount, projection, prev, year);
     }
 
     /// <summary>

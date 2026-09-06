@@ -48,10 +48,14 @@ public sealed class BudgetOverride : Entity, IAggregateRoot
     /// <summary>
     /// Target period to override.
     /// </summary>
-    /// <param name="PeriodYear">The period year.</param>
-    /// <param name="PeriodMonth">The period month.</param>
     /// <returns>The result.</returns>
-    public BudgetPeriodKey Period => new(PeriodYear, PeriodMonth);
+    public BudgetPeriodKey Period
+    {
+        get
+        {
+            return new BudgetPeriodKey(PeriodYear, PeriodMonth);
+        }
+    }
 
     /// <summary>
     /// Replacement planned amount for the period.

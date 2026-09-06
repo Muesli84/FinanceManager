@@ -490,31 +490,9 @@ public sealed class Posting : Entity, IAggregateRoot
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this posting.
     /// </summary>
-    /// <param name="SourceId">The source id.</param>
-    /// <param name="Kind">The kind.</param>
-    /// <param name="AccountId">The account id.</param>
-    /// <param name="ContactId">The contact id.</param>
-    /// <param name="SavingsPlanId">The savings plan id.</param>
-    /// <param name="SecurityId">The security id.</param>
-    /// <param name="BookingDate">The booking date.</param>
-    /// <param name="ValutaDate">The valuta date.</param>
-    /// <param name="Amount">The amount.</param>
-    /// <param name="OriginalAmount">The original amount.</param>
-    /// <param name="Subject">The subject.</param>
-    /// <param name="RecipientName">The recipient name.</param>
-    /// <param name="Description">The description.</param>
-    /// <param name="SecuritySubType">The security sub type.</param>
-    /// <param name="Quantity">The quantity.</param>
-    /// <param name="GroupId">The group id.</param>
-    /// <param name="ParentId">The parent id.</param>
-    /// <param name="LinkedPostingId">The linked posting id.</param>
-    /// <param name="ReversedByPostingId">The reversed by posting id.</param>
-    /// <param name="ReversalForPostingId">The reversal for posting id.</param>
-    /// <param name="ReversedByUserId">The reversed by user id.</param>
-    /// <param name="ReversedAtUtc">The reversed at utc.</param>
-    /// <param name="IsPreliminary">The is preliminary.</param>
     /// <returns>A <see cref="PostingBackupDto"/> containing values required to restore this posting.</returns>
-    public PostingBackupDto ToBackupDto() => new PostingBackupDto(Id, SourceId, Kind, AccountId, ContactId, SavingsPlanId, SecurityId, BookingDate, ValutaDate, Amount, OriginalAmount, Subject, RecipientName, Description, SecuritySubType, Quantity, GroupId, ParentId, LinkedPostingId, ReversedByPostingId, ReversalForPostingId, ReversedByUserId, ReversedAtUtc, IsPreliminary);
+    public PostingBackupDto ToBackupDto()
+        => new PostingBackupDto(Id, SourceId, Kind, AccountId, ContactId, SavingsPlanId, SecurityId, BookingDate, ValutaDate, Amount, OriginalAmount, Subject, RecipientName, Description, SecuritySubType, Quantity, GroupId, ParentId, LinkedPostingId, ReversedByPostingId, ReversalForPostingId, ReversedByUserId, ReversedAtUtc, IsPreliminary);
 
     /// <summary>
     /// Applies values from the provided backup DTO to this posting instance.
