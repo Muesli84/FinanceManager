@@ -315,7 +315,9 @@ public sealed class ContactCardViewModel : BaseCardViewModel<(string Key, string
     /// <summary>
     /// Returns the attachment parent kind and id to be used for symbol uploads for this contact.
     /// </summary>
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.Contact, Id == Guid.Empty ? Guid.Empty : Id);
+    /// <returns>Tuple of attachment kind and parent id.</returns>
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.Contact, Id == Guid.Empty ? Guid.Empty : Id);
 
     /// <summary>
     /// Indicates whether symbol uploads are permitted for this contact. Returned true for the contact card.

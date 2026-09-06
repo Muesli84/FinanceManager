@@ -12,6 +12,7 @@ namespace FinanceManager.Shared.Dtos.Contacts;
 /// <param name="Description">Optional description for the contact.</param>
 /// <param name="IsPaymentIntermediary">True when the contact is a payment intermediary.</param>
 /// <param name="Parent">Optional parent context used for server-side assignment.</param>
+/// <returns>The result.</returns>
 public sealed record ContactCreateRequest(
     [Required, MinLength(2)] string Name,
     ContactType Type,

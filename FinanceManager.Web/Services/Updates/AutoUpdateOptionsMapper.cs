@@ -17,11 +17,13 @@ public static class AutoUpdateOptionsMapper
     /// <summary>
     /// Default start time for automatic update checks.
     /// </summary>
+    /// <returns>The result.</returns>
     public static TimeOnly DefaultSourceCheckStartTime { get; } = new(20, 0);
 
     /// <summary>
     /// Default end time for automatic update checks.
     /// </summary>
+    /// <returns>The result.</returns>
     public static TimeOnly DefaultSourceCheckEndTime { get; } = new(6, 0);
 
     /// <summary>

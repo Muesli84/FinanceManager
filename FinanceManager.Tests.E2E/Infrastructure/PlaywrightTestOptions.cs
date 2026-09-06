@@ -12,6 +12,7 @@ public sealed class PlaywrightTestOptions
     /// <c>PLAYWRIGHT_BROWSER_CHANNEL</c> environment variable and defaulting to "msedge" so tests run
     /// against a real, installed Edge by default rather than Playwright's bundled Chromium.
     /// </summary>
+    /// <returns>The result.</returns>
     public string BrowserChannel { get; init; } = Environment.GetEnvironmentVariable("PLAYWRIGHT_BROWSER_CHANNEL") ?? "msedge";
 
     /// <summary>
@@ -19,6 +20,7 @@ public sealed class PlaywrightTestOptions
     /// <c>PLAYWRIGHT_HEADED</c> environment variable is set to "true", which lets a developer watch a test
     /// run in an actual browser window while debugging locally.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool Headless { get; init; } = !string.Equals(Environment.GetEnvironmentVariable("PLAYWRIGHT_HEADED"), "true", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
@@ -38,11 +40,13 @@ public sealed class PlaywrightTestOptions
     /// environment variable. Disabled by default because tracing adds overhead; enable it when a failing
     /// test needs deeper diagnosis than a screenshot and HTML snapshot provide.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool TraceEnabled { get; init; } = string.Equals(Environment.GetEnvironmentVariable("PLAYWRIGHT_TRACE"), "1", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Whether to capture a screenshot, HTML snapshot, and browser console/page-error log for each session,
     /// controlled via the <c>PLAYWRIGHT_ARTIFACTS</c> environment variable.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool ArtifactCaptureEnabled { get; init; } = string.Equals(Environment.GetEnvironmentVariable("PLAYWRIGHT_ARTIFACTS"), "1", StringComparison.OrdinalIgnoreCase);
 }

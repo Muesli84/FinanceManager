@@ -165,7 +165,8 @@ public sealed class SavingsPlanCategoryCardViewModel : BaseCardViewModel<(string
     /// <summary>
     /// Reloads the entity by re-invoking <see cref="LoadAsync(Guid)"/> for the current Id.
     /// </summary>
-    public override async Task ReloadAsync() => await LoadAsync(Id);
+    public override async Task ReloadAsync()
+        => await LoadAsync(Id);
 
     /// <summary>
     /// Builds ribbon register definitions for the savings plan category card including navigation and manage actions.
@@ -194,7 +195,8 @@ public sealed class SavingsPlanCategoryCardViewModel : BaseCardViewModel<(string
     /// Returns the attachment parent kind and id used for symbol uploads. The returned <see cref="AttachmentEntityKind"/> is <see cref="AttachmentEntityKind.SavingsPlanCategory"/>.
     /// </summary>
     /// <returns>Tuple of attachment kind and parent id (or <see cref="Guid.Empty"/>).</returns>
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.SavingsPlanCategory, Id == Guid.Empty ? Guid.Empty : Id);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.SavingsPlanCategory, Id == Guid.Empty ? Guid.Empty : Id);
 
     /// <summary>
     /// Indicates whether symbol upload is allowed for this card. Always returns true; the actual API will validate the operation.

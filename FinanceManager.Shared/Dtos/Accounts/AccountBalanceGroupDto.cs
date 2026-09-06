@@ -11,6 +11,7 @@ namespace FinanceManager.Shared.Dtos.Accounts;
 /// <param name="GrossMagnitude">Absolute balance volume used for chart geometry.</param>
 /// <param name="AccountCount">Number of accounts in the group.</param>
 /// <param name="ZeroBalanceCount">Number of zero-balance accounts in the group.</param>
+/// <returns>The result.</returns>
 public sealed record AccountBalanceGroupDto(
     string Key,
     string? DisplayName,

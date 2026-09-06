@@ -79,6 +79,7 @@ public sealed class HomeViewModel : ViewModelBase
     /// <summary>
     /// Upload progress in percent.
     /// </summary>
+    /// <returns>The result.</returns>
     public int UploadPercent => UploadTotal == 0 ? 0 : (int)Math.Round((double)(UploadDone * 100m / UploadTotal));
 
     /// <summary>
@@ -93,6 +94,7 @@ public sealed class HomeViewModel : ViewModelBase
     /// <summary>
     /// Starts upload state tracking for a new batch.
     /// </summary>
+    /// <param name="total">The total.</param>
     public void StartUpload(int total)
     {
         UploadInProgress = true;
@@ -111,6 +113,7 @@ public sealed class HomeViewModel : ViewModelBase
     /// <summary>
     /// Confirms and executes a pending mass import batch.
     /// </summary>
+    /// <param name="ct">Cancellation token.</param>
     public async Task ConfirmMassImportAsync(CancellationToken ct = default)
     {
         if (PendingMassImport == null || _pendingUploads.Count == 0)
@@ -158,6 +161,8 @@ public sealed class HomeViewModel : ViewModelBase
     /// <summary>
     /// Updates exclusion state for one pending file.
     /// </summary>
+    /// <param name="fileId">The file id.</param>
+    /// <param name="excluded">The excluded.</param>
     public void SetPendingFileExcluded(Guid fileId, bool excluded)
     {
         if (PendingMassImport == null)
@@ -190,6 +195,8 @@ public sealed class HomeViewModel : ViewModelBase
     /// <summary>
     /// Updates selected security for one pending file.
     /// </summary>
+    /// <param name="fileId">The file id.</param>
+    /// <param name="securityId">The security id.</param>
     public void SetPendingFileSecurity(Guid fileId, Guid? securityId)
     {
         if (PendingMassImport == null)
@@ -225,6 +232,8 @@ public sealed class HomeViewModel : ViewModelBase
     /// <summary>
     /// Builds ribbon actions for home view.
     /// </summary>
+    /// <param name="localizer">The localizer.</param>
+    /// <returns>The result.</returns>
     protected override IReadOnlyList<UiRibbonRegister>? GetRibbonRegisterDefinition(IStringLocalizer localizer)
     {
         var importAction = new UiRibbonAction(

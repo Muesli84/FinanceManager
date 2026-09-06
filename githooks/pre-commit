@@ -1,5 +1,0 @@
-#!/bin/sh
-# Validate formatting, localization keys and resx package consistency before each commit.
-set -e
-dotnet format FinanceManager.sln --verify-no-changes --no-restore --severity error
-python githooks/translation-check.py

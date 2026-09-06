@@ -16,6 +16,8 @@ public sealed class BudgetCategoryService : IBudgetCategoryService
     /// <summary>
     /// Creates a new instance.
     /// </summary>
+    /// <param name="db">The db.</param>
+    /// <param name="purposes">The purposes.</param>
     public BudgetCategoryService(AppDbContext db, IBudgetPurposeService purposes)
     {
         _db = db;

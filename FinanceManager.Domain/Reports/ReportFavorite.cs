@@ -327,15 +327,15 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     /// A tuple containing optional collections for Accounts, Contacts, SavingsPlans, Securities,
     /// ContactCategories, SavingsPlanCategories, SecurityCategories, SecuritySubTypes and the IncludeDividendRelated flag.
     /// </returns>
-    public (IReadOnlyCollection<Guid>? Accounts,
-            IReadOnlyCollection<Guid>? Contacts,
-            IReadOnlyCollection<Guid>? SavingsPlans,
-            IReadOnlyCollection<Guid>? Securities,
-            IReadOnlyCollection<Guid>? ContactCategories,
-            IReadOnlyCollection<Guid>? SavingsPlanCategories,
-            IReadOnlyCollection<Guid>? SecurityCategories,
-            IReadOnlyCollection<int>? SecuritySubTypes,
-            bool? IncludeDividendRelated) GetFilters()
+    public (IReadOnlyCollection<Guid>?,
+            IReadOnlyCollection<Guid>?,
+            IReadOnlyCollection<Guid>?,
+            IReadOnlyCollection<Guid>?,
+            IReadOnlyCollection<Guid>?,
+            IReadOnlyCollection<Guid>?,
+            IReadOnlyCollection<Guid>?,
+            IReadOnlyCollection<int>?,
+            bool?) GetFilters()
     {
         return (
             FromCsv(AccountIdsCsv),
@@ -350,8 +350,10 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
         );
     }
 
-    private static string? ToCsv(IEnumerable<Guid>? ids) => ids == null ? null : string.Join(',', ids.Distinct());
-    private static string? ToCsvInt(IEnumerable<int>? values) => values == null ? null : string.Join(',', values.Distinct());
+    private static string? ToCsv(IEnumerable<Guid>? ids)
+        => ids == null ? null : string.Join(',', ids.Distinct());
+    private static string? ToCsvInt(IEnumerable<int>? values)
+        => values == null ? null : string.Join(',', values.Distinct());
     private static IReadOnlyCollection<Guid>? FromCsv(string? csv)
         => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Guid.Parse).ToArray();
     private static IReadOnlyCollection<int>? FromCsvInt(string? csv)
@@ -361,6 +363,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     /// <summary>
     /// Backup data transfer object for ReportFavorite.
     /// </summary>
+    /// <returns>The result.</returns>
     public sealed record ReportFavoriteBackupDto(
         Guid Id,
         Guid OwnerUserId,
@@ -390,7 +393,8 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     /// Creates a backup DTO representing the serializable state of this ReportFavorite.
     /// </summary>
     /// <returns>A <see cref="ReportFavoriteBackupDto"/> containing the backup data.</returns>
-    public ReportFavoriteBackupDto ToBackupDto() => new ReportFavoriteBackupDto(Id, OwnerUserId, Name, PostingKind, IncludeCategory, Interval, Take, ComparePrevious, CompareYear, CompareProjection, ShowChart, Expandable, PostingKindsCsv, AccountIdsCsv, ContactIdsCsv, SavingsPlanIdsCsv, SecurityIdsCsv, ContactCategoryIdsCsv, SavingsPlanCategoryIdsCsv, SecurityCategoryIdsCsv, SecuritySubTypesCsv, IncludeDividendRelated, UseValutaDate);
+    public ReportFavoriteBackupDto ToBackupDto()
+        => new ReportFavoriteBackupDto(Id, OwnerUserId, Name, PostingKind, IncludeCategory, Interval, Take, ComparePrevious, CompareYear, CompareProjection, ShowChart, Expandable, PostingKindsCsv, AccountIdsCsv, ContactIdsCsv, SavingsPlanIdsCsv, SecurityIdsCsv, ContactCategoryIdsCsv, SavingsPlanCategoryIdsCsv, SecurityCategoryIdsCsv, SecuritySubTypesCsv, IncludeDividendRelated, UseValutaDate);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity. Uses existing setters to preserve invariants where applicable.

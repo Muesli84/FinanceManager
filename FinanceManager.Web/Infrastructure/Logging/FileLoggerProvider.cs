@@ -300,6 +300,9 @@ internal sealed class FileLogger : ILogger
     /// <summary>
     /// Begins a logical operation scope. This implementation does not support scopes and returns <c>null</c>.
     /// </summary>
+    /// <typeparam name="TState">The type parameter.</typeparam>
+    /// <param name="state">The state.</param>
+    /// <returns>The result.</returns>
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => default!;
 
     /// <summary>

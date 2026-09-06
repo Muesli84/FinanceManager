@@ -59,6 +59,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Entries with status AlreadyBooked are not editable.
     /// </summary>
     /// <param name="item">Row item instance.</param>
+    /// <returns>Whether the operation succeeded.</returns>
     public override bool IsRowEditable(object item)
     {
         if (item is StatementDraftEntryItem sdi)
@@ -175,6 +176,9 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// <summary>
     /// Returns the current edited value for the given entry id and field key.
     /// </summary>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="field">The field.</param>
+    /// <returns>The result.</returns>
     public object? GetEditValue(Guid entryId, string field)
     {
         if (_editValues.TryGetValue(entryId, out var map) && map.TryGetValue(field, out var v))
@@ -188,6 +192,9 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// For BookingDate, the ValutaDate is automatically copied if it was empty
     /// or matched the previous booking date, and only valid 4-digit years are accepted.
     /// </summary>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="field">The field.</param>
+    /// <param name="value">The value.</param>
     public void SetEditValue(Guid entryId, string field, object? value)
     {
         if (!_editValues.TryGetValue(entryId, out var map)) return;
@@ -244,6 +251,8 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Copies the value of the given field from the row directly above the
     /// specified entry into the same field of the specified entry.
     /// </summary>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="field">The field.</param>
     public void TakeValueFromAbove(Guid entryId, string field)
     {
         var idx = -1;
@@ -266,6 +275,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Copies all editable values from the row directly above the specified
     /// entry into the corresponding fields of the specified entry.
     /// </summary>
+    /// <param name="entryId">The entry id.</param>
     public void TakeAllValuesFromAbove(Guid entryId)
     {
         var idx = -1;
@@ -332,6 +342,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// <summary>
     /// Resets the edited values for a given entry to the original snapshot.
     /// </summary>
+    /// <param name="entryId">The entry id.</param>
     public void ResetRow(Guid entryId)
     {
         _pendingDeleteIds.Remove(entryId);
@@ -368,6 +379,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Collects changed rows as a mapping EntryId -> (field -> newValue).
     /// Only fields that differ from the original snapshot are returned.
     /// </summary>
+    /// <returns>The result.</returns>
     public override IReadOnlyDictionary<Guid, IDictionary<string, object?>> CollectChangedRows()
     {
         var result = new Dictionary<Guid, IDictionary<string, object?>>();
@@ -441,6 +453,8 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Performs client-side validation for a single row based on current edit values.
     /// Returns tuples of (field, message) for validation errors.
     /// </summary>
+    /// <param name="item">The item.</param>
+    /// <returns>The result.</returns>
     public override IEnumerable<(string Field, string Message)> ValidateRow(object item)
     {
         if (item is not StatementDraftEntryItem it) yield break;
@@ -891,6 +905,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// <summary>
     /// If a focus request was previously issued, returns the first entry id that has a hint and clears the request.
     /// </summary>
+    /// <returns>The result.</returns>
     public Guid? ConsumeFocusFirstInvalid()
     {
         if (!_focusFirstInvalidRequested) return null;
@@ -903,6 +918,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// If quick-edit just opened, returns the id of the first row whose BookingDate input should be focused.
     /// The request is consumed by the component rendering the list.
     /// </summary>
+    /// <returns>The result.</returns>
     public Guid? ConsumeFocusQuickEditBookingDate()
     {
         var id = _focusQuickEditBookingDateId;
@@ -914,6 +930,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Validates client-side edit state for all changed rows and returns whether all rows are valid.
     /// Also populates _entryHints for display.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool ValidateAllChangedRows()
     {
         _entryHints.Clear();
@@ -953,6 +970,8 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// <summary>
     /// Validates a single quick-edit row, updates the hint for it and triggers a re-render.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool ValidateQuickEditRow(Guid id)
     {
         if (_pendingDeleteIds.Contains(id)) { _entryHints.Remove(id); return true; }
@@ -971,6 +990,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// <summary>
     /// Returns true when there are any changed rows pending in the quick-edit buffer.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool HasChangedRows()
     {
         var changed = CollectChangedRows();
@@ -984,6 +1004,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Performs a non-mutating client-side validation of changed rows and returns whether they are all valid.
     /// Does not populate hints or mutate state.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool ChangedRowsAreValid()
     {
         var changed = CollectChangedRows();
@@ -1012,6 +1033,7 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Returns all visible quick-edit rows that should participate in the validity check.
     /// Excludes placeholders, rows marked for deletion, and non-editable (AlreadyBooked / announced) rows.
     /// </summary>
+    /// <returns>The result.</returns>
     private IEnumerable<StatementDraftEntryItem> GetQuickEditRowsToValidate()
         => VisibleQuickEditItems
             .Where(i => !i.IsPlaceholder && !_pendingDeleteIds.Contains(i.Id) && IsRowEditable(i));
@@ -1021,6 +1043,8 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Only valid dates with a 4-digit year (>= 1000) are accepted. Invalid input clears the field.
     /// The ValutaDate is automatically copied from the new BookingDate when the copy rule applies.
     /// </summary>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="rawDate">The raw date.</param>
     public void SetBookingDateFromUi(Guid entryId, string? rawDate)
     {
         if (!_editValues.TryGetValue(entryId, out var map)) return;
@@ -1038,6 +1062,8 @@ internal sealed class StatementDraftEntriesListViewModel : BaseListViewModel<Sta
     /// Parses a raw yyyy-MM-dd date string from the UI and stores it as the ValutaDate.
     /// Only valid dates with a 4-digit year (>= 1000) are accepted. Invalid input clears the field.
     /// </summary>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="rawDate">The raw date.</param>
     public void SetValutaDateFromUi(Guid entryId, string? rawDate)
     {
         if (!_editValues.TryGetValue(entryId, out var map)) return;

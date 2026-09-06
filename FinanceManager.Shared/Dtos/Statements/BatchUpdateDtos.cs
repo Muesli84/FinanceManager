@@ -9,12 +9,15 @@ namespace FinanceManager.Shared.Dtos.Statements
     public sealed class BatchUpdateRequestDto
     {
         /// <summary>List of entry updates to apply.</summary>
+        /// <returns>The result.</returns>
         public List<EntryUpdateDto> Updates { get; set; } = new();
 
         /// <summary>Persisted entry identifiers to delete.</summary>
+        /// <returns>The result.</returns>
         public List<Guid> Deletes { get; set; } = new();
 
         /// <summary>New entries to create during the same quick-edit save.</summary>
+        /// <returns>The result.</returns>
         public List<EntryCreateDto> Creates { get; set; } = new();
     }
 
@@ -24,6 +27,7 @@ namespace FinanceManager.Shared.Dtos.Statements
         /// <summary>Entry identifier.</summary>
         public Guid EntryId { get; set; }
         /// <summary>Field key -> value mapping for changed fields.</summary>
+        /// <returns>The result.</returns>
         public Dictionary<string, object?> Fields { get; set; } = new();
     }
 
@@ -61,6 +65,7 @@ namespace FinanceManager.Shared.Dtos.Statements
         /// <summary>Success flag (false).</summary>
         public bool Success { get; set; } = false;
         /// <summary>Per-entry errors describing which fields failed validation.</summary>
+        /// <returns>The result.</returns>
         public List<EntryErrorDto> Errors { get; set; } = new();
     }
 
@@ -72,6 +77,7 @@ namespace FinanceManager.Shared.Dtos.Statements
         /// <summary>Client-side identifier for errors on new local rows.</summary>
         public Guid? ClientId { get; set; }
         /// <summary>Field-level errors for this entry.</summary>
+        /// <returns>The result.</returns>
         public List<FieldErrorDto> FieldErrors { get; set; } = new();
     }
 

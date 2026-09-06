@@ -11,6 +11,10 @@ public partial class ApiClient
     /// <summary>
     /// Lists budget categories for the current user.
     /// </summary>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IReadOnlyList<BudgetCategoryOverviewDto>> Budgets_ListCategoriesAsync(DateOnly? from = null, DateOnly? to = null, CancellationToken ct = default)
     {
         var parts = new List<string>();
@@ -32,6 +36,9 @@ public partial class ApiClient
     /// <summary>
     /// Gets a budget category by id or null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<BudgetCategoryDto?> Budgets_GetCategoryAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.GetAsync($"/api/budget/categories/{id}", ct);
@@ -43,6 +50,9 @@ public partial class ApiClient
     /// <summary>
     /// Creates a budget category.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<BudgetCategoryDto> Budgets_CreateCategoryAsync(BudgetCategoryCreateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync("/api/budget/categories", request, ct);
@@ -53,6 +63,10 @@ public partial class ApiClient
     /// <summary>
     /// Updates a budget category. Returns null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<BudgetCategoryDto?> Budgets_UpdateCategoryAsync(Guid id, BudgetCategoryUpdateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PutAsJsonAsync($"/api/budget/categories/{id}", request, ct);
@@ -64,6 +78,9 @@ public partial class ApiClient
     /// <summary>
     /// Deletes a budget category. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Budgets_DeleteCategoryAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/budget/categories/{id}", ct);

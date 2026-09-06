@@ -536,12 +536,16 @@ public sealed class TestStringLocalizer<T> : Microsoft.Extensions.Localization.I
     }
 
     /// <summary>Always returns an empty sequence; this fake does not enumerate a resource set.</summary>
+    /// <param name="includeParentCultures">The include parent cultures.</param>
+    /// <returns>The result.</returns>
     public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
     {
         return Array.Empty<LocalizedString>();
     }
 
     /// <summary>Returns this same instance; culture switching is not simulated by this fake.</summary>
+    /// <param name="culture">The culture.</param>
+    /// <returns>The result.</returns>
     public IStringLocalizer WithCulture(System.Globalization.CultureInfo culture)
     {
         return this;

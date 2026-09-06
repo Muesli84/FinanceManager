@@ -78,6 +78,7 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
     /// Exposes the available setting sections as (key, localized display name) pairs.
     /// The list is materialized once in <see cref="LoadAsync"/> and cached for the lifetime of the view model.
     /// </summary>
+    /// <returns>The result.</returns>
     public IReadOnlyList<KeyValuePair<string, string>> SettingSections => _settingSections ?? Array.Empty<KeyValuePair<string, string>>();
 
     /// <summary>
@@ -373,7 +374,8 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
                     UiRibbonItemSize.Small,
                     Saving || !HasPendingChanges,
                     null,
-                    new Func<Task>(async () => await SaveAllAsync()))
+                    new Func<Task>(async ()
+                        => await SaveAllAsync()))
                 { MobileShortcut = true },
                 new UiRibbonAction(
                     "Reset",
@@ -382,7 +384,8 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
                     UiRibbonItemSize.Small,
                     Saving || !HasPendingChanges,
                     null,
-                    new Func<Task>(() => { ResetAll(); return Task.CompletedTask; }))
+                    new Func<Task>(()
+                        => { ResetAll(); return Task.CompletedTask; }))
                 { MobileShortcut = true },
                 new UiRibbonAction(
                     "RebuildAggregates",
@@ -435,8 +438,8 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
     /// For the setup card a placeholder of statement draft with empty id is returned.
     /// </summary>
     /// <returns>A tuple containing the attachment entity kind and parent id.</returns>
-    protected override (Domain.Attachments.AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent()
-        => (Domain.Attachments.AttachmentEntityKind.StatementDraft, Guid.Empty);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(Domain.Attachments.AttachmentEntityKind.StatementDraft, Guid.Empty);
 
     /// <summary>
     /// Assigns a newly uploaded symbol to the current card record.

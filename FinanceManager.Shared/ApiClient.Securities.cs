@@ -391,6 +391,8 @@ public partial class ApiClient
     }
 
     /// <summary>Gets return analysis settings for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<ReturnAnalysisSettingsResponse?> Securities_GetReturnAnalysisSettingsAsync(CancellationToken ct = default)
     {
         var resp = await _http.GetAsync("/api/securities/return-analysis/settings", ct);
@@ -400,6 +402,9 @@ public partial class ApiClient
     }
 
     /// <summary>Updates return analysis settings for the current user.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Securities_UpdateReturnAnalysisSettingsAsync(ReturnAnalysisSettingsUpdateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PutAsJsonAsync("/api/securities/return-analysis/settings", request, ct);

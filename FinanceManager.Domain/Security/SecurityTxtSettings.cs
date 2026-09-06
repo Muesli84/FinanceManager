@@ -26,6 +26,8 @@ public sealed class SecurityTxtSettings : Entity, IAggregateRoot
     /// <summary>
     /// Creates a new settings instance.
     /// </summary>
+    /// <param name="contact">The contact.</param>
+    /// <param name="expires">The expires.</param>
     public SecurityTxtSettings(string contact, DateTimeOffset expires)
     {
         Contact = Guards.NotNullOrWhiteSpace(contact, nameof(contact)).Trim();
@@ -51,6 +53,7 @@ public sealed class SecurityTxtSettings : Entity, IAggregateRoot
     public string? Canonical { get; private set; }
 
     /// <summary>Updates all directives.</summary>
+    /// <param name="directives">The directives.</param>
     public void Update(SecurityTxtDirectives directives)
     {
         ArgumentNullException.ThrowIfNull(directives);

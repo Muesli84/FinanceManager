@@ -205,6 +205,22 @@ Die aktuellen Testdateien enthalten unter anderem Abdeckung für:
 - Quick-Edit-Verhalten in Kontoauszugsentwürfen
 - Summen, Filterung und Fehlerzustände der Bankübersicht
 
+## Git-Hooks und Codequalität
+
+Das Repository verwendet Git-Hooks aus dem Verzeichnis **`.githooks/`**. Aktivierung nach dem Klonen:
+
+```cmd
+.githooks\install-hooks.cmd
+```
+
+bzw. unter Linux/macOS:
+
+```bash
+./.githooks/install-hooks.sh
+```
+
+Die Skripte setzen `core.hooksPath` auf `.githooks`. Der **pre-commit**-Hook blockiert Commits auf `main`/`staging` und prüft Übersetzungskonsistenz, XML-Dokumentation, hartkodierte UI-Texte in Razor-Komponenten, unreferenzierte Komponenten, Stub-Implementierungen (`NotImplementedException`) und die Enum-Testabdeckung. Der **pre-push**-Hook führt die Stub-, Komponenten- und Enum-Prüfungen strikt für das gesamte Repository aus.
+
 ## Help, Betrieb und Sicherheit
 
 - Die Help-Oberfläche ist unter **`/help`** verfügbar.

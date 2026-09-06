@@ -74,7 +74,9 @@ public sealed record BudgetReportEntry
     /// <summary>
     /// Gets the postings contributing to this row.
     /// </summary>
-    public MonthlyBudgetRealization[] Postings { get; init; } = Array.Empty<MonthlyBudgetRealization>();
+    /// <returns>The result.</returns>
+    public MonthlyBudgetRealization[] Postings { get; init; }
+        = Array.Empty<MonthlyBudgetRealization>();
 
     /// <summary>
     /// Gets the id of the budget category this row belongs to (for <see cref="BudgetReportEntryRowKind.Category"/>,

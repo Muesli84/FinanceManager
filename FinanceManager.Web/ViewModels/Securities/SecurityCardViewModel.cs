@@ -78,16 +78,19 @@ public sealed class SecurityCardViewModel : BaseCardViewModel<(string Key, strin
     /// <summary>
     /// Current edit model instance used to collect user input.
     /// </summary>
+    /// <returns>The result.</returns>
     public EditModel Model { get; } = new();
 
     /// <summary>
     /// Display model used for header/status rendering.
     /// </summary>
+    /// <returns>The result.</returns>
     public DisplayModel Display { get; private set; } = new();
 
     /// <summary>
     /// Category list used for the category lookup field.
     /// </summary>
+    /// <returns>The result.</returns>
     public List<SecurityCategoryDto> Categories { get; private set; } = new();
 
     /// <summary>
@@ -464,7 +467,8 @@ public sealed class SecurityCardViewModel : BaseCardViewModel<(string Key, strin
     /// Returns the parent information used for symbol attachments.
     /// </summary>
     /// <returns>Attachment entity kind and the parent id used when uploading symbols.</returns>
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.Security, Id == Guid.Empty ? Guid.Empty : Id);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.Security, Id == Guid.Empty ? Guid.Empty : Id);
 
     /// <summary>
     /// Whether uploading a symbol is allowed in the current state.

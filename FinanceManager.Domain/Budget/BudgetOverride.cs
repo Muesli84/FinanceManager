@@ -48,7 +48,14 @@ public sealed class BudgetOverride : Entity, IAggregateRoot
     /// <summary>
     /// Target period to override.
     /// </summary>
-    public BudgetPeriodKey Period => new(PeriodYear, PeriodMonth);
+    /// <returns>The result.</returns>
+    public BudgetPeriodKey Period
+    {
+        get
+        {
+            return new BudgetPeriodKey(PeriodYear, PeriodMonth);
+        }
+    }
 
     /// <summary>
     /// Replacement planned amount for the period.
@@ -87,17 +94,20 @@ public sealed class BudgetOverride : Entity, IAggregateRoot
     /// <param name="PeriodYear">Period year.</param>
     /// <param name="PeriodMonth">Period month.</param>
     /// <param name="Amount">Override amount.</param>
+    /// <returns>The result.</returns>
     public sealed record BudgetOverrideBackupDto(Guid Id, Guid OwnerUserId, Guid BudgetPurposeId, int PeriodYear, int PeriodMonth, decimal Amount);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this budget override.
     /// </summary>
+    /// <returns>The result.</returns>
     public BudgetOverrideBackupDto ToBackupDto()
         => new BudgetOverrideBackupDto(Id, OwnerUserId, BudgetPurposeId, PeriodYear, PeriodMonth, Amount);
 
     /// <summary>
     /// Applies values from the provided backup DTO to this entity.
     /// </summary>
+    /// <param name="dto">The dto.</param>
     public void AssignBackupDto(BudgetOverrideBackupDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);

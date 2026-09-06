@@ -29,12 +29,20 @@ public sealed class SecurityCategoryCardViewModel : BaseCardViewModel<(string Ke
     /// <summary>
     /// Edit model holding the values bound to the UI when creating or editing a category.
     /// </summary>
+    /// <returns>The result.</returns>
     public EditModel Model { get; } = new();
 
     /// <summary>
     /// Computed title for the card derived from the category name field or the edit model.
     /// </summary>
-    public override string Title => CardRecord?.Fields.FirstOrDefault(f => f.LabelKey == "Card_Caption_SecurityCategory_Name")?.Text ?? (Model?.Name ?? base.Title);
+    /// <returns>The result.</returns>
+    public override string Title
+    {
+        get
+        {
+            return CardRecord?.Fields.FirstOrDefault(f => f.LabelKey == "Card_Caption_SecurityCategory_Name")?.Text ?? (Model?.Name ?? base.Title);
+        }
+    }
 
     /// <summary>
     /// Loads the security category identified by <paramref name="id"/>. When <see cref="Guid.Empty"/>
@@ -171,7 +179,8 @@ public sealed class SecurityCategoryCardViewModel : BaseCardViewModel<(string Ke
     /// <summary>
     /// Reloads the currently loaded category.
     /// </summary>
-    public override async Task ReloadAsync() => await LoadAsync(Id);
+    public override async Task ReloadAsync()
+        => await LoadAsync(Id);
 
     /// <summary>
     /// Builds ribbon register definitions for the security category card including navigation and manage actions.
@@ -200,7 +209,8 @@ public sealed class SecurityCategoryCardViewModel : BaseCardViewModel<(string Ke
     /// Returns the parent information used for symbol attachments.
     /// </summary>
     /// <returns>Attachment entity kind and the parent id used when uploading symbols.</returns>
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.SecurityCategory, Id == Guid.Empty ? Guid.Empty : Id);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.SecurityCategory, Id == Guid.Empty ? Guid.Empty : Id);
 
     /// <summary>
     /// Indicates whether symbol upload is allowed in the current state. Categories always allow symbol uploads.

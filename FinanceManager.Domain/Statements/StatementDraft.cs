@@ -117,7 +117,11 @@ public sealed class StatementDraft : Entity, IAggregateRoot
     /// Sets the detected account id for this draft.
     /// </summary>
     /// <param name="accountId">Detected account GUID.</param>
-    public void SetDetectedAccount(Guid accountId) { DetectedAccountId = accountId; Touch(); }
+    public void SetDetectedAccount(Guid accountId)
+    {
+        DetectedAccountId = accountId;
+        Touch();
+    }
 
     /// <summary>
     /// Adds a simple entry to the draft using required fields. This is a convenience overload.
@@ -176,17 +180,29 @@ public sealed class StatementDraft : Entity, IAggregateRoot
     /// <summary>
     /// Marks the draft as committed (ready to be applied to account postings).
     /// </summary>
-    public void MarkCommitted() { Status = StatementDraftStatus.Committed; Touch(); }
+    public void MarkCommitted()
+    {
+        Status = StatementDraftStatus.Committed;
+        Touch();
+    }
 
     /// <summary>
     /// Expires the draft and sets its status to Expired.
     /// </summary>
-    public void Expire() { Status = StatementDraftStatus.Expired; Touch(); }
+    public void Expire()
+    {
+        Status = StatementDraftStatus.Expired;
+        Touch();
+    }
 
     /// <summary>
     /// Marks this draft as a preliminary (provisional) bookings draft.
     /// </summary>
-    public void MarkAsPreliminary() { IsPreliminary = true; Touch(); }
+    public void MarkAsPreliminary()
+    {
+        IsPreliminary = true;
+        Touch();
+    }
 
     // Backup DTO
     /// <summary>
@@ -204,13 +220,15 @@ public sealed class StatementDraft : Entity, IAggregateRoot
     /// <param name="ModifiedUtc">Last modification timestamp in UTC, if any.</param>
     /// <param name="Entries">List of contained draft entries as backup DTOs.</param>
     /// <param name="IsPreliminary">Indicates whether the draft is a preliminary (provisional) booking.</param>
+    /// <returns>The result.</returns>
     public sealed record StatementDraftBackupDto(Guid Id, Guid OwnerUserId, string OriginalFileName, string? AccountName, string? Description, Guid? DetectedAccountId, StatementDraftStatus Status, Guid? UploadGroupId, DateTime CreatedUtc, DateTime? ModifiedUtc, List<StatementDraftEntry.StatementDraftEntryBackupDto> Entries, bool IsPreliminary = false);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this draft and its entries.
     /// </summary>
     /// <returns>A <see cref="StatementDraftBackupDto"/> containing the draft metadata and entry DTOs.</returns>
-    public StatementDraftBackupDto ToBackupDto() => new StatementDraftBackupDto(Id, OwnerUserId, OriginalFileName, AccountName, Description, DetectedAccountId, Status, UploadGroupId, CreatedUtc, ModifiedUtc, _entries.Select(e => e.ToBackupDto()).ToList(), IsPreliminary);
+    public StatementDraftBackupDto ToBackupDto()
+        => new StatementDraftBackupDto(Id, OwnerUserId, OriginalFileName, AccountName, Description, DetectedAccountId, Status, UploadGroupId, CreatedUtc, ModifiedUtc, _entries.Select(e => e.ToBackupDto()).ToList(), IsPreliminary);
 
     /// <summary>
     /// Assigns values from a backup DTO to this draft instance. Existing entries are cleared and replaced by DTO contents.
@@ -427,7 +445,11 @@ public sealed class StatementDraftEntry : Entity
     /// <summary>
     /// Marks the entry as already booked (duplicate or already applied in the system).
     /// </summary>
-    public void MarkAlreadyBooked() { Status = StatementDraftEntryStatus.AlreadyBooked; Touch(); }
+    public void MarkAlreadyBooked()
+    {
+        Status = StatementDraftEntryStatus.AlreadyBooked;
+        Touch();
+    }
 
     /// <summary>
     /// Marks the entry as accounted and assigns the contact id.
@@ -589,13 +611,15 @@ public sealed class StatementDraftEntry : Entity
     /// <param name="SecurityQuantity">Optional quantity for security transactions.</param>
     /// <param name="SecurityFeeAmount">Optional fee amount for security transaction.</param>
     /// <param name="SecurityTaxAmount">Optional tax amount for security transaction.</param>
+    /// <returns>The result.</returns>
     public sealed record StatementDraftEntryBackupDto(Guid Id, Guid DraftId, DateTime CreatedUtc, DateTime? ModifiedUtc, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string Subject, string? RecipientName, string CurrencyCode, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, StatementDraftEntryStatus Status, Guid? ContactId, Guid? SavingsPlanId, bool ArchiveSavingsPlanOnBooking, Guid? SplitDraftId, Guid? SecurityId, SecurityTransactionType? SecurityTransactionType, decimal? SecurityQuantity, decimal? SecurityFeeAmount, decimal? SecurityTaxAmount);
 
     /// <summary>
     /// Creates a backup DTO representing this draft entry.
     /// </summary>
     /// <returns>A <see cref="StatementDraftEntryBackupDto"/> with the serializable state.</returns>
-    public StatementDraftEntryBackupDto ToBackupDto() => new StatementDraftEntryBackupDto(Id, DraftId, CreatedUtc, ModifiedUtc, BookingDate, ValutaDate, Amount, Subject, RecipientName, CurrencyCode, BookingDescription, IsAnnounced, IsCostNeutral, Status, ContactId, SavingsPlanId, ArchiveSavingsPlanOnBooking, SplitDraftId, SecurityId, SecurityTransactionType, SecurityQuantity, SecurityFeeAmount, SecurityTaxAmount);
+    public StatementDraftEntryBackupDto ToBackupDto()
+        => new StatementDraftEntryBackupDto(Id, DraftId, CreatedUtc, ModifiedUtc, BookingDate, ValutaDate, Amount, Subject, RecipientName, CurrencyCode, BookingDescription, IsAnnounced, IsCostNeutral, Status, ContactId, SavingsPlanId, ArchiveSavingsPlanOnBooking, SplitDraftId, SecurityId, SecurityTransactionType, SecurityQuantity, SecurityFeeAmount, SecurityTaxAmount);
 
     /// <summary>
     /// Assigns values from the provided backup DTO to this draft entry instance.

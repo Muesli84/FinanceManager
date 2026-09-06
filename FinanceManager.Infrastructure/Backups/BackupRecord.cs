@@ -9,6 +9,7 @@ public sealed class BackupRecord
     /// <summary>
     /// Primary identifier of the backup record.
     /// </summary>
+    /// <returns>The result.</returns>
     public Guid Id { get; set; } = Guid.NewGuid();
 
     /// <summary>

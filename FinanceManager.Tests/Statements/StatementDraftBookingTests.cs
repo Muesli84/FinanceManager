@@ -63,13 +63,13 @@ public sealed class StatementDraftBookingTests
         public int ReassignCallCount { get; private set; }
 
         public Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, CancellationToken ct)
-            => throw new NotImplementedException();
+            => Task.FromException<AttachmentDto>(new NotSupportedException("ControlledAttachmentService: UploadAsync is not configured for this test scenario."));
 
         public Task<AttachmentDto> UploadAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Stream content, string fileName, string contentType, Guid? categoryId, AttachmentRole role, CancellationToken ct)
-            => throw new NotImplementedException();
+            => Task.FromException<AttachmentDto>(new NotSupportedException("ControlledAttachmentService: UploadAsync is not configured for this test scenario."));
 
         public Task<AttachmentDto> CreateUrlAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, string url, string? fileName, Guid? categoryId, CancellationToken ct)
-            => throw new NotImplementedException();
+            => Task.FromException<AttachmentDto>(new NotSupportedException("ControlledAttachmentService: CreateUrlAsync is not configured for this test scenario."));
 
         public Task<IReadOnlyList<AttachmentDto>> ListAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, int skip, int take, Guid? categoryId, bool? isUrl, string? q, CancellationToken ct)
             => Task.FromResult<IReadOnlyList<AttachmentDto>>([]);
@@ -78,16 +78,16 @@ public sealed class StatementDraftBookingTests
             => Task.FromResult(0);
 
         public Task<(Stream Content, string FileName, string ContentType)?> DownloadAsync(Guid ownerUserId, Guid attachmentId, CancellationToken ct)
-            => throw new NotImplementedException();
+            => Task.FromException<(Stream Content, string FileName, string ContentType)?>(new NotSupportedException("ControlledAttachmentService: DownloadAsync is not configured for this test scenario."));
 
         public Task<bool> DeleteAsync(Guid ownerUserId, Guid attachmentId, CancellationToken ct)
-            => throw new NotImplementedException();
+            => Task.FromException<bool>(new NotSupportedException("ControlledAttachmentService: DeleteAsync is not configured for this test scenario."));
 
         public Task<bool> UpdateCategoryAsync(Guid ownerUserId, Guid attachmentId, Guid? categoryId, CancellationToken ct)
-            => throw new NotImplementedException();
+            => Task.FromException<bool>(new NotSupportedException("ControlledAttachmentService: UpdateCategoryAsync is not configured for this test scenario."));
 
         public Task<bool> UpdateCoreAsync(Guid ownerUserId, Guid attachmentId, string? fileName, Guid? categoryId, CancellationToken ct)
-            => throw new NotImplementedException();
+            => Task.FromException<bool>(new NotSupportedException("ControlledAttachmentService: UpdateCoreAsync is not configured for this test scenario."));
 
         public Task ReassignAsync(AttachmentEntityKind fromKind, Guid fromId, AttachmentEntityKind toKind, Guid toId, Guid ownerUserId, CancellationToken ct)
         {
@@ -96,7 +96,7 @@ public sealed class StatementDraftBookingTests
         }
 
         public Task<AttachmentDto> CreateReferenceAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, Guid masterAttachmentId, CancellationToken ct)
-            => throw new NotImplementedException();
+            => Task.FromException<AttachmentDto>(new NotSupportedException("ControlledAttachmentService: CreateReferenceAsync is not configured for this test scenario."));
     }
 
     // Booking never needs to load statement files (that happens during upload/create-draft), but the
@@ -1395,7 +1395,7 @@ public sealed class StatementDraftBookingTests
         db.Entry(entry).State = EntityState.Added;
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var attachments = new ControlledAttachmentService(_ => throw new InvalidOperationException("reassign failed"));
+        var attachments = new ControlledAttachmentService(_ => Task.FromException(new InvalidOperationException("reassign failed")));
         var sut = new StatementDraftService(db, new PostingAggregateService(db), new StubAccountService(), new StubStatementFileFactory(), null, NullLogger<StatementDraftService>.Instance, attachments);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.BookAsync(draft.Id, null, owner, false, CancellationToken.None));

@@ -19,6 +19,17 @@ public enum BudgetReportDateBasis
 /// <summary>
 /// Request for generating a budget report.
 /// </summary>
+/// <param name="AsOfDate">The as of date.</param>
+/// <param name="Months">The months.</param>
+/// <param name="Interval">The interval.</param>
+/// <param name="ShowTitle">The show title.</param>
+/// <param name="ShowLineChart">The show line chart.</param>
+/// <param name="ShowMonthlyTable">The show monthly table.</param>
+/// <param name="ShowDetailsTable">The show details table.</param>
+/// <param name="CategoryValueScope">The category value scope.</param>
+/// <param name="IncludePurposeRows">The include purpose rows.</param>
+/// <param name="DateBasis">The date basis.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetReportRequest(
     DateOnly AsOfDate,
     int Months,
@@ -71,6 +82,12 @@ public enum BudgetReportInterval
 /// <summary>
 /// Budget report response payload.
 /// </summary>
+/// <param name="RangeFrom">The range from.</param>
+/// <param name="RangeTo">The range to.</param>
+/// <param name="Interval">The interval.</param>
+/// <param name="Periods">The periods.</param>
+/// <param name="Categories">The categories.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetReportDto(
     DateOnly RangeFrom,
     DateOnly RangeTo,
@@ -81,6 +98,13 @@ public sealed record BudgetReportDto(
 /// <summary>
 /// One period row of the budget report.
 /// </summary>
+/// <param name="From">The from.</param>
+/// <param name="To">The to.</param>
+/// <param name="Budget">The budget.</param>
+/// <param name="Actual">The actual.</param>
+/// <param name="Delta">The delta.</param>
+/// <param name="DeltaPct">The delta pct.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetReportPeriodDto(
     DateOnly From,
     DateOnly To,
@@ -128,6 +152,15 @@ public enum BudgetReportCategoryRowKind
 /// <summary>
 /// Category section of the report.
 /// </summary>
+/// <param name="Id">Identifier of the entity.</param>
+/// <param name="Name">The name.</param>
+/// <param name="Kind">The kind.</param>
+/// <param name="Budget">The budget.</param>
+/// <param name="Actual">The actual.</param>
+/// <param name="Delta">The delta.</param>
+/// <param name="DeltaPct">The delta pct.</param>
+/// <param name="Purposes">The purposes.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetReportCategoryDto(
     Guid Id,
     string Name,
@@ -141,6 +174,15 @@ public sealed record BudgetReportCategoryDto(
 /// <summary>
 /// Purpose row inside a category.
 /// </summary>
+/// <param name="Id">Identifier of the entity.</param>
+/// <param name="Name">The name.</param>
+/// <param name="Budget">The budget.</param>
+/// <param name="Actual">The actual.</param>
+/// <param name="Delta">The delta.</param>
+/// <param name="DeltaPct">The delta pct.</param>
+/// <param name="SourceType">The source type.</param>
+/// <param name="SourceId">The source id.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetReportPurposeDto(
     Guid Id,
     string Name,

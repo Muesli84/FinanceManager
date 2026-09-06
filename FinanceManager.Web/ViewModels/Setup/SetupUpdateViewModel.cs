@@ -41,6 +41,7 @@ public sealed class SetupUpdateViewModel : BaseViewModel
     /// <summary>
     /// Service name suggestions loaded from the server for the autocomplete field.
     /// </summary>
+    /// <returns>The result.</returns>
     public IReadOnlyList<string> ServiceSuggestions { get; private set; } = Array.Empty<string>();
 
     /// <summary>

@@ -73,12 +73,14 @@ public sealed class PlaywrightWebAppFixture : IAsyncLifetime
     /// The base URL of the running test server (e.g. <c>https://127.0.0.1:{port}</c>), for navigating to
     /// pages under test.
     /// </summary>
+    /// <returns>The result.</returns>
     public string BaseUrl => _baseUrl ?? throw new InvalidOperationException("The Playwright server is not initialized.");
 
     /// <summary>
     /// Filesystem path to the SQLite database backing the running test server, for seeding data directly
     /// (see <see cref="TestUserSeeder"/>) without going through the UI.
     /// </summary>
+    /// <returns>The result.</returns>
     public string DatabasePath => _dbPath ?? throw new InvalidOperationException("The Playwright database is not initialized.");
 
     /// <summary>

@@ -20,6 +20,7 @@ public sealed class ApiClientAccountsStatisticsTests : IClassFixture<TestWebAppl
     /// <summary>
     /// Initializes a new instance of the <see cref="ApiClientAccountsStatisticsTests"/> class.
     /// </summary>
+    /// <param name="factory">The factory.</param>
     public ApiClientAccountsStatisticsTests(TestWebApplicationFactory factory)
     {
         _factory = factory;

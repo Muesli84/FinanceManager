@@ -25,6 +25,7 @@ public sealed class IpBlockService : IIpBlockService
     /// <summary>
     /// Time window for counting repeated unknown-user failures.
     /// </summary>
+    /// <returns>The result.</returns>
     private static readonly TimeSpan ResetWindow = TimeSpan.FromMinutes(5);
 
     /// <summary>

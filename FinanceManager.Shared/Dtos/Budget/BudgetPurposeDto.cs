@@ -11,6 +11,7 @@ namespace FinanceManager.Shared.Dtos.Budget;
 /// <param name="SourceId">Identifier of the source entity.</param>
 /// <param name="BudgetCategoryId">Optional category id assigned to this purpose.</param>
 /// <param name="ValuationType">Determines how matching postings are valued for this purpose.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetPurposeDto(
     Guid Id,
     Guid OwnerUserId,

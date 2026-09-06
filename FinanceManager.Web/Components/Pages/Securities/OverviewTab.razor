@@ -1,15 +1,16 @@
 @using FinanceManager.Application
 @using FinanceManager.Web.ViewModels.Securities.ReturnAnalysis
 @inject IServiceProvider Services
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Pages> Localizer
 
 <div class="overview-tab">
     @if (_vm?.IsLoading == true)
     {
-        <div class="chart-placeholder" role="status">Lade Chartdaten...</div>
+        <div class="chart-placeholder" role="status">@Localizer["Overview_Loading"]</div>
     }
     else if (_vm?.Data == null || _vm.Data.PortfolioValues.Count == 0)
     {
-        <div class="no-data-msg">Keine Kursdaten für den gewählten Zeitraum vorhanden.</div>
+        <div class="no-data-msg">@Localizer["Overview_NoData"]</div>
     }
     else
     {
@@ -19,7 +20,7 @@
                 <span class="legend-item invested">Investiert</span>
             </div>
             <div class="overview-chart-wrap">
-                <div class="simple-line-chart" aria-label="Performance-Chart">
+                <div class="simple-line-chart" aria-label="@Localizer["Overview_ChartAria"]">
                     @{
                         var allValues = _vm.Data.PortfolioValues.Select(p => p.Value)
                             .Concat(_vm.Data.InvestedCapitalValues.Select(p => p.Value));

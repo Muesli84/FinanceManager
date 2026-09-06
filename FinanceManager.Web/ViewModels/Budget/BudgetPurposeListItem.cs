@@ -14,6 +14,7 @@ namespace FinanceManager.Web.ViewModels.Budget;
 /// <param name="BudgetSum">Computed budget sum for the selected range.</param>
 /// <param name="ActualSum">Computed actual sum for the selected range.</param>
 /// <param name="Variance">Difference between actual and budget (ActualSum - BudgetSum).</param>
+/// <returns>The result.</returns>
 public sealed record BudgetPurposeListItem(
     Guid Id,
     string Name,

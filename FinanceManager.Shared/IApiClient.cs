@@ -187,194 +187,458 @@ public interface IApiClient
     // Aggregates (Background tasks specialized endpoints)
 
     /// <summary>Starts an aggregates rebuild background task.</summary>
+    /// <param name="allowDuplicate">The allow duplicate.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<AggregatesRebuildStatusDto> Aggregates_RebuildAsync(bool allowDuplicate = false, CancellationToken ct = default);
     /// <summary>Gets current status of the aggregates rebuild task.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<AggregatesRebuildStatusDto> Aggregates_GetRebuildStatusAsync(CancellationToken ct = default);
 
     // Admin - Users
 
     /// <summary>Lists users (admin only).</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<UserAdminDto>> Admin_ListUsersAsync(CancellationToken ct = default);
     /// <summary>Gets a user (admin only) or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UserAdminDto?> Admin_GetUserAsync(Guid id, CancellationToken ct = default);
     /// <summary>Creates a new user (admin only).</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UserAdminDto> Admin_CreateUserAsync(CreateUserRequest request, CancellationToken ct = default);
     /// <summary>Updates a user (admin only). Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UserAdminDto?> Admin_UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken ct = default);
     /// <summary>Resets a user's password (admin only). Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Admin_ResetPasswordAsync(Guid id, ResetPasswordRequest request, CancellationToken ct = default);
     /// <summary>Unlocks a user (admin only). Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Admin_UnlockUserAsync(Guid id, CancellationToken ct = default);
     /// <summary>Deletes a user (admin only). Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Admin_DeleteUserAsync(Guid id, CancellationToken ct = default);
 
     // Admin - IP Blocks
 
     /// <summary>Lists IP block entries with optional filter.</summary>
+    /// <param name="onlyBlocked">The only blocked.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<IpBlockDto>> Admin_ListIpBlocksAsync(bool? onlyBlocked = null, CancellationToken ct = default);
     /// <summary>Creates a new IP block entry.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IpBlockDto> Admin_CreateIpBlockAsync(IpBlockCreateRequest request, CancellationToken ct = default);
     /// <summary>Gets a single IP block entry or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IpBlockDto?> Admin_GetIpBlockAsync(Guid id, CancellationToken ct = default);
     /// <summary>Updates an IP block entry. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IpBlockDto?> Admin_UpdateIpBlockAsync(Guid id, IpBlockUpdateRequest request, CancellationToken ct = default);
     /// <summary>Blocks an IP. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="reason">The reason.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Admin_BlockIpAsync(Guid id, string? reason, CancellationToken ct = default);
     /// <summary>Unblocks an IP. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Admin_UnblockIpAsync(Guid id, CancellationToken ct = default);
     /// <summary>Resets counters for an IP block entry. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Admin_ResetCountersAsync(Guid id, CancellationToken ct = default);
     /// <summary>Deletes an IP block entry. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Admin_DeleteIpBlockAsync(Guid id, CancellationToken ct = default);
 
     // Admin - Security.txt
 
     /// <summary>Reads the current security.txt settings.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SecurityTxtSettingsDto?> GetSecurityTxtSettingsAsync(CancellationToken ct = default);
     /// <summary>Updates the current security.txt settings.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     Task UpdateSecurityTxtSettingsAsync(SecurityTxtSettingsUpdateRequest request, CancellationToken ct = default);
 
     // Attachments
 
     /// <summary>Lists attachments for an entity with optional filters.</summary>
+    /// <param name="entityKind">The entity kind.</param>
+    /// <param name="entityId">The entity id.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="categoryId">The category id.</param>
+    /// <param name="isUrl">The is url.</param>
+    /// <param name="q">The q.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<PageResult<AttachmentDto>> Attachments_ListAsync(short entityKind, Guid entityId, int skip = 0, int take = 50, Guid? categoryId = null, bool? isUrl = null, string? q = null, CancellationToken ct = default);
     /// <summary>Uploads a file as an attachment.</summary>
+    /// <param name="entityKind">The entity kind.</param>
+    /// <param name="entityId">The entity id.</param>
+    /// <param name="fileStream">The file stream.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="contentType">The content type.</param>
+    /// <param name="categoryId">The category id.</param>
+    /// <param name="role">The role.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<AttachmentDto> Attachments_UploadFileAsync(short entityKind, Guid entityId, Stream fileStream, string fileName, string contentType, Guid? categoryId = null, short? role = null, CancellationToken ct = default);
     /// <summary>Creates a URL attachment.</summary>
+    /// <param name="entityKind">The entity kind.</param>
+    /// <param name="entityId">The entity id.</param>
+    /// <param name="url">The url.</param>
+    /// <param name="categoryId">The category id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<AttachmentDto> Attachments_CreateUrlAsync(short entityKind, Guid entityId, string url, Guid? categoryId = null, CancellationToken ct = default);
     /// <summary>Deletes an attachment. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Attachments_DeleteAsync(Guid id, CancellationToken ct = default);
     /// <summary>Updates core properties of an attachment. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="categoryId">The category id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Attachments_UpdateCoreAsync(Guid id, string? fileName, Guid? categoryId, CancellationToken ct = default);
     /// <summary>Updates the category of an attachment. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="categoryId">The category id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Attachments_UpdateCategoryAsync(Guid id, Guid? categoryId, CancellationToken ct = default);
     /// <summary>Lists all attachment categories.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<AttachmentCategoryDto>> Attachments_ListCategoriesAsync(CancellationToken ct = default);
     /// <summary>Creates a new attachment category.</summary>
+    /// <param name="name">The name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<AttachmentCategoryDto> Attachments_CreateCategoryAsync(string name, CancellationToken ct = default);
     /// <summary>Updates the name of an attachment category. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="name">The name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<AttachmentCategoryDto?> Attachments_UpdateCategoryNameAsync(Guid id, string name, CancellationToken ct = default);
     /// <summary>Deletes an attachment category. Returns false on not found or when conflicting.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Attachments_DeleteCategoryAsync(Guid id, CancellationToken ct = default);
     /// <summary>Creates a download token for an attachment or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="validSeconds">The valid seconds.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<AttachmentDownloadTokenDto?> Attachments_CreateDownloadTokenAsync(Guid id, int validSeconds = 60, CancellationToken ct = default);
 
     // Setup - Backups
 
     /// <summary>Lists backups owned by the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<BackupDto>> Backups_ListAsync(CancellationToken ct = default);
     /// <summary>Creates a new backup for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<BackupDto> Backups_CreateAsync(CancellationToken ct = default);
     /// <summary>Uploads a backup file and returns its metadata.</summary>
+    /// <param name="fileStream">The file stream.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<BackupDto> Backups_UploadAsync(Stream fileStream, string fileName, CancellationToken ct = default);
     /// <summary>Downloads a backup file stream or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<Stream?> Backups_DownloadAsync(Guid id, CancellationToken ct = default);
     /// <summary>Immediately applies the specified backup. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Backups_ApplyAsync(Guid id, BackupRestoreRequestDto request, CancellationToken ct = default);
     /// <summary>Starts a background restore task for a backup and returns status.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<BackupRestoreStatusDto> Backups_StartApplyAsync(Guid id, BackupRestoreRequestDto request, CancellationToken ct = default);
     /// <summary>Gets the status of the current or last backup restore task.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<BackupRestoreStatusDto> Backups_GetStatusAsync(CancellationToken ct = default);
     /// <summary>Cancels the currently running backup restore task.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Backups_CancelAsync(CancellationToken ct = default);
     /// <summary>Deletes a backup entry. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Backups_DeleteAsync(Guid id, CancellationToken ct = default);
 
     // Setup - Updates
 
     /// <summary>Gets current self-update status.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UpdateStatusDto> Updates_GetStatusAsync(CancellationToken ct = default);
     /// <summary>Gets self-update settings.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UpdateSettingsDto> Updates_GetSettingsAsync(CancellationToken ct = default);
     /// <summary>Updates self-update settings.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UpdateSettingsDto> Updates_UpdateSettingsAsync(UpdateSettingsUpdateRequest request, CancellationToken ct = default);
     /// <summary>Lists service names for self-update service autocomplete.</summary>
+    /// <param name="query">The query.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<string>> Updates_GetServiceNamesAsync(string? query, int take = 20, CancellationToken ct = default);
     /// <summary>Runs an immediate update check.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UpdateCheckResultDto> Updates_CheckAsync(CancellationToken ct = default);
     /// <summary>Stores the scheduled installation time.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UpdateSettingsDto> Updates_ScheduleAsync(UpdateScheduleRequest request, CancellationToken ct = default);
     /// <summary>Starts installing a ready update package.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UpdateStatusDto?> Updates_StartInstallAsync(UpdateStartRequest request, CancellationToken ct = default);
     /// <summary>Resets a hanging self-update lock.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Updates_ResetLockAsync(UpdateLockResetRequest request, CancellationToken ct = default);
 
     // Contact Categories
 
     /// <summary>Lists contact categories for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<ContactCategoryDto>> ContactCategories_ListAsync(CancellationToken ct = default);
     /// <summary>Gets a single contact category by id or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ContactCategoryDto?> ContactCategories_GetAsync(Guid id, CancellationToken ct = default);
     /// <summary>Creates a new contact category.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ContactCategoryDto> ContactCategories_CreateAsync(ContactCategoryCreateRequest request, CancellationToken ct = default);
     /// <summary>Updates a contact category name. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> ContactCategories_UpdateAsync(Guid id, ContactCategoryUpdateRequest request, CancellationToken ct = default);
     /// <summary>Deletes a contact category. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> ContactCategories_DeleteAsync(Guid id, CancellationToken ct = default);
     /// <summary>Assigns a symbol attachment to a contact category. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="attachmentId">The attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> ContactCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     /// <summary>Clears any symbol attachment from a contact category. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> ContactCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default);
 
     // Security Categories
 
     /// <summary>Lists security categories for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<SecurityCategoryDto>> SecurityCategories_ListAsync(CancellationToken ct = default);
     /// <summary>Gets a single security category by id or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SecurityCategoryDto?> SecurityCategories_GetAsync(Guid id, CancellationToken ct = default);
     /// <summary>Creates a new security category.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SecurityCategoryDto?> SecurityCategories_CreateAsync(SecurityCategoryRequest request, CancellationToken ct = default);
     /// <summary>Updates the name of a security category. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SecurityCategoryDto?> SecurityCategories_UpdateAsync(Guid id, SecurityCategoryRequest request, CancellationToken ct = default);
     /// <summary>Deletes a security category. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> SecurityCategories_DeleteAsync(Guid id, CancellationToken ct = default);
     /// <summary>Assigns a symbol attachment to a security category. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="attachmentId">The attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> SecurityCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     /// <summary>Clears any symbol attachment from a security category. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> SecurityCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default);
 
     // Contacts
 
     /// <summary>Lists contacts with optional paging/filtering, or all when all=true.</summary>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="type">The type.</param>
+    /// <param name="all">The all.</param>
+    /// <param name="nameFilter">The name filter.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<ContactDto>> Contacts_ListAsync(int skip = 0, int take = 50, ContactType? type = null, bool all = false, string? nameFilter = null, CancellationToken ct = default);
     /// <summary>Gets a single contact by id or null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ContactDto?> Contacts_GetAsync(Guid id, CancellationToken ct = default);
     /// <summary>Creates a new contact.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ContactDto> Contacts_CreateAsync(ContactCreateRequest request, CancellationToken ct = default);
     /// <summary>Updates an existing contact. Returns null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ContactDto?> Contacts_UpdateAsync(Guid id, ContactUpdateRequest request, CancellationToken ct = default);
     /// <summary>Deletes a contact. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Contacts_DeleteAsync(Guid id, CancellationToken ct = default);
     /// <summary>Lists alias patterns for a contact.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<AliasNameDto>> Contacts_GetAliasesAsync(Guid id, CancellationToken ct = default);
     /// <summary>Adds a new alias pattern to a contact.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Contacts_AddAliasAsync(Guid id, AliasCreateRequest request, CancellationToken ct = default);
     /// <summary>Deletes an alias from a contact.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="aliasId">The alias id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Contacts_DeleteAliasAsync(Guid id, Guid aliasId, CancellationToken ct = default);
     /// <summary>Merges a source contact into a target contact and returns the updated target.</summary>
+    /// <param name="sourceId">The source id.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ContactDto> Contacts_MergeAsync(Guid sourceId, ContactMergeRequest request, CancellationToken ct = default);
     /// <summary>Returns the total number of contacts for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<int> Contacts_CountAsync(CancellationToken ct = default);
     /// <summary>Assigns a symbol attachment to a contact. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="attachmentId">The attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Contacts_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     /// <summary>Clears the symbol attachment from a contact. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Contacts_ClearSymbolAsync(Guid id, CancellationToken ct = default);
 
     // Home KPIs
 
     /// <summary>Lists home KPIs for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<HomeKpiDto>> HomeKpis_ListAsync(CancellationToken ct = default);
     /// <summary>Gets a single home KPI by id or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<HomeKpiDto?> HomeKpis_GetAsync(Guid id, CancellationToken ct = default);
     /// <summary>Creates a new home KPI.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<HomeKpiDto> HomeKpis_CreateAsync(HomeKpiCreateRequest request, CancellationToken ct = default);
     /// <summary>Updates an existing home KPI. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<HomeKpiDto?> HomeKpis_UpdateAsync(Guid id, HomeKpiUpdateRequest request, CancellationToken ct = default);
     /// <summary>Deletes a home KPI. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> HomeKpis_DeleteAsync(Guid id, CancellationToken ct = default);
     /// <summary>
     /// Gets the Home Monthly Budget KPI values (planned/actual income and expenses).
     /// </summary>
+    /// <param name="date">The date.</param>
+    /// <param name="dateBasis">The date basis.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<MonthlyBudgetKpiDto> Budgets_GetMonthlyKpiAsync(DateOnly? date = null, BudgetReportDateBasis dateBasis = BudgetReportDateBasis.BookingDate, CancellationToken ct = default);
 
     /// <summary>
@@ -409,6 +673,8 @@ public interface IApiClient
     // User Settings - Notifications
 
     /// <summary>Gets the current user's notification settings.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<NotificationSettingsDto?> User_GetNotificationSettingsAsync(CancellationToken ct = default);
     /// <summary>Updates the current user's notification settings.</summary>
     /// <param name="monthlyEnabled">Monthly reminder enabled flag.</param>
@@ -441,52 +707,135 @@ public interface IApiClient
     // Postings
 
     /// <summary>Gets a single posting by id or null if not found or not owned by the current user.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<PostingServiceDto?> Postings_GetByIdAsync(Guid id, CancellationToken ct = default);
     /// <summary>Lists postings for an account. Returns empty on not found or unauthorized.</summary>
+    /// <param name="accountId">The account id.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="q">The q.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<PostingServiceDto>> Postings_GetAccountAsync(Guid accountId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
     /// <summary>Lists postings for a contact. Returns empty on not found or unauthorized.</summary>
+    /// <param name="contactId">The contact id.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="q">The q.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<PostingServiceDto>> Postings_GetContactAsync(Guid contactId, int skip = 0, int take = 50, string? q = null, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
     /// <summary>Lists postings for a savings plan. Returns empty on not found or unauthorized.</summary>
+    /// <param name="planId">The plan id.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="q">The q.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<PostingServiceDto>> Postings_GetSavingsPlanAsync(Guid planId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, string? q = null, CancellationToken ct = default);
     /// <summary>Lists postings for a security. Returns empty on not found or unauthorized.</summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<PostingServiceDto>> Postings_GetSecurityAsync(Guid securityId, int skip = 0, int take = 50, DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
     /// <summary>Returns first entity links for a posting group or null when not found or unauthorized.</summary>
+    /// <param name="groupId">The group id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<GroupLinksDto?> Postings_GetGroupLinksAsync(Guid groupId, CancellationToken ct = default);
     /// <summary>Reverses a posting by creating a counter-posting with negated amount.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ReversalResultDto?> Postings_ReverseAsync(Guid id, CancellationToken ct = default);
     /// <summary>Validates whether a posting can be reversed.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ReversalValidationDto?> Postings_ValidateReversalAsync(Guid id, CancellationToken ct = default);
 
     // Reports
 
     /// <summary>Executes a report aggregation query.</summary>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ReportAggregationResult> Reports_QueryAggregatesAsync(ReportAggregatesQueryRequest req, CancellationToken ct = default);
     /// <summary>Lists all report favorites for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<ReportFavoriteDto>> Reports_ListFavoritesAsync(CancellationToken ct = default);
     /// <summary>Gets a single report favorite by id or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ReportFavoriteDto?> Reports_GetFavoriteAsync(Guid id, CancellationToken ct = default);
     /// <summary>Creates a new report favorite.</summary>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ReportFavoriteDto> Reports_CreateFavoriteAsync(ReportFavoriteCreateApiRequest req, CancellationToken ct = default);
     /// <summary>Updates an existing report favorite. Returns null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ReportFavoriteDto?> Reports_UpdateFavoriteAsync(Guid id, ReportFavoriteUpdateApiRequest req, CancellationToken ct = default);
     /// <summary>Deletes a report favorite. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Reports_DeleteFavoriteAsync(Guid id, CancellationToken ct = default);
 
     // Savings Plan Categories
 
     /// <summary>Lists saving plan categories for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<SavingsPlanCategoryDto>> SavingsPlanCategories_ListAsync(CancellationToken ct = default);
     /// <summary>Gets a single saving plan category by id or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SavingsPlanCategoryDto?> SavingsPlanCategories_GetAsync(Guid id, CancellationToken ct = default);
     /// <summary>Creates a new saving plan category.</summary>
+    /// <param name="dto">The dto.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SavingsPlanCategoryDto?> SavingsPlanCategories_CreateAsync(SavingsPlanCategoryDto dto, CancellationToken ct = default);
     /// <summary>Updates an existing saving plan category. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="dto">The dto.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SavingsPlanCategoryDto?> SavingsPlanCategories_UpdateAsync(Guid id, SavingsPlanCategoryDto dto, CancellationToken ct = default);
     /// <summary>Deletes a saving plan category. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> SavingsPlanCategories_DeleteAsync(Guid id, CancellationToken ct = default);
     /// <summary>Assigns a symbol attachment to a saving plan category. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="attachmentId">The attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> SavingsPlanCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     /// <summary>Clears the symbol attachment from a saving plan category. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> SavingsPlanCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default);
 
     // Savings Plans
@@ -576,30 +925,84 @@ public interface IApiClient
     // Securities
 
     /// <summary>Lists securities for the current user.</summary>
+    /// <param name="onlyActive">The only active.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<SecurityDto>> Securities_ListAsync(bool onlyActive = true, CancellationToken ct = default);
     /// <summary>Counts all or active securities.</summary>
+    /// <param name="onlyActive">The only active.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<int> Securities_CountAsync(bool onlyActive = true, CancellationToken ct = default);
     /// <summary>Gets a single security by id or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SecurityDto?> Securities_GetAsync(Guid id, CancellationToken ct = default);
     /// <summary>Creates a new security.</summary>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SecurityDto> Securities_CreateAsync(SecurityRequest req, CancellationToken ct = default);
     /// <summary>Updates an existing security. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SecurityDto?> Securities_UpdateAsync(Guid id, SecurityRequest req, CancellationToken ct = default);
     /// <summary>Archives a security. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Securities_ArchiveAsync(Guid id, CancellationToken ct = default);
     /// <summary>Deletes a security. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Securities_DeleteAsync(Guid id, CancellationToken ct = default);
     /// <summary>Assigns a symbol attachment to a security. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="attachmentId">The attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Securities_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default);
     /// <summary>Clears the symbol attachment from a security. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Securities_ClearSymbolAsync(Guid id, CancellationToken ct = default);
     /// <summary>Uploads a new symbol file for a security.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="fileStream">The file stream.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="contentType">The content type.</param>
+    /// <param name="categoryId">The category id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<AttachmentDto> Securities_UploadSymbolAsync(Guid id, Stream fileStream, string fileName, string? contentType = null, Guid? categoryId = null, CancellationToken ct = default);
     /// <summary>Gets historical aggregate data for a security.</summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="period">The period.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="maxYearsBack">The max years back.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<AggregatePointDto>?> Securities_GetAggregatesAsync(Guid securityId, string period = "Month", int take = 36, int? maxYearsBack = null, CancellationToken ct = default);
     /// <summary>Gets historical price data for a security.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<SecurityPriceDto>?> Securities_GetPricesAsync(Guid id, int skip = 0, int take = 50, CancellationToken ct = default);
     /// <summary>Imports security prices from an uploaded provider file.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="fileStream">The file stream.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="provider">The provider.</param>
+    /// <param name="contentType">The content type.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SecurityPriceImportResultDto> Securities_ImportPricesAsync(
         Guid id,
         Stream fileStream,
@@ -608,101 +1011,267 @@ public interface IApiClient
         string? contentType = null,
         CancellationToken ct = default);
     /// <summary>Enqueues a background task to backfill missing security data.</summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="fromDateUtc">The from date utc.</param>
+    /// <param name="toDateUtc">The to date utc.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<BackgroundTaskInfo> Securities_EnqueueBackfillAsync(Guid? securityId, DateTime? fromDateUtc, DateTime? toDateUtc, CancellationToken ct = default);
     /// <summary>Lists upcoming or past dividends for a security.</summary>
+    /// <param name="period">The period.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<AggregatePointDto>> Securities_GetDividendsAsync(string? period = null, int? take = null, CancellationToken ct = default);
     /// <summary>Gets the compact return summary for a security. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ReturnSummaryDto?> Securities_GetReturnSummaryAsync(Guid id, CancellationToken ct = default);
     /// <summary>Gets detailed return metrics for a security. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<DetailedReturnMetricsDto?> Securities_GetReturnMetricsAsync(Guid id, CancellationToken ct = default);
     /// <summary>Gets periodic return data (annual/monthly) for a security. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<PeriodicReturnsDto?> Securities_GetPeriodicReturnsAsync(Guid id, CancellationToken ct = default);
     /// <summary>Gets cashflow timeline data for a security. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<CashflowTimelineDto?> Securities_GetCashflowTimelineAsync(Guid id, CancellationToken ct = default);
     /// <summary>Gets performance chart data for a security and time range. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="timeRange">The time range.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<PerformanceChartDataDto?> Securities_GetPerformanceChartAsync(Guid id, ChartTimeRange timeRange = ChartTimeRange.All, CancellationToken ct = default);
     /// <summary>Gets benchmark comparison data for a security. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<BenchmarkComparisonDto?> Securities_GetBenchmarkComparisonAsync(Guid id, CancellationToken ct = default);
     /// <summary>Gets return analysis settings for the current user. Returns null when not found.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ReturnAnalysisSettingsResponse?> Securities_GetReturnAnalysisSettingsAsync(CancellationToken ct = default);
     /// <summary>Updates return analysis settings for the current user. Returns true on success.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Securities_UpdateReturnAnalysisSettingsAsync(ReturnAnalysisSettingsUpdateRequest request, CancellationToken ct = default);
     /// <summary>Gets the KPI formula and cashflow breakdowns for a security (info side panel). Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<KpiBreakdownDto>?> Securities_GetKpiBreakdownsAsync(Guid id, CancellationToken ct = default);
     /// <summary>Invalidates the return analysis cache for all securities of the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
     Task Securities_ResetReturnCacheAsync(CancellationToken ct = default);
     /// <summary>Returns sparkline data for the security widget mini-chart.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<SparklineDataDto?> Securities_GetSparklineAsync(Guid id, CancellationToken ct = default);
 
     // Statement Drafts
 
     /// <summary>Lists open statement drafts for the current user.</summary>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<StatementDraftDto>> StatementDrafts_ListOpenAsync(int skip = 0, int take = 3, CancellationToken ct = default);
     /// <summary>Gets the count of open statement drafts.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<int> StatementDrafts_GetOpenCountAsync(CancellationToken ct = default);
     /// <summary>Deletes all statement drafts. Caution: irreversible!</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> StatementDrafts_DeleteAllAsync(CancellationToken ct = default);
     /// <summary>Uploads a statement file for processing.</summary>
+    /// <param name="stream">The stream.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftUploadResult?> StatementDrafts_UploadAsync(Stream stream, string fileName, CancellationToken ct = default);
     /// <summary>Analyzes or executes a start page mass import batch.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<MassImportBatchResultDto?> StatementDrafts_ProcessMassImportAsync(MassImportBatchRequestDto request, CancellationToken ct = default);
     /// <summary>Creates an empty statement draft (no file) for the current user and returns its detail.</summary>
+    /// <param name="fileName">The file name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftDetailDto?> StatementDrafts_CreateAsync(string? fileName = null, CancellationToken ct = default);
     /// <summary>Gets the detail of a statement draft by id.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="headerOnly">The header only.</param>
+    /// <param name="src">The src.</param>
+    /// <param name="fromEntryDraftId">The from entry draft id.</param>
+    /// <param name="fromEntryId">The from entry id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftDetailDto?> StatementDrafts_GetAsync(Guid draftId, bool headerOnly = false, string? src = null, Guid? fromEntryDraftId = null, Guid? fromEntryId = null, CancellationToken ct = default);
     /// <summary>Gets the detail of a specific entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftEntryDetailDto?> StatementDrafts_GetEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
     /// <summary>
     /// Updates core fields of a draft entry (dates, amount, textual fields).
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftEntryDto?> StatementDrafts_UpdateEntryCoreAsync(Guid draftId, Guid entryId, StatementDraftUpdateEntryCoreRequest req, CancellationToken ct = default);
     /// <summary>Adds a new entry to a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftDetailDto?> StatementDrafts_AddEntryAsync(Guid draftId, StatementDraftAddEntryRequest req, CancellationToken ct = default);
     /// <summary>Classifies a statement draft (automatic processing).</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftDetailDto?> StatementDrafts_ClassifyAsync(Guid draftId, CancellationToken ct = default);
     /// <summary>Sets the account for a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="accountId">The account id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftDetailDto?> StatementDrafts_SetAccountAsync(Guid draftId, Guid accountId, CancellationToken ct = default);
     /// <summary>Commits (books) a statement draft, creating postings.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<object?> StatementDrafts_CommitAsync(Guid draftId, StatementDraftCommitRequest req, CancellationToken ct = default);
     /// <summary>Sets the contact for an entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftEntryDto?> StatementDrafts_SetEntryContactAsync(Guid draftId, Guid entryId, StatementDraftSetContactRequest req, CancellationToken ct = default);
     /// <summary>Sets a cost-neutral flag for an entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftEntryDto?> StatementDrafts_SetEntryCostNeutralAsync(Guid draftId, Guid entryId, StatementDraftSetCostNeutralRequest req, CancellationToken ct = default);
     /// <summary>Sets the savings plan for an entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftEntryDto?> StatementDrafts_SetEntrySavingsPlanAsync(Guid draftId, Guid entryId, StatementDraftSetSavingsPlanRequest req, CancellationToken ct = default);
     /// <summary>Sets the security for an entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftEntryDto?> StatementDrafts_SetEntrySecurityAsync(Guid draftId, Guid entryId, StatementDraftSetEntrySecurityRequest req, CancellationToken ct = default);
     /// <summary>Sets an entry in a statement draft to archive on booking.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftEntryDto?> StatementDrafts_SetEntryArchiveOnBookingAsync(Guid draftId, Guid entryId, StatementDraftSetArchiveSavingsPlanOnBookingRequest req, CancellationToken ct = default);
     /// <summary>Validates a statement draft (checks for errors).</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<DraftValidationResultDto?> StatementDrafts_ValidateAsync(Guid draftId, CancellationToken ct = default);
     /// <summary>Validates an entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<DraftValidationResultDto?> StatementDrafts_ValidateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
     /// <summary>Books (commits) a statement draft, creating postings.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="forceWarnings">The force warnings.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<BookingResult?> StatementDrafts_BookAsync(Guid draftId, bool forceWarnings = false, CancellationToken ct = default);
     /// <summary>Books (commits) an entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="forceWarnings">The force warnings.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<BookingResult?> StatementDrafts_BookEntryAsync(Guid draftId, Guid entryId, bool forceWarnings = false, CancellationToken ct = default);
     /// <summary>Saves all details of an entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<object?> StatementDrafts_SaveEntryAllAsync(Guid draftId, Guid entryId, StatementDraftSaveEntryAllRequest req, CancellationToken ct = default);
     /// <summary>Deletes an entry from a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> StatementDrafts_DeleteEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
     /// <summary>Resets a duplicate entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<object?> StatementDrafts_ResetDuplicateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
     /// <summary>Classifies a specific entry in a statement draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftDetailDto?> StatementDrafts_ClassifyEntryAsync(Guid draftId, Guid entryId, CancellationToken ct = default);
     /// <summary>Downloads the original statement file for a draft.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<Stream?> StatementDrafts_DownloadOriginalAsync(Guid draftId, CancellationToken ct = default);
     /// <summary>Starts the classification of statement drafts as a background task.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftsClassifyStatus?> StatementDrafts_StartClassifyAsync(CancellationToken ct = default);
     /// <summary>Gets the status of the ongoing or last classification task for statement drafts.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftsClassifyStatus?> StatementDrafts_GetClassifyStatusAsync(CancellationToken ct = default);
     /// <summary>Starts the booking of all statement drafts as a background task.</summary>
+    /// <param name="ignoreWarnings">The ignore warnings.</param>
+    /// <param name="abortOnFirstIssue">The abort on first issue.</param>
+    /// <param name="bookEntriesIndividually">The book entries individually.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftMassBookStatusDto?> StatementDrafts_StartBookAllAsync(bool ignoreWarnings, bool abortOnFirstIssue, bool bookEntriesIndividually, CancellationToken ct = default);
     /// <summary>Gets the status of the booking all task for statement drafts.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftMassBookStatusDto?> StatementDrafts_GetBookAllStatusAsync(CancellationToken ct = default);
     /// <summary>Cancels the booking all task for statement drafts.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> StatementDrafts_CancelBookAllAsync(CancellationToken ct = default);
     /// <summary>Deletes a statement draft. Returns false when not found.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> StatementDrafts_DeleteAsync(Guid draftId, CancellationToken ct = default);
     /// <summary>
     /// Applies a batch update for entries belonging to the specified draft. Returns success DTO on 200.
@@ -712,6 +1281,10 @@ public interface IApiClient
     /// <summary>
     /// Calls batch update endpoint and returns either a success DTO or an error DTO containing per-entry validation failures.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<(FinanceManager.Shared.Dtos.Statements.BatchUpdateSuccessResponseDto? Success, FinanceManager.Shared.Dtos.Statements.BatchUpdateErrorResponseDto? Error)> StatementDrafts_BatchUpdateDetailedAsync(Guid draftId, FinanceManager.Shared.Dtos.Statements.BatchUpdateRequestDto req, CancellationToken ct = default);
     // Add to IApiClient interface in the Statement Drafts region:
     /// <summary>
@@ -724,21 +1297,40 @@ public interface IApiClient
     /// <returns>Result DTO with updated split information or <c>null</c> when not found or invalid.</returns>
     Task<StatementDraftSetEntrySplitDraftResultDto?> StatementDrafts_SetEntrySplitDraftAsync(Guid draftId, Guid entryId, StatementDraftSetSplitDraftRequest req, CancellationToken ct = default);
     /// <summary>Sets the description of a statement draft and returns updated detail or null when not found.</summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="description">The description.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftDetailDto?> StatementDrafts_SetDescriptionAsync(Guid draftId, string? description, CancellationToken ct = default);
     /// <summary>Creates a new preliminary (provisional) statement draft for the specified bank account.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<StatementDraftDto?> StatementDrafts_CreatePreliminaryAsync(CreatePreliminaryStatementDraftRequest request, CancellationToken ct = default);
     // Users
     /// <summary>Checks if any users exist in the system.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Users_HasAnyAsync(CancellationToken ct = default);
 
     // User Settings
     /// <summary>Gets the profile settings for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<UserProfileSettingsDto?> UserSettings_GetProfileAsync(CancellationToken ct = default);
     /// <summary>Updates the profile settings for the current user.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> UserSettings_UpdateProfileAsync(UserProfileSettingsUpdateRequest request, CancellationToken ct = default);
     /// <summary>Gets the import split settings for the current user.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<ImportSplitSettingsDto?> UserSettings_GetImportSplitAsync(CancellationToken ct = default);
     /// <summary>Updates the import split settings for the current user.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> UserSettings_UpdateImportSplitAsync(ImportSplitSettingsUpdateRequest request, CancellationToken ct = default);
 
     // Budgets
@@ -748,6 +1340,14 @@ public interface IApiClient
     /// When <paramref name="from"/> and <paramref name="to"/> are provided, the server returns an overview that includes
     /// rule count and computed budget sum for the given period.
     /// </summary>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="sourceType">The source type.</param>
+    /// <param name="q">The q.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<FinanceManager.Shared.Dtos.Budget.BudgetPurposeOverviewDto>> Budgets_ListPurposesAsync(
         int skip = 0,
         int take = 200,
@@ -760,111 +1360,182 @@ public interface IApiClient
     /// <summary>
     /// Gets a budget purpose by id or null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetPurposeDto?> Budgets_GetPurposeAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// Creates a budget purpose.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetPurposeDto> Budgets_CreatePurposeAsync(FinanceManager.Shared.Dtos.Budget.BudgetPurposeCreateRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Updates a budget purpose. Returns null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetPurposeDto?> Budgets_UpdatePurposeAsync(Guid id, FinanceManager.Shared.Dtos.Budget.BudgetPurposeUpdateRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a budget purpose. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Budgets_DeletePurposeAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// Lists rules for a budget purpose.
     /// </summary>
+    /// <param name="budgetPurposeId">The budget purpose id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<FinanceManager.Shared.Dtos.Budget.BudgetRuleDto>> Budgets_ListRulesByPurposeAsync(Guid budgetPurposeId, CancellationToken ct = default);
 
     /// <summary>
     /// Lists budget rules that apply to a budget category.
     /// </summary>
+    /// <param name="budgetCategoryId">The budget category id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<FinanceManager.Shared.Dtos.Budget.BudgetRuleDto>> Budgets_ListRulesByCategoryAsync(Guid budgetCategoryId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets a budget rule by id or null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetRuleDto?> Budgets_GetRuleAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// Creates a budget rule.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetRuleDto> Budgets_CreateRuleAsync(FinanceManager.Shared.Dtos.Budget.BudgetRuleCreateRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Updates a budget rule. Returns null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetRuleDto?> Budgets_UpdateRuleAsync(Guid id, FinanceManager.Shared.Dtos.Budget.BudgetRuleUpdateRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a budget rule. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Budgets_DeleteRuleAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// Lists overrides for a budget purpose.
     /// </summary>
+    /// <param name="budgetPurposeId">The budget purpose id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<FinanceManager.Shared.Dtos.Budget.BudgetOverrideDto>> Budgets_ListOverridesByPurposeAsync(Guid budgetPurposeId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets a budget override by id or null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetOverrideDto?> Budgets_GetOverrideAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// Creates a budget override.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetOverrideDto> Budgets_CreateOverrideAsync(FinanceManager.Shared.Dtos.Budget.BudgetOverrideCreateRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Updates a budget override. Returns null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetOverrideDto?> Budgets_UpdateOverrideAsync(Guid id, FinanceManager.Shared.Dtos.Budget.BudgetOverrideUpdateRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a budget override. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Budgets_DeleteOverrideAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// Lists budget categories for the current user.
     /// </summary>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<FinanceManager.Shared.Dtos.Budget.BudgetCategoryOverviewDto>> Budgets_ListCategoriesAsync(DateOnly? from = null, DateOnly? to = null, CancellationToken ct = default);
 
     /// <summary>
     /// Gets a budget category by id or null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetCategoryDto?> Budgets_GetCategoryAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// Creates a budget category.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetCategoryDto> Budgets_CreateCategoryAsync(FinanceManager.Shared.Dtos.Budget.BudgetCategoryCreateRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Updates a budget category. Returns null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetCategoryDto?> Budgets_UpdateCategoryAsync(Guid id, FinanceManager.Shared.Dtos.Budget.BudgetCategoryUpdateRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a budget category. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> Budgets_DeleteCategoryAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
     /// Gets the budget report for a given period.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetReportDto> Budgets_GetReportAsync(FinanceManager.Shared.Dtos.Budget.BudgetReportRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Gets raw budget report data for a given period.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<FinanceManager.Shared.Dtos.Budget.BudgetReportRawDataDto> Budgets_GetReportRawAsync(FinanceManager.Shared.Dtos.Budget.BudgetReportRequest request, CancellationToken ct = default);
 
 
@@ -876,6 +1547,7 @@ public interface IApiClient
     /// <param name="dateBasis">Whether booking date or valuta date is used for filtering/sorting.</param>
     /// <param name="kind">Optional discriminator to split unbudgeted postings (e.g. "selfCostNeutral" or "remaining").</param>
     /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<FinanceManager.Shared.Dtos.Postings.PostingServiceDto>> Budgets_GetUnbudgetedPostingsAsync(DateTime? from, DateTime? to, FinanceManager.Shared.Dtos.Budget.BudgetReportDateBasis dateBasis, string? kind = null, CancellationToken ct = default);
 
     // Portfolio Analysis Report

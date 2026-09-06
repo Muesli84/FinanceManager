@@ -36,6 +36,13 @@ public sealed class BudgetReportsController : ControllerBase
     /// <summary>
     /// Creates a new instance.
     /// </summary>
+    /// <param name="reports">The reports.</param>
+    /// <param name="db">The db.</param>
+    /// <param name="current">The current.</param>
+    /// <param name="logger">Logger instance.</param>
+    /// <param name="localizer">The localizer.</param>
+    /// <param name="export">The export.</param>
+    /// <param name="cacheService">The cache service.</param>
     public BudgetReportsController(
         IBudgetReportService reports,
         AppDbContext db,
@@ -57,6 +64,12 @@ public sealed class BudgetReportsController : ControllerBase
     /// <summary>
     /// Exports all postings of the budget report for the total report range as an Excel file.
     /// </summary>
+    /// <param name="asOf">The as of.</param>
+    /// <param name="months">The months.</param>
+    /// <param name="dateBasis">The date basis.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("export")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ExportAsync([FromQuery] DateOnly asOf, [FromQuery] int months = 12, [FromQuery] BudgetReportDateBasis dateBasis = BudgetReportDateBasis.BookingDate, CancellationToken ct = default)
@@ -88,6 +101,7 @@ public sealed class BudgetReportsController : ControllerBase
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> indicating success.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
     [HttpPost("cache/reset")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ResetCacheAsync(CancellationToken ct = default)
@@ -105,6 +119,7 @@ public sealed class BudgetReportsController : ControllerBase
     /// <returns>
     /// Returns planned/actual income and expenses for the Home Monthly Budget KPI.
     /// </returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("kpi-monthly")]
     [ProducesResponseType(typeof(MonthlyBudgetKpiDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMonthlyKpiAsync([FromQuery] DateOnly? date = null, [FromQuery] BudgetReportDateBasis dateBasis = BudgetReportDateBasis.ValutaDate, CancellationToken ct = default)
@@ -131,6 +146,8 @@ public sealed class BudgetReportsController : ControllerBase
     /// <param name="req">The report request parameters.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> containing the generated <see cref="BudgetReportDto"/> or a validation/error result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(BudgetReportDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -182,6 +199,8 @@ public sealed class BudgetReportsController : ControllerBase
     /// <param name="req">The report request parameters.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> containing raw budget report data.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("raw")]
     [ProducesResponseType(typeof(BudgetReportRawDataDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -218,6 +237,13 @@ public sealed class BudgetReportsController : ControllerBase
     /// <summary>
     /// Lists postings that are not covered by any budget purpose for the given date range.
     /// </summary>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="dateBasis">The date basis.</param>
+    /// <param name="kind">The kind.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("unbudgeted")]
     [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUnbudgetedAsync(

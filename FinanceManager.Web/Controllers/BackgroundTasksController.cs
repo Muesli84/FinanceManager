@@ -52,6 +52,7 @@ namespace FinanceManager.Web.Controllers
         /// <param name="allowDuplicate">When <c>true</c>, allows enqueueing even if a task of the same type is already running or queued for the user.</param>
         /// <returns>HTTP 200 with a <see cref="BackgroundTaskInfo"/> describing the enqueued task.</returns>
         /// <exception cref="ArgumentException">Thrown when <paramref name="type"/> is not supported.</exception>
+        /// <response code="200">The HTTP 200 response.</response>
         [HttpPost("{type}")]
         [ProducesResponseType(typeof(BackgroundTaskInfo), StatusCodes.Status200OK)]
         public ActionResult<BackgroundTaskInfo> Enqueue([FromRoute] BackgroundTaskType type, [FromQuery] bool allowDuplicate = false)
@@ -66,6 +67,7 @@ namespace FinanceManager.Web.Controllers
         /// Returns active or queued background tasks for the current user.
         /// </summary>
         /// <returns>HTTP 200 with an enumerable of <see cref="BackgroundTaskInfo"/> representing running or queued tasks.</returns>
+        /// <response code="200">The HTTP 200 response.</response>
         [HttpGet("active")]
         [ProducesResponseType(typeof(IEnumerable<BackgroundTaskInfo>), StatusCodes.Status200OK)]
         public ActionResult<IEnumerable<BackgroundTaskInfo>> GetActiveAndQueued()
@@ -83,6 +85,8 @@ namespace FinanceManager.Web.Controllers
         /// HTTP 200 with <see cref="BackgroundTaskInfo"/> when the task is found and owned by the current user;
         /// HTTP 404 when the task does not exist or is not owned by the user.
         /// </returns>
+        /// <response code="200">The HTTP 200 response.</response>
+        /// <response code="404">The HTTP 404 response.</response>
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(BackgroundTaskInfo), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -103,6 +107,9 @@ namespace FinanceManager.Web.Controllers
         /// HTTP 400 with an <see cref="ApiErrorDto"/> when the operation could not be performed.
         /// HTTP 404 when the task was not found or not owned by the user.
         /// </returns>
+        /// <response code="204">The HTTP 204 response.</response>
+        /// <response code="400">The HTTP 400 response.</response>
+        /// <response code="404">The HTTP 404 response.</response>
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -157,6 +164,7 @@ namespace FinanceManager.Web.Controllers
         /// </summary>
         /// <param name="allowDuplicate">If <c>true</c>, allows enqueueing even when an aggregates rebuild task is already running or queued for the user.</param>
         /// <returns>HTTP 202 with an <see cref="AggregatesRebuildStatusDto"/> describing the queued or existing rebuild task.</returns>
+        /// <response code="202">The HTTP 202 response.</response>
         [HttpPost("aggregates/rebuild")]
         [ProducesResponseType(typeof(AggregatesRebuildStatusDto), StatusCodes.Status202Accepted)]
         public IActionResult RebuildAggregates([FromQuery] bool allowDuplicate = false)
@@ -178,6 +186,7 @@ namespace FinanceManager.Web.Controllers
         /// Returns the status of the most recent running or queued aggregates rebuild task for the current user.
         /// </summary>
         /// <returns>HTTP 200 with an <see cref="AggregatesRebuildStatusDto"/> indicating whether a rebuild is active and progress values when available.</returns>
+        /// <response code="200">The HTTP 200 response.</response>
         [HttpGet("aggregates/rebuild/status")]
         [ProducesResponseType(typeof(AggregatesRebuildStatusDto), StatusCodes.Status200OK)]
         public IActionResult GetRebuildAggregatesStatus()

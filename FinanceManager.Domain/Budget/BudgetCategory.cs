@@ -33,6 +33,7 @@ public sealed class BudgetCategory : Entity, IAggregateRoot
     /// <summary>
     /// Renames the category.
     /// </summary>
+    /// <param name="name">The name.</param>
     public void Rename(string name)
     {
         Name = Guards.NotNullOrWhiteSpace(name, nameof(name));
@@ -42,16 +43,23 @@ public sealed class BudgetCategory : Entity, IAggregateRoot
     /// <summary>
     /// DTO carrying the serializable state of a <see cref="BudgetCategory"/> for backup purposes.
     /// </summary>
+    /// <param name="Id">Identifier of the entity.</param>
+    /// <param name="OwnerUserId">The owner user id.</param>
+    /// <param name="Name">The name.</param>
+    /// <returns>The result.</returns>
     public sealed record BudgetCategoryBackupDto(Guid Id, Guid OwnerUserId, string Name);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this budget category.
     /// </summary>
-    public BudgetCategoryBackupDto ToBackupDto() => new(Id, OwnerUserId, Name);
+    /// <returns>The result.</returns>
+    public BudgetCategoryBackupDto ToBackupDto()
+        => new(Id, OwnerUserId, Name);
 
     /// <summary>
     /// Applies values from the provided backup DTO to this entity.
     /// </summary>
+    /// <param name="dto">The dto.</param>
     public void AssignBackupDto(BudgetCategoryBackupDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);

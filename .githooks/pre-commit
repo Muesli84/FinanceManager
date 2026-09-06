@@ -1,0 +1,72 @@
+#!/usr/bin/env sh
+set -eu
+
+# --- Repo-Root ermitteln ---
+repo_root="$(git rev-parse --show-toplevel)"
+
+# --- Branch-Blocker ---
+branch_name="$(git symbolic-ref --quiet --short HEAD || true)"
+case "$branch_name" in
+  main|staging)
+    echo "Direct commits to '$branch_name' are blocked. Create a feature branch and merge via pull request." >&2
+    exit 1
+    ;;
+esac
+
+# --- Translation Check (fixer Pfad) ---
+echo "Running translation check..."
+python "$repo_root/.githooks/translation-check.py"
+
+# --- csproj/.cs XML Doc Check (fixer Pfad) ---
+echo "Running csproj/.cs XML doc check..."
+python "$repo_root/.githooks/csproj-xmldoc-check.py"
+
+# --- Razor Localization Check (fixer Pfad) ---
+echo "Running Razor localization check..."
+python "$repo_root/.githooks/razor-l10n-check.py"
+
+# --- Razor Usage Check (fixer Pfad, nur Warnung) ---
+echo "Running Razor usage check..."
+python "$repo_root/.githooks/razor-usage-check.py"
+
+# --- NotImplementedException/Stub Check (fixer Pfad, nur Warnung) ---
+echo "Running stub implementation check..."
+python "$repo_root/.githooks/no-notimplemented-check.py"
+
+# --- Enum Coverage Check (fixer Pfad, nur Warnung) ---
+echo "Running enum coverage check..."
+python "$repo_root/.githooks/enum-coverage-check.py"
+
+# --- Pr�fen ob dotnet verf�gbar ist ---
+if ! command -v dotnet >/dev/null 2>&1; then
+  echo "dotnet not found. Install the .NET SDK." >&2
+  exit 1
+fi
+
+# --- Dynamische L�sungssuche (.sln / .slnx) ---
+solution_file="$(find "$repo_root" -maxdepth 3 -type f \( -name '*.sln' -o -name '*.slnx' \) | head -n 1 || true)"
+
+if [ -z "$solution_file" ]; then
+  echo "No solution file (.sln / .slnx) found � skipping .NET-based checks."
+  exit 0
+fi
+
+echo "Using solution: $solution_file"
+
+# --- SecretScan dynamisch finden ---
+secret_scan_proj="$(find "$repo_root" -type f -name 'SecretScan.csproj' | head -n 1 || true)"
+if [ -n "$secret_scan_proj" ]; then
+  echo "Running SecretScan..."
+  dotnet run --no-restore --project "$secret_scan_proj" -- --root "$repo_root" --solution "$solution_file"
+else
+  echo "SecretScan.csproj not found � skipping secret scan."
+fi
+
+# --- MarkdownLinkCheck dynamisch finden ---
+markdown_check_proj="$(find "$repo_root" -type f -name 'MarkdownLinkCheck.csproj' | head -n 1 || true)"
+if [ -n "$markdown_check_proj" ]; then
+  echo "Running MarkdownLinkCheck..."
+  dotnet run --no-restore --project "$markdown_check_proj" -- --root "$repo_root" --solution "$solution_file"
+else
+  echo "MarkdownLinkCheck.csproj not found � skipping markdown link check."
+fi

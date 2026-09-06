@@ -13,11 +13,16 @@ public interface IAttachmentContentPolicy
     /// <summary>
     /// Validates the uploaded file content and returns a reset stream plus normalized content type.
     /// </summary>
+    /// <param name="file">The file.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<AttachmentContentValidationResult> ValidateUploadAsync(IFormFile file, CancellationToken ct);
 
     /// <summary>
     /// Normalizes a stored content type to a type that is safe to send in a download response.
     /// </summary>
+    /// <param name="storedContentType">The stored content type.</param>
+    /// <returns>The result.</returns>
     string NormalizeDownloadContentType(string? storedContentType);
 }
 
@@ -35,6 +40,7 @@ public sealed class AttachmentContentPolicy : IAttachmentContentPolicy
     /// <summary>
     /// Initializes a new instance of <see cref="AttachmentContentPolicy"/>.
     /// </summary>
+    /// <param name="options">The options.</param>
     public AttachmentContentPolicy(IOptions<AttachmentUploadOptions> options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -229,6 +235,12 @@ public sealed class AttachmentContentPolicy : IAttachmentContentPolicy
 /// <summary>
 /// Result of attachment upload content validation.
 /// </summary>
+/// <param name="IsAllowed">The is allowed.</param>
+/// <param name="ContentType">The content type.</param>
+/// <param name="Content">The content.</param>
+/// <param name="ErrorCode">The error code.</param>
+/// <param name="ErrorMessage">The error message.</param>
+/// <returns>The result.</returns>
 public sealed record AttachmentContentValidationResult(
     bool IsAllowed,
     string? ContentType,
@@ -239,12 +251,18 @@ public sealed record AttachmentContentValidationResult(
     /// <summary>
     /// Creates an accepted result.
     /// </summary>
+    /// <param name="content">The content.</param>
+    /// <param name="contentType">The content type.</param>
+    /// <returns>The result.</returns>
     public static AttachmentContentValidationResult Accept(Stream content, string contentType)
         => new(true, contentType, content, string.Empty, string.Empty);
 
     /// <summary>
     /// Creates a rejected result.
     /// </summary>
+    /// <param name="errorCode">The error code.</param>
+    /// <param name="errorMessage">The error message.</param>
+    /// <returns>The result.</returns>
     public static AttachmentContentValidationResult Reject(string errorCode, string errorMessage)
         => new(false, null, null, errorCode, errorMessage);
 }

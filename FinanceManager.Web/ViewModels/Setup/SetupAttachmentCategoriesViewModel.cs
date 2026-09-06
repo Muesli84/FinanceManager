@@ -25,6 +25,7 @@ public sealed class SetupAttachmentCategoriesViewModel : BaseViewModel
     /// Gets the list of attachment category items currently loaded into the view model.
     /// The collection is mutable (items are added/removed) but the property itself is read-only.
     /// </summary>
+    /// <returns>The result.</returns>
     public List<AttachmentCategoryDto> Items { get; } = new();
 
     /// <summary>
@@ -46,6 +47,7 @@ public sealed class SetupAttachmentCategoriesViewModel : BaseViewModel
     /// <summary>
     /// Gets a value indicating whether the current <see cref="NewName"/> is valid for creating a new category.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool CanAdd => !string.IsNullOrWhiteSpace(NewName) && NewName.Trim().Length >= 2;
 
     /// <summary>
@@ -61,6 +63,7 @@ public sealed class SetupAttachmentCategoriesViewModel : BaseViewModel
     /// <summary>
     /// Gets a value indicating whether the current <see cref="EditName"/> is valid for saving the edit.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool CanSaveEdit => !string.IsNullOrWhiteSpace(EditName) && EditName.Trim().Length >= 2;
 
     /// <summary>

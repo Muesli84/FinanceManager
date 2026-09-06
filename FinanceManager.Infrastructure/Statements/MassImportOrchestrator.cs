@@ -25,6 +25,12 @@ public sealed class MassImportOrchestrator : IMassImportOrchestrator
     /// <summary>
     /// Initializes a new instance of the <see cref="MassImportOrchestrator"/> class.
     /// </summary>
+    /// <param name="statementDraftService">The statement draft service.</param>
+    /// <param name="statementFileFactory">The statement file factory.</param>
+    /// <param name="statementParsers">The statement parsers.</param>
+    /// <param name="securityService">The security service.</param>
+    /// <param name="securityPriceImportServiceFactory">The security price import service factory.</param>
+    /// <param name="logger">Logger instance.</param>
     public MassImportOrchestrator(
         IStatementDraftService statementDraftService,
         IStatementFileFactory statementFileFactory,

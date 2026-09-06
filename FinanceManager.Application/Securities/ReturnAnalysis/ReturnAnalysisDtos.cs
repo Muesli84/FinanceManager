@@ -23,6 +23,7 @@ namespace FinanceManager.Application.Securities.ReturnAnalysis;
 /// These are included in <see cref="TotalCostBasis"/> but are tracked separately to allow
 /// detailed cost-basis breakdowns in the UI (e.g. "Kaufpreise + Gebühren = Investiertes Kapital").
 /// </param>
+/// <returns>The result.</returns>
 public sealed record FifoCostBasisResult(
     decimal TotalCostBasis,
     decimal RealizedGains,
@@ -37,4 +38,5 @@ public sealed record FifoCostBasisResult(
 /// <param name="PurchaseDate">Date of purchase.</param>
 /// <param name="Quantity">Number of shares in this lot.</param>
 /// <param name="CostPerUnit">Cost per share for this lot.</param>
+/// <returns>The result.</returns>
 public sealed record FifoLot(DateTime PurchaseDate, decimal Quantity, decimal CostPerUnit);

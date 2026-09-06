@@ -67,7 +67,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Metadata describing the last import split operation performed by <see cref="CreateDraftAsync"/>.
     /// </summary>
-    public ImportSplitInfo? LastImportSplitInfo { get; private set; } // exposes metadata of last CreateDraftAsync call (scoped service)
+    /// <returns>The result.</returns>
+    public ImportSplitInfo? LastImportSplitInfo { get; private set; } // exposes metadata of last CreateDraftAsync call - scoped service
 
     /// <summary>
     /// Details about how an import was split into drafts.
@@ -79,6 +80,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <param name="MaxEntriesPerDraft">Configured maximum entries per draft.</param>
     /// <param name="LargestDraftSize">Size of the largest produced draft.</param>
     /// <param name="MonthlyThreshold">Threshold used to decide monthly splitting.</param>
+    /// <returns>The result.</returns>
     public sealed record ImportSplitInfo(
         ImportSplitMode ConfiguredMode,
         bool EffectiveMonthly,
@@ -543,7 +545,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     }
                 }
 
-                var preliminaryGroups = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+                var preliminaryGroups = new List<MovementGroup>();
 
                 if (useMonthly)
                 {
@@ -557,13 +559,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
                         var parts = Chunk(g.ToList(), maxPerDraft).ToList();
                         if (parts.Count == 1)
                         {
-                            preliminaryGroups.Add((monthLabel, parts[0], false, g.Key.Year, g.Key.Month));
+                            preliminaryGroups.Add(new MovementGroup(monthLabel, parts[0], false, g.Key.Year, g.Key.Month));
                         }
                         else
                         {
                             for (int p = 0; p < parts.Count; p++)
                             {
-                                preliminaryGroups.Add(($"{monthLabel} (Teil {p + 1})", parts[p], true, g.Key.Year, g.Key.Month));
+                                preliminaryGroups.Add(new MovementGroup($"{monthLabel} (Teil {p + 1})", parts[p], true, g.Key.Year, g.Key.Month));
                             }
                         }
                     }
@@ -578,13 +580,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     var chunks = Chunk(allMovements, maxPerDraft).ToList();
                     if (chunks.Count == 1)
                     {
-                        preliminaryGroups.Add((string.Empty, chunks[0], false, null, null));
+                        preliminaryGroups.Add(new MovementGroup(string.Empty, chunks[0], false, null, null));
                     }
                     else
                     {
                         for (int i = 0; i < chunks.Count; i++)
                         {
-                            preliminaryGroups.Add(($"(Teil {i + 1})", chunks[i], false, null, null));
+                            preliminaryGroups.Add(new MovementGroup($"(Teil {i + 1})", chunks[i], false, null, null));
                         }
                     }
                 }
@@ -640,6 +642,17 @@ public sealed partial class StatementDraftService : IStatementDraftService
     }
 
     /// <summary>
+    /// Represents a group of statement movements that form one draft.
+    /// </summary>
+    /// <param name="Label">Display label of the group.</param>
+    /// <param name="Movements">Movements belonging to the group.</param>
+    /// <param name="IsSplitPart">Whether the group is a partial chunk of a month.</param>
+    /// <param name="Year">Year of the month group, if monthly-split.</param>
+    /// <param name="Month">Month of the month group, if monthly-split.</param>
+    /// <returns>The result.</returns>
+    private sealed record MovementGroup(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month);
+
+    /// <summary>
     /// Wendet die Mindestanzahl-Regel auf monatliche (nicht weiter gesplittete) Gruppen an.
     /// Strategien (aus Tests abgeleitet):
     /// 1. Führende kleine Monate vor erstem großen: in Blöcken >= Min bündeln; Rest mit erstem großen Monat mergen.
@@ -649,8 +662,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// 5. Reine Sequenz nur kleiner Monate -> greedy Blöcke bilden bis >= Min, letzter evtl. kleiner Block mit vorigem mergen.
     /// 6. Folge kleiner Monate vor großem Monatsblock: Baue möglichst Blöcke exakt = Min (Test 1,1,1,1,1,1,20 Min=5 -> {5,21}).
     /// </summary>
-    private static List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>
-        ApplyMonthlyMinMerge(List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)> input, int min)
+    /// <param name="input">Monthly groups to merge.</param>
+    /// <param name="min">Minimum number of movements per resulting group.</param>
+    /// <returns>The merged groups.</returns>
+    private static List<MovementGroup>
+        ApplyMonthlyMinMerge(List<MovementGroup> input, int min)
     {
         // Extract only month groups, keeping order
         var list = input;
@@ -662,13 +678,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
         }
 
         // Work on copy list
-        var result = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+        var result = new List<MovementGroup>();
 
         // Helper functions
-        static bool IsAnchor((string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month) g, int minEntries)
+        static bool IsAnchor(MovementGroup g, int minEntries)
             => !g.IsSplitPart && g.Movements.Count >= minEntries;
 
-        static bool IsSmall((string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month) g, int minEntries)
+        static bool IsSmall(MovementGroup g, int minEntries)
             => !g.IsSplitPart && g.Movements.Count < minEntries;
 
         // Full sequence of smalls without anchor?
@@ -676,7 +692,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
         if (!anyAnchor)
         {
             // All are small -> greedy groups >= min
-            var buffer = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+            var buffer = new List<MovementGroup>();
             var acc = new List<StatementMovement>();
             var monthLabels = new List<string>();
 
@@ -686,7 +702,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 if (force || acc.Count >= min)
                 {
                     var label = BuildMergedLabel(monthLabels);
-                    result.Add((label, acc.ToList(), false, null, null));
+                    result.Add(new MovementGroup(label, acc.ToList(), false, null, null));
                     acc.Clear();
                     monthLabels.Clear();
                 }
@@ -709,14 +725,14 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 {
                     // Single group (too small) -> let it be (hardly relevant technically, but no anchor present)
                     var labelSingle = BuildMergedLabel(monthLabels);
-                    result.Add((labelSingle, acc, false, null, null));
+                    result.Add(new MovementGroup(labelSingle, acc, false, null, null));
                 }
                 else
                 {
                     var last = result[^1];
                     last.Movements.AddRange(acc);
                     var appendedLabel = $"{last.Label}+{string.Join('+', monthLabels)}";
-                    result[^1] = (appendedLabel, last.Movements, false, null, null);
+                    result[^1] = new MovementGroup(appendedLabel, last.Movements, false, null, null);
                 }
             }
 
@@ -739,7 +755,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             if (IsAnchor(current, min))
             {
                 // Prüfe nachfolgenden Run kleiner Monate zwischen diesem und nächstem Anchor
-                var smallRun = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+                var smallRun = new List<MovementGroup>();
                 int look = index + 1;
                 while (look < list.Count && IsSmall(list[look], min))
                 {
@@ -768,7 +784,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                         foreach (var sm in smallRun)
                         {
                             current.Movements.AddRange(sm.Movements);
-                            current = (MergeTwoLabels(current.Label, sm.Label), current.Movements, false, null, null);
+                            current = new MovementGroup(MergeTwoLabels(current.Label, sm.Label), current.Movements, false, null, null);
                         }
                         result.Add(current);
                     }
@@ -822,10 +838,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 }
 
                 // Linken Anchor aktualisieren, rechten Anchor später behandeln -> wir ersetzen rechten später vollständig
-                result.Add((leftLabel, leftMovs, false, leftAnchor.Year, leftAnchor.Month));
+                result.Add(new MovementGroup(leftLabel, leftMovs, false, leftAnchor.Year, leftAnchor.Month));
 
                 // Rechter Anchor wird übersprungen und neu eingefügt
-                list[look] = (rightLabel, rightMovs, false, rightAnchor.Year, rightAnchor.Month);
+                list[look] = new MovementGroup(rightLabel, rightMovs, false, rightAnchor.Year, rightAnchor.Month);
 
                 index = look; // fahre beim rechten Anchor fort (der jetzt evtl. noch weitere Runs hat)
                 continue;
@@ -833,7 +849,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
             else
             {
                 // current ist kleiner Monat (kein Anchor) – kann nur Leading-Run sein (vor erstem Anchor) oder einzelner kleiner vor Anchor (aus Sonderfall oben)
-                var leadingRun = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+                var leadingRun = new List<MovementGroup>();
                 int l = index;
                 while (l < list.Count && IsSmall(list[l], min))
                 {
@@ -885,7 +901,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 foreach (var b in blocks)
                 {
                     var label = BuildMergedLabel(b.labels);
-                    result.Add((label, b.movs, false, null, null));
+                    result.Add(new MovementGroup(label, b.movs, false, null, null));
                 }
 
                 if (accMovs.Count > 0)
@@ -893,7 +909,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                     // an Anchor anhängen -> wir modifizieren den Anchor jetzt
                     var anchor = list[l];
                     anchor.Movements.InsertRange(0, accMovs); // vorne einfügen (zeitlich frühere Monate)
-                    anchor = (MergeTwoLabels(BuildMergedLabel(accLabels), anchor.Label), anchor.Movements, false, anchor.Year, anchor.Month);
+                    anchor = new MovementGroup(MergeTwoLabels(BuildMergedLabel(accLabels), anchor.Label), anchor.Movements, false, anchor.Year, anchor.Month);
                     list[l] = anchor;
                 }
 
@@ -905,10 +921,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
 
         // Hilfen -----------------------------------------------------
 
-        static (bool attachToPrevious, List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>? groups)
-            BuildStandaloneOrAttach(List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)> run, int minEntries)
+        static (bool attachToPrevious, List<MovementGroup>? groups)
+            BuildStandaloneOrAttach(List<MovementGroup> run, int minEntries)
         {
-            var groups = new List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>();
+            var groups = new List<MovementGroup>();
             var accMovs = new List<StatementMovement>();
             var accLabels = new List<string>();
 
@@ -918,7 +934,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 accLabels.Add(g.Label.Split(' ')[0]);
                 if (accMovs.Count >= minEntries)
                 {
-                    groups.Add((BuildMergedLabel(accLabels), new List<StatementMovement>(accMovs), false, null, null));
+                    groups.Add(new MovementGroup(BuildMergedLabel(accLabels), new List<StatementMovement>(accMovs), false, null, null));
                     accMovs.Clear();
                     accLabels.Clear();
                 }
@@ -934,7 +950,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
                 // Rest an letzte Gruppe anhängen
                 var last = groups[^1];
                 last.Movements.AddRange(accMovs);
-                last = (MergeTwoLabels(last.Label, BuildMergedLabel(accLabels)), last.Movements, false, null, null);
+                last = new MovementGroup(MergeTwoLabels(last.Label, BuildMergedLabel(accLabels)), last.Movements, false, null, null);
                 groups[^1] = last;
             }
             return (false, groups);
@@ -1299,6 +1315,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Retrieves only draft header information (no entries) for the specified draft id and owner.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> GetDraftHeaderAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts
@@ -1322,6 +1342,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Finds the header of the draft that contains the specified entry id, scoped by owner.
     /// </summary>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> FindDraftHeaderAsync(Guid entryId, Guid ownerUserId, CancellationToken ct)
     {
         var draftIds = await _db.StatementDraftEntries.Where(entry => entry.Id == entryId).Select(entry => entry.DraftId).ToListAsync();
@@ -1333,6 +1357,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Returns all entries for a draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IEnumerable<StatementDraftEntryDto>> GetDraftEntriesAsync(Guid draftId, CancellationToken ct)
     {
         var entries = await _db.StatementDraftEntries.Where(e => e.DraftId == draftId).ToListAsync(ct);
@@ -1342,6 +1369,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Returns a single draft entry DTO or null when not found.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftEntryDto?> GetDraftEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
         var draftEntry = await _db.StatementDraftEntries.FirstOrDefaultAsync(e => e.DraftId == draftId && e.Id == entryId, ct);
@@ -1353,6 +1384,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Adds a new entry to a draft and runs classification for the draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="bookingDate">The booking date.</param>
+    /// <param name="amount">The amount.</param>
+    /// <param name="subject">The subject.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> AddEntryAsync(Guid draftId, Guid ownerUserId, DateTime bookingDate, decimal amount, string subject, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1373,6 +1411,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Commits a draft by creating a StatementImport and StatementEntry records for all draft entries and moves attachments.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="accountId">The account id.</param>
+    /// <param name="format">The format.</param>
+    /// <param name="ct">Cancellation token.</param>
     /// <returns>A <see cref="CommitResult"/> on success, or null when draft not found or invalid.</returns>
     public async Task<CommitResult?> CommitAsync(Guid draftId, Guid ownerUserId, Guid accountId, ImportFormat format, CancellationToken ct)
     {
@@ -1416,6 +1459,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Cancels (deletes) a draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> CancelAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
@@ -1428,6 +1475,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Classifies drafts (or a single draft) to populate derived metadata used for matching and presentation.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> ClassifyAsync(Guid? draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
         var drafts = await _db.StatementDrafts
@@ -1454,6 +1506,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets the detected account for a draft and re-classifies the draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="accountId">The account id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetAccountAsync(Guid draftId, Guid ownerUserId, Guid accountId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1470,6 +1527,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets the contact for a draft entry (or clears it) and persists changes.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="contactId">The contact id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1495,6 +1558,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets or clears the cost-neutral flag for an entry.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="isCostNeutral">The is cost neutral.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1511,6 +1580,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Assigns a savings plan to an entry.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="savingsPlanId">The savings plan id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1526,6 +1601,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets or clears the split-draft association for an entry. Validates constraints for split drafts.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="splitDraftId">The split draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, Guid? splitDraftId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts
@@ -1575,6 +1656,18 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Updates core fields of an entry.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="bookingDate">The booking date.</param>
+    /// <param name="valutaDate">The valuta date.</param>
+    /// <param name="amount">The amount.</param>
+    /// <param name="subject">The subject.</param>
+    /// <param name="recipientName">The recipient name.</param>
+    /// <param name="currencyCode">The currency code.</param>
+    /// <param name="bookingDescription">The booking description.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
@@ -1619,6 +1712,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets whether the savings plan assigned to an entry should be archived on booking.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="archive">The archive.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, bool archive, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1634,6 +1733,16 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets security-related fields for a draft entry and returns the modified draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="transactionType">The transaction type.</param>
+    /// <param name="quantity">The quantity.</param>
+    /// <param name="feeAmount">The fee amount.</param>
+    /// <param name="taxAmount">The tax amount.</param>
+    /// <param name="userId">The user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraft?> SetEntrySecurityAsync(
         Guid draftId,
         Guid entryId,
@@ -2465,6 +2574,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// If the account is a collection account and the IBAN from the statement draft is not yet
     /// in the linked IBANs list, adds it automatically. Errors are swallowed to avoid disrupting booking.
     /// </summary>
+    /// <param name="account">The account.</param>
+    /// <param name="statementIban">The statement iban.</param>
+    /// <param name="ct">Cancellation token.</param>
     private async Task TryAutoLinkIbanToCollectionAccountAsync(Account account, string? statementIban, CancellationToken ct)
     {
         if (!account.IsCollectionAccount) return;
@@ -2510,6 +2622,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Deletes an entry from a draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> DeleteEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries).FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
@@ -2524,6 +2641,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Deletes all open drafts for the specified owner.
     /// </summary>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<int> DeleteAllAsync(Guid ownerUserId, CancellationToken ct)
     {
         var openIds = await _db.StatementDrafts.Where(d => d.OwnerUserId == ownerUserId && d.Status == StatementDraftStatus.Draft).Select(d => d.Id).ToListAsync(ct);

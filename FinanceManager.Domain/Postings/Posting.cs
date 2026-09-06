@@ -484,13 +484,15 @@ public sealed class Posting : Entity, IAggregateRoot
     /// <param name="ReversedByUserId">Optional user ID who reversed this posting.</param>
     /// <param name="ReversedAtUtc">Optional timestamp when this posting was reversed.</param>
     /// <param name="IsPreliminary">Indicates whether this posting is a preliminary (provisional) booking.</param>
+    /// <returns>The result.</returns>
     public sealed record PostingBackupDto(Guid Id, Guid SourceId, PostingKind Kind, Guid? AccountId, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityId, DateTime BookingDate, DateTime ValutaDate, decimal Amount, decimal? OriginalAmount, string? Subject, string? RecipientName, string? Description, SecurityPostingSubType? SecuritySubType, decimal? Quantity, Guid? GroupId, Guid? ParentId, Guid? LinkedPostingId, Guid? ReversedByPostingId, Guid? ReversalForPostingId, Guid? ReversedByUserId, DateTime? ReversedAtUtc, bool IsPreliminary = false);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this posting.
     /// </summary>
     /// <returns>A <see cref="PostingBackupDto"/> containing values required to restore this posting.</returns>
-    public PostingBackupDto ToBackupDto() => new PostingBackupDto(Id, SourceId, Kind, AccountId, ContactId, SavingsPlanId, SecurityId, BookingDate, ValutaDate, Amount, OriginalAmount, Subject, RecipientName, Description, SecuritySubType, Quantity, GroupId, ParentId, LinkedPostingId, ReversedByPostingId, ReversalForPostingId, ReversedByUserId, ReversedAtUtc, IsPreliminary);
+    public PostingBackupDto ToBackupDto()
+        => new PostingBackupDto(Id, SourceId, Kind, AccountId, ContactId, SavingsPlanId, SecurityId, BookingDate, ValutaDate, Amount, OriginalAmount, Subject, RecipientName, Description, SecuritySubType, Quantity, GroupId, ParentId, LinkedPostingId, ReversedByPostingId, ReversalForPostingId, ReversedByUserId, ReversedAtUtc, IsPreliminary);
 
     /// <summary>
     /// Applies values from the provided backup DTO to this posting instance.

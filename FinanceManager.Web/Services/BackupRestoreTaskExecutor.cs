@@ -26,6 +26,7 @@ namespace FinanceManager.Web.Services
         /// <param name="BackupId">Identifier of the backup to restore.</param>
         /// <param name="Confirmed">Server-side marker set only after the controller verified the file-name confirmation.</param>
         /// <param name="ExpectedFileName">The backup file name that was confirmed before enqueue.</param>
+        /// <returns>The result.</returns>
         private sealed record RestorePayload(Guid BackupId, bool Confirmed, string? ExpectedFileName);
 
         /// <summary>

@@ -36,17 +36,32 @@ public sealed class MonthlyBudgetExpectation
     /// <see cref="MonthlyBudgetExpectationPosting.BudgetedDisplayAmount"/> - occurrences carried over from
     /// a period before the report's first month are excluded here to avoid double-counting).
     /// </summary>
-    public decimal SumExpectedAmount => _postings.Sum(p => p.BudgetedDisplayAmount);
+    /// <returns>The result.</returns>
+    public decimal SumExpectedAmount
+    {
+        get
+        {
+            return _postings.Sum(p => p.BudgetedDisplayAmount);
+        }
+    }
 
     /// <summary>
     /// Gets the sum of the actually assigned amounts of all occurrences.
     /// </summary>
-    public decimal SumActualAmount => _postings.Sum(p => p.SumAssignedAmount);
+    /// <returns>The result.</returns>
+    public decimal SumActualAmount
+    {
+        get
+        {
+            return _postings.Sum(p => p.SumAssignedAmount);
+        }
+    }
 
     /// <summary>
     /// Gets the variance between actual and expected amount (SumActualAmount - SumExpectedAmount).
     /// </summary>
     public decimal Variance => SumActualAmount - SumExpectedAmount;
 
-    internal void AddPosting(MonthlyBudgetExpectationPosting posting) => _postings.Add(posting);
+    internal void AddPosting(MonthlyBudgetExpectationPosting posting)
+        => _postings.Add(posting);
 }

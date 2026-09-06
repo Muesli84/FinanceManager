@@ -8,6 +8,7 @@ public sealed class AttachmentCategory
     /// <summary>
     /// Unique category identifier.
     /// </summary>
+    /// <returns>The result.</returns>
     public Guid Id { get; private set; } = Guid.NewGuid();
 
     /// <summary>
@@ -57,13 +58,15 @@ public sealed class AttachmentCategory
     /// <param name="OwnerUserId">Identifier of the user who owns the category.</param>
     /// <param name="Name">Display name of the category.</param>
     /// <param name="IsSystem">Flag indicating whether the category is a system category.</param>
+    /// <returns>The result.</returns>
     public sealed record AttachmentCategoryBackupDto(Guid Id, Guid OwnerUserId, string Name, bool IsSystem);
 
     /// <summary>
     /// Converts this AttachmentCategory to a backup DTO.
     /// </summary>
     /// <returns>A <see cref="AttachmentCategoryBackupDto"/> containing the data required to restore this category.</returns>
-    public AttachmentCategoryBackupDto ToBackupDto() => new AttachmentCategoryBackupDto(Id, OwnerUserId, Name, IsSystem);
+    public AttachmentCategoryBackupDto ToBackupDto()
+        => new AttachmentCategoryBackupDto(Id, OwnerUserId, Name, IsSystem);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity.

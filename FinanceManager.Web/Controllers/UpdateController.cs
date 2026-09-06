@@ -1,4 +1,3 @@
-#pragma warning disable CS1591
 using FinanceManager.Shared.Dtos.Common;
 using FinanceManager.Shared.Dtos.Update;
 using FinanceManager.Web.Services.Updates;
@@ -9,6 +8,9 @@ using System.Net.Mime;
 
 namespace FinanceManager.Web.Controllers;
 
+/// <summary>
+/// Admin-only API that exposes the update subsystem: status, settings, checks, scheduling and installation.
+/// </summary>
 [ApiController]
 [Route("api/setup/update")]
 [Produces(MediaTypeNames.Application.Json)]
@@ -20,6 +22,12 @@ public sealed class UpdateController : ControllerBase
     private readonly IUpdateServiceCatalog _serviceCatalog;
     private readonly ILogger<UpdateController> _logger;
 
+    /// <summary>
+    /// Creates a new <see cref="UpdateController"/>.
+    /// </summary>
+    /// <param name="orchestrator">Update orchestrator used for status, settings and install operations.</param>
+    /// <param name="serviceCatalog">Catalog of updatable service names.</param>
+    /// <param name="logger">Logger instance.</param>
     public UpdateController(IUpdateOrchestrator orchestrator, IUpdateServiceCatalog serviceCatalog, ILogger<UpdateController> logger)
     {
         _orchestrator = orchestrator;
@@ -27,36 +35,86 @@ public sealed class UpdateController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Returns the current update status.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The current <see cref="UpdateStatusDto"/>.</returns>
+    /// <response code="200">Current update status.</response>
     [HttpGet("status")]
     [ProducesResponseType(typeof(UpdateStatusDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Status(CancellationToken ct)
         => Ok(await _orchestrator.GetStatusAsync(ct));
 
+    /// <summary>
+    /// Returns the current update settings.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The current <see cref="UpdateSettingsDto"/>.</returns>
+    /// <response code="200">Current update settings.</response>
     [HttpGet("settings")]
     [ProducesResponseType(typeof(UpdateSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Settings(CancellationToken ct)
         => Ok(await _orchestrator.GetSettingsAsync(ct));
 
+    /// <summary>
+    /// Saves new update settings.
+    /// </summary>
+    /// <param name="request">Settings update request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The updated <see cref="UpdateSettingsDto"/>.</returns>
+    /// <response code="200">Settings were saved.</response>
     [HttpPut("settings")]
     [ProducesResponseType(typeof(UpdateSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateSettings([FromBody] UpdateSettingsUpdateRequest request, CancellationToken ct)
         => Ok(await _orchestrator.SaveSettingsAsync(request, ct));
 
+    /// <summary>
+    /// Lists known service names that can be updated.
+    /// </summary>
+    /// <param name="query">Optional case-insensitive substring filter.</param>
+    /// <param name="take">Maximum number of results.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A list of service names.</returns>
+    /// <response code="200">List of service names.</response>
     [HttpGet("services")]
     [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Services([FromQuery] string? query, [FromQuery] int take = 20, CancellationToken ct = default)
         => Ok(await _serviceCatalog.ListServiceNamesAsync(query, take, ct));
 
+    /// <summary>
+    /// Triggers an update check.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The <see cref="UpdateCheckResultDto"/> result.</returns>
+    /// <response code="200">Result of the update check.</response>
     [HttpPost("check")]
     [ProducesResponseType(typeof(UpdateCheckResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Check(CancellationToken ct)
         => Ok(await _orchestrator.CheckAsync(ct));
 
+    /// <summary>
+    /// Schedules the automatic update installation time.
+    /// </summary>
+    /// <param name="request">Schedule request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The updated <see cref="UpdateSettingsDto"/>.</returns>
+    /// <response code="200">Schedule was applied.</response>
     [HttpPost("schedule")]
     [ProducesResponseType(typeof(UpdateSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Schedule([FromBody] UpdateScheduleRequest request, CancellationToken ct)
         => Ok(await _orchestrator.ScheduleAsync(request.ScheduledInstallTime, ct));
 
+    /// <summary>
+    /// Starts the update installation.
+    /// </summary>
+    /// <param name="request">Install start request including the downtime confirmation.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The resulting <see cref="UpdateStatusDto"/>.</returns>
+    /// <response code="200">Installation started.</response>
+    /// <response code="400">The request or current update state is invalid.</response>
+    /// <response code="404">No downloaded update package is ready.</response>
+    /// <response code="409">The update subsystem is locked by another operation.</response>
     [HttpPost("install/start")]
     [ProducesResponseType(typeof(UpdateStatusDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -91,6 +149,15 @@ public sealed class UpdateController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Resets a stale update lock so a new update operation can be started.
+    /// </summary>
+    /// <param name="request">Lock reset request with an optional reason.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>No content on success; an <see cref="ApiErrorDto"/> on failure.</returns>
+    /// <response code="204">The lock was reset.</response>
+    /// <response code="409">No lock exists or the lock is not stale.</response>
+    /// <response code="500">Resetting the lock failed.</response>
     [HttpPost("lock/reset")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status409Conflict)]
@@ -152,4 +219,3 @@ public sealed class UpdateController : ControllerBase
             ex.Message);
     }
 }
-#pragma warning restore CS1591

@@ -138,7 +138,8 @@ public sealed class SavingsPlan : Entity
     /// Sets the contract number. Leading/trailing whitespace is trimmed; whitespace-only values clear the contract number.
     /// </summary>
     /// <param name="contractNumber">The contract number string or <c>null</c> to clear.</param>
-    public void SetContractNumber(string? contractNumber) => ContractNumber = string.IsNullOrWhiteSpace(contractNumber) ? null : contractNumber.Trim();
+    public void SetContractNumber(string? contractNumber)
+        => ContractNumber = string.IsNullOrWhiteSpace(contractNumber) ? null : contractNumber.Trim();
 
     /// <summary>
     /// Sets or clears the symbol attachment reference. Passing <see cref="Guid.Empty"/> is treated as <c>null</c>.
@@ -244,13 +245,15 @@ public sealed class SavingsPlan : Entity
     /// <param name="CategoryId">Optional category identifier associated with the plan.</param>
     /// <param name="ContractNumber">Optional contract number for the plan.</param>
     /// <param name="SymbolAttachmentId">Optional symbol attachment id associated with the plan.</param>
+    /// <returns>The result.</returns>
     public sealed record SavingsPlanBackupDto(Guid Id, Guid OwnerUserId, string Name, SavingsPlanType Type, decimal? TargetAmount, DateTime? TargetDate, SavingsPlanInterval? Interval, bool IsActive, DateTime CreatedUtc, DateTime? ModifiedUtc, DateTime? ArchivedUtc, Guid? CategoryId, string? ContractNumber, Guid? SymbolAttachmentId);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this savings plan.
     /// </summary>
     /// <returns>A <see cref="SavingsPlanBackupDto"/> containing the values required to restore this plan.</returns>
-    public SavingsPlanBackupDto ToBackupDto() => new SavingsPlanBackupDto(Id, OwnerUserId, Name, Type, TargetAmount, TargetDate, Interval, IsActive, CreatedUtc, ModifiedUtc, ArchivedUtc, CategoryId, ContractNumber, SymbolAttachmentId);
+    public SavingsPlanBackupDto ToBackupDto()
+        => new SavingsPlanBackupDto(Id, OwnerUserId, Name, Type, TargetAmount, TargetDate, Interval, IsActive, CreatedUtc, ModifiedUtc, ArchivedUtc, CategoryId, ContractNumber, SymbolAttachmentId);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity.

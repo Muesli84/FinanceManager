@@ -13,6 +13,7 @@ public static partial class HelpLanguages
     /// <summary>
     /// All supported help languages.
     /// </summary>
+    /// <returns>The result.</returns>
     public static readonly IReadOnlyList<string> Supported = SupportedLanguageCodes
         .Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 

@@ -10,4 +10,5 @@ namespace FinanceManager.Shared.Dtos.Users;
 /// <param name="LockoutEnd">UTC timestamp until which user is locked out (null if not locked).</param>
 /// <param name="LastLoginUtc">UTC timestamp of the last successful login.</param>
 /// <param name="PreferredLanguage">Optional ISO language code preferred by the user.</param>
+/// <returns>The result.</returns>
 public sealed record UserAdminDto(Guid Id, string Username, bool IsAdmin, bool Active, DateTime? LockoutEnd, DateTime LastLoginUtc, string? PreferredLanguage);

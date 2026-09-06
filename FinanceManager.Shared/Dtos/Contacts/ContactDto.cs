@@ -10,4 +10,5 @@ namespace FinanceManager.Shared.Dtos.Contacts;
 /// <param name="Description">Optional description.</param>
 /// <param name="IsPaymentIntermediary">True when the contact is a payment intermediary.</param>
 /// <param name="SymbolAttachmentId">Optional attachment id for the contact's symbol.</param>
+/// <returns>The result.</returns>
 public sealed record ContactDto(Guid Id, string Name, ContactType Type, Guid? CategoryId, string? Description, bool IsPaymentIntermediary, Guid? SymbolAttachmentId);

@@ -1,4 +1,4 @@
-﻿using DocumentFormat.OpenXml.Spreadsheet;
+using DocumentFormat.OpenXml.Spreadsheet;
 using DocumentFormat.OpenXml.Vml;
 using FinanceManager.Domain.Accounts;
 using FinanceManager.Domain.Attachments; // new
@@ -38,71 +38,282 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     /// <summary>Bank accounts.</summary>
-    public DbSet<Account> Accounts => Set<Account>();
+    /// <returns>The result.</returns>
+    public DbSet<Account> Accounts
+    {
+        get
+        {
+            return Set<Account>();
+        }
+    }
     /// <summary>Linked sub-IBANs for collection accounts.</summary>
-    public DbSet<AccountLinkedIban> AccountLinkedIbans => Set<AccountLinkedIban>();
+    /// <returns>The result.</returns>
+    public DbSet<AccountLinkedIban> AccountLinkedIbans
+    {
+        get
+        {
+            return Set<AccountLinkedIban>();
+        }
+    }
     /// <summary>Account sharing links.</summary>
-    public DbSet<AccountShare> AccountShares => Set<AccountShare>();
+    /// <returns>The result.</returns>
+    public DbSet<AccountShare> AccountShares
+    {
+        get
+        {
+            return Set<AccountShare>();
+        }
+    }
     /// <summary>Contacts (counterparties, banks, self).</summary>
-    public DbSet<Contact> Contacts => Set<Contact>();
+    /// <returns>The result.</returns>
+    public DbSet<Contact> Contacts
+    {
+        get
+        {
+            return Set<Contact>();
+        }
+    }
     /// <summary>Contact categories.</summary>
-    public DbSet<ContactCategory> ContactCategories => Set<ContactCategory>();
+    /// <returns>The result.</returns>
+    public DbSet<ContactCategory> ContactCategories
+    {
+        get
+        {
+            return Set<ContactCategory>();
+        }
+    }
     /// <summary>Alias names for contact matching.</summary>
-    public DbSet<AliasName> AliasNames => Set<AliasName>();
+    /// <returns>The result.</returns>
+    public DbSet<AliasName> AliasNames
+    {
+        get
+        {
+            return Set<AliasName>();
+        }
+    }
     /// <summary>Statement import batches metadata.</summary>
-    public DbSet<StatementImport> StatementImports => Set<StatementImport>();
+    /// <returns>The result.</returns>
+    public DbSet<StatementImport> StatementImports
+    {
+        get
+        {
+            return Set<StatementImport>();
+        }
+    }
     /// <summary>Statement entry records created from imports.</summary>
-    public DbSet<StatementEntry> StatementEntries => Set<StatementEntry>();
+    /// <returns>The result.</returns>
+    public DbSet<StatementEntry> StatementEntries
+    {
+        get
+        {
+            return Set<StatementEntry>();
+        }
+    }
     /// <summary>Postings (ledger entries).</summary>
-    public DbSet<Posting> Postings => Set<Posting>();
+    /// <returns>The result.</returns>
+    public DbSet<Posting> Postings
+    {
+        get
+        {
+            return Set<Posting>();
+        }
+    }
     /// <summary>Statement import drafts.</summary>
-    public DbSet<StatementDraft> StatementDrafts => Set<StatementDraft>();
+    /// <returns>The result.</returns>
+    public DbSet<StatementDraft> StatementDrafts
+    {
+        get
+        {
+            return Set<StatementDraft>();
+        }
+    }
     /// <summary>Entries inside statement drafts.</summary>
-    public DbSet<StatementDraftEntry> StatementDraftEntries => Set<StatementDraftEntry>();
+    /// <returns>The result.</returns>
+    public DbSet<StatementDraftEntry> StatementDraftEntries
+    {
+        get
+        {
+            return Set<StatementDraftEntry>();
+        }
+    }
     /// <summary>Durable booking guards preventing concurrent booking of one draft.</summary>
-    public DbSet<StatementDraftBookingGuard> StatementDraftBookingGuards => Set<StatementDraftBookingGuard>();
+    /// <returns>The result.</returns>
+    public DbSet<StatementDraftBookingGuard> StatementDraftBookingGuards
+    {
+        get
+        {
+            return Set<StatementDraftBookingGuard>();
+        }
+    }
     /// <summary>Savings plans.</summary>
-    public DbSet<SavingsPlan> SavingsPlans => Set<SavingsPlan>();
+    /// <returns>The result.</returns>
+    public DbSet<SavingsPlan> SavingsPlans
+    {
+        get
+        {
+            return Set<SavingsPlan>();
+        }
+    }
     /// <summary>Savings plan categories.</summary>
     public DbSet<SavingsPlanCategory> SavingsPlanCategories { get; set; } = null!;
     /// <summary>Securities / stocks.</summary>
+    /// <returns>The result.</returns>
     public DbSet<FinanceManager.Domain.Securities.Security> Securities => Set<FinanceManager.Domain.Securities.Security>();
     /// <summary>Security categories.</summary>
-    public DbSet<SecurityCategory> SecurityCategories => Set<SecurityCategory>();
+    /// <returns>The result.</returns>
+    public DbSet<SecurityCategory> SecurityCategories
+    {
+        get
+        {
+            return Set<SecurityCategory>();
+        }
+    }
     /// <summary>Aggregated posting values (pre-computed).</summary>
-    public DbSet<PostingAggregate> PostingAggregates => Set<PostingAggregate>();
+    /// <returns>The result.</returns>
+    public DbSet<PostingAggregate> PostingAggregates
+    {
+        get
+        {
+            return Set<PostingAggregate>();
+        }
+    }
     /// <summary>Security historical prices.</summary>
-    public DbSet<SecurityPrice> SecurityPrices => Set<SecurityPrice>();
+    /// <returns>The result.</returns>
+    public DbSet<SecurityPrice> SecurityPrices
+    {
+        get
+        {
+            return Set<SecurityPrice>();
+        }
+    }
     /// <summary>Backup records stored for the user.</summary>
-    public DbSet<BackupRecord> Backups => Set<BackupRecord>();
+    /// <returns>The result.</returns>
+    public DbSet<BackupRecord> Backups
+    {
+        get
+        {
+            return Set<BackupRecord>();
+        }
+    }
     /// <summary>Saved report favorites.</summary>
-    public DbSet<ReportFavorite> ReportFavorites => Set<ReportFavorite>(); // new
+    /// <returns>The result.</returns>
+    public DbSet<ReportFavorite> ReportFavorites
+    {
+        get
+        {
+            return Set<ReportFavorite>();
+        }
+    } // new
     /// <summary>Home KPI configuration records.</summary>
-    public DbSet<HomeKpi> HomeKpis => Set<HomeKpi>(); // new
+    /// <returns>The result.</returns>
+    public DbSet<HomeKpi> HomeKpis
+    {
+        get
+        {
+            return Set<HomeKpi>();
+        }
+    } // new
     /// <summary>Cached report data entries.</summary>
-    public DbSet<ReportCacheEntry> ReportCacheEntries => Set<ReportCacheEntry>();
+    /// <returns>The result.</returns>
+    public DbSet<ReportCacheEntry> ReportCacheEntries
+    {
+        get
+        {
+            return Set<ReportCacheEntry>();
+        }
+    }
     /// <summary>Per-user portfolio analysis report KPI tile configuration.</summary>
-    public DbSet<PortfolioKpiConfiguration> PortfolioKpiConfigurations => Set<PortfolioKpiConfiguration>();
+    /// <returns>The result.</returns>
+    public DbSet<PortfolioKpiConfiguration> PortfolioKpiConfigurations
+    {
+        get
+        {
+            return Set<PortfolioKpiConfiguration>();
+        }
+    }
     /// <summary>IP blocks for rate limiting / security.</summary>
-    public DbSet<IpBlock> IpBlocks => Set<IpBlock>(); // new
+    /// <returns>The result.</returns>
+    public DbSet<IpBlock> IpBlocks
+    {
+        get
+        {
+            return Set<IpBlock>();
+        }
+    } // new
     /// <summary>Security.txt settings.</summary>
-    public DbSet<SecurityTxtSettings> SecurityTxtSettings => Set<SecurityTxtSettings>();
+    /// <returns>The result.</returns>
+    public DbSet<SecurityTxtSettings> SecurityTxtSettings
+    {
+        get
+        {
+            return Set<SecurityTxtSettings>();
+        }
+    }
     /// <summary>Notification entities for user notifications.</summary>
-    public DbSet<Notification> Notifications => Set<Notification>(); // new
+    /// <returns>The result.</returns>
+    public DbSet<Notification> Notifications
+    {
+        get
+        {
+            return Set<Notification>();
+        }
+    } // new
     /// <summary>Attachments stored in the database (binary or URL references).</summary>
-    public DbSet<Attachment> Attachments => Set<Attachment>(); // new
+    /// <returns>The result.</returns>
+    public DbSet<Attachment> Attachments
+    {
+        get
+        {
+            return Set<Attachment>();
+        }
+    } // new
     /// <summary>Attachment categories.</summary>
-    public DbSet<AttachmentCategory> AttachmentCategories => Set<AttachmentCategory>(); // new
+    /// <returns>The result.</returns>
+    public DbSet<AttachmentCategory> AttachmentCategories
+    {
+        get
+        {
+            return Set<AttachmentCategory>();
+        }
+    } // new
     /// <summary>Budget categories.</summary>
-    public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
+    /// <returns>The result.</returns>
+    public DbSet<BudgetCategory> BudgetCategories
+    {
+        get
+        {
+            return Set<BudgetCategory>();
+        }
+    }
     /// <summary>Budget purposes.</summary>
-    public DbSet<BudgetPurpose> BudgetPurposes => Set<BudgetPurpose>();
+    /// <returns>The result.</returns>
+    public DbSet<BudgetPurpose> BudgetPurposes
+    {
+        get
+        {
+            return Set<BudgetPurpose>();
+        }
+    }
 
     /// <summary>Budget rules.</summary>
-    public DbSet<BudgetRule> BudgetRules => Set<BudgetRule>();
+    /// <returns>The result.</returns>
+    public DbSet<BudgetRule> BudgetRules
+    {
+        get
+        {
+            return Set<BudgetRule>();
+        }
+    }
 
     /// <summary>Budget overrides.</summary>
-    public DbSet<BudgetOverride> BudgetOverrides => Set<BudgetOverride>();
+    /// <returns>The result.</returns>
+    public DbSet<BudgetOverride> BudgetOverrides
+    {
+        get
+        {
+            return Set<BudgetOverride>();
+        }
+    }
 
     /// <summary>
     /// Configure the EF Core model: indexes, constraints and relationships.

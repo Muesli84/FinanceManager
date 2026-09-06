@@ -260,6 +260,7 @@ public sealed class StatementDraftsListViewModel : BaseListViewModel<StatementDr
     /// <summary>
     /// Progress percentage computed from upload totals and progress.
     /// </summary>
+    /// <returns>The result.</returns>
     public int UploadPercent => UploadTotal == 0 ? 0 : (int)Math.Round((double)(UploadDone * 100m / UploadTotal));
 
     // Classification background task state

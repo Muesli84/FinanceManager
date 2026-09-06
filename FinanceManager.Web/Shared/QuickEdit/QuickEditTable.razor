@@ -317,7 +317,7 @@
 
 @if (vm == null)
 {
-    <div class="text-muted">No data</div>
+    <div class="text-muted">@(localizer?["General_NoData"].Value ?? "No data")</div>
 }
 else
 {

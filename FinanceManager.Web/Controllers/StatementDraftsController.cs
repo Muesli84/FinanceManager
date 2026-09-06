@@ -80,6 +80,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="take">Items to take (1..3).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with a list of <see cref="StatementDraftDto"/>.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<StatementDraftDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOpenAsync([FromQuery] int skip = 0, [FromQuery] int take = 3, CancellationToken ct = default)
@@ -94,6 +95,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with an object containing the count.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("count")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOpenCountAsync(CancellationToken ct)
@@ -108,6 +110,9 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="body">Request containing the account id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>201 Created with the created <see cref="StatementDraftDto"/>; 400 when the request is invalid; 404 when the account does not exist.</returns>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("preliminary")]
     [ProducesResponseType(typeof(StatementDraftDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -137,6 +142,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the number of deleted drafts.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpDelete("all")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteAllAsync(CancellationToken ct)
@@ -153,6 +159,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="file">Uploaded file.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="StatementDraftUploadResult"/>, or 400 Bad Request when file is missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("upload")]
     [RequestSizeLimit(10_000_000)]
     [ProducesResponseType(typeof(StatementDraftUploadResult), StatusCodes.Status200OK)]
@@ -188,6 +196,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="request">Batch request with files, dialog policy and optional user decisions.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Batch analysis or execution result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("mass-import")]
     [RequestSizeLimit(long.MaxValue)]
     [ProducesResponseType(typeof(MassImportBatchResultDto), StatusCodes.Status200OK)]
@@ -212,6 +222,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// Returns status of the background classification task (classify all drafts).
     /// </summary>
     /// <returns>200 OK with task run state and progress.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("classify/status")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public IActionResult GetClassifyStatus()
@@ -228,6 +239,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// Enqueues classification of all open drafts if not already running.
     /// </summary>
     /// <returns>202 Accepted indicating the task was queued or already running.</returns>
+    /// <response code="202">The HTTP 202 response.</response>
     [HttpPost("classify")]
     [ProducesResponseType(typeof(object), StatusCodes.Status202Accepted)]
     public IActionResult ClassifyAllAsync()
@@ -243,6 +255,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// Returns status of mass booking background task.
     /// </summary>
     /// <returns>200 OK with <see cref="StatementDraftMassBookStatusDto"/> describing current task state.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("book-all/status")]
     [ProducesResponseType(typeof(StatementDraftMassBookStatusDto), StatusCodes.Status200OK)]
     public IActionResult GetBookAllStatus()
@@ -257,6 +270,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// </summary>
     /// <param name="req">Mass booking options.</param>
     /// <returns>202 Accepted with initial task status.</returns>
+    /// <response code="202">The HTTP 202 response.</response>
     [HttpPost("book-all")]
     [ProducesResponseType(typeof(StatementDraftMassBookStatusDto), StatusCodes.Status202Accepted)]
     public IActionResult BookAllAsync([FromBody] StatementDraftMassBookRequest req)
@@ -273,6 +287,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// Attempts to cancel a running mass booking task.
     /// </summary>
     /// <returns>202 Accepted.</returns>
+    /// <response code="202">The HTTP 202 response.</response>
     [HttpPost("book-all/cancel")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     public IActionResult CancelBookAll()
@@ -293,6 +308,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="fromEntryId">Optional originating entry id (navigation aid).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="StatementDraftDetailDto"/>, or 404 Not Found when draft is missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{draftId:guid}", Name = "GetStatementDraft")]
     [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -384,6 +401,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="entryId">Entry id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="StatementDraftEntryDetailDto"/> or 404 Not Found when entry not found.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{draftId:guid}/entries/{entryId:guid}")]
     [ProducesResponseType(typeof(StatementDraftEntryDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -427,6 +446,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="req">Entry creation payload.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated <see cref="StatementDraftDetailDto"/> or 400 Bad Request on validation errors.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("{draftId:guid}/entries")]
     [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -446,6 +467,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="draftId">Draft id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated <see cref="StatementDraftDetailDto"/>, or 400 Bad Request on error.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("{draftId:guid}/classify")]
     [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -469,6 +492,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="accountId">Account id to set.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated <see cref="StatementDraftDetailDto"/>, or 404 Not Found when draft missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/account/{accountId:guid}")]
     [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetAccountAsync(Guid draftId, Guid accountId, CancellationToken ct)
@@ -487,6 +511,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="req">Commit options including target account and format.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with commit result or 404 Not Found when draft missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/commit")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> CommitAsync(Guid draftId, [FromBody] StatementDraftCommitRequest req, CancellationToken ct)
@@ -522,6 +547,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="body">Request body containing contact id to set.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the updated entry or 404 Not Found when draft/entry missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/contact")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetEntryContactAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetContactRequest body, CancellationToken ct)
@@ -541,6 +567,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="body">Request containing the cost-neutral flag.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated entry or 404 Not Found when draft/entry missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/costneutral")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetCostNeutralRequest body, CancellationToken ct)
@@ -559,6 +586,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="body">Request containing savings plan id to assign.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated entry or 404 Not Found when draft/entry missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/savingsplan")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetEntrySavingPlanAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetSavingsPlanRequest body, CancellationToken ct)
@@ -578,6 +606,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="body">Request containing split draft id or clear flag.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with split summary dto or 400 Bad Request on invalid operation.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/split")]
     [ProducesResponseType(typeof(FinanceManager.Shared.Dtos.Statements.StatementDraftSetEntrySplitDraftResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -621,6 +651,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="draftId">Draft id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 No Content on success or 404 Not Found when draft missing.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{draftId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -636,6 +668,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="draftId">Draft id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the file content as a downloadable file, or 404 Not Found when not available.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{draftId:guid}/file")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -664,6 +698,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="body">Request containing core field values.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated entry or 404 Not Found when missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/edit-core")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateEntryCoreAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftUpdateEntryCoreRequest body, CancellationToken ct)
@@ -680,6 +715,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="body">Request containing security metadata.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated entry or 404 Not Found when missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/security")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetEntrySecurityAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetEntrySecurityRequest body, CancellationToken ct)
@@ -698,6 +734,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="body">Request containing the archive-on-booking flag.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated entry or 404 Not Found when missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/savingsplan/archive-on-booking")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSetArchiveSavingsPlanOnBookingRequest body, CancellationToken ct)
@@ -714,6 +751,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="draftId">Draft id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="DraftValidationResultDto"/>.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("{draftId:guid}/validate")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> ValidateAsync(Guid draftId, CancellationToken ct)
@@ -729,6 +767,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="entryId">Entry id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="DraftValidationResultDto"/>.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("{draftId:guid}/entries/{entryId:guid}/validate")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> ValidateEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
@@ -744,6 +783,10 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="forceWarnings">When true warnings are ignored and booking proceeds if possible.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="BookingResult"/>, 400 Bad Request or 428 Precondition Required depending on validation.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="409">The HTTP 409 response.</response>
+    /// <response code="428">The HTTP 428 response.</response>
     [HttpPost("{draftId:guid}/book")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -767,6 +810,10 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="forceWarnings">When true warnings are ignored and booking proceeds if possible.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="BookingResult"/>, 400 Bad Request or 428 Precondition Required depending on validation.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="409">The HTTP 409 response.</response>
+    /// <response code="428">The HTTP 428 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/book")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -823,6 +870,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="body">Request containing fields to save.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated entry DTO, 400 Bad Request for domain validation, or 500 on unexpected errors.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/save-all")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> SaveEntryAllAsync(Guid draftId, Guid entryId, [FromBody] StatementDraftSaveEntryAllRequest body, CancellationToken ct)
@@ -900,6 +948,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="entryId">Entry id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 No Content on success or 404 Not Found when draft/entry missing.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{draftId:guid}/entries/{entryId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -916,6 +966,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="entryId">Entry id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the reset entry or 404 Not Found when draft/entry missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/reset-duplicate")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> ResetDuplicateAsync(Guid draftId, Guid entryId, CancellationToken ct)
@@ -931,6 +982,8 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="entryId">Entry id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated <see cref="StatementDraftDetailDto"/>, or 400 Bad Request on error.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("{draftId:guid}/entries/{entryId:guid}/classify-entry")]
     [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -956,6 +1009,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="fileName">Optional initial file name for the draft.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>201 Created with the new draft <see cref="StatementDraftDetailDto"/>.</returns>
+    /// <response code="201">The HTTP 201 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateAsync([FromQuery] string? fileName = null, CancellationToken ct = default)
@@ -974,6 +1028,7 @@ public sealed class StatementDraftsController : ControllerBase
     /// <param name="description">Description text.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated <see cref="StatementDraftDetailDto"/>, or 404 Not Found when draft missing.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost("{draftId:guid}/description")]
     [ProducesResponseType(typeof(StatementDraftDetailDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> SetDescriptionAsync(Guid draftId, [FromBody] string? description, CancellationToken ct)

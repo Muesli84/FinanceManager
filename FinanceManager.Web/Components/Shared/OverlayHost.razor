@@ -107,13 +107,16 @@
         var t = _spec.ComponentType;
         try
         {
-            if (t == typeof(FinanceManager.Web.Components.Shared.AttachmentsPanel)) return Localizer?["Attachments_Title"] ?? "Attachments";
-            if (t == typeof(FinanceManager.Web.Components.Shared.ContactMergePanel)) return Localizer?["Merge_Title"] ?? "Merge";
-            if (t == typeof(FinanceManager.Web.Components.Shared.SecurityPriceImportPanel)) return Localizer?["SecurityPricesImport_Title"] ?? "Import prices";
-            if (t == typeof(FinanceManager.Web.Components.Shared.SecurityPricesBackfillPanel)) return Localizer?["SecurityPricesBackfill_Title"] ?? "Backfill";
+            if (t == typeof(AttachmentsPanel)) return Localizer?["Attachments_Title"] ?? "Attachments";
+            if (t == typeof(ContactMergePanel)) return Localizer?["Merge_Title"] ?? "Merge";
+            if (t == typeof(SecurityPriceImportPanel)) return Localizer?["SecurityPricesImport_Title"] ?? "Import prices";
+            if (t == typeof(SecurityPricesBackfillPanel)) return Localizer?["SecurityPricesBackfill_Title"] ?? "Backfill";
+            if (t == typeof(SetPasswordOverlay)) return Localizer?["Users_SetPassword_Title"] ?? "Set password";
+            if (t == typeof(AssignStatementOverlay)) return Localizer?["AssignStatement_Title"] ?? "Assign statement";
+            if (t == typeof(MassBookingOptionsPanel)) return Localizer?["MassBooking_Title"] ?? "Mass booking";
         }
         catch { }
-        return Localizer?["Attachments_Title"] ?? string.Empty;
+        return _spec.ComponentType.Name;
     }
 
     public void Dispose()

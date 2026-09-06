@@ -61,6 +61,7 @@ public sealed class SavingsPlansController : ControllerBase
     /// <param name="onlyActive">If true returns only non-archived plans.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> containing a 200 OK response with a list of <see cref="SavingsPlanDto"/>.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<SavingsPlanDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
@@ -75,6 +76,7 @@ public sealed class SavingsPlansController : ControllerBase
     /// <param name="onlyActive">If true counts only non-archived plans.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> containing a 200 OK response with an object { count = number }.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("count")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> CountAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
@@ -89,6 +91,8 @@ public sealed class SavingsPlansController : ControllerBase
     /// An <see cref="IActionResult"/> that contains a <see cref="SavingsPlanDto"/> and a 200 OK status when found,
     /// or a 404 Not Found when the plan does not exist or does not belong to the current user.
     /// </returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}", Name = "GetSavingsPlans")]
     [ProducesResponseType(typeof(SavingsPlanDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -104,6 +108,7 @@ public sealed class SavingsPlansController : ControllerBase
     /// <param name="id">Plan id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> containing a 200 OK response with <see cref="SavingsPlanAnalysisDto"/>.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("{id:guid}/analysis")]
     [ProducesResponseType(typeof(SavingsPlanAnalysisDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> AnalyzeAsync(Guid id, CancellationToken ct)
@@ -121,6 +126,8 @@ public sealed class SavingsPlansController : ControllerBase
     /// An <see cref="IActionResult"/> that contains the created <see cref="SavingsPlanDto"/> and a 201 Created status.
     /// Returns 400 Bad Request if the request model is invalid.
     /// </returns>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(SavingsPlanDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -150,6 +157,9 @@ public sealed class SavingsPlansController : ControllerBase
     /// or a 404 Not Found when the plan does not exist or does not belong to the current user.
     /// Returns 400 Bad Request if the request model is invalid.
     /// </returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(SavingsPlanDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -168,6 +178,9 @@ public sealed class SavingsPlansController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> with 204 No Content when archived or 404 Not Found when not found.</returns>
     /// <exception cref="ArgumentException">Thrown when the operation is invalid for the specified plan (mapped to 400 Bad Request).</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/archive")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -197,6 +210,9 @@ public sealed class SavingsPlansController : ControllerBase
     /// <returns>An <see cref="IActionResult"/> with 204 No Content when deleted, 404 Not Found when not found, or 400 Bad Request for invalid arguments.</returns>
     /// <exception cref="ArgumentException">Thrown when the operation is invalid for the specified plan (mapped to 400 Bad Request).</exception>
     /// <exception cref="Exception">Unexpected errors are logged by global error handling and result in a 500 response.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -234,6 +250,8 @@ public sealed class SavingsPlansController : ControllerBase
     /// or 404 Not Found when the plan or attachment cannot be found or is invalid.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown by the underlying service when arguments are invalid (mapped to 404).</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -264,6 +282,8 @@ public sealed class SavingsPlansController : ControllerBase
     /// or 404 Not Found when the plan cannot be found or the operation is invalid.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown by the underlying service when arguments are invalid (mapped to 404).</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -297,6 +317,9 @@ public sealed class SavingsPlansController : ControllerBase
     /// </returns>
     /// <exception cref="ArgumentException">Thrown when the underlying attachment service rejects the input (mapped to 400 Bad Request).</exception>
     /// <exception cref="Exception">Unexpected errors result in a 500 Internal Server Error.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="500">The HTTP 500 response.</response>
     [HttpPost("{id:guid}/symbol")]
     [RequestSizeLimit(long.MaxValue)]
     [ProducesResponseType(typeof(AttachmentDto), StatusCodes.Status200OK)]

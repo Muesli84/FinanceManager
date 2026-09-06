@@ -1,7 +1,9 @@
 @using FinanceManager.Web.ViewModels.Common
 @using FinanceManager.Web.ViewModels
 @using FinanceManager.Web.Extensions
+@using FinanceManager.Web.Components.Pages
 @inject NavigationManager NavigationManager
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Pages> PanelLocalizer
 @typeparam TKeyValue
 
 @{ var visibleSpecs = GetVisibleSpecs(); }
@@ -12,7 +14,7 @@
         @for (int i = 0; i < visibleSpecs.Count; i++)
         {
             var s = visibleSpecs[i];
-            <div>
+            <div role="region" aria-label="@GetEmbeddedPanelLabel(s.ComponentType)">
                 @{ IDictionary<string, object?>? parms = null;
                    if (s.Parameters != null)
                    {
@@ -135,6 +137,16 @@
 
         // trigger UI update
         InvokeAsync(StateHasChanged);
+    }
+
+    private string GetEmbeddedPanelLabel(Type componentType)
+    {
+        if (componentType == typeof(ContactDetail)) return PanelLocalizer["General_Title_Contact"];
+        if (componentType == typeof(ValidationResultPanel)) return PanelLocalizer["Panel_Label_ValidationResult"];
+        if (componentType == typeof(BudgetImpactSummaryPanel)) return PanelLocalizer["BudgetImpact_Header"];
+        if (componentType == typeof(SetupPanel)) return PanelLocalizer["Panel_Label_Setup"];
+        if (componentType == typeof(AccountsStatisticsTile)) return PanelLocalizer["Panel_Label_AccountsStatistics"];
+        return componentType.Name;
     }
 
     private void AddSpec(BaseViewModel.EmbeddedPanelSpec spec)

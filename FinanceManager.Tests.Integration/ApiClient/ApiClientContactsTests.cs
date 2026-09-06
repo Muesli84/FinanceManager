@@ -152,6 +152,9 @@ public class ApiClientContactsTests : IClassFixture<TestWebApplicationFactory>
     /// <summary>
     /// Creates one account, uploads a statement draft and returns the draft/entry identifiers.
     /// </summary>
+    /// <param name="api">The api.</param>
+    /// <param name="fileName">The file name.</param>
+    /// <returns>The result.</returns>
     private static async Task<(Guid DraftId, Guid EntryId)> CreateDraftWithSingleEntryAsync(FinanceManager.Shared.ApiClient api, string fileName)
     {
         var account = await api.CreateAccountAsync(new AccountCreateRequest(

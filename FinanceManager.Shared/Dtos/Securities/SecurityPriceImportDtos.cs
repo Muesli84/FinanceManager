@@ -6,6 +6,7 @@ namespace FinanceManager.Shared.Dtos.Securities;
 /// <param name="Provider">Optional provider hint (for example "ing").</param>
 /// <param name="FileName">Uploaded file name.</param>
 /// <param name="ContentType">Optional content type of the uploaded file.</param>
+/// <returns>The result.</returns>
 public sealed record SecurityPriceImportContext(string? Provider, string FileName, string? ContentType);
 
 /// <summary>
@@ -15,6 +16,7 @@ public sealed record SecurityPriceImportContext(string? Provider, string FileNam
 /// <param name="ServiceKey">Service key used for execution routing.</param>
 /// <param name="ServiceDisplayName">Human-readable service name.</param>
 /// <param name="DetectedSecurityName">Security name extracted from the file header when available.</param>
+/// <returns>The result.</returns>
 public sealed record SecurityPriceImportInspectionResult(
     string Provider,
     string ServiceKey,
@@ -27,6 +29,7 @@ public sealed record SecurityPriceImportInspectionResult(
 /// <param name="Date">Trading day (date component only).</param>
 /// <param name="Close">Close price for the trading day.</param>
 /// <param name="SourceLine">Original CSV line number.</param>
+/// <returns>The result.</returns>
 public sealed record SecurityPriceImportItem(DateTime Date, decimal Close, int SourceLine);
 
 /// <summary>
@@ -34,6 +37,7 @@ public sealed record SecurityPriceImportItem(DateTime Date, decimal Close, int S
 /// </summary>
 /// <param name="LineNumber">CSV line number where the error occurred.</param>
 /// <param name="Message">Human-readable error message.</param>
+/// <returns>The result.</returns>
 public sealed record SecurityPriceImportErrorDto(int LineNumber, string Message);
 
 /// <summary>
@@ -44,6 +48,7 @@ public sealed record SecurityPriceImportErrorDto(int LineNumber, string Message)
 /// <param name="Unchanged">Number of existing daily prices that already had the same close value.</param>
 /// <param name="Skipped">Number of skipped input lines (for example empty or invalid lines).</param>
 /// <param name="Errors">Collection of row-level errors encountered while parsing.</param>
+/// <returns>The result.</returns>
 public sealed record SecurityPriceImportResultDto(
     int Inserted,
     int Updated,

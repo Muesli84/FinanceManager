@@ -5,23 +5,21 @@
 @inject IStringLocalizer<Pages> Localizer
 
 <div class="timeseries-tab">
-    @if (_vm?.IsLoading == true) { <div role="status">Lade Daten...</div> }
-    else if (_vm?.Data == null) { <div class="no-data-msg">Keine Renditedaten verf&#xFC;gbar.</div> }
+    @if (_vm?.IsLoading == true) { <div role="status">@Localizer["TimeSeries_Loading"]</div> }
+    else if (_vm?.Data == null) { <div class="no-data-msg">@Localizer["TimeSeries_NoData"]</div> }
     else
     {
         @if (_vm.Data.HasSimulatedPrices)
         {
             <div class="info-banner" role="alert">
-                <strong>Hinweis:</strong> F&#xFC;r dieses Wertpapier liegen keine Kursdaten vor.
-                Die Renditen wurden aus den Transaktionspreisen (lineare Interpolation) hochgerechnet
-                und spiegeln <em>nicht</em> die reale Kursentwicklung wider.
+                @Localizer["TimeSeries_Simulated_Banner"]
             </div>
         }
-        <section aria-label="Jahresrenditen">
-            <h3>Jahresrenditen</h3>
+        <section aria-label="@Localizer["TimeSeries_Annual_Title"]">
+            <h3>@Localizer["TimeSeries_Annual_Title"]</h3>
             @if (_vm.Data.AnnualReturns.Count == 0)
             {
-                <p>Keine Jahresdaten vorhanden.</p>
+                <p>@Localizer["TimeSeries_Annual_NoData"]</p>
             }
             else
             {
@@ -42,26 +40,26 @@
                         </div>
                     }
                 </div>
-                <p class="ytd-note">* Bis Ende Analysezeitraum</p>
+                <p class="ytd-note">@Localizer["TimeSeries_YtdNote"]</p>
             }
         </section>
 
-        <section aria-label="Monatsrenditen-Heatmap">
-            <h3>Monatliche Renditen</h3>
+        <section aria-label="@Localizer["TimeSeries_Monthly_Aria"]">
+            <h3>@Localizer["TimeSeries_Monthly_Title"]</h3>
             @if (_vm.Data.MonthlyReturns.Count == 0)
             {
-                <p>Keine Monatsdaten vorhanden.</p>
+                <p>@Localizer["TimeSeries_Monthly_NoData"]</p>
             }
             else
             {
                 var years = _vm.Data.MonthlyReturns.Select(r => r.Year).Distinct().OrderBy(y => y).ToList();
-                var monthNames = new[] { "Jan", "Feb", "M\u00e4r", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez" };
+                var monthNames = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedMonthNames.Take(12).ToArray();
                 var maxAbsHeat = _vm.Data.MonthlyReturns.Where(r => r.ReturnPercent.HasValue).Select(r => Math.Abs(r.ReturnPercent!.Value)).DefaultIfEmpty(0.05m).Max();
                 if (maxAbsHeat == 0) { maxAbsHeat = 0.05m; }
 
-                <div class="heatmap" role="table" aria-label="Monatsrenditen">
+                <div class="heatmap" role="table" aria-label="@Localizer["TimeSeries_Monthly_TableAria"]">
                     <div class="heatmap-header" role="row">
-                        <span role="columnheader">Jahr</span>
+                        <span role="columnheader">@Localizer["TimeSeries_Col_Year"]</span>
                         @foreach (var mn in monthNames) { <span role="columnheader">@mn</span> }
                     </div>
                     @foreach (var year in years)
@@ -82,7 +80,7 @@
                         </div>
                     }
                 </div>
-                <div class="heatmap-legend" aria-label="Farbskala">
+                <div class="heatmap-legend" aria-label="@Localizer["TimeSeries_LegendAria"]">
                     <span class="legend-neg">\u2013@maxAbsHeat.ToString("P0")</span>
                     <div class="legend-gradient"></div>
                     <span class="legend-pos">+@maxAbsHeat.ToString("P0")</span>
@@ -107,10 +105,10 @@
                         <table class="fm-table" aria-label="@Localizer["TimeSeries_Dividend_Title"]">
                             <thead>
                                 <tr>
-                                    <th scope="col">Jahr</th>
-                                    <th scope="col" class="num">Brutto</th>
-                                    <th scope="col" class="num">Netto</th>
-                                    <th scope="col" class="num">Kum. Netto</th>
+                                    <th scope="col">@Localizer["TimeSeries_Col_Year"]</th>
+                                    <th scope="col" class="num">@Localizer["TimeSeries_Col_Gross"]</th>
+                                    <th scope="col" class="num">@Localizer["TimeSeries_Col_Net"]</th>
+                                    <th scope="col" class="num">@Localizer["TimeSeries_Col_CumNet"]</th>
                                 </tr>
                             </thead>
                             <tbody>

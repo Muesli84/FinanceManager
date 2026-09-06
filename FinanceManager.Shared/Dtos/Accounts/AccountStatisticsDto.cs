@@ -10,6 +10,7 @@ namespace FinanceManager.Shared.Dtos.Accounts;
 /// <param name="TotalGrossMagnitude">Absolute balance volume used as chart percentage denominator.</param>
 /// <param name="ByAccountType">Groups by technical account type key.</param>
 /// <param name="ByBankContact">Groups by bank contact id or fallback key.</param>
+/// <returns>The result.</returns>
 public sealed record AccountStatisticsDto(
     int AccountCount,
     decimal TotalBalance,
@@ -22,6 +23,7 @@ public sealed record AccountStatisticsDto(
     /// <summary>
     /// Defined empty statistics payload.
     /// </summary>
+    /// <returns>The result.</returns>
     public static AccountStatisticsDto Empty { get; } = new(
         0,
         0m,

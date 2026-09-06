@@ -9,6 +9,7 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// <param name="StatementImportId">Identifier of the created statement import when the whole draft was committed.</param>
 /// <param name="TotalEntries">Total number of entries committed (when whole draft booked).</param>
 /// <param name="NextDraftId">If present, id of the next draft in the same upload group that should be opened automatically.</param>
+/// <returns>The result.</returns>
 public sealed record StatementDraftBookingResultDto(
     bool Success,
     bool HasWarnings,

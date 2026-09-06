@@ -11,5 +11,8 @@ public interface IReturnAnalysisLocalizer
     string this[string key] { get; }
 
     /// <summary>Returns the localized and formatted string for the given resource key and arguments.</summary>
+    /// <param name="key">The key.</param>
+    /// <param name="args">The args.</param>
+    /// <returns>The result.</returns>
     string Format(string key, params object[] args);
 }

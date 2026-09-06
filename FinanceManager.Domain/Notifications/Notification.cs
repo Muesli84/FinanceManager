@@ -10,6 +10,7 @@ public sealed class Notification
     /// <summary>
     /// Unique notification identifier.
     /// </summary>
+    /// <returns>The result.</returns>
     public Guid Id { get; set; } = Guid.NewGuid();
 
     /// <summary>
@@ -86,13 +87,15 @@ public sealed class Notification
     /// <param name="TriggerEventKey">Optional event key that triggers the notification.</param>
     /// <param name="CreatedUtc">Creation timestamp in UTC.</param>
     /// <param name="ModifiedUtc">Last modification timestamp in UTC, if any.</param>
+    /// <returns>The result.</returns>
     public sealed record NotificationBackupDto(Guid Id, Guid? OwnerUserId, string Title, string Message, NotificationType Type, NotificationTarget Target, DateTime ScheduledDateUtc, bool IsEnabled, bool IsDismissed, string? TriggerEventKey, DateTime CreatedUtc, DateTime? ModifiedUtc);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of the notification.
     /// </summary>
     /// <returns>A <see cref="NotificationBackupDto"/> containing the data required to restore this notification.</returns>
-    public NotificationBackupDto ToBackupDto() => new NotificationBackupDto(Id, OwnerUserId, Title, Message, Type, Target, ScheduledDateUtc, IsEnabled, IsDismissed, TriggerEventKey, CreatedUtc, ModifiedUtc);
+    public NotificationBackupDto ToBackupDto()
+        => new NotificationBackupDto(Id, OwnerUserId, Title, Message, Type, Target, ScheduledDateUtc, IsEnabled, IsDismissed, TriggerEventKey, CreatedUtc, ModifiedUtc);
 
     /// <summary>
     /// Assigns values from a backup DTO to this notification instance.

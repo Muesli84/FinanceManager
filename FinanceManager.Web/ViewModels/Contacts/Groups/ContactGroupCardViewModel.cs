@@ -31,12 +31,20 @@ public sealed class ContactGroupCardViewModel : BaseCardViewModel<(string Key, s
     /// <summary>
     /// Local edit model representing the contact category being edited.
     /// </summary>
+    /// <returns>The result.</returns>
     public EditModel Model { get; } = new();
 
     /// <summary>
     /// Title shown in the card header. Falls back to the model name or base title when not available.
     /// </summary>
-    public override string Title => CardRecord?.Fields.FirstOrDefault(f => f.LabelKey == "Card_Caption_ContactCategory_Name")?.Text ?? (Model?.Name ?? base.Title);
+    /// <returns>The result.</returns>
+    public override string Title
+    {
+        get
+        {
+            return CardRecord?.Fields.FirstOrDefault(f => f.LabelKey == "Card_Caption_ContactCategory_Name")?.Text ?? (Model?.Name ?? base.Title);
+        }
+    }
 
     /// <summary>
     /// Loads the contact category with the specified identifier. When <paramref name="id"/> is <see cref="Guid.Empty"/>
@@ -207,7 +215,9 @@ public sealed class ContactGroupCardViewModel : BaseCardViewModel<(string Key, s
     /// <summary>
     /// Returns the attachment parent kind and id to be used for symbol uploads for this contact category.
     /// </summary>
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.ContactCategory, Id == Guid.Empty ? Guid.Empty : Id);
+    /// <returns>Tuple of attachment kind and parent id.</returns>
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.ContactCategory, Id == Guid.Empty ? Guid.Empty : Id);
 
     /// <summary>
     /// Indicates whether symbol uploads are permitted for this contact category. Returns <c>true</c>.

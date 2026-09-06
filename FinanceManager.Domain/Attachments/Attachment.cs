@@ -150,7 +150,8 @@ public sealed class Attachment : Entity
     /// Sets a human readable note for the attachment.
     /// </summary>
     /// <param name="note">Note text or null to clear.</param>
-    public void SetNote(string? note) => Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+    public void SetNote(string? note)
+        => Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
 
     /// <summary>
     /// Sets a reference to another attachment.
@@ -191,16 +192,37 @@ public sealed class Attachment : Entity
     /// <summary>
     /// Backup DTO - include Content bytes only if present and small; keep it for restore completeness.
     /// </summary>
+    /// <param name="Id">Identifier of the entity.</param>
+    /// <param name="CreatedUtc">The created utc.</param>
+    /// <param name="ModifiedUtc">The modified utc.</param>
+    /// <param name="OwnerUserId">The owner user id.</param>
+    /// <param name="EntityKind">The entity kind.</param>
+    /// <param name="EntityId">The entity id.</param>
+    /// <param name="FileName">The file name.</param>
+    /// <param name="ContentType">The content type.</param>
+    /// <param name="SizeBytes">The size bytes.</param>
+    /// <param name="Sha256">The sha256.</param>
+    /// <param name="CategoryId">The category id.</param>
+    /// <param name="UploadedUtc">The uploaded utc.</param>
+    /// <param name="Content">The content.</param>
+    /// <param name="Url">The url.</param>
+    /// <param name="ReferenceAttachmentId">The reference attachment id.</param>
+    /// <param name="Note">The note.</param>
+    /// <param name="Role">The role.</param>
+    /// <returns>The result.</returns>
     public sealed record AttachmentBackupDto(Guid Id, DateTime CreatedUtc, DateTime? ModifiedUtc, Guid OwnerUserId, AttachmentEntityKind EntityKind, Guid EntityId, string FileName, string ContentType, long SizeBytes, string? Sha256, Guid? CategoryId, DateTime UploadedUtc, byte[]? Content, string? Url, Guid? ReferenceAttachmentId, string? Note, AttachmentRole Role);
 
     /// <summary>
     /// Creates a backup DTO for this Attachment. Content bytes are included if available.
     /// </summary>
-    public AttachmentBackupDto ToBackupDto() => new AttachmentBackupDto(Id, CreatedUtc, ModifiedUtc, OwnerUserId, EntityKind, EntityId, FileName, ContentType, SizeBytes, Sha256, CategoryId, UploadedUtc, Content, Url, ReferenceAttachmentId, Note, Role);
+    /// <returns>The result.</returns>
+    public AttachmentBackupDto ToBackupDto()
+        => new AttachmentBackupDto(Id, CreatedUtc, ModifiedUtc, OwnerUserId, EntityKind, EntityId, FileName, ContentType, SizeBytes, Sha256, CategoryId, UploadedUtc, Content, Url, ReferenceAttachmentId, Note, Role);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity.
     /// </summary>
+    /// <param name="dto">The dto.</param>
     public void AssignBackupDto(AttachmentBackupDto dto)
     {
         if (dto == null) throw new ArgumentNullException(nameof(dto));
