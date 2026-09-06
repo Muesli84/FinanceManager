@@ -67,6 +67,8 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Metadata describing the last import split operation performed by <see cref="CreateDraftAsync"/>.
     /// </summary>
+    /// <param name="service">The service.</param>
+    /// <returns>The result.</returns>
     public ImportSplitInfo? LastImportSplitInfo { get; private set; } // exposes metadata of last CreateDraftAsync call (scoped service)
 
     /// <summary>
@@ -79,6 +81,7 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <param name="MaxEntriesPerDraft">Configured maximum entries per draft.</param>
     /// <param name="LargestDraftSize">Size of the largest produced draft.</param>
     /// <param name="MonthlyThreshold">Threshold used to decide monthly splitting.</param>
+    /// <returns>The result.</returns>
     public sealed record ImportSplitInfo(
         ImportSplitMode ConfiguredMode,
         bool EffectiveMonthly,
@@ -649,6 +652,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// 5. Reine Sequenz nur kleiner Monate -> greedy Blöcke bilden bis >= Min, letzter evtl. kleiner Block mit vorigem mergen.
     /// 6. Folge kleiner Monate vor großem Monatsblock: Baue möglichst Blöcke exakt = Min (Test 1,1,1,1,1,1,20 Min=5 -> {5,21}).
     /// </summary>
+    /// <param name="Label">The label.</param>
+    /// <param name="Movements">The movements.</param>
+    /// <param name="IsSplitPart">The is split part.</param>
+    /// <param name="Year">The year.</param>
+    /// <param name="Month">The month.</param>
     private static List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)>
         ApplyMonthlyMinMerge(List<(string Label, List<StatementMovement> Movements, bool IsSplitPart, int? Year, int? Month)> input, int min)
     {
@@ -1299,6 +1307,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Retrieves only draft header information (no entries) for the specified draft id and owner.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> GetDraftHeaderAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts
@@ -1322,6 +1334,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Finds the header of the draft that contains the specified entry id, scoped by owner.
     /// </summary>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> FindDraftHeaderAsync(Guid entryId, Guid ownerUserId, CancellationToken ct)
     {
         var draftIds = await _db.StatementDraftEntries.Where(entry => entry.Id == entryId).Select(entry => entry.DraftId).ToListAsync();
@@ -1333,6 +1349,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Returns all entries for a draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IEnumerable<StatementDraftEntryDto>> GetDraftEntriesAsync(Guid draftId, CancellationToken ct)
     {
         var entries = await _db.StatementDraftEntries.Where(e => e.DraftId == draftId).ToListAsync(ct);
@@ -1342,6 +1361,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Returns a single draft entry DTO or null when not found.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftEntryDto?> GetDraftEntryAsync(Guid draftId, Guid entryId, CancellationToken ct)
     {
         var draftEntry = await _db.StatementDraftEntries.FirstOrDefaultAsync(e => e.DraftId == draftId && e.Id == entryId, ct);
@@ -1353,6 +1376,13 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Adds a new entry to a draft and runs classification for the draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="bookingDate">The booking date.</param>
+    /// <param name="amount">The amount.</param>
+    /// <param name="subject">The subject.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> AddEntryAsync(Guid draftId, Guid ownerUserId, DateTime bookingDate, decimal amount, string subject, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1373,6 +1403,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Commits a draft by creating a StatementImport and StatementEntry records for all draft entries and moves attachments.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="accountId">The account id.</param>
+    /// <param name="format">The format.</param>
+    /// <param name="ct">Cancellation token.</param>
     /// <returns>A <see cref="CommitResult"/> on success, or null when draft not found or invalid.</returns>
     public async Task<CommitResult?> CommitAsync(Guid draftId, Guid ownerUserId, Guid accountId, ImportFormat format, CancellationToken ct)
     {
@@ -1416,6 +1451,10 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Cancels (deletes) a draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> CancelAsync(Guid draftId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
@@ -1428,6 +1467,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Classifies drafts (or a single draft) to populate derived metadata used for matching and presentation.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> ClassifyAsync(Guid? draftId, Guid? entryId, Guid ownerUserId, CancellationToken ct)
     {
         var drafts = await _db.StatementDrafts
@@ -1454,6 +1498,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets the detected account for a draft and re-classifies the draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="accountId">The account id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetAccountAsync(Guid draftId, Guid ownerUserId, Guid accountId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1470,6 +1519,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets the contact for a draft entry (or clears it) and persists changes.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="contactId">The contact id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetEntryContactAsync(Guid draftId, Guid entryId, Guid? contactId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1495,6 +1550,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets or clears the cost-neutral flag for an entry.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="isCostNeutral">The is cost neutral.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetEntryCostNeutralAsync(Guid draftId, Guid entryId, bool? isCostNeutral, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1511,6 +1572,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Assigns a savings plan to an entry.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="savingsPlanId">The savings plan id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto> AssignSavingsPlanAsync(Guid draftId, Guid entryId, Guid? savingsPlanId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1526,6 +1593,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets or clears the split-draft association for an entry. Validates constraints for split drafts.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="splitDraftId">The split draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetEntrySplitDraftAsync(Guid draftId, Guid entryId, Guid? splitDraftId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts
@@ -1575,6 +1648,18 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Updates core fields of an entry.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="bookingDate">The booking date.</param>
+    /// <param name="valutaDate">The valuta date.</param>
+    /// <param name="amount">The amount.</param>
+    /// <param name="subject">The subject.</param>
+    /// <param name="recipientName">The recipient name.</param>
+    /// <param name="currencyCode">The currency code.</param>
+    /// <param name="bookingDescription">The booking description.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftEntryDto?> UpdateEntryCoreAsync(Guid draftId, Guid entryId, Guid ownerUserId, DateTime bookingDate, DateTime? valutaDate, decimal amount, string subject, string? recipientName, string? currencyCode, string? bookingDescription, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
@@ -1619,6 +1704,12 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets whether the savings plan assigned to an entry should be archived on booking.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="archive">The archive.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraftDto?> SetEntryArchiveSavingsPlanOnBookingAsync(Guid draftId, Guid entryId, bool archive, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries)
@@ -1634,6 +1725,16 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Sets security-related fields for a draft entry and returns the modified draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="transactionType">The transaction type.</param>
+    /// <param name="quantity">The quantity.</param>
+    /// <param name="feeAmount">The fee amount.</param>
+    /// <param name="taxAmount">The tax amount.</param>
+    /// <param name="userId">The user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<StatementDraft?> SetEntrySecurityAsync(
         Guid draftId,
         Guid entryId,
@@ -2465,6 +2566,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// If the account is a collection account and the IBAN from the statement draft is not yet
     /// in the linked IBANs list, adds it automatically. Errors are swallowed to avoid disrupting booking.
     /// </summary>
+    /// <param name="account">The account.</param>
+    /// <param name="statementIban">The statement iban.</param>
+    /// <param name="ct">Cancellation token.</param>
     private async Task TryAutoLinkIbanToCollectionAccountAsync(Account account, string? statementIban, CancellationToken ct)
     {
         if (!account.IsCollectionAccount) return;
@@ -2510,6 +2614,11 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Deletes an entry from a draft.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="entryId">The entry id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> DeleteEntryAsync(Guid draftId, Guid entryId, Guid ownerUserId, CancellationToken ct)
     {
         var draft = await _db.StatementDrafts.Include(d => d.Entries).FirstOrDefaultAsync(d => d.Id == draftId && d.OwnerUserId == ownerUserId, ct);
@@ -2524,6 +2633,9 @@ public sealed partial class StatementDraftService : IStatementDraftService
     /// <summary>
     /// Deletes all open drafts for the specified owner.
     /// </summary>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<int> DeleteAllAsync(Guid ownerUserId, CancellationToken ct)
     {
         var openIds = await _db.StatementDrafts.Where(d => d.OwnerUserId == ownerUserId && d.Status == StatementDraftStatus.Draft).Select(d => d.Id).ToListAsync(ct);

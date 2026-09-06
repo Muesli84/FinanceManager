@@ -29,11 +29,14 @@ public sealed class SecurityCategoryCardViewModel : BaseCardViewModel<(string Ke
     /// <summary>
     /// Edit model holding the values bound to the UI when creating or editing a category.
     /// </summary>
+    /// <returns>The result.</returns>
     public EditModel Model { get; } = new();
 
     /// <summary>
     /// Computed title for the card derived from the category name field or the edit model.
     /// </summary>
+    /// <param name="f">The f.</param>
+    /// <returns>The result.</returns>
     public override string Title => CardRecord?.Fields.FirstOrDefault(f => f.LabelKey == "Card_Caption_SecurityCategory_Name")?.Text ?? (Model?.Name ?? base.Title);
 
     /// <summary>
@@ -199,6 +202,8 @@ public sealed class SecurityCategoryCardViewModel : BaseCardViewModel<(string Ke
     /// <summary>
     /// Returns the parent information used for symbol attachments.
     /// </summary>
+    /// <param name="Kind">The kind.</param>
+    /// <param name="Id">Identifier of the entity.</param>
     /// <returns>Attachment entity kind and the parent id used when uploading symbols.</returns>
     protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.SecurityCategory, Id == Guid.Empty ? Guid.Empty : Id);
 

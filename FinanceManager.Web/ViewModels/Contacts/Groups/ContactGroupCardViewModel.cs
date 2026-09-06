@@ -31,11 +31,14 @@ public sealed class ContactGroupCardViewModel : BaseCardViewModel<(string Key, s
     /// <summary>
     /// Local edit model representing the contact category being edited.
     /// </summary>
+    /// <returns>The result.</returns>
     public EditModel Model { get; } = new();
 
     /// <summary>
     /// Title shown in the card header. Falls back to the model name or base title when not available.
     /// </summary>
+    /// <param name="f">The f.</param>
+    /// <returns>The result.</returns>
     public override string Title => CardRecord?.Fields.FirstOrDefault(f => f.LabelKey == "Card_Caption_ContactCategory_Name")?.Text ?? (Model?.Name ?? base.Title);
 
     /// <summary>
@@ -207,6 +210,8 @@ public sealed class ContactGroupCardViewModel : BaseCardViewModel<(string Key, s
     /// <summary>
     /// Returns the attachment parent kind and id to be used for symbol uploads for this contact category.
     /// </summary>
+    /// <param name="Kind">The kind.</param>
+    /// <param name="Id">Identifier of the entity.</param>
     protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.ContactCategory, Id == Guid.Empty ? Guid.Empty : Id);
 
     /// <summary>

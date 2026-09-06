@@ -323,6 +323,14 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     /// <summary>
     /// Retrieves the persisted filters as typed collections.
     /// </summary>
+    /// <param name="Accounts">The accounts.</param>
+    /// <param name="Contacts">The contacts.</param>
+    /// <param name="SavingsPlans">The savings plans.</param>
+    /// <param name="Securities">The securities.</param>
+    /// <param name="ContactCategories">The contact categories.</param>
+    /// <param name="SavingsPlanCategories">The savings plan categories.</param>
+    /// <param name="SecurityCategories">The security categories.</param>
+    /// <param name="SecuritySubTypes">The security sub types.</param>
     /// <returns>
     /// A tuple containing optional collections for Accounts, Contacts, SavingsPlans, Securities,
     /// ContactCategories, SavingsPlanCategories, SecurityCategories, SecuritySubTypes and the IncludeDividendRelated flag.
@@ -361,6 +369,7 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     /// <summary>
     /// Backup data transfer object for ReportFavorite.
     /// </summary>
+    /// <returns>The result.</returns>
     public sealed record ReportFavoriteBackupDto(
         Guid Id,
         Guid OwnerUserId,
@@ -389,6 +398,28 @@ public sealed class ReportFavorite : Entity, IAggregateRoot
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this ReportFavorite.
     /// </summary>
+    /// <param name="OwnerUserId">The owner user id.</param>
+    /// <param name="Name">The name.</param>
+    /// <param name="PostingKind">The posting kind.</param>
+    /// <param name="IncludeCategory">The include category.</param>
+    /// <param name="Interval">The interval.</param>
+    /// <param name="Take">The take.</param>
+    /// <param name="ComparePrevious">The compare previous.</param>
+    /// <param name="CompareYear">The compare year.</param>
+    /// <param name="CompareProjection">The compare projection.</param>
+    /// <param name="ShowChart">The show chart.</param>
+    /// <param name="Expandable">The expandable.</param>
+    /// <param name="PostingKindsCsv">The posting kinds csv.</param>
+    /// <param name="AccountIdsCsv">The account ids csv.</param>
+    /// <param name="ContactIdsCsv">The contact ids csv.</param>
+    /// <param name="SavingsPlanIdsCsv">The savings plan ids csv.</param>
+    /// <param name="SecurityIdsCsv">The security ids csv.</param>
+    /// <param name="ContactCategoryIdsCsv">The contact category ids csv.</param>
+    /// <param name="SavingsPlanCategoryIdsCsv">The savings plan category ids csv.</param>
+    /// <param name="SecurityCategoryIdsCsv">The security category ids csv.</param>
+    /// <param name="SecuritySubTypesCsv">The security sub types csv.</param>
+    /// <param name="IncludeDividendRelated">The include dividend related.</param>
+    /// <param name="UseValutaDate">The use valuta date.</param>
     /// <returns>A <see cref="ReportFavoriteBackupDto"/> containing the backup data.</returns>
     public ReportFavoriteBackupDto ToBackupDto() => new ReportFavoriteBackupDto(Id, OwnerUserId, Name, PostingKind, IncludeCategory, Interval, Take, ComparePrevious, CompareYear, CompareProjection, ShowChart, Expandable, PostingKindsCsv, AccountIdsCsv, ContactIdsCsv, SavingsPlanIdsCsv, SecurityIdsCsv, ContactCategoryIdsCsv, SavingsPlanCategoryIdsCsv, SecurityCategoryIdsCsv, SecuritySubTypesCsv, IncludeDividendRelated, UseValutaDate);
 

@@ -152,6 +152,7 @@ public sealed class PostingsCardViewModel : BaseCardViewModel<(string Key, strin
     /// <summary>
     /// Returns the attachment parent kind and id for symbol uploads. For postings symbol assignment is not supported and a default value is returned.
     /// </summary>
+    /// <param name="Kind">The kind.</param>
     /// <returns>A tuple containing the <see cref="AttachmentEntityKind.Posting"/> and an empty Guid as parent id.</returns>
     protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.Posting, Guid.Empty);
 

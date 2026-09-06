@@ -112,11 +112,15 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Lazily resolved API client instance taken from the service provider.
         /// </summary>
+        /// <typeparam name="IApiClient">The type parameter.</typeparam>
+        /// <returns>The result.</returns>
         protected IApiClient ApiClient => _ApiClient ??= ServiceProvider.GetRequiredService<IApiClient>();
 
         /// <summary>
         /// Lazily resolved navigation manager used for composing navigation URLs.
         /// </summary>
+        /// <typeparam name="NavigationManager">The type parameter.</typeparam>
+        /// <returns>The result.</returns>
         protected NavigationManager Navigation => _Navigation ??= ServiceProvider.GetRequiredService<NavigationManager>();
 
         // Lazy-resolved localizer. Resolve on first access and swallow resolution errors (e.g. provider disposed).
@@ -200,6 +204,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <param name="ComponentType">Component type to render.</param>
         /// <param name="Parameters">Optional parameter dictionary passed to the component.</param>
         /// <param name="Modal">If true the overlay is modal.</param>
+        /// <returns>The result.</returns>
         public sealed record UiOverlaySpec(Type ComponentType, IReadOnlyDictionary<string, object?>? Parameters = null, bool Modal = true);
 
         /// <summary>
@@ -209,6 +214,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <param name="Parameters">Optional parameters passed to the embedded panel component.</param>
         /// <param name="Position">Position on the card page where the panel should be rendered.</param>
         /// <param name="Visible">Whether the panel should be initially visible.</param>
+        /// <returns>The result.</returns>
         public sealed record EmbeddedPanelSpec(Type ComponentType, IReadOnlyDictionary<string, object?>? Parameters = null, EmbeddedPanelPosition Position = EmbeddedPanelPosition.AfterCard, bool Visible = true);
 
         /// <summary>
@@ -222,6 +228,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// </summary>
         /// <param name="Key">Identifier of the lookup item.</param>
         /// <param name="Name">Display name of the lookup item.</param>
+        /// <returns>The result.</returns>
         public sealed record LookupItem(System.Guid Key, string Name);
 
         /// <summary>
@@ -267,6 +274,8 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Background task types that a page should show for this ViewModel. Default: none.
         /// </summary>
+        /// <typeparam name="BackgroundTaskType">The type parameter.</typeparam>
+        /// <returns>The result.</returns>
         public virtual BackgroundTaskType[]? VisibleBackgroundTaskTypes => Array.Empty<BackgroundTaskType>();
 
         /// <summary>

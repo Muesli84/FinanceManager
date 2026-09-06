@@ -37,6 +37,7 @@ namespace FinanceManager.Web.ViewModels.Accounts
         /// <summary>
         /// Current list of linked sub-IBANs for the collection account.
         /// </summary>
+        /// <returns>The result.</returns>
         public IReadOnlyList<string> LinkedIbans { get; private set; } = Array.Empty<string>();
 
         /// <summary>
@@ -453,6 +454,8 @@ namespace FinanceManager.Web.ViewModels.Accounts
         /// <summary>
         /// Returns the attachment parent information used to upload or list symbols for this card.
         /// </summary>
+        /// <param name="Kind">The kind.</param>
+        /// <param name="Id">Identifier of the entity.</param>
         protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.Account, Id == Guid.Empty ? Guid.Empty : Id);
 
         /// <summary>

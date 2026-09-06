@@ -189,6 +189,7 @@ public sealed class JwtOptionsValidatorTests
         /// <summary>
         /// File provider reported to satisfy the <see cref="IHostEnvironment"/> contract; not exercised by these tests.
         /// </summary>
+        /// <returns>The result.</returns>
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }

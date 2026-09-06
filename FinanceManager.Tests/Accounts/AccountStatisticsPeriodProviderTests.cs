@@ -75,6 +75,7 @@ public sealed class AccountStatisticsPeriodProviderTests
     /// <summary>
     /// Verifies that missing or blank identifiers fall back deterministically to UTC.
     /// </summary>
+    /// <param name="timeZoneId">The time zone id.</param>
     [Theory]
     [InlineData(null)]
     [InlineData("")]

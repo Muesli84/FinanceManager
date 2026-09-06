@@ -294,6 +294,7 @@ public sealed class UserCardViewModel : BaseCardViewModel<(string Key, string Va
     /// <summary>
     /// Returns the attachment parent kind and id for symbol uploads. Returns <see cref="AttachmentEntityKind.None"/>.
     /// </summary>
+    /// <param name="Kind">The kind.</param>
     /// <returns>Tuple containing <see cref="AttachmentEntityKind.None"/> and <see cref="Guid.Empty"/>.</returns>
     protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent()
     {

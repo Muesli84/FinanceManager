@@ -5,4 +5,5 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// </summary>
 /// <param name="FirstDraft">First created draft, when any.</param>
 /// <param name="SplitInfo">Optional split information for the upload.</param>
+/// <returns>The result.</returns>
 public sealed record StatementDraftUploadResult(StatementDraftDto? FirstDraft, ImportSplitInfoDto? SplitInfo);

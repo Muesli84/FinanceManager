@@ -21,31 +21,41 @@ namespace FinanceManager.Application
         /// <summary>
         /// Returns all known tasks (queued, running, completed) managed by the instance.
         /// </summary>
+        /// <returns>The result.</returns>
         IReadOnlyList<BackgroundTaskInfo> GetAll();
 
         /// <summary>
         /// Gets the task info for the specified id or null when not found.
         /// </summary>
+        /// <param name="id">Identifier of the entity.</param>
+        /// <returns>The result.</returns>
         BackgroundTaskInfo? Get(Guid id);
 
         /// <summary>
         /// Tries to cancel the specified task. Returns true when cancellation requested.
         /// </summary>
+        /// <param name="id">Identifier of the entity.</param>
+        /// <returns>Whether the operation succeeded.</returns>
         bool TryCancel(Guid id);
 
         /// <summary>
         /// Attempts to remove a queued task prior to execution.
         /// </summary>
+        /// <param name="id">Identifier of the entity.</param>
+        /// <returns>Whether the operation succeeded.</returns>
         bool TryRemoveQueued(Guid id);
 
         /// <summary>
         /// Attempts to dequeue the next queued task id for processing.
         /// </summary>
+        /// <param name="id">Identifier of the entity.</param>
+        /// <returns>Whether the operation succeeded.</returns>
         bool TryDequeueNext(out Guid id);
 
         /// <summary>
         /// Updates stored information about a background task (status/progress/message).
         /// </summary>
+        /// <param name="info">The info.</param>
         void UpdateTaskInfo(BackgroundTaskInfo info);
 
         /// <summary>
@@ -67,6 +77,11 @@ namespace FinanceManager.Application
         /// <summary>
         /// Enqueues a background task and returns its info record.
         /// </summary>
+        /// <param name="type">The type.</param>
+        /// <param name="userId">The user id.</param>
+        /// <param name="payload">The payload.</param>
+        /// <param name="allowDuplicate">The allow duplicate.</param>
+        /// <returns>The result.</returns>
         public BackgroundTaskInfo Enqueue(BackgroundTaskType type, Guid userId, object? payload = null, bool allowDuplicate = false)
         {
             lock (_lock)
@@ -115,6 +130,7 @@ namespace FinanceManager.Application
         /// <summary>
         /// Returns all known tasks.
         /// </summary>
+        /// <returns>The result.</returns>
         public IReadOnlyList<BackgroundTaskInfo> GetAll()
         {
             return new List<BackgroundTaskInfo>(_tasks.Values);
@@ -123,6 +139,8 @@ namespace FinanceManager.Application
         /// <summary>
         /// Gets a specific task by id or null when not found.
         /// </summary>
+        /// <param name="id">Identifier of the entity.</param>
+        /// <returns>The result.</returns>
         public BackgroundTaskInfo? Get(Guid id)
         {
             _tasks.TryGetValue(id, out var info);
@@ -132,6 +150,8 @@ namespace FinanceManager.Application
         /// <summary>
         /// Attempts to cancel a task by id.
         /// </summary>
+        /// <param name="id">Identifier of the entity.</param>
+        /// <returns>Whether the operation succeeded.</returns>
         public bool TryCancel(Guid id)
         {
             lock (_lock)
@@ -150,6 +170,8 @@ namespace FinanceManager.Application
         /// <summary>
         /// Attempts to remove a queued task prior to start.
         /// </summary>
+        /// <param name="id">Identifier of the entity.</param>
+        /// <returns>Whether the operation succeeded.</returns>
         public bool TryRemoveQueued(Guid id)
         {
             lock (_lock)
@@ -174,6 +196,8 @@ namespace FinanceManager.Application
         /// <summary>
         /// Attempts to dequeue the next queued task id for processing.
         /// </summary>
+        /// <param name="id">Identifier of the entity.</param>
+        /// <returns>Whether the operation succeeded.</returns>
         public bool TryDequeueNext(out Guid id)
         {
             return _queue.TryDequeue(out id);
@@ -182,6 +206,7 @@ namespace FinanceManager.Application
         /// <summary>
         /// Updates stored information about a background task.
         /// </summary>
+        /// <param name="info">The info.</param>
         public void UpdateTaskInfo(BackgroundTaskInfo info)
         {
             _tasks[info.Id] = info;

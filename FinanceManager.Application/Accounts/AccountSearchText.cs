@@ -5,6 +5,10 @@ using System.Globalization;
 /// <summary>
 /// Normalizes and validates the account list/statistics search text.
 /// </summary>
+/// <param name="Text">The text.</param>
+/// <param name="NameSearchText">The name search text.</param>
+/// <param name="IbanSearchText">The iban search text.</param>
+/// <returns>The result.</returns>
 public sealed record AccountSearchText(string Text, string NameSearchText, string IbanSearchText)
 {
     /// <summary>Maximum allowed search text length after trimming.</summary>
@@ -15,6 +19,7 @@ public sealed record AccountSearchText(string Text, string NameSearchText, strin
     /// </summary>
     /// <param name="q">Raw query text.</param>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the trimmed query exceeds <see cref="MaxLength"/>.</exception>
+    /// <returns>The result.</returns>
     public static AccountSearchText? Normalize(string? q)
     {
         if (string.IsNullOrWhiteSpace(q))
@@ -34,6 +39,9 @@ public sealed record AccountSearchText(string Text, string NameSearchText, strin
     /// <summary>
     /// Applies the account search contract independent from database provider collation or SQL functions.
     /// </summary>
+    /// <param name="name">The name.</param>
+    /// <param name="iban">The iban.</param>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool Matches(string? name, string? iban)
     {
         var nameMatches = !string.IsNullOrEmpty(name)
@@ -51,6 +59,8 @@ public sealed record AccountSearchText(string Text, string NameSearchText, strin
     /// <summary>
     /// Normalizes IBAN fragments by ignoring casing, ASCII spaces, non-breaking spaces and hyphens.
     /// </summary>
+    /// <param name="value">The value.</param>
+    /// <returns>The result.</returns>
     public static string NormalizeIban(string value)
     {
         if (string.IsNullOrEmpty(value))

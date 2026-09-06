@@ -15,6 +15,7 @@ public sealed class InMemoryHolidayProvider : IHolidayProvider
     /// Minimal seed of country-level public holidays. The dictionary key is an ISO country code
     /// (case-insensitive) and the value is a set of month/day tuples representing fixed-date holidays.
     /// </summary>
+    /// <returns>The result.</returns>
     private static readonly Dictionary<string, HashSet<(int Month, int Day)>> Defaults = new(StringComparer.OrdinalIgnoreCase)
     {
         ["DE"] = new(new[] { (1, 1), (5, 1), (12, 25), (12, 26) }),

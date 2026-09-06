@@ -28,6 +28,7 @@ public sealed class SavingsPlanCategoriesController : ControllerBase
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>List of <see cref="SavingsPlanCategoryDto"/> instances for the current user (200 OK).</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<SavingsPlanCategoryDto>), StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<SavingsPlanCategoryDto>> ListAsync(CancellationToken ct)
@@ -39,6 +40,8 @@ public sealed class SavingsPlanCategoriesController : ControllerBase
     /// <param name="id">Category id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Category DTO (200 OK) when found; otherwise 404 Not Found.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(SavingsPlanCategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -51,6 +54,8 @@ public sealed class SavingsPlanCategoriesController : ControllerBase
     /// <param name="dto">Category data (only name is used).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The created category DTO (201 Created) or 400 Bad Request when the request is invalid.</returns>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(SavingsPlanCategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -64,6 +69,9 @@ public sealed class SavingsPlanCategoriesController : ControllerBase
     /// <param name="dto">Category data (new name).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The updated category DTO (200 OK) when successful; 404 Not Found when the category does not exist; 400 Bad Request when input is invalid.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(SavingsPlanCategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -77,6 +85,8 @@ public sealed class SavingsPlanCategoriesController : ControllerBase
     /// <param name="id">Category id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>No content (204) when deleted; 404 Not Found when the category does not exist.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -91,6 +101,8 @@ public sealed class SavingsPlanCategoriesController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns>No content (204) when the symbol was set; 404 Not Found when the category or attachment does not exist.</returns>
     /// <exception cref="ArgumentException">May be thrown by the underlying service when the category or attachment is not found (mapped to 404).</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -107,6 +119,8 @@ public sealed class SavingsPlanCategoriesController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns>No content (204) when the symbol was cleared; 404 Not Found when the category does not exist.</returns>
     /// <exception cref="ArgumentException">May be thrown by the underlying service when the category is not found (mapped to 404).</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

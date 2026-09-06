@@ -19,6 +19,7 @@ public static class BrowserApiHelper
     /// <param name="Status">HTTP status code of the response.</param>
     /// <param name="Value">Deserialized response body, or default if it could not be deserialized.</param>
     /// <param name="Raw">Raw response body text.</param>
+    /// <returns>The result.</returns>
     public sealed record BrowserApiResponse<T>(int Status, T? Value, string? Raw);
 
     private static readonly JsonSerializerOptions JsonOptions = new()

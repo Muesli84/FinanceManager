@@ -10,6 +10,13 @@ public partial class ApiClient
     /// <summary>
     /// Lists contacts with optional paging and filtering.
     /// </summary>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="type">The type.</param>
+    /// <param name="all">The all.</param>
+    /// <param name="nameFilter">The name filter.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IReadOnlyList<ContactDto>> Contacts_ListAsync(int skip = 0, int take = 50, ContactType? type = null, bool all = false, string? nameFilter = null, CancellationToken ct = default)
     {
         var url = $"/api/contacts?skip={skip}&take={take}";
@@ -24,6 +31,9 @@ public partial class ApiClient
     /// <summary>
     /// Gets a single contact by id or null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<ContactDto?> Contacts_GetAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.GetAsync($"/api/contacts/{id}", ct);
@@ -35,6 +45,9 @@ public partial class ApiClient
     /// <summary>
     /// Creates a new contact.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<ContactDto> Contacts_CreateAsync(ContactCreateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync("/api/contacts", request, ct);
@@ -45,6 +58,10 @@ public partial class ApiClient
     /// <summary>
     /// Updates an existing contact. Returns null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<ContactDto?> Contacts_UpdateAsync(Guid id, ContactUpdateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PutAsJsonAsync($"/api/contacts/{id}", request, ct);
@@ -56,6 +73,9 @@ public partial class ApiClient
     /// <summary>
     /// Deletes a contact. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Contacts_DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/contacts/{id}", ct);
@@ -67,6 +87,9 @@ public partial class ApiClient
     /// <summary>
     /// Lists alias patterns for a contact.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IReadOnlyList<AliasNameDto>> Contacts_GetAliasesAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.GetAsync($"/api/contacts/{id}/aliases", ct);
@@ -77,6 +100,10 @@ public partial class ApiClient
     /// <summary>
     /// Adds a new alias pattern to a contact.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Contacts_AddAliasAsync(Guid id, AliasCreateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync($"/api/contacts/{id}/aliases", request, ct);
@@ -87,6 +114,10 @@ public partial class ApiClient
     /// <summary>
     /// Deletes an alias from a contact.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="aliasId">The alias id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Contacts_DeleteAliasAsync(Guid id, Guid aliasId, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/contacts/{id}/aliases/{aliasId}", ct);
@@ -97,6 +128,10 @@ public partial class ApiClient
     /// <summary>
     /// Merges a source contact into a target and returns the updated target contact.
     /// </summary>
+    /// <param name="sourceId">The source id.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<ContactDto> Contacts_MergeAsync(Guid sourceId, ContactMergeRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync($"/api/contacts/{sourceId}/merge", request, ct);
@@ -107,6 +142,8 @@ public partial class ApiClient
     /// <summary>
     /// Returns the total number of contacts for the current user.
     /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<int> Contacts_CountAsync(CancellationToken ct = default)
     {
         var resp = await _http.GetAsync("/api/contacts/count", ct);
@@ -122,6 +159,10 @@ public partial class ApiClient
     /// <summary>
     /// Assigns a symbol attachment to a contact. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="attachmentId">The attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Contacts_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default)
     {
         var resp = await _http.PostAsync($"/api/contacts/{id}/symbol/{attachmentId}", content: null, ct);
@@ -133,6 +174,9 @@ public partial class ApiClient
     /// <summary>
     /// Clears the symbol attachment from a contact. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Contacts_ClearSymbolAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/contacts/{id}/symbol", ct);

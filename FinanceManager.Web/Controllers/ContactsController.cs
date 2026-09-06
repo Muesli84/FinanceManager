@@ -63,6 +63,7 @@ public sealed class ContactsController : ControllerBase
     /// <param name="nameFilter">Optional name filter (substring).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with a read-only list of <see cref="ContactDto"/> instances.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(
@@ -94,6 +95,8 @@ public sealed class ContactsController : ControllerBase
     /// <param name="id">Contact id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the <see cref="ContactDto"/> when found; 404 Not Found otherwise.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}", Name = "GetContact")]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -121,6 +124,8 @@ public sealed class ContactsController : ControllerBase
     /// 400 Bad Request when input is invalid.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown when input arguments are invalid (mapped to 400).</exception>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -199,6 +204,8 @@ public sealed class ContactsController : ControllerBase
     /// <param name="req">Update payload.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the updated <see cref="ContactDto"/> when found; 404 Not Found otherwise.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -235,6 +242,8 @@ public sealed class ContactsController : ControllerBase
     /// <param name="id">Contact id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 No Content when deletion succeeded; 404 Not Found when the contact does not exist.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -258,6 +267,7 @@ public sealed class ContactsController : ControllerBase
     /// <param name="id">Contact id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the list of alias patterns.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("{id:guid}/aliases")]
     [ProducesResponseType(typeof(IReadOnlyList<AliasNameDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAliasAsync(Guid id, CancellationToken ct)
@@ -281,6 +291,7 @@ public sealed class ContactsController : ControllerBase
     /// <param name="req">Alias creation payload.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 No Content when the alias was added successfully.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
     [HttpPost("{id:guid}/aliases")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> AddAliasAsync(Guid id, [FromBody] AliasCreateRequest req, CancellationToken ct)
@@ -304,6 +315,7 @@ public sealed class ContactsController : ControllerBase
     /// <param name="aliasId">Alias id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 No Content when the alias was deleted successfully.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
     [HttpDelete("{id:guid}/aliases/{aliasId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteAliasAsync(Guid id, Guid aliasId, CancellationToken ct)
@@ -328,6 +340,8 @@ public sealed class ContactsController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the merged <see cref="ContactDto"/> when successful; 400 Bad Request when arguments are invalid.</returns>
     /// <exception cref="ArgumentException">Thrown when arguments are invalid (mapped to 400).</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("{id:guid}/merge")]
     [ProducesResponseType(typeof(ContactDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -362,6 +376,7 @@ public sealed class ContactsController : ControllerBase
     /// Simple count endpoint returning number of contacts owned by user.
     /// </summary>
     /// <param name="count">Total number of contacts.</param>
+    /// <returns>The result.</returns>
     public sealed record CountResponse(int count);
 
     /// <summary>
@@ -383,6 +398,8 @@ public sealed class ContactsController : ControllerBase
     /// <param name="attachmentId">Attachment id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 No Content when the assignment succeeded; 404 Not Found when the contact was not found.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -415,6 +432,8 @@ public sealed class ContactsController : ControllerBase
     /// <param name="id">Contact id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 No Content when the clear succeeded; 404 Not Found when the contact was not found.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

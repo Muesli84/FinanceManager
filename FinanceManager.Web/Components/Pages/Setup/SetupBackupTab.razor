@@ -11,7 +11,7 @@
     @* Ribbon supplies actions; keep a hidden fallback input for upload *@
     <div style="display:none;">
         <InputFile id="backupFileInput" OnChange="OnBackupUploadSelected" />
-        <button @onclick="(()=> _vm!.CreateAsync())">create fallback</button>
+        <button @onclick="(()=> _vm!.CreateAsync())">@Localizer["SetupBackup_Btn_CreateFallback"]</button>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(_vm?.LastError))

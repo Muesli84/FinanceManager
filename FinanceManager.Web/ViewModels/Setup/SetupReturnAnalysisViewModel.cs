@@ -36,6 +36,8 @@ public sealed class SetupReturnAnalysisViewModel : BaseViewModel
     public string? SaveError { get; private set; }
 
     /// <summary>All securities available for selection as benchmark.</summary>
+    /// <typeparam name="SecurityDto">The type parameter.</typeparam>
+    /// <returns>The result.</returns>
     public IReadOnlyList<SecurityDto> AvailableSecurities { get; private set; } = Array.Empty<SecurityDto>();
 
     /// <summary>Currently selected benchmark security id. Null means no benchmark.</summary>

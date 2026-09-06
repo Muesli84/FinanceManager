@@ -5,6 +5,18 @@ namespace FinanceManager.Shared.Dtos.Reports;
 /// <summary>
 /// Request payload to query aggregate reports for a given context.
 /// </summary>
+/// <param name="PostingKind">The posting kind.</param>
+/// <param name="Interval">The interval.</param>
+/// <param name="Take">The take.</param>
+/// <param name="IncludeCategory">The include category.</param>
+/// <param name="ComparePrevious">The compare previous.</param>
+/// <param name="CompareYear">The compare year.</param>
+/// <param name="CompareProjection">The compare projection.</param>
+/// <param name="UseValutaDate">The use valuta date.</param>
+/// <param name="PostingKinds">The posting kinds.</param>
+/// <param name="AnalysisDate">The analysis date.</param>
+/// <param name="Filters">The filters.</param>
+/// <returns>The result.</returns>
 [method: JsonConstructor]
 public sealed record ReportAggregatesQueryRequest(
     PostingKind PostingKind,
@@ -23,6 +35,16 @@ public sealed record ReportAggregatesQueryRequest(
     /// <summary>
     /// Compatibility constructor for callers that do not provide projection settings.
     /// </summary>
+    /// <param name="postingKind">The posting kind.</param>
+    /// <param name="interval">The interval.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="includeCategory">The include category.</param>
+    /// <param name="comparePrevious">The compare previous.</param>
+    /// <param name="compareYear">The compare year.</param>
+    /// <param name="useValutaDate">The use valuta date.</param>
+    /// <param name="postingKinds">The posting kinds.</param>
+    /// <param name="analysisDate">The analysis date.</param>
+    /// <param name="filters">The filters.</param>
     public ReportAggregatesQueryRequest(
         PostingKind postingKind,
         ReportInterval interval,

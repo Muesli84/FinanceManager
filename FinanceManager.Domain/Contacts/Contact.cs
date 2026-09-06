@@ -124,6 +124,15 @@ public sealed class Contact : Entity, IAggregateRoot
     /// <summary>
     /// DTO used for backups representing the serializable state of the contact.
     /// </summary>
+    /// <param name="Id">Identifier of the entity.</param>
+    /// <param name="OwnerUserId">The owner user id.</param>
+    /// <param name="Name">The name.</param>
+    /// <param name="Type">The type.</param>
+    /// <param name="CategoryId">The category id.</param>
+    /// <param name="Description">The description.</param>
+    /// <param name="IsPaymentIntermediary">The is payment intermediary.</param>
+    /// <param name="SymbolAttachmentId">The symbol attachment id.</param>
+    /// <returns>The result.</returns>
     public sealed record ContactBackupDto(Guid Id, Guid OwnerUserId, string Name, ContactType Type, Guid? CategoryId, string? Description, bool IsPaymentIntermediary, Guid? SymbolAttachmentId);
 
     /// <summary>

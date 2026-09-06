@@ -31,13 +31,13 @@
               <label for="lang">@Localizer["SetupProfile_Label_Language"]</label>
               <select id="lang" @bind="_vm.Model.PreferredLanguage" @bind:after="(()=> _vm.OnChanged())">
                     <option value="">@Localizer["SetupProfile_Language_Auto"]</option>
-                  <option value="de">Deutsch (de)</option>
-                  <option value="en">English (en)</option>
+                  <option value="de">@Localizer["SetupProfile_Lang_de"]</option>
+                  <option value="en">@Localizer["SetupProfile_Lang_en"]</option>
               </select>
           </div>
           <div class="form-row">
                 <label for="tz">@Localizer["SetupProfile_Label_TimeZone"]</label>
-              <input id="tz" type="text" @bind="_vm.Model.TimeZoneId" @bind:after="(()=> _vm.OnChanged())" placeholder="Europe/Berlin" />
+              <input id="tz" type="text" @bind="_vm.Model.TimeZoneId" @bind:after="(()=> _vm.OnChanged())" placeholder="@Localizer["SetupProfile_TimeZone_Placeholder"]" />
           </div>
 
           <div class="form-row">

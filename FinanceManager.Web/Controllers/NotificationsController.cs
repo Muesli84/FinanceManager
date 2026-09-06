@@ -54,6 +54,7 @@ public sealed class NotificationsController : ControllerBase
     /// when the operation succeeds.
     /// </returns>
     /// <exception cref="System.Exception">Thrown when an unexpected error occurs while listing notifications.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<NotificationDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
@@ -81,6 +82,8 @@ public sealed class NotificationsController : ControllerBase
     /// - 404 Not Found when the notification does not exist or does not belong to the current user.
     /// </returns>
     /// <exception cref="System.Exception">Thrown when an unexpected error occurs while dismissing the notification.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/dismiss")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

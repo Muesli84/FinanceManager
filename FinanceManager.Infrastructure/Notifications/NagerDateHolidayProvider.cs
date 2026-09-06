@@ -17,6 +17,7 @@ public sealed class NagerDateHolidayProvider : IHolidayProvider
     /// <summary>
     /// Local in-memory cache used to store holiday maps per country/year. Entries are cached for 12 hours.
     /// </summary>
+    /// <returns>The result.</returns>
     private readonly MemoryCache _cache = new(new MemoryCacheOptions());
 
     /// <summary>
@@ -38,6 +39,7 @@ public sealed class NagerDateHolidayProvider : IHolidayProvider
     /// <param name="name">English name of the holiday.</param>
     /// <param name="countryCode">Country code for which the holiday applies.</param>
     /// <param name="counties">Optional list of county/subdivision codes where the holiday applies; null/empty means country-wide.</param>
+    /// <returns>The result.</returns>
     private sealed record NagerHoliday(string date, string localName, string name, string countryCode, string[]? counties);
 
     /// <summary>

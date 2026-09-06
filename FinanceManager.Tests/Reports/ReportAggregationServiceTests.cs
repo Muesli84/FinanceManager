@@ -589,6 +589,11 @@ public sealed class ReportAggregationServiceTests
     /// For each entity and month two postings are added (1st and 15th), with a global amount counter starting at 1.00€ and increasing by 0.01€ per posting to ensure uniqueness.
     /// Returns the created entities, the list of months and a sum lookup for expected assertions.
     /// </summary>
+    /// <param name="db">The db.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="analysisMonth">The analysis month.</param>
+    /// <param name="monthsBack">The months back.</param>
+    /// <returns>The result.</returns>
     private static async Task<SeedResult> SeedAllKindsAsync(AppDbContext db, Guid ownerUserId, DateTime analysisMonth, int monthsBack)
     {
         var bank = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "Bank", ContactType.Bank, null, null);
@@ -698,6 +703,9 @@ public sealed class ReportAggregationServiceTests
     /// <summary>
     /// Hilfsfunktion: Erwartete Monats?Summe je Entität und Vergleichswerte (Vormonat, Vorjahr) aus Seed?Lookup berechnen.
     /// </summary>
+    /// <param name="current">The current.</param>
+    /// <param name="prev">The prev.</param>
+    /// <param name="year">The year.</param>
     private static (decimal current, decimal? prev, decimal? year)
         GetMonthlyExpected(
             SeedResult seed,
@@ -803,6 +811,7 @@ public sealed class ReportAggregationServiceTests
     /// Previous comparisons are checked for the exact previous interval when applicable, YearAgo for yearly.
     /// For AllHistory, verify total across all returned periods equals the seeded total.
     /// </summary>
+    /// <param name="interval">The interval.</param>
     [Theory]
     [InlineData(ReportInterval.Quarter)]
     [InlineData(ReportInterval.HalfYear)]

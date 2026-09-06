@@ -24,6 +24,7 @@ public sealed class SetupNotificationsViewModel : BaseViewModel
     /// <summary>
     /// Current notification settings model used by the UI.
     /// </summary>
+    /// <returns>The result.</returns>
     public NotificationSettingsDto Model { get; private set; } = new();
 
     private NotificationSettingsDto _original = new();

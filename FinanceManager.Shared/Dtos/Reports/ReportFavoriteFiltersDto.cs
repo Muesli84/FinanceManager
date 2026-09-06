@@ -12,6 +12,7 @@ namespace FinanceManager.Shared.Dtos.Reports;
 /// <param name="SecurityCategoryIds">Optional security category ids filter.</param>
 /// <param name="SecuritySubTypes">Optional security posting sub-types filter.</param>
 /// <param name="IncludeDividendRelated">True when dividend related postings should be included.</param>
+/// <returns>The result.</returns>
 public sealed record ReportFavoriteFiltersDto(
     IReadOnlyCollection<Guid>? AccountIds,
     IReadOnlyCollection<Guid>? ContactIds,

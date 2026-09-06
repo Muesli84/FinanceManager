@@ -9,6 +9,8 @@ namespace FinanceManager.Shared;
 public partial class ApiClient
 {
     /// <summary>Reads the current security.txt settings.</summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<SecurityTxtSettingsDto?> GetSecurityTxtSettingsAsync(CancellationToken ct = default)
     {
         var response = await _http.GetAsync("api/admin/security-txt", ct);
@@ -17,6 +19,8 @@ public partial class ApiClient
     }
 
     /// <summary>Updates the current security.txt settings.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     public async Task UpdateSecurityTxtSettingsAsync(SecurityTxtSettingsUpdateRequest request, CancellationToken ct = default)
     {
         var response = await _http.PutAsync("api/admin/security-txt", JsonContent.Create(request), ct);

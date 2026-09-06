@@ -808,6 +808,10 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// Computes per-KPI formula breakdowns for all widget KPIs (FR-1 side panel).
     /// Enforces user-scoping via <see cref="LoadPostingsAsync"/> (S-1).
     /// </summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     private async Task<IReadOnlyList<KpiBreakdownDto>?> ComputeKpiBreakdownsAsync(
         Guid securityId, Guid ownerUserId, CancellationToken ct)
     {
@@ -1154,6 +1158,7 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <param name="currentMarketValue">Current market value (shares held × current price).</param>
     /// <param name="sellNetItems">Pre-built sell item list for the conditional sales proceeds group.</param>
     /// <param name="totalSalesProceeds">Net sales proceeds (gross sell amounts minus sell-linked fees).</param>
+    /// <returns>The result.</returns>
     private KpiBreakdownDto BuildCagrBreakdown(
         DateTime firstBuyDate,
         DateTime cagrEndDate,
@@ -1260,6 +1265,10 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <summary>
     /// Loads all security transactions for the given security, enforcing ownership via JOIN on Security (Blocker S-1).
     /// </summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     private async Task<List<SecurityTransaction>> LoadPostingsAsync(
         Guid securityId, Guid ownerUserId, CancellationToken ct)
     {
@@ -1290,6 +1299,12 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <summary>
     /// Loads the price history for a security in the given date range, enforcing ownership via JOIN.
     /// </summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     private async Task<List<(DateTime Date, decimal Close)>> LoadPriceHistoryAsync(
         Guid securityId, Guid ownerUserId, DateTime from, DateTime to, CancellationToken ct)
     {
@@ -1319,6 +1334,10 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <summary>
     /// Forward-fills price data to fill gaps (weekends, holidays). Returns only dates with prices.
     /// </summary>
+    /// <param name="prices">The prices.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <returns>The result.</returns>
     private static List<(DateTime Date, decimal Close)> ForwardFill(
         List<(DateTime Date, decimal Close)> prices, DateTime from, DateTime to)
     {
@@ -1347,6 +1366,10 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// Builds IRR cashflows from transactions. Buys are negative, sells and dividends (net of taxes) are positive.
     /// The current market value is added as the terminal inflow on <paramref name="terminalDate"/>.
     /// </summary>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="currentMarketValue">The current market value.</param>
+    /// <param name="terminalDate">The terminal date.</param>
+    /// <returns>The result.</returns>
     private static IReadOnlyList<CashflowPoint> BuildIrrCashflows(
         IReadOnlyList<SecurityTransaction> transactions,
         decimal currentMarketValue,
@@ -1390,6 +1413,7 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <param name="taxesByGroupId">Lookup of taxes keyed by GroupId (for linking to dividends).</param>
     /// <param name="currentMarketValue">Current market value of the holding (terminal inflow).</param>
     /// <param name="irrValue">Computed IRR rate used to discount each cashflow. Null → no discounting.</param>
+    /// <returns>The result.</returns>
     private List<KpiBreakdownItem> BuildIrrTimelineItems(
         List<SecurityTransaction> buys,
         List<SecurityTransaction> dividends,
@@ -1480,6 +1504,9 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// Builds the time-weighted return periods from transactions and filled prices.
     /// Each period spans between consecutive cashflow events.
     /// </summary>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="filledPrices">The filled prices.</param>
+    /// <returns>The result.</returns>
     private static IReadOnlyList<TwrPeriodInput> BuildTwrPeriods(
         IReadOnlyList<SecurityTransaction> transactions,
         IReadOnlyList<(DateTime Date, decimal Close)> filledPrices)
@@ -1563,6 +1590,9 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <summary>
     /// Builds sparkline data points from transactions and forward-filled prices.
     /// </summary>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="filledPrices">The filled prices.</param>
+    /// <returns>The result.</returns>
     private static IReadOnlyList<SparklinePoint> BuildSparklinePoints(
         IReadOnlyList<SecurityTransaction> transactions,
         IReadOnlyList<(DateTime Date, decimal Close)> filledPrices)
@@ -1583,6 +1613,9 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <summary>
     /// Builds a list of portfolio market values (for volatility / max-drawdown calculation).
     /// </summary>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="filledPrices">The filled prices.</param>
+    /// <returns>The result.</returns>
     private static List<decimal> BuildPortfolioValueSeries(
         IReadOnlyList<SecurityTransaction> transactions,
         IReadOnlyList<(DateTime Date, decimal Close)> filledPrices)
@@ -1599,6 +1632,9 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <summary>
     /// Computes shares held on or before a given date from transaction history.
     /// </summary>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="date">The date.</param>
+    /// <returns>The result.</returns>
     private static decimal ComputeSharesHeldOnDate(
         IReadOnlyList<SecurityTransaction> transactions, DateTime date)
     {
@@ -1609,6 +1645,9 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// Computes invested capital (cost basis of remaining shares) on a given date using a simple running sum.
     /// For a precise FIFO basis, use FifoCostBasisCalculator on filtered transactions.
     /// </summary>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="date">The date.</param>
+    /// <returns>The result.</returns>
     private static decimal ComputeInvestedCapitalOnDate(
         IReadOnlyList<SecurityTransaction> transactions, DateTime date)
     {
@@ -1630,6 +1669,10 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <summary>
     /// Returns the portfolio market value on a given date by interpolating from the filled price series.
     /// </summary>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="filledPrices">The filled prices.</param>
+    /// <param name="date">The date.</param>
+    /// <returns>The result.</returns>
     private static decimal GetPortfolioValueOnDate(
         IReadOnlyList<SecurityTransaction> transactions,
         IReadOnlyList<(DateTime Date, decimal Close)> filledPrices,
@@ -1643,6 +1686,10 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <summary>
     /// Builds annual dividend summary list.
     /// </summary>
+    /// <param name="transactions">The transactions.</param>
+    /// <param name="firstYear">The first year.</param>
+    /// <param name="lastYear">The last year.</param>
+    /// <returns>The result.</returns>
     private static IReadOnlyList<AnnualDividendPoint> BuildAnnualDividends(
         IReadOnlyList<SecurityTransaction> transactions, int firstYear, int lastYear)
     {
@@ -1742,6 +1789,8 @@ public sealed class ReturnAnalysisService : IReturnAnalysisService
     /// <summary>
     /// Converts a <see cref="ChartTimeRange"/> to an absolute from-date.
     /// </summary>
+    /// <param name="timeRange">The time range.</param>
+    /// <returns>The result.</returns>
     private static DateTime GetFromDateForTimeRange(ChartTimeRange timeRange)
     {
         var today = DateTime.Today;

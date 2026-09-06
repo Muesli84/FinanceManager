@@ -107,11 +107,15 @@ public sealed class BudgetReportViewModel : BaseViewModel
     /// <summary>
     /// Period rows for the chart and monthly table.
     /// </summary>
+    /// <typeparam name="BudgetReportPeriodRow">The type parameter.</typeparam>
+    /// <returns>The result.</returns>
     public IReadOnlyList<BudgetReportPeriodRow> Periods { get; private set; } = Array.Empty<BudgetReportPeriodRow>();
 
     /// <summary>
     /// Category rows for the detail table.
     /// </summary>
+    /// <typeparam name="BudgetReportCategoryRow">The type parameter.</typeparam>
+    /// <returns>The result.</returns>
     public IReadOnlyList<BudgetReportCategoryRow> Categories { get; private set; } = Array.Empty<BudgetReportCategoryRow>();
 
     /// <summary>
@@ -537,6 +541,8 @@ public sealed class BudgetReportViewModel : BaseViewModel
     /// <summary>
     /// Loaded postings for <see cref="PurposePostingsPurpose"/> within the current report range.
     /// </summary>
+    /// <typeparam name="BudgetReportPostingOverlayRow">The type parameter.</typeparam>
+    /// <returns>The result.</returns>
     public IReadOnlyList<BudgetReportPostingOverlayRow> PurposePostings { get; private set; } = Array.Empty<BudgetReportPostingOverlayRow>();
 
     /// <summary>
@@ -547,6 +553,8 @@ public sealed class BudgetReportViewModel : BaseViewModel
     /// <summary>
     /// Returns origin display info (name + optional symbol attachment id) for the given posting.
     /// </summary>
+    /// <param name="posting">The posting.</param>
+    /// <returns>The result.</returns>
     public async Task<(string Name, Guid? SymbolAttachmentId)> GetPostingOriginAsync(PostingServiceDto posting)
     {
         ArgumentNullException.ThrowIfNull(posting);
@@ -795,19 +803,46 @@ public sealed class BudgetReportViewModel : BaseViewModel
 /// <summary>
 /// Period row for the report.
 /// </summary>
+/// <param name="PeriodStart">The period start.</param>
+/// <param name="Budget">The budget.</param>
+/// <param name="Actual">The actual.</param>
+/// <param name="Delta">The delta.</param>
+/// <param name="DeltaPct">The delta pct.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetReportPeriodRow(DateOnly PeriodStart, decimal Budget, decimal Actual, decimal Delta, decimal DeltaPct);
 
 /// <summary>
 /// Purpose row inside a category.
 /// </summary>
+/// <param name="Id">Identifier of the entity.</param>
+/// <param name="Name">The name.</param>
+/// <param name="Budget">The budget.</param>
+/// <param name="Actual">The actual.</param>
+/// <param name="Delta">The delta.</param>
+/// <param name="DeltaPct">The delta pct.</param>
+/// <param name="SourceType">The source type.</param>
+/// <param name="SourceId">The source id.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetReportPurposeRow(Guid Id, string Name, decimal Budget, decimal Actual, decimal Delta, decimal DeltaPct, BudgetSourceType SourceType, Guid SourceId);
 
 /// <summary>
 /// Category row including nested purposes.
 /// </summary>
+/// <param name="Id">Identifier of the entity.</param>
+/// <param name="Name">The name.</param>
+/// <param name="Kind">The kind.</param>
+/// <param name="Budget">The budget.</param>
+/// <param name="Actual">The actual.</param>
+/// <param name="Delta">The delta.</param>
+/// <param name="DeltaPct">The delta pct.</param>
+/// <param name="Purposes">The purposes.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetReportCategoryRow(Guid Id, string Name, BudgetReportCategoryRowKind Kind, decimal Budget, decimal Actual, decimal Delta, decimal DeltaPct, IReadOnlyList<BudgetReportPurposeRow> Purposes);
 
 /// <summary>
 /// Posting row shown in the budget report postings overlay.
 /// </summary>
+/// <param name="Posting">The posting.</param>
+/// <param name="IsValuedForBudgetPurpose">The is valued for budget purpose.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetReportPostingOverlayRow(PostingServiceDto Posting, bool IsValuedForBudgetPurpose);

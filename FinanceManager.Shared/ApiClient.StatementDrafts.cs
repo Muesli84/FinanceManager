@@ -169,6 +169,10 @@ public partial class ApiClient
     /// Returns the success DTO on 200 or structured per-entry errors on 400.
     /// Uses explicit serialization to avoid empty-body Json deserialization errors.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<(FinanceManager.Shared.Dtos.Statements.BatchUpdateSuccessResponseDto? Success, FinanceManager.Shared.Dtos.Statements.BatchUpdateErrorResponseDto? Error)> StatementDrafts_BatchUpdateDetailedAsync(Guid draftId, FinanceManager.Shared.Dtos.Statements.BatchUpdateRequestDto req, CancellationToken ct = default)
     {
         // Some servers expect date fields in a specific string format. To avoid

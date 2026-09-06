@@ -86,6 +86,7 @@ public sealed class ReturnAnalysisServiceTests : IDisposable
     /// <summary>
     /// Creates a security and its owning user, persists both and returns them.
     /// </summary>
+    /// <param name="security">The security.</param>
     private (Security security, User user) SetupSecurityAndUser()
     {
         var user = new User($"user-{Guid.NewGuid():N}", "hash");
@@ -100,6 +101,11 @@ public sealed class ReturnAnalysisServiceTests : IDisposable
     /// <summary>
     /// Creates a Buy-type <see cref="Posting"/> for the given security without persisting it.
     /// </summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="date">The date.</param>
+    /// <param name="amount">The amount.</param>
+    /// <param name="quantity">The quantity.</param>
+    /// <returns>The result.</returns>
     private static Posting CreateBuyPosting(Guid securityId, DateTime date, decimal amount, decimal quantity)
         => new Posting(
             Guid.NewGuid(),

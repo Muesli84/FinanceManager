@@ -1,4 +1,5 @@
 @using FinanceManager.Web.ViewModels.Setup
+@using FinanceManager.Web.Components.Pages.Setup
 @using Microsoft.AspNetCore.Components
 @implements IDisposable
 @inject IServiceProvider Services
@@ -101,9 +102,28 @@ else
         }
     }
 
+    private static readonly HashSet<Type> AllowedSectionComponents = new()
+    {
+        typeof(SetupProfileTab),
+        typeof(SetupNotificationsTab),
+        typeof(SetupStatementTab),
+        typeof(SetupAttachmentCategoriesTab),
+        typeof(SetupBackupTab),
+        typeof(SetupUpdateTab),
+        typeof(SetupSecurityTab),
+        typeof(SecurityTxtSettingsTab),
+        typeof(SetupReturnAnalysisTab),
+    };
+
     private (Type? ComponentType, IDictionary<string, object>? Parameters) BuildSectionSpec(string key)
     {
         if (Provider == null || !Provider.TryGetSectionComponentType(key, out var componentType) || componentType == null)
+        {
+            return (null, null);
+        }
+
+        // Only known setup tab components may render inside the setup sections.
+        if (!AllowedSectionComponents.Contains(componentType))
         {
             return (null, null);
         }

@@ -78,11 +78,15 @@ public sealed class SecurityCategory
     /// <param name="OwnerUserId">Identifier of the user who owns the category.</param>
     /// <param name="Name">Display name of the category.</param>
     /// <param name="SymbolAttachmentId">Optional symbol attachment identifier associated with the category.</param>
+    /// <returns>The result.</returns>
     public sealed record SecurityCategoryBackupDto(Guid Id, Guid OwnerUserId, string Name, Guid? SymbolAttachmentId);
 
     /// <summary>
     /// Creates a backup DTO for this security category.
     /// </summary>
+    /// <param name="OwnerUserId">The owner user id.</param>
+    /// <param name="Name">The name.</param>
+    /// <param name="SymbolAttachmentId">The symbol attachment id.</param>
     /// <returns>A <see cref="SecurityCategoryBackupDto"/> containing the data required to restore this category.</returns>
     public SecurityCategoryBackupDto ToBackupDto() => new SecurityCategoryBackupDto(Id, OwnerUserId, Name, SymbolAttachmentId);
 

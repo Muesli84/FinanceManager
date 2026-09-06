@@ -78,6 +78,7 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
     /// Exposes the available setting sections as (key, localized display name) pairs.
     /// The list is materialized once in <see cref="LoadAsync"/> and cached for the lifetime of the view model.
     /// </summary>
+    /// <returns>The result.</returns>
     public IReadOnlyList<KeyValuePair<string, string>> SettingSections => _settingSections ?? Array.Empty<KeyValuePair<string, string>>();
 
     /// <summary>
@@ -434,6 +435,7 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
     /// Returns the attachment parent kind and parent id used when uploading symbols for this card.
     /// For the setup card a placeholder of statement draft with empty id is returned.
     /// </summary>
+    /// <param name="Kind">The kind.</param>
     /// <returns>A tuple containing the attachment entity kind and parent id.</returns>
     protected override (Domain.Attachments.AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent()
         => (Domain.Attachments.AttachmentEntityKind.StatementDraft, Guid.Empty);

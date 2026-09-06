@@ -49,6 +49,7 @@ namespace FinanceManager.Web.ViewModels.Common
     /// <param name="Title">Localized column header text.</param>
     /// <param name="Width">Optional CSS width (for example "18%" or "48px").</param>
     /// <param name="Align">Horizontal alignment for cell content.</param>
+    /// <returns>The result.</returns>
     public sealed record ListColumn(string Key, string Title, string? Width = null, ListColumnAlign Align = ListColumnAlign.Left);
 
     /// <summary>
@@ -61,6 +62,7 @@ namespace FinanceManager.Web.ViewModels.Common
     /// <param name="Amount">Optional currency amount for currency cells.</param>
     /// <param name="IconUrl">Optional URL to an icon to display instead of a symbol attachment.</param>
     /// <param name="Muted">When true the cell should be rendered in a muted (grayed-out) style.</param>
+    /// <returns>The result.</returns>
     public sealed record ListCell(ListCellKind Kind, string? Text = null, System.Guid? SymbolId = null, decimal? Amount = null, string? IconUrl = null, bool Muted = false);
 
     /// <summary>
@@ -85,6 +87,7 @@ namespace FinanceManager.Web.ViewModels.Common
     /// <param name="Label">Optional label rendered above the value.</param>
     /// <param name="Cell">Cell value using the same rendering rules as regular list cells.</param>
     /// <param name="CssClass">Optional CSS class for this mobile cell.</param>
+    /// <returns>The result.</returns>
     public sealed record ListMobileCell(string? Label, ListCell Cell, string? CssClass = null);
 
     /// <summary>
@@ -93,6 +96,7 @@ namespace FinanceManager.Web.ViewModels.Common
     /// <param name="Cells">Cells rendered inside this mobile row.</param>
     /// <param name="Kind">Layout kind used for the row.</param>
     /// <param name="CssClass">Optional CSS class for this mobile row.</param>
+    /// <returns>The result.</returns>
     public sealed record ListMobileRow(IReadOnlyList<ListMobileCell> Cells, ListMobileRowKind Kind = ListMobileRowKind.Single, string? CssClass = null);
 
     /// <summary>
@@ -102,6 +106,7 @@ namespace FinanceManager.Web.ViewModels.Common
     /// <param name="Item">Optional underlying item object associated with the row (used for navigation or actions).</param>
     /// <param name="Hint">Optional hint text displayed as a full-width row under the record.</param>
     /// <param name="MobileRows">Optional specialized mobile card rows. When omitted the generic mobile fallback is used.</param>
+    /// <returns>The result.</returns>
     public sealed record ListRecord(IReadOnlyList<ListCell> Cells, object? Item = null, string? Hint = null, IReadOnlyList<ListMobileRow>? MobileRows = null);
 
     /// <summary>
@@ -251,5 +256,6 @@ namespace FinanceManager.Web.ViewModels.Common
     /// </summary>
     /// <param name="Fields">Fields to render on the card in display order.</param>
     /// <param name="Item">Optional underlying item payload associated with the card.</param>
+    /// <returns>The result.</returns>
     public sealed record CardRecord(IReadOnlyList<CardField> Fields, object? Item = null);
 }

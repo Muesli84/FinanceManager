@@ -68,11 +68,19 @@ public sealed class StatementImport : Entity, IAggregateRoot
     /// <param name="TotalEntries">Number of entries parsed from the imported statement file.</param>
     /// <param name="CreatedUtc">Entity creation timestamp UTC.</param>
     /// <param name="ModifiedUtc">Entity last modified timestamp UTC, if any.</param>
+    /// <returns>The result.</returns>
     public sealed record StatementImportBackupDto(Guid Id, Guid AccountId, ImportFormat Format, DateTime ImportedAtUtc, string OriginalFileName, int TotalEntries, DateTime CreatedUtc, DateTime? ModifiedUtc);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this statement import.
     /// </summary>
+    /// <param name="AccountId">The account id.</param>
+    /// <param name="Format">The format.</param>
+    /// <param name="ImportedAtUtc">The imported at utc.</param>
+    /// <param name="OriginalFileName">The original file name.</param>
+    /// <param name="TotalEntries">The total entries.</param>
+    /// <param name="CreatedUtc">The created utc.</param>
+    /// <param name="ModifiedUtc">The modified utc.</param>
     /// <returns>A <see cref="StatementImportBackupDto"/> containing values required to restore this import.</returns>
     public StatementImportBackupDto ToBackupDto() => new StatementImportBackupDto(Id, AccountId, Format, ImportedAtUtc, OriginalFileName, TotalEntries, CreatedUtc, ModifiedUtc);
 

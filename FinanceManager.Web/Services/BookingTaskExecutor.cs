@@ -26,6 +26,7 @@ namespace FinanceManager.Web.Services
         /// <param name="IgnoreWarnings">When true warnings are ignored and booking proceeds.</param>
         /// <param name="AbortOnFirstIssue">When true the executor stops at the first error or warning condition.</param>
         /// <param name="BookEntriesIndividually">When true postings are booked entry-by-entry instead of per-draft.</param>
+        /// <returns>The result.</returns>
         private sealed record Options(bool IgnoreWarnings, bool AbortOnFirstIssue, bool BookEntriesIndividually);
 
         /// <summary>

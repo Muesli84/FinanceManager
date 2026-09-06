@@ -9,6 +9,7 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// <param name="StatementImportId">Identifier of created statement import, if any.</param>
 /// <param name="TotalEntries">Number of booked entries.</param>
 /// <param name="nextDraftId">Id of next draft to process (navigation helper).</param>
+/// <returns>The result.</returns>
 public sealed record BookingResult(bool Success, bool HasWarnings, DraftValidationResultDto Validation, Guid? StatementImportId, int? TotalEntries, Guid? nextDraftId)
 {
     /// <summary>

@@ -204,6 +204,8 @@ namespace FinanceManager.Web.Infrastructure.Auth
         /// <summary>
         /// Caches the token and its expiry in-memory for quick subsequent access.
         /// </summary>
+        /// <param name="token">Cancellation token.</param>
+        /// <param name="expiry">The expiry.</param>
         private void Cache(string token, DateTimeOffset expiry)
         {
             lock (_sync)

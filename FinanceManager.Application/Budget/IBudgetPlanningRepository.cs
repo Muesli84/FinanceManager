@@ -20,6 +20,7 @@ public interface IBudgetPlanningRepository
     /// <summary>
     /// Loads rules and overrides relevant for the provided purpose ids and period range.
     /// </summary>
+    /// <param name="Rules">The rules.</param>
     /// <param name="ownerUserId">Owner user id.</param>
     /// <param name="purposeIds">Purpose ids.</param>
     /// <param name="from">Start period (inclusive).</param>

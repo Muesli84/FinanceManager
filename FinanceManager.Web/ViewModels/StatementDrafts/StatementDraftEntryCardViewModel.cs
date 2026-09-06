@@ -1147,6 +1147,8 @@ public sealed class StatementDraftEntryCardViewModel : BaseCardViewModel<(string
     /// <summary>
     /// Returns the symbol attachment parent kind and id for this entry card.
     /// </summary>
+    /// <param name="Kind">The kind.</param>
+    /// <param name="EntryId">The entry id.</param>
     /// <returns>Tuple containing the <see cref="Domain.Attachments.AttachmentEntityKind"/> and the parent id to use for attachments.</returns>
     protected override (Domain.Attachments.AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (Domain.Attachments.AttachmentEntityKind.StatementDraftEntry, EntryId);
 

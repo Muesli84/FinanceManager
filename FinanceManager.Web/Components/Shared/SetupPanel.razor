@@ -1,8 +1,10 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Collections.Generic
+@using FinanceManager.Web.Components.Pages
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Pages> PanelLocalizer
 
-<div class="setup-panel" style="background:var(--fm-panel-color,#141a20);color:var(--text);padding:1rem;border-radius:.375rem;border:1px solid #2a323a;box-shadow:0 1px 0 rgba(0,0,0,0.03);margin-top:.5rem;">
+<div class="setup-panel" role="region" aria-label="@(InnerComponentType == typeof(SetupSections) ? PanelLocalizer["Panel_Label_Setup"].Value : InnerComponentType?.Name)" style="background:var(--fm-panel-color,#141a20);color:var(--text);padding:1rem;border-radius:.375rem;border:1px solid #2a323a;box-shadow:0 1px 0 rgba(0,0,0,0.03);margin-top:.5rem;">
     @if (InnerComponentType != null)
     {
         <DynamicComponent Type="InnerComponentType" Parameters="InnerParameters" />

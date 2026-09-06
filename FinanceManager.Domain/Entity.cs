@@ -8,6 +8,7 @@ public abstract class Entity
     /// <summary>
     /// Numeric or GUID identifier for entities. Derived classes may override or use their own id strategy.
     /// </summary>
+    /// <returns>The result.</returns>
     public Guid Id { get; protected set; } = Guid.NewGuid();
 
     /// <summary>

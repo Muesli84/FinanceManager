@@ -32,6 +32,10 @@ public sealed class BudgetRulesController : ControllerBase
     /// <summary>
     /// Creates a new instance.
     /// </summary>
+    /// <param name="svc">The svc.</param>
+    /// <param name="current">The current.</param>
+    /// <param name="logger">Logger instance.</param>
+    /// <param name="localizer">The localizer.</param>
     public BudgetRulesController(
         IBudgetRuleService svc,
         ICurrentUserService current,
@@ -47,6 +51,10 @@ public sealed class BudgetRulesController : ControllerBase
     /// <summary>
     /// Lists rules for a specific purpose.
     /// </summary>
+    /// <param name="budgetPurposeId">The budget purpose id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("by-purpose/{budgetPurposeId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<BudgetRuleDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListByPurposeAsync(Guid budgetPurposeId, CancellationToken ct)
@@ -66,6 +74,11 @@ public sealed class BudgetRulesController : ControllerBase
     /// <summary>
     /// Gets a rule by id.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(BudgetRuleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -86,6 +99,11 @@ public sealed class BudgetRulesController : ControllerBase
     /// <summary>
     /// Creates a budget rule.
     /// </summary>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(BudgetRuleDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -159,6 +177,13 @@ public sealed class BudgetRulesController : ControllerBase
     /// <summary>
     /// Updates an existing budget rule.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -214,6 +239,11 @@ public sealed class BudgetRulesController : ControllerBase
     /// <summary>
     /// Deletes a budget rule.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -234,6 +264,10 @@ public sealed class BudgetRulesController : ControllerBase
     /// <summary>
     /// Lists rules for a budget category.
     /// </summary>
+    /// <param name="budgetCategoryId">The budget category id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("by-category/{budgetCategoryId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<BudgetRuleDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListByCategoryAsync(Guid budgetCategoryId, CancellationToken ct)

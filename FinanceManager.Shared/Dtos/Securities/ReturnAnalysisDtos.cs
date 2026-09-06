@@ -17,6 +17,7 @@ namespace FinanceManager.Shared.Dtos.Securities;
 /// <param name="CurrencyCode">ISO currency code.</param>
 /// <param name="HasMissingPrices">Whether price data gaps exist.</param>
 /// <param name="MissingPricesHint">Hint about missing price data, or null.</param>
+/// <returns>The result.</returns>
 public sealed record ReturnSummaryDto(
     decimal InvestedCapital,
     decimal CurrentMarketValue,
@@ -49,6 +50,7 @@ public sealed record ReturnSummaryDto(
 /// <param name="UnrealizedGains">Unrealized capital gains on current holdings.</param>
 /// <param name="Irr">Internal Rate of Return, or null when not computable.</param>
 /// <param name="DividendYieldCurrentYear">Dividend yield for current calendar year.</param>
+/// <returns>The result.</returns>
 public sealed record DetailedReturnMetricsDto(
     decimal GrossReturn,
     decimal NetReturn,
@@ -73,6 +75,7 @@ public sealed record DetailedReturnMetricsDto(
 /// <param name="FormulaText">Human-readable formula as a complete equation.</param>
 /// <param name="Description">Short explanation of what this metric measures.</param>
 /// <param name="Groups">Posting groups, each representing one element of the formula.</param>
+/// <returns>The result.</returns>
 public sealed record KpiBreakdownDto(
     string KpiKey,
     string DisplayName,
@@ -98,6 +101,7 @@ public sealed record KpiBreakdownDto(
 /// (e.g. the holding period for the "Anlagedauer" group). When set, the UI renders this
 /// text in place of the formatted EUR value and omits amount columns from item rows.
 /// </param>
+/// <returns>The result.</returns>
 public sealed record KpiFormulaGroup(
     string GroupName,
     bool IsPositiveContribution,
@@ -114,6 +118,7 @@ public sealed record KpiFormulaGroup(
 /// <param name="Amount">Amount displayed for this item. For IRR breakdown groups this is the present value
 /// (discounted cashflow); for all other groups it is the raw cashflow amount.</param>
 /// <param name="Note">Optional descriptive note (e.g. number of shares).</param>
+/// <returns>The result.</returns>
 public sealed record KpiBreakdownItem(DateTime Date, decimal Amount, string? Note)
 {
     /// <summary>Years since t₀ for discounting (used in IRR breakdown). Null when not applicable.</summary>
@@ -151,6 +156,7 @@ public enum ChartTimeRange
 /// <summary>A single chart data point.</summary>
 /// <param name="Date">Date of the data point.</param>
 /// <param name="Value">Value on this date.</param>
+/// <returns>The result.</returns>
 public sealed record ChartPoint(DateTime Date, decimal Value);
 
 /// <summary>
@@ -164,6 +170,7 @@ public sealed record ChartPoint(DateTime Date, decimal Value);
 /// transaction-implied prices (linear interpolation between buy/sell anchors).
 /// Consumers should display a disclaimer in this case.
 /// </param>
+/// <returns>The result.</returns>
 public sealed record PeriodicReturnsDto(
     IReadOnlyList<AnnualReturnPoint> AnnualReturns,
     IReadOnlyList<MonthlyReturnPoint> MonthlyReturns,
@@ -175,12 +182,14 @@ public sealed record PeriodicReturnsDto(
 /// <param name="Year">Calendar year.</param>
 /// <param name="ReturnPercent">Annual return as percentage.</param>
 /// <param name="IsYtd">True if this is the current year-to-date figure.</param>
+/// <returns>The result.</returns>
 public sealed record AnnualReturnPoint(int Year, decimal ReturnPercent, bool IsYtd);
 
 /// <summary>Monthly return data point for the heatmap.</summary>
 /// <param name="Year">Calendar year.</param>
 /// <param name="Month">Calendar month (1-12).</param>
 /// <param name="ReturnPercent">Monthly return as percentage, or null when no data.</param>
+/// <returns>The result.</returns>
 public sealed record MonthlyReturnPoint(int Year, int Month, decimal? ReturnPercent);
 
 /// <summary>Annual dividend summary.</summary>
@@ -188,6 +197,7 @@ public sealed record MonthlyReturnPoint(int Year, int Month, decimal? ReturnPerc
 /// <param name="GrossDividend">Gross dividend amount.</param>
 /// <param name="NetDividend">Net dividend after taxes.</param>
 /// <param name="CumulativeNet">Cumulative net dividends up to and including this year.</param>
+/// <returns>The result.</returns>
 public sealed record AnnualDividendPoint(int Year, decimal GrossDividend, decimal NetDividend, decimal CumulativeNet);
 
 /// <summary>
@@ -195,6 +205,7 @@ public sealed record AnnualDividendPoint(int Year, decimal GrossDividend, decima
 /// </summary>
 /// <param name="Entries">Chronological cashflow entries.</param>
 /// <param name="AnnualSummaries">Annual aggregated cashflows for the bar chart.</param>
+/// <returns>The result.</returns>
 public sealed record CashflowTimelineDto(
     IReadOnlyList<CashflowEntry> Entries,
     IReadOnlyList<AnnualCashflowSummary> AnnualSummaries
@@ -206,6 +217,7 @@ public sealed record CashflowTimelineDto(
 /// <param name="Amount">Cashflow amount.</param>
 /// <param name="Description">Optional description.</param>
 /// <param name="PostingId">Reference to the source posting.</param>
+/// <returns>The result.</returns>
 public sealed record CashflowEntry(DateTime Date, string Type, decimal Amount, string? Description, Guid PostingId);
 
 /// <summary>Annual cashflow summary for the cost/tax chart.</summary>
@@ -215,6 +227,7 @@ public sealed record CashflowEntry(DateTime Date, string Type, decimal Amount, s
 /// <param name="TotalDividends">Total gross dividends.</param>
 /// <param name="TotalTaxes">Total taxes (negative).</param>
 /// <param name="TotalFees">Total fees (negative).</param>
+/// <returns>The result.</returns>
 public sealed record AnnualCashflowSummary(int Year, decimal TotalBuys, decimal TotalSells, decimal TotalDividends, decimal TotalTaxes, decimal TotalFees);
 
 /// <summary>
@@ -223,6 +236,7 @@ public sealed record AnnualCashflowSummary(int Year, decimal TotalBuys, decimal 
 /// <param name="TimeRange">Selected time range.</param>
 /// <param name="PortfolioValues">Portfolio market value time series.</param>
 /// <param name="InvestedCapitalValues">Invested capital time series.</param>
+/// <returns>The result.</returns>
 public sealed record PerformanceChartDataDto(
     ChartTimeRange TimeRange,
     IReadOnlyList<ChartPoint> PortfolioValues,
@@ -258,6 +272,7 @@ public sealed record PerformanceChartDataDto(
 /// Equals <see cref="StartDate"/> when both series start simultaneously.
 /// </param>
 /// <param name="EndDate">End date of the comparison period (last sell date when fully sold, otherwise today).</param>
+/// <returns>The result.</returns>
 public sealed record BenchmarkComparisonDto(
     Guid BenchmarkSecurityId,
     string BenchmarkName,
@@ -273,6 +288,7 @@ public sealed record BenchmarkComparisonDto(
 /// <param name="BenchmarkSecurityId">Optional benchmark security id. Null clears the benchmark.</param>
 /// <param name="ShowSharpeRatio">Whether to show Sharpe Ratio in the UI.</param>
 /// <param name="RiskFreeRate">Risk-free rate for Sharpe Ratio calculation (e.g. 0.04 = 4%). Must be >= 0.</param>
+/// <returns>The result.</returns>
 public sealed record ReturnAnalysisSettingsUpdateRequest(
     Guid? BenchmarkSecurityId,
     bool ShowSharpeRatio,
@@ -284,6 +300,7 @@ public sealed record ReturnAnalysisSettingsUpdateRequest(
 /// <param name="BenchmarkSecurityName">Display name of the benchmark security, or null when none set.</param>
 /// <param name="ShowSharpeRatio">Whether to show Sharpe Ratio in the UI.</param>
 /// <param name="RiskFreeRate">Risk-free rate for Sharpe Ratio calculation.</param>
+/// <returns>The result.</returns>
 public sealed record ReturnAnalysisSettingsResponse(
     Guid? BenchmarkSecurityId,
     string? BenchmarkSecurityName,
@@ -295,10 +312,12 @@ public sealed record ReturnAnalysisSettingsResponse(
 /// Sparkline data for the mini-chart (FR-1.1). Loaded separately to keep ReturnSummaryDto lean.
 /// </summary>
 /// <param name="Points">Time series of (date, value) pairs showing invested capital vs. market value.</param>
+/// <returns>The result.</returns>
 public sealed record SparklineDataDto(IReadOnlyList<SparklinePoint> Points);
 
 /// <summary>A single point in the sparkline chart.</summary>
 /// <param name="Date">Date of the data point.</param>
 /// <param name="MarketValue">Portfolio market value on this date.</param>
 /// <param name="InvestedCapital">Cumulative invested capital on this date.</param>
+/// <returns>The result.</returns>
 public sealed record SparklinePoint(DateTime Date, decimal MarketValue, decimal InvestedCapital);

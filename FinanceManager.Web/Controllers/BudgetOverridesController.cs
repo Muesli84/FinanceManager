@@ -31,6 +31,10 @@ public sealed class BudgetOverridesController : ControllerBase
     /// <summary>
     /// Creates a new instance.
     /// </summary>
+    /// <param name="svc">The svc.</param>
+    /// <param name="current">The current.</param>
+    /// <param name="logger">Logger instance.</param>
+    /// <param name="localizer">The localizer.</param>
     public BudgetOverridesController(
         IBudgetOverrideService svc,
         ICurrentUserService current,
@@ -46,6 +50,10 @@ public sealed class BudgetOverridesController : ControllerBase
     /// <summary>
     /// Lists overrides for a specific purpose.
     /// </summary>
+    /// <param name="budgetPurposeId">The budget purpose id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("by-purpose/{budgetPurposeId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<BudgetOverrideDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListByPurposeAsync(Guid budgetPurposeId, CancellationToken ct)
@@ -65,6 +73,11 @@ public sealed class BudgetOverridesController : ControllerBase
     /// <summary>
     /// Gets an override by id.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(BudgetOverrideDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -85,6 +98,11 @@ public sealed class BudgetOverridesController : ControllerBase
     /// <summary>
     /// Creates an override.
     /// </summary>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(BudgetOverrideDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -126,6 +144,13 @@ public sealed class BudgetOverridesController : ControllerBase
     /// <summary>
     /// Updates an existing override.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -168,6 +193,11 @@ public sealed class BudgetOverridesController : ControllerBase
     /// <summary>
     /// Deletes an override.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

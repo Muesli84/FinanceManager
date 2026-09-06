@@ -11,6 +11,8 @@ namespace FinanceManager.Tests.TestHelpers;
 internal static class TestLoggerHelper
 {
     /// <summary>Builds a console logger for <typeparamref name="T"/> with minimum level <see cref="LogLevel.Debug"/>.</summary>
+    /// <typeparam name="T">The type parameter.</typeparam>
+    /// <returns>The result.</returns>
     public static ILogger<T> CreateLogger<T>() where T : class
     {
         var loggerFactory = LoggerFactory.Create(builder =>

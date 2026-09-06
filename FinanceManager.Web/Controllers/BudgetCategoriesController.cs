@@ -32,6 +32,11 @@ public sealed class BudgetCategoriesController : ControllerBase
     /// <summary>
     /// Creates a new instance.
     /// </summary>
+    /// <param name="svc">The svc.</param>
+    /// <param name="current">The current.</param>
+    /// <param name="logger">Logger instance.</param>
+    /// <param name="parentAssign">The parent assign.</param>
+    /// <param name="localizer">The localizer.</param>
     public BudgetCategoriesController(
         IBudgetCategoryService svc,
         ICurrentUserService current,
@@ -49,6 +54,11 @@ public sealed class BudgetCategoriesController : ControllerBase
     /// <summary>
     /// Lists categories for the current user.
     /// </summary>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<BudgetCategoryOverviewDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync([FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null, CancellationToken ct = default)
@@ -68,6 +78,11 @@ public sealed class BudgetCategoriesController : ControllerBase
     /// <summary>
     /// Gets a category by id.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(BudgetCategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -88,6 +103,11 @@ public sealed class BudgetCategoriesController : ControllerBase
     /// <summary>
     /// Creates a category.
     /// </summary>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(BudgetCategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -139,6 +159,13 @@ public sealed class BudgetCategoriesController : ControllerBase
     /// <summary>
     /// Updates a category.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -182,6 +209,11 @@ public sealed class BudgetCategoriesController : ControllerBase
     /// <summary>
     /// Deletes a category.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

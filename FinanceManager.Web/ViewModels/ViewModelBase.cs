@@ -128,6 +128,7 @@ public abstract class ViewModelBase : IAsyncDisposable, IRibbonProvider
     /// <param name="ComponentType">Component type to render.</param>
     /// <param name="Parameters">Optional parameter dictionary passed to the component.</param>
     /// <param name="Modal">If true the overlay is modal.</param>
+    /// <returns>The result.</returns>
     public sealed record UiOverlaySpec(Type ComponentType, IReadOnlyDictionary<string, object?>? Parameters = null, bool Modal = true);
 
     /// <summary>

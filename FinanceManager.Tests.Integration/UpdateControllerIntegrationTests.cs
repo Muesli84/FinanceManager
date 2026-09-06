@@ -557,11 +557,11 @@ public sealed class UpdateControllerIntegrationTests : IClassFixture<TestWebAppl
             _resetException = resetException;
         }
 
-        public Task<UpdateStatusDto> GetStatusAsync(CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<UpdateSettingsDto> GetSettingsAsync(CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<UpdateSettingsDto> SaveSettingsAsync(UpdateSettingsUpdateRequest request, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<UpdateSettingsDto> ScheduleAsync(TimeOnly? scheduledInstallTime, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<UpdateCheckResultDto> CheckAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<UpdateStatusDto> GetStatusAsync(CancellationToken ct = default) => Task.FromException<UpdateStatusDto>(new NotSupportedException());
+        public Task<UpdateSettingsDto> GetSettingsAsync(CancellationToken ct = default) => Task.FromException<UpdateSettingsDto>(new NotSupportedException());
+        public Task<UpdateSettingsDto> SaveSettingsAsync(UpdateSettingsUpdateRequest request, CancellationToken ct = default) => Task.FromException<UpdateSettingsDto>(new NotSupportedException());
+        public Task<UpdateSettingsDto> ScheduleAsync(TimeOnly? scheduledInstallTime, CancellationToken ct = default) => Task.FromException<UpdateSettingsDto>(new NotSupportedException());
+        public Task<UpdateCheckResultDto> CheckAsync(CancellationToken ct = default) => Task.FromException<UpdateCheckResultDto>(new NotSupportedException());
         public Task ResetLockAsync(string? reason, CancellationToken ct = default)
             => _resetException is null ? throw new NotSupportedException() : Task.FromException(_resetException);
 
@@ -570,12 +570,12 @@ public sealed class UpdateControllerIntegrationTests : IClassFixture<TestWebAppl
 
     private sealed class SucceedingAutoUpdateOrchestrator : IAutoUpdateOrchestrator
     {
-        public Task<AutoUpdateResult> RunUpdateAsync(CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<AutoUpdateResult> CheckForUpdateAsync(CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<AutoUpdateResult> DownloadAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<AutoUpdateResult> RunUpdateAsync(CancellationToken ct = default) => Task.FromException<AutoUpdateResult>(new NotSupportedException());
+        public Task<AutoUpdateResult> CheckForUpdateAsync(CancellationToken ct = default) => Task.FromException<AutoUpdateResult>(new NotSupportedException());
+        public Task<AutoUpdateResult> DownloadAsync(CancellationToken ct = default) => Task.FromException<AutoUpdateResult>(new NotSupportedException());
         public Task<AutoUpdateResult> InstallAsync(bool confirmDowntime, bool force, CancellationToken ct = default)
             => Task.FromResult(new AutoUpdateResult(AutoUpdateOutcome.Success, AutoUpdateState.Success, "installed", null));
-        public Task<AutoUpdateStatusSnapshot> GetStatusAsync(CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<AutoUpdateStatusSnapshot> GetStatusAsync(CancellationToken ct = default) => Task.FromException<AutoUpdateStatusSnapshot>(new NotSupportedException());
     }
 
     private sealed class FixedInstalledReleaseMetadataProvider : IInstalledReleaseMetadataProvider

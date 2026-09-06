@@ -53,6 +53,7 @@ public sealed class PostingsController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the posting details.</response>
     /// <response code="404">Posting not found.</response>
+    /// <returns>The result.</returns>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(PostingServiceDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -156,6 +157,7 @@ public sealed class PostingsController : ControllerBase
     /// <response code="400">Posting not found or cannot be reversed.</response>
     /// <response code="403">User is not authorized to reverse this posting.</response>
     /// <response code="409">Posting is already reversed.</response>
+    /// <returns>The result.</returns>
     [HttpPost("{id:guid}/reverse")]
     [ProducesResponseType(typeof(ReversalResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -188,6 +190,7 @@ public sealed class PostingsController : ControllerBase
     /// <param name="id">Posting id to validate.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the validation result.</response>
+    /// <returns>The result.</returns>
     [HttpGet("{id:guid}/validate-reversal")]
     [ProducesResponseType(typeof(ReversalValidationDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<ReversalValidationDto>> ValidateReversal(Guid id, CancellationToken ct)
@@ -208,6 +211,7 @@ public sealed class PostingsController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the list of postings.</response>
     /// <response code="404">Account not found or no postings.</response>
+    /// <returns>The result.</returns>
     [HttpGet("account/{accountId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -240,6 +244,16 @@ public sealed class PostingsController : ControllerBase
     /// <summary>
     /// Lists postings for a contact with optional paging, search and date filters.
     /// </summary>
+    /// <param name="contactId">The contact id.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="q">The q.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("contact/{contactId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -256,6 +270,16 @@ public sealed class PostingsController : ControllerBase
     /// <summary>
     /// Lists postings for a savings plan with optional paging and filters.
     /// </summary>
+    /// <param name="planId">The plan id.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="q">The q.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("savings-plan/{planId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -272,6 +296,15 @@ public sealed class PostingsController : ControllerBase
     /// <summary>
     /// Lists postings for a security with optional paging and date filters.
     /// </summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("security/{securityId:guid}")]
     [ProducesResponseType(typeof(IReadOnlyList<PostingServiceDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -288,6 +321,12 @@ public sealed class PostingsController : ControllerBase
     /// <summary>
     /// Returns group linkage (first account/contact/savings/security id) for a posting group.
     /// </summary>
+    /// <param name="groupId">The group id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("group/{groupId:guid}")]
     [ProducesResponseType(typeof(GroupLinksDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -323,6 +362,13 @@ public sealed class PostingsController : ControllerBase
     /// <summary>
     /// Exports postings for an account in CSV or XLSX format.
     /// </summary>
+    /// <param name="accountId">The account id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("account/{accountId:guid}/export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -333,6 +379,13 @@ public sealed class PostingsController : ControllerBase
     /// <summary>
     /// Exports postings for a contact in CSV or XLSX format.
     /// </summary>
+    /// <param name="contactId">The contact id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("contact/{contactId:guid}/export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -343,6 +396,13 @@ public sealed class PostingsController : ControllerBase
     /// <summary>
     /// Exports postings for a savings plan in CSV or XLSX format.
     /// </summary>
+    /// <param name="planId">The plan id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("savings-plan/{planId:guid}/export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -353,6 +413,13 @@ public sealed class PostingsController : ControllerBase
     /// <summary>
     /// Exports postings for a security in CSV or XLSX format.
     /// </summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("security/{securityId:guid}/export")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -498,6 +565,7 @@ public sealed class PostingsController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the aggregate data.</response>
     /// <response code="404">Account not found.</response>
+    /// <returns>The result.</returns>
     [HttpGet("~/api/accounts/{accountId:guid}/aggregates")]
     public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAccountAggregates(Guid accountId, [FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
         => HandleEntityAsync(PostingKind.Bank, accountId, period, take, maxYearsBack, ct);
@@ -510,6 +578,7 @@ public sealed class PostingsController : ControllerBase
     /// <param name="maxYearsBack">Optional maximum years back (default: null).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the aggregate data.</response>
+    /// <returns>The result.</returns>
     [HttpGet("~/api/accounts/aggregates")]
     public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetAccountsAllAggregates([FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
         => HandleAllAsync(PostingKind.Bank, period, take, maxYearsBack, ct);
@@ -524,6 +593,7 @@ public sealed class PostingsController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the aggregate data.</response>
     /// <response code="404">Contact not found.</response>
+    /// <returns>The result.</returns>
     [HttpGet("~/api/contacts/{contactId:guid}/aggregates")]
     public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetContactAggregates(Guid contactId, [FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
         => HandleEntityAsync(PostingKind.Contact, contactId, period, take, maxYearsBack, ct);
@@ -538,6 +608,7 @@ public sealed class PostingsController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the aggregate data.</response>
     /// <response code="404">Savings plan not found.</response>
+    /// <returns>The result.</returns>
     [HttpGet("~/api/savings-plans/{planId:guid}/aggregates")]
     public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetSavingsPlanAggregates(Guid planId, [FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
         => HandleEntityAsync(PostingKind.SavingsPlan, planId, period, take, maxYearsBack, ct);
@@ -550,6 +621,7 @@ public sealed class PostingsController : ControllerBase
     /// <param name="maxYearsBack">Optional maximum years back (default: null).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns the aggregate data.</response>
+    /// <returns>The result.</returns>
     [HttpGet("~/api/savings-plans/aggregates")]
     public Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetSavingsPlansAllAggregates([FromQuery] string period = "Month", [FromQuery] int take = 36, [FromQuery] int? maxYearsBack = null, CancellationToken ct = default)
         => HandleAllAsync(PostingKind.SavingsPlan, period, take, maxYearsBack, ct);

@@ -9,6 +9,7 @@ namespace FinanceManager.Shared.Dtos.Users;
 /// <param name="Password">Login password.</param>
 /// <param name="PreferredLanguage">Optional preferred language code.</param>
 /// <param name="TimeZoneId">Optional time zone identifier.</param>
+/// <returns>The result.</returns>
 public sealed record LoginRequest(
     [Required, MinLength(3)] string Username,
     [Required, MinLength(6)] string Password,

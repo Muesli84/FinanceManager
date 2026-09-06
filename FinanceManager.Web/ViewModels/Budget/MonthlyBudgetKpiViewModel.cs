@@ -284,6 +284,11 @@ namespace FinanceManager.Web.ViewModels.Budget
     /// <summary>
     /// Snapshot of a <see cref="MonthlyBudgetKpiViewModel"/> used for browser local storage caching.
     /// </summary>
+    /// <param name="Dto">The dto.</param>
+    /// <param name="Month">The month.</param>
+    /// <param name="LoadedAtUtc">The loaded at utc.</param>
+    /// <param name="LoadedMonth">The loaded month.</param>
+    /// <returns>The result.</returns>
     public sealed record MonthlyBudgetKpiViewModelSnapshot(
         MonthlyBudgetKpiDto Dto,
         DateTime Month,

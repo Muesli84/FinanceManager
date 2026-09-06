@@ -38,4 +38,5 @@ public sealed class AccountLinkedIban : Entity
 /// <param name="Id">Entity identifier.</param>
 /// <param name="AccountId">Identifier of the owning collection account.</param>
 /// <param name="Iban">The linked IBAN value.</param>
+/// <returns>The result.</returns>
 public sealed record AccountLinkedIbanBackupDto(Guid Id, Guid AccountId, string Iban);

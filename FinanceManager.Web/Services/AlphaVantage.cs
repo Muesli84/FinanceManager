@@ -193,6 +193,7 @@ public sealed class AlphaVantage
     /// <summary>
     /// JSON serializer options used to parse AlphaVantage responses.
     /// </summary>
+    /// <returns>The result.</returns>
     internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,

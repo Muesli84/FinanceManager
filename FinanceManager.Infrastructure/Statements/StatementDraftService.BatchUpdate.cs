@@ -26,7 +26,12 @@ public sealed partial class StatementDraftService
     /// Applies a batch of entry updates atomically. Validates inputs and applies all changes in a single DB transaction.
     /// Returns per-entry field errors when validation fails; in that case no changes are committed.
     /// </summary>
+    /// <param name="draftId">The draft id.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
     /// <inheritdoc />
+    /// <returns>The result.</returns>
     public async Task<(bool Success, FinanceManager.Shared.Dtos.Statements.BatchUpdateSuccessResponseDto SuccessResponse, FinanceManager.Shared.Dtos.Statements.BatchUpdateErrorResponseDto? ErrorResponse)> ApplyBatchEntryUpdatesAsync(Guid draftId, Guid ownerUserId, FinanceManager.Shared.Dtos.Statements.BatchUpdateRequestDto request, CancellationToken ct)
     {
         static string Loc(string key, string fallback)

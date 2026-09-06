@@ -3,6 +3,7 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// <summary>
 /// Detailed statement draft response including navigation helpers within an upload group.
 /// </summary>
+/// <returns>The result.</returns>
 public sealed record StatementDraftDetailDto(
     Guid DraftId,
     string OriginalFileName,

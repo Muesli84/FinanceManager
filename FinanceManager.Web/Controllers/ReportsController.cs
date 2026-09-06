@@ -61,6 +61,8 @@ public sealed class ReportsController : ControllerBase
     /// or a 400 Bad Request when validation fails.
     /// </returns>
     /// <exception cref="Exception">An unexpected error that is logged and results in a 500 Internal Server Error response.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("report-aggregates")]
     [ProducesResponseType(typeof(ReportAggregationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -125,6 +127,7 @@ public sealed class ReportsController : ControllerBase
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> containing a 200 OK response with a list of <see cref="ReportFavoriteDto"/>.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("report-favorites")]
     [ProducesResponseType(typeof(IReadOnlyList<ReportFavoriteDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListFavoritesAsync(CancellationToken ct)
@@ -139,6 +142,8 @@ public sealed class ReportsController : ControllerBase
     /// An <see cref="IActionResult"/> that contains a <see cref="ReportFavoriteDto"/> and a 200 OK status when found,
     /// or a 404 Not Found when the favorite does not exist or does not belong to the current user.
     /// </returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("report-favorites/{id:guid}", Name = "GetReportFavorite")]
     [ProducesResponseType(typeof(ReportFavoriteDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -157,6 +162,9 @@ public sealed class ReportsController : ControllerBase
     /// <exception cref="InvalidOperationException">Thrown when a favorite with the same criteria already exists (mapped to 409 Conflict).</exception>
     /// <exception cref="ArgumentException">Thrown when the request contains invalid data (mapped to 400 Bad Request).</exception>
     /// <exception cref="Exception">Unexpected errors are logged and result in a 500 Internal Server Error.</exception>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="409">The HTTP 409 response.</response>
     [HttpPost("report-favorites")]
     [ProducesResponseType(typeof(ReportFavoriteDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -206,6 +214,10 @@ public sealed class ReportsController : ControllerBase
     /// <exception cref="InvalidOperationException">Thrown when the update would conflict with existing favorites (mapped to 409 Conflict).</exception>
     /// <exception cref="ArgumentException">Thrown when the request contains invalid data (mapped to 400 Bad Request).</exception>
     /// <exception cref="Exception">Unexpected errors are logged and result in a 500 Internal Server Error.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
+    /// <response code="409">The HTTP 409 response.</response>
     [HttpPut("report-favorites/{id:guid}")]
     [ProducesResponseType(typeof(ReportFavoriteDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -253,6 +265,8 @@ public sealed class ReportsController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> with 204 No Content when deleted, or 404 Not Found when not found.</returns>
     /// <exception cref="Exception">Unexpected errors are logged and result in a 500 Internal Server Error.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("report-favorites/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

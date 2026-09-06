@@ -38,6 +38,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// The list of items currently loaded by the view model. Derived classes append to this collection when pages are loaded.
         /// </summary>
+        /// <returns>The result.</returns>
         public List<TItem> Items { get; } = new();
 
         IReadOnlyList<object> IListProvider.Items => Items.Cast<object>().ToList();
@@ -65,11 +66,15 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Column metadata used by the generic list renderer.
         /// </summary>
+        /// <typeparam name="ListColumn">The type parameter.</typeparam>
+        /// <returns>The result.</returns>
         public IReadOnlyList<ListColumn> Columns { get; protected set; } = Array.Empty<ListColumn>();
 
         /// <summary>
         /// Rendered records derived from <see cref="Items"/> and <see cref="Columns"/>.
         /// </summary>
+        /// <typeparam name="ListRecord">The type parameter.</typeparam>
+        /// <returns>The result.</returns>
         public IReadOnlyList<ListRecord> Records { get; protected set; } = Array.Empty<ListRecord>();
 
         /// <summary>
@@ -194,6 +199,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Clears any applied date range filters.
         /// </summary>
+        /// <param name="null">The null.</param>
         public void ClearRange() => SetRange(null, null);
 
         /// <summary>
@@ -212,6 +218,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// Derived classes override to expose the editable field keys (e.g. "BookingDate", "Subject").
         /// Default: empty (no editable fields).
         /// </summary>
+        /// <returns>The result.</returns>
         public virtual IReadOnlyList<string> EditableFields { get; } = Array.Empty<string>();
 
         /// <summary>
@@ -224,6 +231,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// Default implementation returns <c>false</c> — override in derived classes.
         /// </summary>
         /// <param name="item">Item instance as <see cref="object"/>.</param>
+        /// <returns>Whether the operation succeeded.</returns>
         public virtual bool IsRowEditable(object item) => false;
 
         /// <summary>
@@ -250,6 +258,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// Default implementation returns an empty dictionary.
         /// Derived classes providing quick-edit capabilities must override to return actual changed values.
         /// </summary>
+        /// <returns>The result.</returns>
         public virtual IReadOnlyDictionary<Guid, IDictionary<string, object?>> CollectChangedRows()
         {
             return new Dictionary<Guid, IDictionary<string, object?>>();

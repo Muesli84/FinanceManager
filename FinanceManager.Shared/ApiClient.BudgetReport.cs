@@ -81,6 +81,9 @@ public partial class ApiClient
     /// <summary>
     /// Downloads an XLSX export for the given budget report range.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<(string ContentType, string FileName, byte[] Content)> Budgets_ExportAsync(BudgetReportExportRequest request, CancellationToken ct = default)
     {
         var url = $"/api/budget/report/export?asOf={request.AsOfDate:yyyy-MM-dd}&months={request.Months}&dateBasis={(int)request.DateBasis}";

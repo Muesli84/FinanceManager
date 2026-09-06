@@ -138,11 +138,27 @@ public sealed class StatementEntry : Entity
     /// <param name="SavingsPlanId">Optional assigned savings plan id when matched.</param>
     /// <param name="SecurityTransactionId">Optional security transaction id when matched.</param>
     /// <param name="Status">Processing status of the imported entry.</param>
+    /// <returns>The result.</returns>
     public sealed record StatementEntryBackupDto(Guid Id, Guid StatementImportId, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string Subject, string RawHash, string? RecipientName, string CurrencyCode, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityTransactionId, StatementEntryStatus Status);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this statement entry.
     /// </summary>
+    /// <param name="StatementImportId">The statement import id.</param>
+    /// <param name="BookingDate">The booking date.</param>
+    /// <param name="ValutaDate">The valuta date.</param>
+    /// <param name="Amount">The amount.</param>
+    /// <param name="Subject">The subject.</param>
+    /// <param name="RawHash">The raw hash.</param>
+    /// <param name="RecipientName">The recipient name.</param>
+    /// <param name="CurrencyCode">The currency code.</param>
+    /// <param name="BookingDescription">The booking description.</param>
+    /// <param name="IsAnnounced">The is announced.</param>
+    /// <param name="IsCostNeutral">The is cost neutral.</param>
+    /// <param name="ContactId">The contact id.</param>
+    /// <param name="SavingsPlanId">The savings plan id.</param>
+    /// <param name="SecurityTransactionId">The security transaction id.</param>
+    /// <param name="Status">The status.</param>
     /// <returns>A <see cref="StatementEntryBackupDto"/> containing the entry state suitable for backup/restore.</returns>
     public StatementEntryBackupDto ToBackupDto() => new StatementEntryBackupDto(Id, StatementImportId, BookingDate, ValutaDate, Amount, Subject, RawHash, RecipientName, CurrencyCode, BookingDescription, IsAnnounced, IsCostNeutral, ContactId, SavingsPlanId, SecurityTransactionId, Status);
 

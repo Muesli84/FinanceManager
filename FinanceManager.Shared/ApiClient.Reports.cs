@@ -22,6 +22,8 @@ public partial class ApiClient
     /// <summary>
     /// Lists saved report favorites for the current user.
     /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IReadOnlyList<ReportFavoriteDto>> Reports_ListFavoritesAsync(CancellationToken ct = default)
     {
         var resp = await _http.GetAsync("/api/report-favorites", ct);
@@ -32,6 +34,9 @@ public partial class ApiClient
     /// <summary>
     /// Gets a single report favorite by id or null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<ReportFavoriteDto?> Reports_GetFavoriteAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.GetAsync($"/api/report-favorites/{id}", ct);
@@ -43,6 +48,9 @@ public partial class ApiClient
     /// <summary>
     /// Creates a new report favorite. Throws InvalidOperationException on conflict.
     /// </summary>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<ReportFavoriteDto> Reports_CreateFavoriteAsync(ReportFavoriteCreateApiRequest req, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync("/api/report-favorites", req, ct);
@@ -58,6 +66,10 @@ public partial class ApiClient
     /// <summary>
     /// Updates an existing report favorite or returns null when not found. May throw on conflict or bad request.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<ReportFavoriteDto?> Reports_UpdateFavoriteAsync(Guid id, ReportFavoriteUpdateApiRequest req, CancellationToken ct = default)
     {
         var resp = await _http.PutAsJsonAsync($"/api/report-favorites/{id}", req, ct);
@@ -75,6 +87,9 @@ public partial class ApiClient
     /// <summary>
     /// Deletes a report favorite. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Reports_DeleteFavoriteAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/report-favorites/{id}", ct);

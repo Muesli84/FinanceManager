@@ -68,6 +68,7 @@ public sealed class ContactsViewModelTests
     /// Builds a <c>ContactListViewModel</c> wired to a minimal DI container with a mocked
     /// <see cref="IApiClient"/>, so each test can control API responses without a real backend.
     /// </summary>
+    /// <param name="vm">The vm.</param>
     /// <param name="isAuthenticated">Whether the simulated current user should appear authenticated.</param>
     /// <returns>The view model under test along with the API mock used to configure its responses.</returns>
     private static (FinanceManager.Web.ViewModels.Contacts.ContactListViewModel vm, Mock<IApiClient> apiMock) CreateVm(bool isAuthenticated)

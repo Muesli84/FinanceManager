@@ -371,6 +371,7 @@ namespace FinanceManager.Web
         /// populated when <see cref="UserPreferenceRequestCultureProvider"/> reads the JWT claims.
         /// </para>
         /// </summary>
+        /// <param name="_">The  .</param>
         /// <returns>Configured <see cref="RequestLocalizationOptions"/>.</returns>
         public static RequestLocalizationOptions BuildLocalizationOptions(this WebApplication _)
         {

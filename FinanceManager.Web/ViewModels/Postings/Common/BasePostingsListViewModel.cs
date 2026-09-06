@@ -129,6 +129,7 @@ namespace FinanceManager.Web.ViewModels.Postings.Common
         /// <see cref="BuildRecords"/>.
         /// </summary>
         /// <param name="Posting">Posting DTO wrapped by this navigation item.</param>
+        /// <returns>The result.</returns>
         protected sealed record PostingListItem(PostingServiceDto Posting) : IListItemNavigation
         {
             /// <summary>

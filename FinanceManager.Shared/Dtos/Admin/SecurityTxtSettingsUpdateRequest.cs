@@ -16,6 +16,7 @@ namespace FinanceManager.Shared.Dtos.Admin;
 /// <param name="Policy">Policy directive.</param>
 /// <param name="Hiring">Hiring directive.</param>
 /// <param name="Canonical">Canonical directive.</param>
+/// <returns>The result.</returns>
 public sealed record SecurityTxtSettingsUpdateRequest(
     [Required, MaxLength(2048)] string Contact,
     DateTimeOffset Expires,

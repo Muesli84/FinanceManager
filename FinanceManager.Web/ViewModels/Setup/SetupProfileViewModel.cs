@@ -25,6 +25,7 @@ public sealed class SetupProfileViewModel : BaseViewModel
     /// <summary>
     /// Current editable model representing the user's profile settings.
     /// </summary>
+    /// <returns>The result.</returns>
     public UserProfileSettingsDto Model { get; private set; } = new();
     private UserProfileSettingsDto _original = new();
 

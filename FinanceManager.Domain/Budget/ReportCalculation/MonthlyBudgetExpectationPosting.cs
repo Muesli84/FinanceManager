@@ -104,11 +104,14 @@ public sealed class MonthlyBudgetExpectationPosting
     /// <summary>
     /// Gets the sum of the amounts currently assigned to this occurrence.
     /// </summary>
+    /// <param name="p">The p.</param>
+    /// <returns>The result.</returns>
     public decimal SumAssignedAmount => _assignedPostings.Sum(p => p.Amount);
 
     /// <summary>
     /// Gets the remaining capacity (absolute value) of this occurrence before it is considered exhausted.
     /// </summary>
+    /// <returns>The result.</returns>
     public decimal RemainingCapacity => Math.Max(0m, Math.Abs(Amount) - Math.Abs(SumAssignedAmount));
 
     // Clears all currently assigned postings, allowing re-assignment (used by the finish phase when
@@ -154,6 +157,7 @@ public sealed class MonthlyBudgetExpectationPosting
 /// </summary>
 /// <param name="PeriodStart">Inclusive start date of the occurrence's period.</param>
 /// <param name="PeriodEnd">Inclusive end date of the occurrence's period.</param>
+/// <returns>The result.</returns>
 public readonly record struct RuleOccurrencePeriod(DateOnly PeriodStart, DateOnly PeriodEnd);
 
 /// <summary>
@@ -161,4 +165,5 @@ public readonly record struct RuleOccurrencePeriod(DateOnly PeriodStart, DateOnl
 /// </summary>
 /// <param name="Pattern">The pattern (plain substring or regular expression), or <c>null</c> when the rule does not restrict matching by pattern.</param>
 /// <param name="IsRegex">Whether <paramref name="Pattern"/> should be treated as a regular expression rather than a plain substring.</param>
+/// <returns>The result.</returns>
 public readonly record struct PurposeMatchPattern(string? Pattern, bool IsRegex);

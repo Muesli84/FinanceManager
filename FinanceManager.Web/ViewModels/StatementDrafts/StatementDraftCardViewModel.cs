@@ -318,6 +318,8 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
     /// <summary>
     /// Returns the attachment parent information for symbol assignments. For statement drafts this returns <see cref="Domain.Attachments.AttachmentEntityKind.StatementDraft"/>.
     /// </summary>
+    /// <param name="Kind">The kind.</param>
+    /// <param name="DraftId">The draft id.</param>
     /// <returns>Tuple of attachment kind and parent id.</returns>
     protected override (Domain.Attachments.AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (Domain.Attachments.AttachmentEntityKind.StatementDraft, DraftId);
 
@@ -543,6 +545,7 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
     /// Attempts to book the draft. If booking succeeds attempts to navigate to next draft or overview.
     /// If booking is withheld due to warnings the validation messages are stored in <see cref="LastValidationResult"/>.
     /// </summary>
+    /// <param name="ignoreWarnings">The ignore warnings.</param>
     public async Task BookAsync(bool ignoreWarnings = false)
     {
         if (DraftId == Guid.Empty) return;

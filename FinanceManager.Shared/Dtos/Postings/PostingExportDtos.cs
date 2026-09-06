@@ -7,6 +7,7 @@ namespace FinanceManager.Shared.Dtos.Postings;
 /// <param name="From">Optional start date filter.</param>
 /// <param name="To">Optional end date filter.</param>
 /// <param name="Q">Optional search query string.</param>
+/// <returns>The result.</returns>
 public sealed record PostingExportRequest(
     string? Format = "csv",
     DateTime? From = null,

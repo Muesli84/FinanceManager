@@ -37,11 +37,14 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// Selected posting kinds to include in the report (e.g. Bank, Contact, Security).
     /// </summary>
+    /// <returns>The result.</returns>
     public List<PostingKind> SelectedKinds { get; set; } = new() { PostingKind.Bank };
 
     /// <summary>
     /// Selected reporting interval stored as integer mapped to <see cref="ReportInterval"/>.
     /// </summary>
+    /// <param name="int">The int.</param>
+    /// <returns>The result.</returns>
     public int Interval { get; set; } = (int)ReportInterval.Month;
 
     /// <summary>
@@ -117,31 +120,41 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     // Filters state (entity level)
 
     /// <summary>Selected account ids.</summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> SelectedAccounts { get; private set; } = new();
     /// <summary>Selected contact ids.</summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> SelectedContacts { get; private set; } = new();
     /// <summary>Selected savings plan ids.</summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> SelectedSavingsPlans { get; private set; } = new();
     /// <summary>Selected security ids.</summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> SelectedSecurities { get; private set; } = new();
     // Filters state (category level)
     /// <summary>Selected contact category ids.</summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> SelectedContactCategories { get; private set; } = new();
     /// <summary>Selected savings plan category ids.</summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> SelectedSavingsCategories { get; private set; } = new();
     /// <summary>Selected security category ids.</summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> SelectedSecurityCategories { get; private set; } = new();
     // New: security posting subtype filter (by enum int values)
     /// <summary>Selected security subtype values (enum int representation).</summary>
+    /// <returns>The result.</returns>
     public HashSet<int> SelectedSecuritySubTypes { get; private set; } = new();
 
     /// <summary>
     /// Aggregated result points returned from the API and used for rendering table and chart.
     /// </summary>
+    /// <returns>The result.</returns>
     public List<ReportAggregatePointDto> Points { get; private set; } = new();
 
     // Expansion state for table rows
     /// <summary>Expansion state dictionary for row grouping keys.</summary>
+    /// <returns>The result.</returns>
     public Dictionary<string, bool> Expanded { get; } = new();
 
     /// <summary>
@@ -164,6 +177,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// Returns whether the specified grouping key is expanded.
     /// </summary>
+    /// <param name="v">The v.</param>
     /// <param name="key">Grouping key.</param>
     /// <returns><c>true</c> when expanded; otherwise <c>false</c>.</returns>
     public bool IsExpanded(string key) => Expanded.TryGetValue(key, out var v) && v;
@@ -171,6 +185,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// Primary kind derived from currently selected kinds (first entry).
     /// </summary>
+    /// <returns>The result.</returns>
     public PostingKind PrimaryKind => SelectedKinds.FirstOrDefault();
 
     /// <summary>
@@ -186,6 +201,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// True when projection can be requested for the current UI state.
     /// </summary>
+    /// <param name="ReportInterval">The report interval.</param>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool CanCompareProjection => IsSecurityOnlySelection && (ReportInterval)Interval != ReportInterval.AllHistory;
 
     /// <summary>
@@ -201,6 +218,8 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// True when category grouping is enabled and applicable for the primary kind.
     /// </summary>
+    /// <param name="PrimaryKind">The primary kind.</param>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool IsCategoryGroupingSingle => !IsMulti && IncludeCategory && IsCategorySupported(PrimaryKind);
 
     /// <summary>
@@ -398,6 +417,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// Whether previous columns should be shown based on current settings.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool ShowPreviousColumns => ComparePrevious && ((ReportInterval)Interval is not ReportInterval.Year and not ReportInterval.Ytd);
     /// <summary>
     /// Whether the category column should be shown in the table.
@@ -407,11 +427,16 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// Whether the projection column should be shown in the table.
     /// </summary>
+    /// <param name="CanCompareProjection">The can compare projection.</param>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool ShowProjectionColumn => ComparedProjection || (CompareProjection && CanCompareProjection);
 
     /// <summary>
     /// Computes totals for the currently visible top-level rows including optional previous/year comparisons.
     /// </summary>
+    /// <param name="Amount">The amount.</param>
+    /// <param name="Projection">The projection.</param>
+    /// <param name="Prev">The prev.</param>
     /// <returns>Tuple with current sum, previous sum (or <c>null</c>) and year-ago sum (or <c>null</c>).</returns>
     public (decimal Amount, decimal? Projection, decimal? Prev, decimal? Year) GetTotals()
     {
@@ -615,6 +640,7 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>Indicates whether filter options are loading.</summary>
     public bool FilterOptionsLoading { get; private set; }
     /// <summary>Map of available filter options per posting kind.</summary>
+    /// <returns>The result.</returns>
     public Dictionary<PostingKind, List<SimpleOption>> FilterOptionsByKind { get; } = new();
     /// <summary>Active filter tab kind in the filter dialog.</summary>
     public PostingKind? ActiveFilterTabKind { get; set; }
@@ -706,39 +732,47 @@ public sealed class ReportDashboardViewModel : ViewModelBase
     /// <summary>
     /// Temporary selected account ids used in the filter dialog before applying changes.
     /// </summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> TempAccounts { get; private set; } = new();
 
     /// <summary>
     /// Temporary selected contact ids used in the filter dialog before applying changes.
     /// </summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> TempContacts { get; private set; } = new();
 
     /// <summary>Indicates the temporary selected savings plan ids used in the filter dialog.</summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> TempSavings { get; private set; } = new();
 
     /// <summary>
     /// Temporary selected security ids used in the filter dialog before applying changes.
     /// </summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> TempSecurities { get; private set; } = new();
 
     /// <summary>
     /// Temporary selected contact category ids used in the filter dialog before applying changes.
     /// </summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> TempContactCats { get; private set; } = new();
 
     /// <summary>
     /// Temporary selected savings plan category ids used in the filter dialog before applying changes.
     /// </summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> TempSavingsCats { get; private set; } = new();
 
     /// <summary>
     /// Temporary selected security category ids used in the filter dialog before applying changes.
     /// </summary>
+    /// <returns>The result.</returns>
     public HashSet<Guid> TempSecurityCats { get; private set; } = new();
 
     /// <summary>
     /// Temporary selected security subtype values (enum int representation) used in the filter dialog.
     /// </summary>
+    /// <returns>The result.</returns>
     public HashSet<int> TempSecuritySubTypes { get; private set; } = new();
 
     /// <summary>

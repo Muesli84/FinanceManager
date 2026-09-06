@@ -1,11 +1,21 @@
-#pragma warning disable CS1591
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace FinanceManager.Web.Services.Updates;
 
+/// <summary>
+/// Default implementation of <see cref="IUpdateServiceCatalog"/> that discovers service names
+/// by querying the operating system service manager (sc.exe on Windows, systemctl on Linux).
+/// </summary>
 public sealed class DefaultUpdateServiceCatalog : IUpdateServiceCatalog
 {
+    /// <summary>
+    /// Lists service names known to the operating system, optionally filtered by a search string.
+    /// </summary>
+    /// <param name="query">Optional case-insensitive substring filter.</param>
+    /// <param name="take">Maximum number of results (clamped to 1–100).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A filtered, sorted list of service names; empty on unsupported platforms or on failure.</returns>
     public async Task<IReadOnlyList<string>> ListServiceNamesAsync(string? query, int take, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 100);
@@ -36,6 +46,11 @@ public sealed class DefaultUpdateServiceCatalog : IUpdateServiceCatalog
         }
     }
 
+    /// <summary>
+    /// Parses the output of <c>sc.exe query type= service state= all</c> into a distinct, sorted list of service names.
+    /// </summary>
+    /// <param name="output">Raw standard output of the sc.exe call.</param>
+    /// <returns>Distinct service names sorted case-insensitively.</returns>
     public static IReadOnlyList<string> ParseWindowsServiceNames(string output)
         => output
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -47,6 +62,11 @@ public sealed class DefaultUpdateServiceCatalog : IUpdateServiceCatalog
             .Order(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
+    /// <summary>
+    /// Parses the output of <c>systemctl list-units --type=service --all</c> into a distinct, sorted list of service names.
+    /// </summary>
+    /// <param name="output">Raw standard output of the systemctl call.</param>
+    /// <returns>Distinct unit names ending in <c>.service</c>, sorted case-insensitively.</returns>
     public static IReadOnlyList<string> ParseLinuxServiceNames(string output)
         => output
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -116,4 +136,3 @@ public sealed class DefaultUpdateServiceCatalog : IUpdateServiceCatalog
         }
     }
 }
-#pragma warning restore CS1591

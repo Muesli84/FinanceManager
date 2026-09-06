@@ -74,6 +74,8 @@ public sealed record BudgetReportEntry
     /// <summary>
     /// Gets the postings contributing to this row.
     /// </summary>
+    /// <typeparam name="MonthlyBudgetRealization">The type parameter.</typeparam>
+    /// <returns>The result.</returns>
     public MonthlyBudgetRealization[] Postings { get; init; } = Array.Empty<MonthlyBudgetRealization>();
 
     /// <summary>

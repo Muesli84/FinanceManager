@@ -10,6 +10,7 @@ namespace FinanceManager.Web.ViewModels.Contacts;
 /// <param name="Type">Contact type name (e.g. "Person" or "Organization").</param>
 /// <param name="CategoryName">Optional category name assigned to the contact.</param>
 /// <param name="SymbolId">Optional attachment id used as a symbol/icon for the contact.</param>
+/// <returns>The result.</returns>
 public sealed record ContactListItem(Guid Id, string Name, string Type, string? CategoryName, Guid? SymbolId) : IListItemNavigation
 {
     /// <summary>

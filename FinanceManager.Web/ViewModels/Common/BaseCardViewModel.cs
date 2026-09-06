@@ -80,6 +80,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Pending field values stored by label key. These values are kept in-memory until saved and applied on top of the authoritative CardRecord.
         /// </summary>
+        /// <returns>The result.</returns>
         protected readonly Dictionary<string, object?> _pendingFieldValues = new();
 
         /// <summary>
@@ -206,6 +207,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// Provides the Attachment parent kind and id to be used for uploading the symbol file.
         /// Implementations should return the appropriate <see cref="AttachmentEntityKind"/> and the (possibly <see cref="Guid.Empty"/>) parent id.
         /// </summary>
+        /// <param name="Kind">The kind.</param>
         /// <returns>A tuple of (AttachmentEntityKind, ParentId).</returns>
         protected abstract (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent();
 

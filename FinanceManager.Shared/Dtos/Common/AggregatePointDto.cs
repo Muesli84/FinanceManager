@@ -5,4 +5,5 @@ namespace FinanceManager.Shared.Dtos.Common;
 /// </summary>
 /// <param name="PeriodStart">Start date of the aggregation period.</param>
 /// <param name="Amount">Aggregated amount for the period.</param>
+/// <returns>The result.</returns>
 public sealed record AggregatePointDto(DateTime PeriodStart, decimal Amount);

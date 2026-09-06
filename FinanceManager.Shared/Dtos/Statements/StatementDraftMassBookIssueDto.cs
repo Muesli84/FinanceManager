@@ -7,4 +7,5 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// <param name="EntryId">Optional affected entry id (when issue is entry specific).</param>
 /// <param name="Code">Stable machine readable code.</param>
 /// <param name="Message">Localized/user readable message.</param>
+/// <returns>The result.</returns>
 public sealed record StatementDraftMassBookIssueDto(Guid DraftId, Guid? EntryId, string Code, string Message);

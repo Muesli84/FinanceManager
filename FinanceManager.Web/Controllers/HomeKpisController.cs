@@ -55,6 +55,7 @@ public sealed class HomeKpisController : ControllerBase
     /// Returns 200 OK with a read-only list of <see cref="HomeKpiDto"/> instances for the current user.
     /// </returns>
     /// <exception cref="HttpRequestException">If the underlying service call fails.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<HomeKpiDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
@@ -94,6 +95,9 @@ public sealed class HomeKpisController : ControllerBase
     /// </returns>
     /// <exception cref="ArgumentException">Thrown when the service detects invalid arguments (mapped to 400).</exception>
     /// <exception cref="InvalidOperationException">Thrown when the service detects a conflict (mapped to 409).</exception>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="409">The HTTP 409 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(HomeKpiDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -159,6 +163,8 @@ public sealed class HomeKpisController : ControllerBase
     /// <returns>
     /// 200 OK with the <see cref="HomeKpiDto"/> when found; 404 Not Found when the KPI does not exist or does not belong to the current user.
     /// </returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}", Name = "GetHomeKpi")]
     [ProducesResponseType(typeof(HomeKpiDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -183,6 +189,10 @@ public sealed class HomeKpisController : ControllerBase
     /// </returns>
     /// <exception cref="ArgumentException">Thrown when arguments are invalid (mapped to 400).</exception>
     /// <exception cref="InvalidOperationException">Thrown when a conflict occurs (mapped to 409).</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
+    /// <response code="409">The HTTP 409 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(HomeKpiDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -227,6 +237,8 @@ public sealed class HomeKpisController : ControllerBase
     /// 204 No Content when deletion succeeded; 404 Not Found when the KPI does not exist.
     /// </returns>
     /// <exception cref="HttpRequestException">Thrown when the underlying service call fails.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

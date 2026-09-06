@@ -56,6 +56,9 @@ public sealed class StatementDraftSecurityClassificationTests
     /// Creates a bank contact and an account with security processing enabled.
     /// Securities may only be auto-assigned when a detected account explicitly allows it.
     /// </summary>
+    /// <param name="db">The db.</param>
+    /// <param name="owner">The owner.</param>
+    /// <returns>The result.</returns>
     private static async Task<Account> CreateSecurityAccountAsync(AppDbContext db, Guid owner)
     {
         var bank = new Contact(owner, "Testbank", ContactType.Bank, null, null);

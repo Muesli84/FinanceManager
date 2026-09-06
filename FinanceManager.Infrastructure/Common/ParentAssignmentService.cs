@@ -17,6 +17,8 @@ public sealed class ParentAssignmentService : IParentAssignmentService
     /// <summary>
     /// Creates a new instance.
     /// </summary>
+    /// <param name="db">The db.</param>
+    /// <param name="logger">Logger instance.</param>
     public ParentAssignmentService(AppDbContext db, ILogger<ParentAssignmentService> logger)
     {
         _db = db;

@@ -48,6 +48,7 @@ public sealed class SavingsPlanCardViewModel : BaseCardViewModel<(string Key, st
     /// <summary>
     /// Available categories for the savings plan used to populate lookup fields.
     /// </summary>
+    /// <returns>The result.</returns>
     public List<SavingsPlanCategoryDto> Categories { get; private set; } = new();
 
     /// <summary>
@@ -58,6 +59,12 @@ public sealed class SavingsPlanCardViewModel : BaseCardViewModel<(string Key, st
     /// <summary>
     /// Editable model used to create or update a savings plan.
     /// </summary>
+    /// <param name="null">The null.</param>
+    /// <param name="null">The null.</param>
+    /// <param name="null">The null.</param>
+    /// <param name="null">The null.</param>
+    /// <param name="null">The null.</param>
+    /// <returns>The result.</returns>
     public SavingsPlanCreateRequest Model { get; private set; } = new(string.Empty, SavingsPlanType.OneTime, null, null, null, null, null);
 
     /// <summary>
@@ -467,6 +474,11 @@ public sealed class SavingsPlanCardViewModel : BaseCardViewModel<(string Key, st
     /// <summary>
     /// Provides lookup values for fields that support lookups (e.g. SavingsPlanCategory).
     /// </summary>
+    /// <param name="field">The field.</param>
+    /// <param name="q">The q.</param>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <returns>The result.</returns>
     public override async Task<IReadOnlyList<LookupItem>> QueryLookupAsync(CardField field, string? q, int skip, int take)
     {
         if (string.Equals(field.LookupType, "SavingsPlanCategory", StringComparison.OrdinalIgnoreCase))
@@ -686,6 +698,8 @@ public sealed class SavingsPlanCardViewModel : BaseCardViewModel<(string Key, st
     /// <summary>
     /// Returns the parent attachment kind and id used for symbol uploads.
     /// </summary>
+    /// <param name="Kind">The kind.</param>
+    /// <param name="Id">Identifier of the entity.</param>
     /// <returns>Tuple with <see cref="AttachmentEntityKind.SavingsPlan"/> and the parent id (or Guid.Empty).</returns>
     protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.SavingsPlan, Id == Guid.Empty ? Guid.Empty : Id);
 

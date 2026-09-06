@@ -10,6 +10,7 @@ namespace FinanceManager.Web.ViewModels.SavingsPlans;
 /// <param name="Type">Type description of the savings plan.</param>
 /// <param name="CategoryName">Optional category display name.</param>
 /// <param name="SymbolId">Optional attachment id used as display symbol.</param>
+/// <returns>The result.</returns>
 public sealed record SavingsPlanListItem(Guid Id, string Name, string Type, string? CategoryName, Guid? SymbolId) : IListItemNavigation
 {
     /// <summary>

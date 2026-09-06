@@ -13,6 +13,7 @@ namespace FinanceManager.Shared.Dtos.Attachments;
 /// <param name="UploadedUtc">Upload timestamp in UTC.</param>
 /// <param name="IsUrl">True when the attachment represents a URL instead of stored content.</param>
 /// <param name="Role">Optional numeric role for the attachment (e.g. symbol role identifier).</param>
+/// <returns>The result.</returns>
 public sealed record AttachmentDto(
     Guid Id,
     short EntityKind,

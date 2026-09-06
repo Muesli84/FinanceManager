@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject FinanceManager.Application.ICurrentUserService CurrentUser
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Pages> L
 @inject Microsoft.AspNetCore.Components.NavigationManager Nav
@@ -13,7 +13,7 @@
     <input type="checkbox" id="nav-toggle" class="nav-toggle" />
     <nav class="sidebar">
         <div class="brand">
-            <img src="@_logoPath" alt="App Logo" class="brand-logo" />
+            <img src="@_logoPath" alt="@L["Nav_AppLogoAlt"]" class="brand-logo" />
             <span>@L["Brand"]</span>
         </div>
         <ul class="nav-links">
@@ -44,13 +44,13 @@
     </nav>
     <main class="content">
         <div class="mobile-topbar">
-            <label for="nav-toggle" class="hamburger" aria-label="Menu">
+            <label for="nav-toggle" class="hamburger" aria-label="@L["Nav_MenuAriaLabel"]">
                 <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                     <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z" />
                 </svg>
             </label>
             <div class="mobile-brand">
-                <img src="@_logoPath" alt="App Logo" class="brand-logo" />
+                <img src="@_logoPath" alt="@L["Nav_AppLogoAlt"]" class="brand-logo" />
                 <span>@L["Brand"]</span>
             </div>
         </div>

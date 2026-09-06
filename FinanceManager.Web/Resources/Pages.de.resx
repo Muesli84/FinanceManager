@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -2874,4 +2874,47 @@
   <data name="AccountsStatistics_Kpi_Month_Loading" xml:space="preserve">
     <value>Monatswert wird geladen</value>
   </data>
+  <data name="Nav_AppLogoAlt" xml:space="preserve"><value>App-Logo</value></data>
+  <data name="Nav_MenuAriaLabel" xml:space="preserve"><value>Menü</value></data>
+  <data name="Help_SkipToSearch" xml:space="preserve"><value>Zur Hilfesuche springen</value></data>
+  <data name="Error_Heading" xml:space="preserve"><value>Bei der Verarbeitung Ihrer Anfrage ist ein Fehler aufgetreten.</value></data>
+  <data name="Error_RequestId" xml:space="preserve"><value>Anfrage-ID:</value></data>
+  <data name="Error_DevMode_Heading" xml:space="preserve"><value>Entwicklungsmodus</value></data>
+  <data name="Error_DevMode_Info" xml:space="preserve"><value>Der Wechsel in die Entwicklungsumgebung zeigt detailliertere Informationen zum aufgetretenen Fehler an.</value></data>
+  <data name="Error_DevMode_Warning" xml:space="preserve"><value>Der Entwicklungsmodus sollte für bereitgestellte Anwendungen nicht aktiviert werden.</value></data>
+  <data name="Error_DevMode_Details" xml:space="preserve"><value>Dadurch können sensible Informationen aus Ausnahmen für Endbenutzer sichtbar werden. Für lokales Debugging aktivieren Sie die Entwicklungsumgebung, indem Sie die Umgebungsvariable ASPNETCORE_ENVIRONMENT auf Development setzen und die App neu starten.</value></data>
+  <data name="Generic_NoProvider" xml:space="preserve"><value>Kein Anbieter</value></data>
+  <data name="Benchmark_Loading" xml:space="preserve"><value>Lade Benchmark-Daten...</value></data>
+  <data name="Benchmark_None" xml:space="preserve"><value>Kein Benchmark konfiguriert.</value></data>
+  <data name="Benchmark_SetupHint1" xml:space="preserve"><value>Sie können ein vorhandenes Wertpapier als Benchmark für alle Ihre Wertpapiere festlegen. Nutzen Sie dazu die Schaltfläche</value></data>
+  <data name="Benchmark_SetupAction" xml:space="preserve"><value>Benchmark einrichten</value></data>
+  <data name="Benchmark_SetupHint2" xml:space="preserve"><value>in der Aktionsleiste.</value></data>
+  <data name="Benchmark_Legend_This" xml:space="preserve"><value>Dieses Wertpapier</value></data>
+  <data name="Benchmark_ChartAria" xml:space="preserve"><value>Benchmark-Vergleichschart</value></data>
+  <data name="Overview_Loading" xml:space="preserve"><value>Lade Chartdaten...</value></data>
+  <data name="Overview_NoData" xml:space="preserve"><value>Keine Kursdaten für den gewählten Zeitraum vorhanden.</value></data>
+  <data name="Overview_ChartAria" xml:space="preserve"><value>Performance-Chart</value></data>
+  <data name="TimeSeries_Loading" xml:space="preserve"><value>Lade Daten...</value></data>
+  <data name="TimeSeries_NoData" xml:space="preserve"><value>Keine Renditedaten verfügbar.</value></data>
+  <data name="TimeSeries_Annual_Title" xml:space="preserve"><value>Jahresrenditen</value></data>
+  <data name="TimeSeries_Annual_NoData" xml:space="preserve"><value>Keine Jahresdaten vorhanden.</value></data>
+  <data name="TimeSeries_YtdNote" xml:space="preserve"><value>* Bis Ende Analysezeitraum</value></data>
+  <data name="TimeSeries_Monthly_Aria" xml:space="preserve"><value>Monatsrenditen-Heatmap</value></data>
+  <data name="TimeSeries_Monthly_Title" xml:space="preserve"><value>Monatliche Renditen</value></data>
+  <data name="TimeSeries_Monthly_NoData" xml:space="preserve"><value>Keine Monatsdaten vorhanden.</value></data>
+  <data name="TimeSeries_Monthly_TableAria" xml:space="preserve"><value>Monatsrenditen</value></data>
+  <data name="TimeSeries_LegendAria" xml:space="preserve"><value>Farbskala</value></data>
+  <data name="TimeSeries_Simulated_Banner" xml:space="preserve"><value>Hinweis: Für dieses Wertpapier liegen keine Kursdaten vor. Die Renditen wurden aus den Transaktionspreisen (lineare Interpolation) hochgerechnet und spiegeln nicht die reale Kursentwicklung wider.</value></data>
+  <data name="TimeSeries_Col_Year" xml:space="preserve"><value>Jahr</value></data>
+  <data name="TimeSeries_Col_Gross" xml:space="preserve"><value>Brutto</value></data>
+  <data name="TimeSeries_Col_Net" xml:space="preserve"><value>Netto</value></data>
+  <data name="TimeSeries_Col_CumNet" xml:space="preserve"><value>Kum. Netto</value></data>
+  <data name="SetupBackup_Btn_CreateFallback" xml:space="preserve"><value>Sicherung erstellen</value></data>
+  <data name="Notifications_Holidays_Region_Placeholder" xml:space="preserve"><value>DE</value></data>
+  <data name="SetupProfile_Lang_de" xml:space="preserve"><value>Deutsch (de)</value></data>
+  <data name="SetupProfile_Lang_en" xml:space="preserve"><value>English (en)</value></data>
+  <data name="SetupProfile_TimeZone_Placeholder" xml:space="preserve"><value>Europe/Berlin</value></data>
+  <data name="Panel_Label_ValidationResult" xml:space="preserve"><value>Validierungsergebnis</value></data>
+  <data name="Panel_Label_Setup" xml:space="preserve"><value>Einstellungen</value></data>
+  <data name="Panel_Label_AccountsStatistics" xml:space="preserve"><value>Kontenstatistik</value></data>
 </root>

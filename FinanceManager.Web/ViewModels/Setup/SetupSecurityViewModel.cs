@@ -48,6 +48,7 @@ public sealed class SetupSecurityViewModel : BaseViewModel
     /// <summary>
     /// Current list of IP blocks shown in the UI.
     /// </summary>
+    /// <returns>The result.</returns>
     public List<IpBlockItem> Items { get; private set; } = new();
 
     /// <summary>

@@ -230,6 +230,9 @@ public partial class ApiClient : IApiClient
     /// <summary>
     /// Lists budget rules that apply to a budget category.
     /// </summary>
+    /// <param name="budgetCategoryId">The budget category id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IReadOnlyList<FinanceManager.Shared.Dtos.Budget.BudgetRuleDto>> Budgets_ListRulesByCategoryAsync(Guid budgetCategoryId, CancellationToken ct = default)
     {
         var resp = await _http.GetAsync($"/api/budget/rules/by-category/{budgetCategoryId}", ct);

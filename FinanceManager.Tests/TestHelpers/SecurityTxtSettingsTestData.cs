@@ -11,6 +11,10 @@ public static class SecurityTxtSettingsTestData
     /// <summary>
     /// Returns a fully populated, valid update request.
     /// </summary>
+    /// <param name="contact">The contact.</param>
+    /// <param name="expires">The expires.</param>
+    /// <param name="canonical">The canonical.</param>
+    /// <returns>The result.</returns>
     public static SecurityTxtSettingsUpdateRequest ValidRequest(
         string contact = "mailto:security@example.com",
         DateTimeOffset? expires = null,
@@ -28,6 +32,8 @@ public static class SecurityTxtSettingsTestData
     /// <summary>
     /// Returns a valid update request including Canonical.
     /// </summary>
+    /// <param name="canonical">The canonical.</param>
+    /// <returns>The result.</returns>
     public static SecurityTxtSettingsUpdateRequest ValidRequestWithCanonical(
         string canonical = "https://security.example.com/.well-known/security.txt") =>
         ValidRequest(canonical: canonical);
@@ -35,6 +41,8 @@ public static class SecurityTxtSettingsTestData
     /// <summary>
     /// Returns a minimal update request with no optional fields set.
     /// </summary>
+    /// <param name="contact">The contact.</param>
+    /// <returns>The result.</returns>
     public static SecurityTxtSettingsUpdateRequest MinimalRequest(
         string contact = "mailto:security@example.com") =>
         new(

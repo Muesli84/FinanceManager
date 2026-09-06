@@ -53,11 +53,17 @@ public sealed class AccountShare : Entity
     /// <param name="Role">Granted role.</param>
     /// <param name="GrantedUtc">UTC timestamp when the share was granted.</param>
     /// <param name="RevokedUtc">UTC timestamp when the share was revoked, if any.</param>
+    /// <returns>The result.</returns>
     public sealed record AccountShareBackupDto(Guid Id, Guid AccountId, Guid UserId, AccountShareRole Role, DateTime GrantedUtc, DateTime? RevokedUtc);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this account share.
     /// </summary>
+    /// <param name="AccountId">The account id.</param>
+    /// <param name="UserId">The user id.</param>
+    /// <param name="Role">The role.</param>
+    /// <param name="GrantedUtc">The granted utc.</param>
+    /// <param name="RevokedUtc">The revoked utc.</param>
     /// <returns>A <see cref="AccountShareBackupDto"/> containing values required for backup/restore.</returns>
     public AccountShareBackupDto ToBackupDto() => new AccountShareBackupDto(Id, AccountId, UserId, Role, GrantedUtc, RevokedUtc);
 

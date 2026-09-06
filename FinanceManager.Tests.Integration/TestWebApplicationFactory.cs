@@ -40,6 +40,7 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
     /// Absolute path to the <c>FinanceManager.Web</c> project directory, used as the content root and to
     /// locate the built <c>wwwroot</c> folder that gets copied into each factory's isolated web root.
     /// </summary>
+    /// <returns>The result.</returns>
     public static readonly string WebProjectRoot = Path.GetFullPath(Path.Combine(
         AppContext.BaseDirectory,
         "..",

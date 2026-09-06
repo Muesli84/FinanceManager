@@ -102,6 +102,7 @@ public sealed class ContactGroupListViewModel : BaseListViewModel<ContactGroupLi
     /// <param name="Id">Category identifier.</param>
     /// <param name="Name">Display name of the category.</param>
     /// <param name="SymbolId">Optional attachment id used as the category symbol.</param>
+    /// <returns>The result.</returns>
     public sealed record ContactGroupListItem(Guid Id, string Name, Guid? SymbolId) : IListItemNavigation
     {
         /// <summary>

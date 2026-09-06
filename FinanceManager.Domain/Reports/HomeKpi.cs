@@ -164,11 +164,21 @@ public sealed class HomeKpi : Entity, IAggregateRoot
     /// <param name="PredefinedType">Optional predefined KPI type when <paramref name="Kind"/> denotes a predefined KPI.</param>
     /// <param name="CreatedUtc">UTC timestamp when the KPI was created.</param>
     /// <param name="ModifiedUtc">UTC timestamp when the KPI was last modified, if any.</param>
+    /// <returns>The result.</returns>
     public sealed record HomeKpiBackupDto(Guid Id, Guid OwnerUserId, HomeKpiKind Kind, Guid? ReportFavoriteId, HomeKpiDisplayMode DisplayMode, int SortOrder, string? Title, HomeKpiPredefined? PredefinedType, DateTime CreatedUtc, DateTime? ModifiedUtc);
 
     /// <summary>
     /// Creates a backup DTO representing this <see cref="HomeKpi"/>.
     /// </summary>
+    /// <param name="OwnerUserId">The owner user id.</param>
+    /// <param name="Kind">The kind.</param>
+    /// <param name="ReportFavoriteId">The report favorite id.</param>
+    /// <param name="DisplayMode">The display mode.</param>
+    /// <param name="SortOrder">The sort order.</param>
+    /// <param name="Title">The title.</param>
+    /// <param name="PredefinedType">The predefined type.</param>
+    /// <param name="CreatedUtc">The created utc.</param>
+    /// <param name="ModifiedUtc">The modified utc.</param>
     /// <returns>A <see cref="HomeKpiBackupDto"/> containing the serializable state of this KPI.</returns>
     public HomeKpiBackupDto ToBackupDto() => new HomeKpiBackupDto(Id, OwnerUserId, Kind, ReportFavoriteId, DisplayMode, SortOrder, Title, PredefinedType, CreatedUtc, ModifiedUtc);
 
