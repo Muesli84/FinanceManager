@@ -50,9 +50,20 @@ public interface IAccountService
     /// <param name="ownerUserId">Owner user id.</param>
     /// <param name="skip">Number of items to skip.</param>
     /// <param name="take">Number of items to take.</param>
+    /// <param name="bankContactId">Optional bank contact id filter.</param>
+    /// <param name="q">Optional account search text.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Read-only list of <see cref="AccountDto"/>.</returns>
-    Task<IReadOnlyList<AccountDto>> ListAsync(Guid ownerUserId, int skip, int take, CancellationToken ct);
+    Task<IReadOnlyList<AccountDto>> ListAsync(Guid ownerUserId, int skip, int take, Guid? bankContactId, string? q, CancellationToken ct);
+
+    /// <summary>
+    /// Gets unpaged account statistics for the owner and optional search scope.
+    /// </summary>
+    /// <param name="ownerUserId">Owner user id.</param>
+    /// <param name="q">Optional account search text.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Statistics for the filtered account scope.</returns>
+    Task<AccountStatisticsDto> GetStatisticsAsync(Guid ownerUserId, string? q, CancellationToken ct);
 
     /// <summary>
     /// Gets a single account by id for the owner or null when not found.

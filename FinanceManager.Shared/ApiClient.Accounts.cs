@@ -9,13 +9,32 @@ public partial class ApiClient
     /// <summary>
     /// Lists accounts for the current user with optional pagination and bank contact filter.
     /// </summary>
-    public async Task<IReadOnlyList<AccountDto>> GetAccountsAsync(int skip = 0, int take = 100, Guid? bankContactId = null, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AccountDto>> GetAccountsAsync(int skip = 0, int take = 100, Guid? bankContactId = null, string? q = null, CancellationToken ct = default)
     {
-        var url = $"/api/accounts?skip={skip}&take={take}";
-        if (bankContactId.HasValue) url += $"&bankContactId={Uri.EscapeDataString(bankContactId.Value.ToString())}";
+        var query = new List<string>
+        {
+            $"skip={skip}",
+            $"take={take}"
+        };
+        if (bankContactId.HasValue) query.Add($"bankContactId={Uri.EscapeDataString(bankContactId.Value.ToString())}");
+        if (!string.IsNullOrWhiteSpace(q)) query.Add($"q={Uri.EscapeDataString(q.Trim())}");
+        var url = $"/api/accounts?{string.Join('&', query)}";
         var resp = await _http.GetAsync(url, ct);
         await EnsureSuccessOrSetErrorAsync(resp);
         return await resp.Content.ReadFromJsonAsync<IReadOnlyList<AccountDto>>(cancellationToken: ct) ?? Array.Empty<AccountDto>();
+    }
+
+    /// <summary>
+    /// Gets account statistics for the current user and optional account search text.
+    /// </summary>
+    public async Task<AccountStatisticsDto> GetAccountStatisticsAsync(string? q = null, CancellationToken ct = default)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(q)) query.Add($"q={Uri.EscapeDataString(q.Trim())}");
+        var url = query.Count == 0 ? "/api/accounts/statistics" : $"/api/accounts/statistics?{string.Join('&', query)}";
+        var resp = await _http.GetAsync(url, ct);
+        await EnsureSuccessOrSetErrorAsync(resp);
+        return await resp.Content.ReadFromJsonAsync<AccountStatisticsDto>(cancellationToken: ct) ?? AccountStatisticsDto.Empty;
     }
 
     /// <summary>

@@ -4,6 +4,23 @@ using Microsoft.Extensions.Localization;
 namespace FinanceManager.Web.ViewModels.Accounts
 {
     /// <summary>
+    /// Load state for the account statistics tile, independent from the account list.
+    /// </summary>
+    public enum AccountStatisticsLoadState
+    {
+        /// <summary>Statistics loading has not started.</summary>
+        NotStarted,
+        /// <summary>Statistics are currently loading.</summary>
+        Loading,
+        /// <summary>Statistics are loaded and contain at least one account.</summary>
+        Loaded,
+        /// <summary>Statistics loaded successfully for an empty account scope.</summary>
+        Empty,
+        /// <summary>Statistics loading failed.</summary>
+        Error
+    }
+
+    /// <summary>
     /// List view model providing paging and rendering logic for bank accounts.
     /// </summary>
     public sealed class BankAccountListViewModel : BaseListViewModel<AccountListItem>
@@ -22,7 +39,24 @@ namespace FinanceManager.Web.ViewModels.Accounts
         public override bool AllowRangeFiltering => false;
 
         private int _skip;
+        private long _statisticsGeneration;
+        private CancellationTokenSource? _statisticsCts;
         private const int PageSize = 50;
+
+        /// <summary>
+        /// Current account statistics payload.
+        /// </summary>
+        public AccountStatisticsDto? Statistics { get; private set; }
+
+        /// <summary>
+        /// Current statistics load state.
+        /// </summary>
+        public AccountStatisticsLoadState StatisticsState { get; private set; } = AccountStatisticsLoadState.NotStarted;
+
+        /// <summary>
+        /// Statistics-specific error message. List errors remain independent.
+        /// </summary>
+        public string? StatisticsErrorMessage { get; private set; }
 
         /// <summary>
         /// Loads a page of account items from the API and appends them to the internal item collection.
@@ -32,14 +66,17 @@ namespace FinanceManager.Web.ViewModels.Accounts
         protected override async Task LoadPageAsync(bool resetPaging)
         {
             var api = ServiceProvider.GetRequiredService<IApiClient>();
+            var q = NormalizeSearchForRequest(Search);
             try
             {
-                if (resetPaging) { _skip = 0; }
-                var list = await api.GetAccountsAsync(_skip, PageSize, null);
+                if (resetPaging)
+                {
+                    _skip = 0;
+                    StartStatisticsLoad(q);
+                }
+
+                var list = await api.GetAccountsAsync(_skip, PageSize, null, q);
                 var items = (list ?? Array.Empty<AccountDto>())
-                    .Where(a => string.IsNullOrWhiteSpace(Search)
-                        || (a.Name?.Contains(Search, StringComparison.OrdinalIgnoreCase) ?? false)
-                        || (a.Iban?.Contains(Search, StringComparison.OrdinalIgnoreCase) ?? false))
                     .Select(a => new AccountListItem(a.Id, a.Name ?? string.Empty, a.Type, a.Iban, a.CurrentBalance, a.SymbolAttachmentId));
                 if (resetPaging) Items.Clear();
                 Items.AddRange(items);
@@ -51,6 +88,15 @@ namespace FinanceManager.Web.ViewModels.Accounts
                 SetError(api.LastErrorCode ?? null, api.LastError ?? ex.Message);
                 CanLoadMore = false;
             }
+        }
+
+        /// <summary>
+        /// Retries loading statistics for the currently active search without reloading the list.
+        /// </summary>
+        public Task RetryStatisticsAsync()
+        {
+            StartStatisticsLoad(NormalizeSearchForRequest(Search));
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -94,6 +140,70 @@ namespace FinanceManager.Web.ViewModels.Accounts
             };
             var tabs = new List<UiRibbonTab> { new UiRibbonTab(localizer["Ribbon_Group_Navigation"].Value, actions) };
             return new List<UiRibbonRegister> { new UiRibbonRegister(UiRibbonRegisterKind.Actions, tabs) };
+        }
+
+        private void StartStatisticsLoad(string? q)
+        {
+            _statisticsCts?.Cancel();
+            _statisticsCts?.Dispose();
+            _statisticsCts = new CancellationTokenSource();
+            var generation = Interlocked.Increment(ref _statisticsGeneration);
+
+            Statistics = null;
+            StatisticsErrorMessage = null;
+            StatisticsState = AccountStatisticsLoadState.Loading;
+            RaiseStateChanged();
+
+            _ = LoadStatisticsAsync(generation, q, _statisticsCts.Token);
+        }
+
+        private async Task LoadStatisticsAsync(long generation, string? q, CancellationToken ct)
+        {
+            var api = ServiceProvider.GetRequiredService<IApiClient>();
+            try
+            {
+                var statistics = await api.GetAccountStatisticsAsync(q, ct);
+                if (generation != Volatile.Read(ref _statisticsGeneration) || ct.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                Statistics = statistics;
+                StatisticsState = statistics.AccountCount == 0 ? AccountStatisticsLoadState.Empty : AccountStatisticsLoadState.Loaded;
+                StatisticsErrorMessage = null;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                if (generation != Volatile.Read(ref _statisticsGeneration))
+                {
+                    return;
+                }
+
+                Statistics = null;
+                StatisticsState = AccountStatisticsLoadState.Error;
+                StatisticsErrorMessage = api.LastError ?? ex.Message;
+            }
+            finally
+            {
+                if (generation == Volatile.Read(ref _statisticsGeneration))
+                {
+                    RaiseStateChanged();
+                }
+            }
+        }
+
+        private static string? NormalizeSearchForRequest(string? search)
+        {
+            if (string.IsNullOrWhiteSpace(search))
+            {
+                return null;
+            }
+
+            return search.Trim();
         }
     }
 }

@@ -436,7 +436,7 @@ namespace FinanceManager.Web.ViewModels.Common
                 }
             }
 
-            var results = await api.GetAccountsAsync(skip, take, bankContactId, CancellationToken.None);
+            var results = await api.GetAccountsAsync(skip, take, bankContactId, q: null, CancellationToken.None);
             var filtered = results
                 .Where(a => string.IsNullOrWhiteSpace(q) || (a.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) == true) || (a.Iban?.Contains(q, StringComparison.OrdinalIgnoreCase) == true))
                 .Select(a => new LookupItem(a.Id, string.IsNullOrWhiteSpace(a.Iban) ? a.Name : $"{a.Name} ({a.Iban})"))

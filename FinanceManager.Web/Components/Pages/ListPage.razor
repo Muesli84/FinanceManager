@@ -7,6 +7,7 @@
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Web.Extensions
 @using FinanceManager.Web.ViewModels
+@using FinanceManager.Web.ViewModels.Accounts
 @using FinanceManager.Web.ViewModels.Common
 @using System.Resources
 @using System.Globalization
@@ -33,6 +34,11 @@ else
 
     @* Background task status panel for viewmodel-specific task types *@
     <BackgroundTaskStatusPanel AllowedTypes="@((_provider as BaseViewModel)?.VisibleBackgroundTaskTypes)" />
+
+    @if (_provider is BankAccountListViewModel bankAccounts)
+    {
+        <AccountsStatisticsTile ViewModel="bankAccounts" />
+    }
 
     <GenericListPage TItem="object"
                      Provider="_provider"

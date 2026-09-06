@@ -10,6 +10,11 @@
 
 html, body { margin: 0; padding: 0; }
 
+.mst-loading-bar {
+    max-width: 100vw;
+    overflow: hidden;
+}
+
 /* App Shell Layout */
 .app-shell {
     display: flex;
@@ -77,11 +82,219 @@ html, body { margin: 0; padding: 0; }
     flex: 1; 
     padding: 1.25rem 2rem; 
     position: relative; 
+    min-width: 0;
 }
 
 .inner { 
     max-width: 1200px; 
     margin: 0 auto; 
+    min-width: 0;
+}
+
+.accounts-statistics {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    min-height: 310px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: clip;
+}
+
+.accounts-statistics * {
+    box-sizing: border-box;
+}
+
+.accounts-statistics-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .75rem;
+}
+
+.accounts-statistics-header h4,
+.accounts-statistics-chart h5 {
+    margin: 0;
+    line-height: 1.25;
+}
+
+.accounts-statistics-chart h5 {
+    font-size: .95rem;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.accounts-statistics-chart h5 small {
+    font-size: .72rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.accounts-statistics-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+.accounts-statistics-kpi {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .75rem;
+    min-height: 76px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.accounts-statistics-kpi span {
+    color: var(--muted);
+    font-size: .78rem;
+}
+
+.accounts-statistics-kpi strong {
+    font-size: 1.15rem;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.accounts-statistics-charts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.accounts-statistics-chart {
+    min-width: 0;
+    min-height: 190px;
+}
+
+.accounts-statistics-empty,
+.accounts-statistics-error {
+    color: var(--muted);
+}
+
+.accounts-statistics-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    min-height: 140px;
+}
+
+.accounts-statistics-skeleton {
+    display: block;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--muted) 18%, transparent);
+    color: transparent;
+    min-height: 1rem;
+}
+
+.accounts-statistics-skeleton.label {
+    width: 70%;
+}
+
+.accounts-statistics-skeleton.value {
+    width: 55%;
+    height: 1.5rem;
+}
+
+.accounts-statistics-skeleton.chart {
+    min-height: 160px;
+}
+
+.donut-empty-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: .5rem;
+    color: var(--muted);
+    font-size: .75rem;
+}
+
+.accounts-statistics .donut-legend-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.accounts-statistics .donut-legend-label {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    min-width: 0;
+    flex: 1 1 8rem;
+}
+
+.accounts-statistics .donut-chart,
+.accounts-statistics .donut-chart-ring,
+.accounts-statistics .donut-legend,
+.accounts-statistics .donut-legend-value {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.accounts-statistics .donut-chart {
+    align-items: flex-start;
+}
+
+.accounts-statistics .donut-chart-ring {
+    width: clamp(88px, 32vw, 120px);
+    height: clamp(88px, 32vw, 120px);
+}
+
+.accounts-statistics .donut-legend {
+    flex-basis: 0;
+}
+
+.accounts-statistics .donut-legend-value,
+.accounts-statistics .donut-legend-details span {
+    overflow-wrap: anywhere;
+}
+
+.accounts-statistics .donut-legend-details {
+    flex: 1 0 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem .6rem;
+    padding-left: 1.1rem;
+    color: var(--muted);
+    font-size: .72rem;
+}
+
+@media (max-width: 760px) {
+    .accounts-statistics {
+        padding: .75rem;
+        min-height: 420px;
+        overflow-wrap: anywhere;
+    }
+
+    .accounts-statistics-kpis,
+    .accounts-statistics-charts {
+        grid-template-columns: 1fr;
+    }
+
+    .accounts-statistics .donut-chart {
+        display: grid;
+        grid-template-columns: minmax(76px, auto) minmax(0, 1fr);
+        gap: .75rem;
+        width: 100%;
+    }
+
+    .accounts-statistics .donut-legend {
+        width: 100%;
+    }
 }
 
 /* Form Elements */
@@ -104,6 +317,7 @@ input {
     padding: .5rem .55rem; 
     wwidth: 100%; 
     font-size: .9rem; 
+    box-sizing: border-box;
 }
 
 label { 

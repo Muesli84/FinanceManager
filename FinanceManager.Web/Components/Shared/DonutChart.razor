@@ -3,7 +3,10 @@
 <div class="donut-chart">
     <div class="donut-chart-ring" role="img" aria-label="@AriaLabel">
         <svg viewBox="0 0 36 36" class="donut-chart-svg">
-            <circle class="donut-track" cx="18" cy="18" r="15.9155" />
+            @if (ShowTrackWhenEmpty || _entries.Any(e => e.Percent > 0m))
+            {
+                <circle class="donut-track" cx="18" cy="18" r="15.9155" />
+            }
             @{ decimal cursor = 0m; }
             @foreach (var entry in _entries)
             {
@@ -15,7 +18,7 @@
                             stroke="@GetColor(entry.Index)"
                             stroke-dasharray="@dashArray"
                             stroke-dashoffset="@dashOffset">
-                        <title>@($"{entry.Slice.Label}: {entry.Percent.ToString("N1", CultureInfo.CurrentUICulture)}%")</title>
+                        <title>@(entry.Slice.AriaLabel ?? $"{entry.Slice.Label}: {entry.Percent.ToString("N1", CultureInfo.CurrentUICulture)}%")</title>
                     </circle>
                     cursor += entry.Percent;
                 }
@@ -34,6 +37,10 @@
                 }
             </div>
         }
+        @if (_entries.Count > 0 && _entries.All(e => e.Percent <= 0m) && !string.IsNullOrWhiteSpace(EmptyText))
+        {
+            <span class="donut-empty-text">@EmptyText</span>
+        }
     </div>
 
     @if (_entries.Count > 0)
@@ -41,10 +48,19 @@
         <ul class="donut-legend">
             @foreach (var entry in _entries)
             {
-                <li class="donut-legend-item">
+                <li class="donut-legend-item" data-statistics-group-key="@entry.Slice.Key">
                     <span class="donut-swatch" style="background:@GetColor(entry.Index)"></span>
                     <span class="donut-legend-label">@entry.Slice.Label</span>
-                    <span class="donut-legend-value">@entry.Percent.ToString("N1", CultureInfo.CurrentUICulture)%</span>
+                    <span class="donut-legend-value">@(entry.Slice.LegendValue ?? $"{entry.Percent.ToString("N1", CultureInfo.CurrentUICulture)}%")</span>
+                    @if (entry.Slice.Details is { Count: > 0 })
+                    {
+                        <span class="donut-legend-details">
+                            @foreach (var detail in entry.Slice.Details)
+                            {
+                                <span>@detail</span>
+                            }
+                        </span>
+                    }
                 </li>
             }
         </ul>
@@ -55,7 +71,11 @@
     /// <summary>A single named value contributing to the donut chart.</summary>
     /// <param name="Label">Display label of the slice.</param>
     /// <param name="Value">Absolute value of the slice (must be non-negative to be rendered).</param>
-    public sealed record DonutChartSlice(string Label, decimal Value);
+    /// <param name="LegendValue">Optional preformatted legend value.</param>
+    /// <param name="Details">Optional detail lines rendered below the legend value.</param>
+    /// <param name="AriaLabel">Optional accessible slice description.</param>
+    /// <param name="Key">Optional stable technical key rendered as data attribute.</param>
+    public sealed record DonutChartSlice(string Label, decimal Value, string? LegendValue = null, IReadOnlyList<string>? Details = null, string? AriaLabel = null, string? Key = null);
 
     private sealed record Entry(DonutChartSlice Slice, int Index, decimal Percent);
 
@@ -76,6 +96,12 @@
 
     /// <summary>Accessible label describing the chart for screen readers.</summary>
     [Parameter] public string AriaLabel { get; set; } = string.Empty;
+
+    /// <summary>Text shown when all slices have zero value.</summary>
+    [Parameter] public string? EmptyText { get; set; }
+
+    /// <summary>Controls whether the neutral track ring is rendered when no segment exists.</summary>
+    [Parameter] public bool ShowTrackWhenEmpty { get; set; } = true;
 
     private List<Entry> _entries = new();
 
