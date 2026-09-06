@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace FinanceManager.Tests.E2E;
 
 /// <summary>
-/// End-to-end coverage for the account overview statistics tile rendered above the bank account list.
+/// End-to-end coverage for the account overview statistics tile rendered below the bank account list.
 /// </summary>
 [Collection(PlaywrightCollection.CollectionName)]
 public sealed class AccountsOverviewStatisticsPlaywrightTests

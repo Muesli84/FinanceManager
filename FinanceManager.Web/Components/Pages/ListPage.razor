@@ -35,11 +35,6 @@ else
     @* Background task status panel for viewmodel-specific task types *@
     <BackgroundTaskStatusPanel AllowedTypes="@((_provider as BaseViewModel)?.VisibleBackgroundTaskTypes)" />
 
-    @if (_provider is BankAccountListViewModel bankAccounts)
-    {
-        <AccountsStatisticsTile ViewModel="bankAccounts" />
-    }
-
     <GenericListPage TItem="object"
                      Provider="_provider"
                      Localizer="Localizer"
@@ -50,6 +45,11 @@ else
                      EmptyText="@Localizer["List_Result_NoItems"]"
                      EndOfListText="@Localizer["List_Result_EndOfList"]"
                      ItemClick="OnItemClick" />
+
+    @if (_provider is BankAccountListViewModel bankAccounts)
+    {
+        <AccountsStatisticsTile ViewModel="bankAccounts" />
+    }
 
     
     @* Generic overlay rendering for list providers *@

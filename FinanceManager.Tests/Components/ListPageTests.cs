@@ -27,7 +27,7 @@ public sealed class ListPageTests : BunitContext
     }
 
     /// <summary>
-    /// Verifies that the account statistics tile is scoped to the account list while the generic list remains available for other list kinds.
+    /// Verifies that the account statistics tile is scoped to the account list, rendered below it, while the generic list remains available for other list kinds.
     /// </summary>
     [Fact]
     public void ListPage_Accounts_RendersStatisticsAndGenericListOnlyForAccounts()
@@ -40,6 +40,10 @@ public sealed class ListPageTests : BunitContext
         {
             Assert.Single(accountsPage.FindAll(".accounts-statistics"));
             Assert.Single(accountsPage.FindAll(".generic-list-table-wrap"));
+            Assert.True(
+                accountsPage.Markup.IndexOf("generic-list-table-wrap", StringComparison.Ordinal)
+                    < accountsPage.Markup.IndexOf("accounts-statistics", StringComparison.Ordinal),
+                "Account statistics should be rendered below the bank account table.");
         });
 
         var statementDraftsPage = Render<ListPage>(parameters => parameters.Add(p => p.Kind, "statement-drafts"));
