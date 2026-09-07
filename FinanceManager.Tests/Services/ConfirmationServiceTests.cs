@@ -3,6 +3,7 @@ using FinanceManager.Shared.Dtos.Users;
 using FinanceManager.Web.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Xunit;
 
 namespace FinanceManager.Tests.Services;
 
@@ -26,7 +27,7 @@ public sealed class ConfirmationServiceTests
         var sut = CreateSut(apiMock.Object);
         var request = new ConfirmationRequest("Confirmation_Delete_Title", "Confirmation_Delete_Message");
 
-        var result = await sut.ConfirmAsync(request);
+        var result = await sut.ConfirmAsync(request, TestContext.Current.CancellationToken);
 
         Assert.True(result);
         apiMock.Verify(x => x.UserSettings_GetProfileAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -52,7 +53,7 @@ public sealed class ConfirmationServiceTests
             sut.SetResult(true);
         };
 
-        var result = await sut.ConfirmAsync(request);
+        var result = await sut.ConfirmAsync(request, TestContext.Current.CancellationToken);
 
         Assert.True(onShowFired);
         Assert.True(result);
@@ -72,7 +73,7 @@ public sealed class ConfirmationServiceTests
         var request = new ConfirmationRequest("Confirmation_Delete_Title", "Confirmation_Delete_Message");
         sut.OnShow += (_, _) => sut.Cancel();
 
-        var result = await sut.ConfirmAsync(request);
+        var result = await sut.ConfirmAsync(request, TestContext.Current.CancellationToken);
 
         Assert.False(result);
     }
@@ -92,7 +93,7 @@ public sealed class ConfirmationServiceTests
         var request = new ConfirmationRequest("Confirmation_Delete_Title", "Confirmation_Delete_Message");
         sut.OnShow += (_, _) => sut.SetResult(true);
 
-        var result = await sut.ConfirmAsync(request);
+        var result = await sut.ConfirmAsync(request, TestContext.Current.CancellationToken);
 
         Assert.True(result);
     }
@@ -111,8 +112,8 @@ public sealed class ConfirmationServiceTests
         var request = new ConfirmationRequest("Confirmation_Delete_Title", "Confirmation_Delete_Message");
         sut.OnShow += (_, _) => sut.SetResult(true);
 
-        _ = await sut.ConfirmAsync(request);
-        _ = await sut.ConfirmAsync(request);
+        _ = await sut.ConfirmAsync(request, TestContext.Current.CancellationToken);
+        _ = await sut.ConfirmAsync(request, TestContext.Current.CancellationToken);
 
         apiMock.Verify(x => x.UserSettings_GetProfileAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -133,9 +134,9 @@ public sealed class ConfirmationServiceTests
         var request = new ConfirmationRequest("Confirmation_Delete_Title", "Confirmation_Delete_Message");
         sut.OnShow += (_, _) => sut.SetResult(true);
 
-        _ = await sut.ConfirmAsync(request);
+        _ = await sut.ConfirmAsync(request, TestContext.Current.CancellationToken);
         await sut.InvalidateCacheAsync();
-        var result = await sut.ConfirmAsync(request);
+        var result = await sut.ConfirmAsync(request, TestContext.Current.CancellationToken);
 
         Assert.True(result);
         apiMock.Verify(x => x.UserSettings_GetProfileAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
@@ -161,7 +162,7 @@ public sealed class ConfirmationServiceTests
             sut.SetResult(false);
         };
 
-        _ = await sut.ConfirmAsync(request);
+        _ = await sut.ConfirmAsync(request, TestContext.Current.CancellationToken);
     }
 
     /// <summary>

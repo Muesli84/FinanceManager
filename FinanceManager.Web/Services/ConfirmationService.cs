@@ -58,7 +58,7 @@ public sealed class ConfirmationService : IConfirmationService
             return true;
         }
 
-        var tcs = new TaskCompletionSource<bool>();
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_lock)
         {
             _pendingRequest = request;

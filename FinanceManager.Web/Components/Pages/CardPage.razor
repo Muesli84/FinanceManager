@@ -7,7 +7,6 @@
 @inject IServiceProvider Services
 @inject NavigationManager NavigationManager
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Pages> Localizer
-@inject IConfirmationService ConfirmationService
 @inject IJSRuntime JS
 @using System
 @using FinanceManager.Shared.Dtos
@@ -388,28 +387,16 @@ else
     {
         try
         {
-            // choose confirmation message depending on current kind/subkind
-            var kindLower = (Kind ?? string.Empty).Trim().ToLowerInvariant();
-            var subLower = (SubKind ?? string.Empty).Trim().ToLowerInvariant();
-            var messageKey = "Confirmation_Delete_Message"; // fallback
-            if (kindLower == "accounts") messageKey = "Confirm_Delete_Account";
-            else if (kindLower == "securities" && subLower == "categories") messageKey = "Confirm_Delete_SecurityCategory";
-            else if (kindLower == "contacts" && subLower == "categories") messageKey = "Confirm_Delete_ContactCategory";
-            else if (kindLower == "statement-drafts") messageKey = "Confirm_Delete_StatementDraft";
-
-            var confirmed = await ConfirmationService.ConfirmAsync(new(
-                TitleResourceKey: "Confirmation_Delete_Title",
-                MessageResourceKey: messageKey,
-                Severity: ConfirmationSeverity.Critical));
-            if (!confirmed) return;
-
             if (_vm is FinanceManager.Web.ViewModels.Common.IDeletableViewModel deletable)
             {
+                // The view model is responsible for showing the confirmation dialog and performing the delete.
                 var ok = await deletable.DeleteAsync();
                 if (ok)
                     return;
-                var msg = deletable.LastError ?? "Delete failed";
-                await JS.InvokeVoidAsync("alert", msg);
+
+                // If the view model reports a concrete error, surface it; a null/empty error means the user cancelled.
+                if (!string.IsNullOrEmpty(deletable.LastError))
+                    await JS.InvokeVoidAsync("alert", deletable.LastError);
             }
             else
             {
