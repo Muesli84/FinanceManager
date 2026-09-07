@@ -1354,6 +1354,14 @@ public sealed class StatementDraftEntryCardViewModel : BaseCardViewModel<(string
     private async Task<bool> DeleteEntryAsync()
     {
         if (Entry == null || EntryId == Guid.Empty || DraftId == Guid.Empty) return false;
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return false;
+        }
+
         Loading = true; SetError(null, null); RaiseStateChanged();
         try
         {

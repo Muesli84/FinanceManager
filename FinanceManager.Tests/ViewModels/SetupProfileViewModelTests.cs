@@ -30,6 +30,7 @@ public sealed class SetupProfileViewModelTests
         services.AddSingleton<ICurrentUserService>(new TestCurrentUserService());
         services.AddSingleton(kpiCache);
         services.AddSingleton(api);
+        services.AddSingleton<IConfirmationService>(Mock.Of<IConfirmationService>());
         return services.BuildServiceProvider();
     }
 
@@ -125,6 +126,39 @@ public sealed class SetupProfileViewModelTests
         Assert.Equal("de-DE", vm.Model.PreferredLanguage);
         Assert.Equal("Europe/Berlin", vm.Model.TimeZoneId);
         Assert.True(vm.Dirty);
+    }
+
+    /// <summary>
+    /// Verifies that toggling <see cref="UserProfileSettingsDto.ShowConfirmations"/> marks the view model
+    /// dirty and that the value is persisted in the update request sent to the API.
+    /// </summary>
+    [Fact]
+    public async Task Save_Persists_ShowConfirmations()
+    {
+        var dto = new UserProfileSettingsDto
+        {
+            PreferredLanguage = "de",
+            TimeZoneId = "Europe/Berlin",
+            ShowConfirmations = true
+        };
+
+        var apiMock = new Mock<IApiClient>();
+        apiMock.Setup(a => a.UserSettings_GetProfileAsync(It.IsAny<CancellationToken>())).ReturnsAsync(dto);
+        apiMock.Setup(a => a.UserSettings_UpdateProfileAsync(It.IsAny<UserProfileSettingsUpdateRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var vm = new SetupProfileViewModel(CreateSp(apiMock.Object));
+        await vm.LoadAsync(TestContext.Current.CancellationToken);
+
+        vm.Model.ShowConfirmations = false;
+        vm.OnChanged();
+        Assert.True(vm.Dirty);
+
+        await vm.SaveAsync(TestContext.Current.CancellationToken);
+        apiMock.Verify(a => a.UserSettings_UpdateProfileAsync(
+            It.Is<UserProfileSettingsUpdateRequest>(r => r.ShowConfirmations == false),
+            It.IsAny<CancellationToken>()), Times.Once);
+        Assert.True(vm.SavedOk);
+        Assert.False(vm.Dirty);
     }
 
     /// <summary>

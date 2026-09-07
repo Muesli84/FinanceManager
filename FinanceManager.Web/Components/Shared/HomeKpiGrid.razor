@@ -6,10 +6,12 @@
 @using FinanceManager.Shared.Dtos.HomeKpi
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Web.ViewModels.Budget
+@using FinanceManager.Web.Services
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.Extensions.Localization
 
 @inject FinanceManager.Shared.IApiClient Api
+@inject IConfirmationService ConfirmationService
 @inject IStringLocalizer<FinanceManager.Web.Pages> Localizer
 @inject NavigationManager Nav
 @inject IServiceProvider Services
@@ -227,6 +229,14 @@
 
     private async Task DeleteKpiAsync(Guid id)
     {
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return;
+        }
+
         try
         {
             var ok = await Api.HomeKpis_DeleteAsync(id);

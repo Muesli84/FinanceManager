@@ -296,6 +296,14 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
     public override async Task<bool> DeleteAsync()
     {
         if (DraftId == Guid.Empty) return false;
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return false;
+        }
+
         try
         {
             var ok = await ApiClient.StatementDrafts_DeleteAsync(DraftId, CancellationToken.None);
@@ -549,6 +557,15 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
     public async Task BookAsync(bool ignoreWarnings = false)
     {
         if (DraftId == Guid.Empty) return;
+
+        if (!ignoreWarnings && !await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Book_Title",
+            MessageResourceKey: "Confirmation_Book_Message",
+            Severity: ConfirmationSeverity.Warning)))
+        {
+            return;
+        }
+
         // clear panels to avoid duplicate validation panels
         RaiseUiActionRequested("ClearEmbeddedPanel");
         Loading = true; SetError(null, null); LastValidationResult = null; RaiseStateChanged();

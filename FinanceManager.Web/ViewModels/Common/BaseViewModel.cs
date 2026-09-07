@@ -2,6 +2,7 @@ using FinanceManager.Shared;
 using Microsoft.Extensions.Localization;
 using FinanceManager.Domain.Attachments;
 using FinanceManager.Web.Components.Shared;
+using FinanceManager.Web.Services;
 using Microsoft.Extensions.DependencyInjection;
 using FinanceManager.Application;
 using FinanceManager.Shared.Dtos.Admin;
@@ -66,6 +67,7 @@ namespace FinanceManager.Web.ViewModels.Common
         private readonly List<BaseViewModel> _childViewModels = new();
         private IApiClient? _ApiClient;
         private NavigationManager? _Navigation;
+        private IConfirmationService? _confirmationService;
 
         /// <summary>
         /// Human-readable title for a view. Derived classes may override.
@@ -132,6 +134,21 @@ namespace FinanceManager.Web.ViewModels.Common
                 return _Navigation ??= ServiceProvider.GetRequiredService<NavigationManager>();
             }
         }
+
+        /// <summary>
+        /// Lazily resolved confirmation service used to request user confirmation before destructive actions.
+        /// </summary>
+        /// <value>The shared confirmation service or a no-op fallback.</value>
+        protected IConfirmationService ConfirmationService
+        {
+            get
+            {
+                return _confirmationService ??= GetConfirmationService();
+            }
+        }
+
+        private IConfirmationService GetConfirmationService()
+            => (ServiceProvider.GetService(typeof(IConfirmationService)) as IConfirmationService) ?? NullConfirmationService.Instance;
 
         // Lazy-resolved localizer. Resolve on first access and swallow resolution errors (e.g. provider disposed).
         private IStringLocalizer<Pages>? _localizerCache;

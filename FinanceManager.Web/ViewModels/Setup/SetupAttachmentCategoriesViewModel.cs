@@ -195,6 +195,14 @@ public sealed class SetupAttachmentCategoriesViewModel : BaseViewModel
     /// <returns>A task representing the asynchronous delete operation.</returns>
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return;
+        }
+
         Busy = true; SetError(null, null); ActionOk = false; RaiseStateChanged();
         try
         {

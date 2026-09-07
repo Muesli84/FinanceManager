@@ -342,6 +342,7 @@ public class AppDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
             b.Property(x => x.AlphaVantageApiKey).HasMaxLength(2048);
             b.Property(x => x.ShareAlphaVantageApiKey).HasDefaultValue(false);
             b.Property(x => x.CacheKpisInLocalStorage).HasDefaultValue(false).IsRequired();
+            b.Property(x => x.ShowConfirmations).HasDefaultValue(true).IsRequired();
             // Return analysis settings
             b.Property(x => x.BenchmarkSecurityId);
             b.Property(x => x.ShowSharpeRatio).HasDefaultValue(false).IsRequired();

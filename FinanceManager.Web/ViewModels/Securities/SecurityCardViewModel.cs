@@ -394,6 +394,14 @@ public sealed class SecurityCardViewModel : BaseCardViewModel<(string Key, strin
     public async Task<bool> ArchiveAsync()
     {
         if (Id == Guid.Empty) return false;
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Archive_Title",
+            MessageResourceKey: "Confirmation_Archive_Message",
+            Severity: ConfirmationSeverity.Warning)))
+        {
+            return false;
+        }
+
         Loading = true; SetError(null, null); RaiseStateChanged();
         try
         {
@@ -415,6 +423,14 @@ public sealed class SecurityCardViewModel : BaseCardViewModel<(string Key, strin
     public override async Task<bool> DeleteAsync()
     {
         if (Id == Guid.Empty) return false;
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return false;
+        }
+
         Loading = true; SetError(null, null); RaiseStateChanged();
         try
         {

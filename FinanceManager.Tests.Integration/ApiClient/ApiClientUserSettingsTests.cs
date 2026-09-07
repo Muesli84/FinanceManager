@@ -44,7 +44,7 @@ public class ApiClientUserSettingsTests : IClassFixture<TestWebApplicationFactor
 
     /// <summary>
     /// Verifies that a freshly registered user's profile starts with no language/timezone preference, no
-    /// stored Alpha Vantage API key, and KPI caching disabled.
+    /// stored Alpha Vantage API key, KPI caching disabled, and confirmation dialogs enabled.
     /// </summary>
     [Fact]
     public async Task UserSettings_GetProfile_Returns_Defaults()
@@ -54,10 +54,36 @@ public class ApiClientUserSettingsTests : IClassFixture<TestWebApplicationFactor
 
         var profile = await api.UserSettings_GetProfileAsync(TestContext.Current.CancellationToken);
         profile.Should().NotBeNull();
-        // defaults: no language, no timezone, no API key, KPI caching disabled
+        // defaults: no language, no timezone, no API key, KPI caching disabled, confirmations enabled
         profile!.HasAlphaVantageApiKey.Should().BeFalse();
         profile.ShareAlphaVantageApiKey.Should().BeFalse();
         profile.CacheKpisInLocalStorage.Should().BeFalse();
+        profile.ShowConfirmations.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Verifies that toggling the "show confirmation dialogs" preference persists and is reflected back on
+    /// the next read.
+    /// </summary>
+    [Fact]
+    public async Task UserSettings_UpdateProfile_Persists_ShowConfirmations()
+    {
+        var api = CreateClient();
+        await EnsureAuthenticatedAsync(api);
+
+        var ok = await api.UserSettings_UpdateProfileAsync(new UserProfileSettingsUpdateRequest(
+            PreferredLanguage: null,
+            TimeZoneId: null,
+            AlphaVantageApiKey: null,
+            ClearAlphaVantageApiKey: null,
+            ShareAlphaVantageApiKey: null,
+            CacheKpisInLocalStorage: false,
+            ShowConfirmations: false), TestContext.Current.CancellationToken);
+        ok.Should().BeTrue();
+
+        var profile = await api.UserSettings_GetProfileAsync(TestContext.Current.CancellationToken);
+        profile.Should().NotBeNull();
+        profile!.ShowConfirmations.Should().BeFalse();
     }
 
     /// <summary>

@@ -121,6 +121,14 @@ public sealed class HomeViewModel : ViewModelBase
             return;
         }
 
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Finalize_Title",
+            MessageResourceKey: "Confirmation_Finalize_Message",
+            Severity: ConfirmationSeverity.Warning)))
+        {
+            return;
+        }
+
         var request = new MassImportBatchRequestDto
         {
             DialogPolicy = MassImportDialogPolicy,

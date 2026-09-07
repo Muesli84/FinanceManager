@@ -11,11 +11,13 @@
 @using FinanceManager.Shared.Dtos.Securities
 @using FinanceManager.Web.ViewModels.Common
 @using FinanceManager.Web.ViewModels.Reports
+@using FinanceManager.Web.Services
 @inject NavigationManager Nav
 @inject HttpClient Http
 @inject IServiceProvider Services
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ReportDashboard> Localizer
 @inject FinanceManager.Shared.IApiClient Api
+@inject IConfirmationService ConfirmationService
 @using FinanceManager.Web.Components.Shared
 @using Microsoft.AspNetCore.Components
 @using FinanceManager.Web.ViewModels
@@ -957,6 +959,14 @@
 
     private async Task DeleteFavoriteAsync(Guid id)
     {
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return;
+        }
+
         var ok = await _vm!.DeleteFavoriteAsync(id, default);
         if (ok)
         {

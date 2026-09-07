@@ -176,6 +176,7 @@ namespace FinanceManager.Web
             }).AddHttpMessageHandler<AuthenticatedHttpClientHandler>();
             builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
             builder.Services.AddScoped<IApiClient>(sp => new ApiClient(sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api")));
+            builder.Services.AddScoped<IConfirmationService, ConfirmationService>();
             builder.Services.AddScoped<IKpiLocalStorageCache, KpiLocalStorageCache>();
 
             // Self-update services: the auto-update subsystem is provided by the external msTools.Updater release

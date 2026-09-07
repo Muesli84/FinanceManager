@@ -158,6 +158,14 @@ public sealed class SecurityCategoryCardViewModel : BaseCardViewModel<(string Ke
     public override async Task<bool> DeleteAsync()
     {
         if (Id == Guid.Empty) return false;
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return false;
+        }
+
         try
         {
             var ok = await ApiClient.SecurityCategories_DeleteAsync(Id);

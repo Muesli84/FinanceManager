@@ -30,6 +30,7 @@ public sealed class HomeKpiGridTests : BunitContext
         Services.AddLocalization(options => options.ResourcesPath = "Resources");
         Services.AddSingleton(typeof(IStringLocalizer<Pages>), new PagesStringLocalizer());
         Services.AddSingleton(TimeProvider.System);
+        Services.AddSingleton<IConfirmationService>(Mock.Of<IConfirmationService>());
     }
 
     /// <summary>

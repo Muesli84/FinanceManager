@@ -225,6 +225,14 @@ public sealed class ContactCardViewModel : BaseCardViewModel<(string Key, string
     public override async Task<bool> DeleteAsync()
     {
         if (Contact == null) return false;
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return false;
+        }
+
         Loading = true; SetError(null, null); RaiseStateChanged();
         try
         {
