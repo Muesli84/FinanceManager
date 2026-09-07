@@ -70,6 +70,6 @@
 
 ## Recommendations (non-blocking)
 
-1. Add an explicit `ConfirmationDialogHost` component test that simulates show/confirm/hide to lock the `OnChanged` re-render behavior in place.
-2. Consider adding a Playwright or E2E test that toggles `ShowConfirmations` and verifies the dialog is suppressed across a real action.
+1. ~~Add an explicit `ConfirmationDialogHost` component test that simulates show/confirm/hide.~~ Done — `ConfirmationDialogHostTests` now covers the host re-render behavior.
+2. Consider extending the E2E test to toggle `ShowConfirmations` and verify the dialog is suppressed across a real action.
 3. Document the new `ConfirmationService` usage pattern in `AGENTS.md` or the project programming guidelines (see generated `AGENTS.md`).

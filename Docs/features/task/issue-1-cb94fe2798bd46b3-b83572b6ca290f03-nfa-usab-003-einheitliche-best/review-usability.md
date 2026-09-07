@@ -44,4 +44,4 @@
 
 ## Open Points
 
-- No E2E verification of the actual browser dialog rendering and focus behavior was performed. This should be covered in a follow-up manual or Playwright test if the project adds E2E coverage for confirmation flows.
+- E2E coverage was added with `ConfirmationDialogE2ETests`, which verifies the dialog renders, can be cancelled, and performs the delete on confirm. Keyboard-focus behavior is covered by the `ConfirmDialogTests` bUnit tests; a dedicated Playwright focus assertion can be added later if required.

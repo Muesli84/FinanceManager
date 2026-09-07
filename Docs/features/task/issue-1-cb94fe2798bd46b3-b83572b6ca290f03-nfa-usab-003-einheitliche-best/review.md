@@ -19,6 +19,6 @@ Detailed review findings are split into:
 - [x] Build green.
 - [x] Unit / integration tests green.
 - [x] Migration safe for existing installations.
-- [ ] E2E tests not executed (accepted risk; tracked in test-results.md).
+- [x] E2E smoke test executed successfully and a dedicated confirmation-dialog E2E test was added.
 
 No blockers remain.
