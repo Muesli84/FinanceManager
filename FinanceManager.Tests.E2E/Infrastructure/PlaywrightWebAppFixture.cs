@@ -321,7 +321,7 @@ public sealed class PlaywrightWebAppFixture : IAsyncLifetime
         startInfo.Environment["E2E__AccountStatisticsFaultInjectionEnabled"] = "true";
         startInfo.Environment["E2E__AccountStatisticsFaultFile"] = _accountStatisticsFaultFile;
         startInfo.Environment["ConnectionStrings__Default"] = $"Data Source={dbPath}";
-        startInfo.Environment["BackgroundTasks__Enabled"] = "false";
+        startInfo.Environment["BackgroundTasks__Enabled"] = "true";
         startInfo.Environment["Workers__SecurityPriceWorker__Enabled"] = "false";
         startInfo.Environment["FileLogging__Enabled"] = "false";
         startInfo.Environment["DetailedErrors"] = "true";
