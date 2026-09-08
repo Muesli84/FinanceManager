@@ -622,6 +622,14 @@ public sealed class BudgetPurposeCardViewModel : BaseCardViewModel<(string Key, 
             return false;
         }
 
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return false;
+        }
+
         Loading = true;
         SetError(null, null);
         RaiseStateChanged();

@@ -157,6 +157,14 @@ public sealed class SetupBackupsViewModel : BaseViewModel, IUploadTrigger
     /// <returns>A task that completes when deletion has finished.</returns>
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return;
+        }
+
         BeginBusyOperation();
         try
         {

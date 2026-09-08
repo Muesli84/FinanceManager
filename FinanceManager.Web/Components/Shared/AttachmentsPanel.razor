@@ -1,7 +1,9 @@
 @using FinanceManager.Domain.Attachments
 @using FinanceManager.Shared.Dtos
 @using FinanceManager.Shared.Dtos.Attachments
+@using FinanceManager.Web.Services
 @inject FinanceManager.Shared.IApiClient Api
+@inject IConfirmationService ConfirmationService
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Shared.AttachmentsPanel> Localizer
 @inject IJSRuntime JS
 
@@ -398,9 +400,13 @@ else
     {
         try
         {
-            bool ok = true;
-            try { ok = await JS.InvokeAsync<bool>("confirm", Localizer["Confirm_Delete"].Value); } catch { }
-            if (!ok) { return; }
+            if (!await ConfirmationService.ConfirmAsync(new(
+                TitleResourceKey: "Confirmation_Delete_Title",
+                MessageResourceKey: "Confirmation_Delete_Message",
+                Severity: ConfirmationSeverity.Critical)))
+            {
+                return;
+            }
             var done = await Api.Attachments_DeleteAsync(id);
             if (!done)
             {

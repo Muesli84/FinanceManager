@@ -4,6 +4,7 @@ using FinanceManager.Shared;
 using FinanceManager.Shared.Dtos.Admin;
 using FinanceManager.Shared.Dtos.Statements;
 using FinanceManager.Web.Components.Pages;
+using FinanceManager.Web.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Moq;
@@ -22,6 +23,7 @@ public sealed class ListPageTests : BunitContext
     public ListPageTests()
     {
         Services.AddScoped<LoadingBarService>();
+        Services.AddSingleton<IConfirmationService>(NullConfirmationService.Instance);
         JSInterop.SetupVoid("financeManager.loadingBar.start").SetVoidResult();
         JSInterop.SetupVoid("financeManager.loadingBar.stop").SetVoidResult();
     }

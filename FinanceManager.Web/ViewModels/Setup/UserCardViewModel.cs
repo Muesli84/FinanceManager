@@ -193,6 +193,14 @@ public sealed class UserCardViewModel : BaseCardViewModel<(string Key, string Va
     public async Task<bool> DeleteAsync(CancellationToken ct = default)
     {
         if (User == null) return false;
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return false;
+        }
+
         try
         {
             var ok = await _api.Admin_DeleteUserAsync(User.Id, ct);

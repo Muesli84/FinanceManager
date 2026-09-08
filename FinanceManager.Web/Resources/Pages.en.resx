@@ -2917,4 +2917,16 @@
   <data name="Panel_Label_ValidationResult" xml:space="preserve"><value>Validation</value></data>
   <data name="Panel_Label_Setup" xml:space="preserve"><value>Settings</value></data>
   <data name="Panel_Label_AccountsStatistics" xml:space="preserve"><value>Account statistics</value></data>
+  <data name="Settings_ShowConfirmations_Label" xml:space="preserve"><value>Show confirmation dialogs</value></data>
+  <data name="Settings_ShowConfirmations_Description" xml:space="preserve"><value>Ask before critical actions such as deleting or booking.</value></data>
+  <data name="Confirmation_Delete_Title" xml:space="preserve"><value>Confirm delete</value></data>
+  <data name="Confirmation_Delete_Message" xml:space="preserve"><value>The item will be permanently removed.</value></data>
+  <data name="Confirmation_Finalize_Title" xml:space="preserve"><value>Confirm finalize</value></data>
+  <data name="Confirmation_Finalize_Message" xml:space="preserve"><value>This action cannot be undone.</value></data>
+  <data name="Confirmation_Merge_Title" xml:space="preserve"><value>Confirm merge</value></data>
+  <data name="Confirmation_Merge_Message" xml:space="preserve"><value>The selected contacts will be merged.</value></data>
+  <data name="Confirmation_Archive_Title" xml:space="preserve"><value>Confirm archive</value></data>
+  <data name="Confirmation_Archive_Message" xml:space="preserve"><value>The object will be archived.</value></data>
+  <data name="Confirmation_Book_Title" xml:space="preserve"><value>Confirm booking</value></data>
+  <data name="Confirmation_Book_Message" xml:space="preserve"><value>The postings will be finalized.</value></data>
 </root>

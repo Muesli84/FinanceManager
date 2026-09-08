@@ -61,6 +61,13 @@
                   <label class="setup-checkbox-label" for="cache-kpis">@Localizer["SetupProfile_Help_CacheKpis"]</label>
               </div>
           </div>
+          <div class="form-row setup-checkbox-row">
+              <label class="setup-checkbox-row-title" for="show-confirmations">@Localizer["Settings_ShowConfirmations_Label"]</label>
+              <div class="setup-checkbox-control">
+                  <input id="show-confirmations" type="checkbox" @bind="_vm.Model.ShowConfirmations" @bind:after="(()=> _vm.OnChanged())" />
+                  <label class="setup-checkbox-label" for="show-confirmations">@Localizer["Settings_ShowConfirmations_Description"]</label>
+              </div>
+          </div>
       </div>
 
       if (!string.IsNullOrWhiteSpace(_vm.SaveError))

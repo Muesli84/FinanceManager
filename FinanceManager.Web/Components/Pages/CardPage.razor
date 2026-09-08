@@ -12,6 +12,7 @@
 @using FinanceManager.Shared.Dtos
 @using FinanceManager.Web.Components.Shared
 @using FinanceManager.Web.Extensions
+@using FinanceManager.Web.Services
 @using FinanceManager.Web.ViewModels
 @using FinanceManager.Web.ViewModels.Accounts
 @using FinanceManager.Web.ViewModels.Common
@@ -36,6 +37,8 @@ else
         <PageTitle>@($"{GetKindTitle()}: {_vm.Title}")</PageTitle>
 
         <BackgroundTaskStatusPanel AllowedTypes="@((_vm as BaseViewModel)?.VisibleBackgroundTaskTypes)" />
+
+        <ConfirmationDialogHost />
 
         <EmbeddedPanelHost TKeyValue="(string,string)" Provider="_vm" Position="EmbeddedPanelPosition.AfterRibbon" />
         <GenericCardPage TKeyValue="(string, string)" Provider="_vm" Localizer="Localizer" LoadingText="@Localizer["General_Loading"]" />
@@ -386,26 +389,16 @@ else
     {
         try
         {
-            // choose confirmation message depending on current kind/subkind
-            var kindLower = (Kind ?? string.Empty).Trim().ToLowerInvariant();
-            var subLower = (SubKind ?? string.Empty).Trim().ToLowerInvariant();
-            var confirmKey = "Confirm_Delete_Item"; // fallback
-            if (kindLower == "accounts") confirmKey = "Confirm_Delete_Account";
-            else if (kindLower == "securities" && subLower == "categories") confirmKey = "Confirm_Delete_SecurityCategory";
-            else if (kindLower == "contacts" && subLower == "categories") confirmKey = "Confirm_Delete_ContactCategory";
-            else if (kindLower == "statement-drafts") confirmKey = "Confirm_Delete_StatementDraft";
-
-            var confirmed = true;
-            try { confirmed = await JS.InvokeAsync<bool>("confirm", Localizer[confirmKey].Value ?? Localizer["Confirm_Delete_Item"].Value ?? "Delete item?"); } catch { }
-            if (!confirmed) return;
-
             if (_vm is FinanceManager.Web.ViewModels.Common.IDeletableViewModel deletable)
             {
+                // The view model is responsible for showing the confirmation dialog and performing the delete.
                 var ok = await deletable.DeleteAsync();
                 if (ok)
                     return;
-                var msg = deletable.LastError ?? "Delete failed";
-                await JS.InvokeVoidAsync("alert", msg);
+
+                // If the view model reports a concrete error, surface it; a null/empty error means the user cancelled.
+                if (!string.IsNullOrEmpty(deletable.LastError))
+                    await JS.InvokeVoidAsync("alert", deletable.LastError);
             }
             else
             {

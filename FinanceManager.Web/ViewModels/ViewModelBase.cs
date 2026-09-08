@@ -1,7 +1,9 @@
 using FinanceManager.Application;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.DependencyInjection;
 using FinanceManager.Domain.Attachments;
 using FinanceManager.Web.Components.Shared;
+using FinanceManager.Web.Services;
 
 namespace FinanceManager.Web.ViewModels;
 
@@ -44,6 +46,7 @@ public abstract class ViewModelBase : IAsyncDisposable, IRibbonProvider
     private readonly List<ViewModelBase> _childViewModels = new();
     private readonly CancellationTokenSource _cts = new();
     private readonly ICurrentUserService _currentUser;
+    private IConfirmationService? _confirmationService;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ViewModelBase"/> using the provided service provider.
@@ -64,6 +67,16 @@ public abstract class ViewModelBase : IAsyncDisposable, IRibbonProvider
     /// Backwards-compatible alias used by existing view models to access the service provider.
     /// </summary>
     protected IServiceProvider ServiceProvider => _services;
+
+    /// <summary>
+    /// Lazily resolved confirmation service used to request user confirmation before destructive actions.
+    /// Falls back to a no-op implementation when no service is registered (e.g. in headless tests).
+    /// </summary>
+    /// <value>The shared confirmation service or a no-op fallback.</value>
+    protected IConfirmationService ConfirmationService => _confirmationService ??= GetConfirmationService();
+
+    private IConfirmationService GetConfirmationService()
+        => (_services.GetService(typeof(IConfirmationService)) as IConfirmationService) ?? NullConfirmationService.Instance;
 
     /// <summary>
     /// Event raised when the view model requests the UI to refresh its rendering of bound state.

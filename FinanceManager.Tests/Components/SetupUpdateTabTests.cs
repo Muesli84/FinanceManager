@@ -249,6 +249,9 @@ public sealed class SetupUpdateTabTests : BunitContext
         }
         Services.AddLocalization(options => options.ResourcesPath = "Resources");
         Services.AddSingleton(typeof(IStringLocalizer<Pages>), new PagesStringLocalizer());
+        var confirmationMock = new Mock<IConfirmationService>();
+        confirmationMock.Setup(c => c.ConfirmAsync(It.IsAny<ConfirmationRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        Services.AddSingleton(confirmationMock.Object);
         var sp = Services.BuildServiceProvider();
         var vm = new SetupUpdateViewModel(sp);
         return (vm, sp.GetRequiredService<IStringLocalizer<Pages>>());

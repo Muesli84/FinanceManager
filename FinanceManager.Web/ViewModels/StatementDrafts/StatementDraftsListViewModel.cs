@@ -371,6 +371,14 @@ public sealed class StatementDraftsListViewModel : BaseListViewModel<StatementDr
     {
         try
         {
+            if (!await ConfirmationService.ConfirmAsync(new(
+                TitleResourceKey: "Confirmation_Delete_Title",
+                MessageResourceKey: "Confirmation_Delete_Message",
+                Severity: ConfirmationSeverity.Critical)))
+            {
+                return false;
+            }
+
             var ok = await _api.StatementDrafts_DeleteAllAsync(CancellationToken.None);
             if (!ok)
             {
@@ -448,6 +456,14 @@ public sealed class StatementDraftsListViewModel : BaseListViewModel<StatementDr
     {
         try
         {
+            if (!await ConfirmationService.ConfirmAsync(new(
+                TitleResourceKey: "Confirmation_Book_Title",
+                MessageResourceKey: "Confirmation_Book_Message",
+                Severity: ConfirmationSeverity.Warning)))
+            {
+                return;
+            }
+
             SetError(null, null);
             var status = await _api.StatementDrafts_StartBookAllAsync(ignoreWarnings, abortOnFirstIssue, bookEntriesIndividually, CancellationToken.None);
             IsBooking = status?.Running ?? true;
@@ -557,6 +573,14 @@ public sealed class StatementDraftsListViewModel : BaseListViewModel<StatementDr
     {
         try
         {
+            if (!await ConfirmationService.ConfirmAsync(new(
+                TitleResourceKey: "Confirmation_Finalize_Title",
+                MessageResourceKey: "Confirmation_Finalize_Message",
+                Severity: ConfirmationSeverity.Warning)))
+            {
+                return;
+            }
+
             SetError(null, null);
             // Stop local polling first to avoid races
             StopBookStatusPolling();
