@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Die Git-Hooks wurden aus dem Pattern-Collection-Repository übernommen und erweitert: Pre-Commit prüft nun Übersetzungen, XML-Dokumentation, lokalisierte UI-Texte, unreferenzierte Razor-Komponenten, Stub-Implementierungen und Enum-Testabdeckung; Pre-Push führt die statischen Prüfungen strikt für das gesamte Repository aus.
+- Die Bankübersicht zeigt nun Gesamtbestand, Jahres-/Monatsveränderung und Verteilungen nach Kontotyp sowie Bankkontakt; Suche, leere Ansichten und Ladefehler bleiben konsistent mit der Kontoliste.
 - Startseiten-KPIs können in den Profileinstellungen optional im Browser-LocalStorage zwischengespeichert werden; gespeicherte Werte werden sofort angezeigt und im Hintergrund aktualisiert.
 - Aktive Navigation, Benutzerinteraktion und Kontoauszugs-Schnellbearbeitung halten die Anmeldung nun im Hintergrund per Keepalive aktiv.
 - Beim Verlassen eines QuickEdit-Eingabefelds wird ein gedrosselter Server-Ping ausgelöst, ohne lokale Eingaben zu verlieren oder die Seite neu zu laden.

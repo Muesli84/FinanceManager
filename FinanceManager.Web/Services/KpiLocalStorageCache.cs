@@ -8,6 +8,7 @@ namespace FinanceManager.Web.Services;
 /// </summary>
 /// <param name="Enabled">Whether KPI caching is currently active.</param>
 /// <param name="UserId">Optional user identifier used to scope local storage keys.</param>
+/// <returns>The result.</returns>
 public sealed record KpiLocalStorageContext(bool Enabled, string? UserId);
 
 /// <summary>
@@ -30,21 +31,32 @@ public interface IKpiLocalStorageCache
     /// <summary>
     /// Reads a typed value from the local storage cache, or <c>default</c> when missing or unreadable.
     /// </summary>
+    /// <typeparam name="T">The type parameter.</typeparam>
+    /// <param name="key">The key.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     ValueTask<T?> GetAsync<T>(string key, CancellationToken ct = default);
 
     /// <summary>
     /// Stores a typed value in the local storage cache. No-op when the context is disabled.
     /// </summary>
+    /// <typeparam name="T">The type parameter.</typeparam>
+    /// <param name="key">The key.</param>
+    /// <param name="value">The value.</param>
+    /// <param name="ct">Cancellation token.</param>
     ValueTask SetAsync<T>(string key, T value, CancellationToken ct = default);
 
     /// <summary>
     /// Removes a single cache entry.
     /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="ct">Cancellation token.</param>
     ValueTask RemoveAsync(string key, CancellationToken ct = default);
 
     /// <summary>
     /// Removes all cache entries owned by this application (or the current user when a user id was set).
     /// </summary>
+    /// <param name="ct">Cancellation token.</param>
     ValueTask RemoveAllAsync(CancellationToken ct = default);
 }
 

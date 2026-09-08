@@ -53,6 +53,7 @@ public sealed class BackupsController : ControllerBase
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with a read-only list of <see cref="BackupDto"/> instances.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<BackupDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
@@ -63,6 +64,7 @@ public sealed class BackupsController : ControllerBase
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the created <see cref="BackupDto"/>.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(BackupDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> CreateAsync(CancellationToken ct)
@@ -75,6 +77,8 @@ public sealed class BackupsController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the created <see cref="BackupDto"/>, or 400 Bad Request when the file is invalid or duplicate.</returns>
     /// <exception cref="System.IO.FileLoadException">Thrown when a backup with the same filename already exists (mapped to 400).</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("upload")]
     [RequestSizeLimit(1_024_000_000)]
     [RequestFormLimits(MultipartBodyLengthLimit = 1_024_000_000)]
@@ -131,6 +135,9 @@ public sealed class BackupsController : ControllerBase
     /// <param name="request">Restore request payload containing the confirmation text used to guard against accidental restores.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 No Content when restore succeeded; 404 Not Found when the backup does not exist.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/apply")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -151,6 +158,10 @@ public sealed class BackupsController : ControllerBase
     /// <param name="request">Restore request payload containing the confirmation text (and optionally the expected file name) used to guard against accidental restores.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with a <see cref="FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto"/> describing the enqueued or current task status.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
+    /// <response code="409">The HTTP 409 response.</response>
     [HttpPost("{id:guid}/apply/start")]
     [ProducesResponseType(typeof(FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiErrorDto), StatusCodes.Status400BadRequest)]
@@ -188,6 +199,7 @@ public sealed class BackupsController : ControllerBase
     /// Gets status of current or last backup restore task for the user.
     /// </summary>
     /// <returns>200 OK with a <see cref="FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto"/> describing the task status (empty status when none available).</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("restore/status")]
     [ProducesResponseType(typeof(FinanceManager.Shared.Dtos.Admin.BackupRestoreStatusDto), StatusCodes.Status200OK)]
     public IActionResult GetStatus()
@@ -208,6 +220,7 @@ public sealed class BackupsController : ControllerBase
     /// Cancels the currently running backup restore task if present.
     /// </summary>
     /// <returns>204 No Content always.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
     [HttpPost("restore/cancel")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public IActionResult Cancel()
@@ -226,6 +239,8 @@ public sealed class BackupsController : ControllerBase
     /// <param name="id">Backup id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 No Content when deletion succeeded; 404 Not Found when the backup does not exist.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

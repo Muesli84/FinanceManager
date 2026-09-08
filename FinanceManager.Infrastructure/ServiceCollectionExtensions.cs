@@ -89,6 +89,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContactService, ContactService>();
         services.AddSingleton<IKnownContactCatalog, KnownContactCatalog>();
         services.AddScoped<IContactCategoryService, ContactCategoryService>();
+        services.AddScoped<ITimeZoneResolver, TimeZoneResolver>();
+        services.AddScoped<IAccountStatisticsPeriodProvider, AccountStatisticsPeriodProvider>();
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IStatementDraftService, StatementDraftService>();
         services.AddScoped<IMassImportOrchestrator, MassImportOrchestrator>();

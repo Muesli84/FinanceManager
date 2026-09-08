@@ -11,6 +11,7 @@ namespace FinanceManager.Shared.Dtos.Admin;
 /// <param name="HolidayProvider">The holiday provider kind as string.</param>
 /// <param name="HolidayCountryCode">Optional ISO country code.</param>
 /// <param name="HolidaySubdivisionCode">Optional region/subdivision code.</param>
+/// <returns>The result.</returns>
 public sealed record UserNotificationSettingsUpdateRequest(
     bool MonthlyReminderEnabled,
     [param: Range(0, 23)] int? MonthlyReminderHour,

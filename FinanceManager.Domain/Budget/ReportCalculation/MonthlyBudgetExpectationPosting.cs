@@ -104,20 +104,30 @@ public sealed class MonthlyBudgetExpectationPosting
     /// <summary>
     /// Gets the sum of the amounts currently assigned to this occurrence.
     /// </summary>
-    public decimal SumAssignedAmount => _assignedPostings.Sum(p => p.Amount);
+    /// <returns>The result.</returns>
+    public decimal SumAssignedAmount
+    {
+        get
+        {
+            return _assignedPostings.Sum(p => p.Amount);
+        }
+    }
 
     /// <summary>
     /// Gets the remaining capacity (absolute value) of this occurrence before it is considered exhausted.
     /// </summary>
+    /// <returns>The result.</returns>
     public decimal RemainingCapacity => Math.Max(0m, Math.Abs(Amount) - Math.Abs(SumAssignedAmount));
 
     // Clears all currently assigned postings, allowing re-assignment (used by the finish phase when
     // several occurrences for the same purpose need to be re-assigned in posting-date order).
-    internal void Reset() => _assignedPostings.Clear();
+    internal void Reset()
+        => _assignedPostings.Clear();
 
     // Records a posting that matched this occurrence's source/period/pattern but could not be assigned
     // to it (see UnvaluedMatchedPostings).
-    internal void AddUnvaluedMatch(MonthlyBudgetRealization posting) => _unvaluedMatchedPostings.Add(posting);
+    internal void AddUnvaluedMatch(MonthlyBudgetRealization posting)
+        => _unvaluedMatchedPostings.Add(posting);
 
     // Assigns as much of 'posting' as fits into RemainingCapacity. Returns the leftover amount
     // (same sign as posting's amount) that could not be absorbed.
@@ -154,6 +164,7 @@ public sealed class MonthlyBudgetExpectationPosting
 /// </summary>
 /// <param name="PeriodStart">Inclusive start date of the occurrence's period.</param>
 /// <param name="PeriodEnd">Inclusive end date of the occurrence's period.</param>
+/// <returns>The result.</returns>
 public readonly record struct RuleOccurrencePeriod(DateOnly PeriodStart, DateOnly PeriodEnd);
 
 /// <summary>
@@ -161,4 +172,5 @@ public readonly record struct RuleOccurrencePeriod(DateOnly PeriodStart, DateOnl
 /// </summary>
 /// <param name="Pattern">The pattern (plain substring or regular expression), or <c>null</c> when the rule does not restrict matching by pattern.</param>
 /// <param name="IsRegex">Whether <paramref name="Pattern"/> should be treated as a regular expression rather than a plain substring.</param>
+/// <returns>The result.</returns>
 public readonly record struct PurposeMatchPattern(string? Pattern, bool IsRegex);

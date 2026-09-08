@@ -38,6 +38,7 @@ public enum UiRibbonRegisterKind
 /// <param name="Disabled">Whether the action should be rendered disabled.</param>
 /// <param name="Tooltip">Optional tooltip text.</param>
 /// <param name="Callback">Callback executed when the action is invoked.</param>
+/// <returns>The result.</returns>
 public sealed record UiRibbonAction(
     string Id,
     string Label,
@@ -80,6 +81,7 @@ public sealed record UiRibbonAction(
 /// <param name="Title">Tab display title.</param>
 /// <param name="Items">Actions contained in the tab.</param>
 /// <param name="Sort">Optional sort index used by consumers to order tabs.</param>
+/// <returns>The result.</returns>
 public sealed record UiRibbonTab(string Title, List<UiRibbonAction> Items, int Sort = 0);
 
 /// <summary>
@@ -87,18 +89,21 @@ public sealed record UiRibbonTab(string Title, List<UiRibbonAction> Items, int S
 /// </summary>
 /// <param name="Kind">Kind of the register.</param>
 /// <param name="Tabs">Tabs contained in this register; may be <c>null</c> for empty registers.</param>
+/// <returns>The result.</returns>
 public sealed record UiRibbonRegister(UiRibbonRegisterKind Kind, List<UiRibbonTab>? Tabs)
 {
     /// <summary>
     /// Helper property exposing the title of the first tab for compatibility with older callers that expect a flat shape.
     /// Returns an empty string when no tabs are present.
     /// </summary>
+    /// <returns>The result.</returns>
     public string Title => (Tabs != null && Tabs.Count > 0) ? Tabs[0].Title : string.Empty;
 
     /// <summary>
     /// Helper property exposing the items of the first tab for compatibility with older callers that expect a flat shape.
     /// Returns an empty list when no tabs are present.
     /// </summary>
+    /// <returns>The result.</returns>
     public List<UiRibbonAction> Items => (Tabs != null && Tabs.Count > 0) ? Tabs[0].Items : new List<UiRibbonAction>();
 }
 
@@ -112,6 +117,7 @@ public sealed record UiRibbonRegister(UiRibbonRegisterKind Kind, List<UiRibbonTa
 /// <param name="Action">Action identifier used to identify the item when invoked.</param>
 /// <param name="Tooltip">Optional tooltip text.</param>
 /// <param name="Callback">Optional callback invoked when the item is activated.</param>
+/// <returns>The result.</returns>
 public sealed record UiRibbonItem(
     string Label,
     string IconSvg,
@@ -127,4 +133,5 @@ public sealed record UiRibbonItem(
 /// </summary>
 /// <param name="Title">Group title.</param>
 /// <param name="Items">Items included in the group.</param>
+/// <returns>The result.</returns>
 public sealed record UiRibbonGroup(string Title, List<UiRibbonItem> Items);

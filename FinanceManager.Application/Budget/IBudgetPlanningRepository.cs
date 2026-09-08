@@ -26,7 +26,7 @@ public interface IBudgetPlanningRepository
     /// <param name="to">End period (inclusive).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Tuple of rules and overrides.</returns>
-    Task<(IReadOnlyList<BudgetRule> Rules, IReadOnlyList<BudgetOverride> Overrides)> GetRulesAndOverridesAsync(
+    Task<(IReadOnlyList<BudgetRule>, IReadOnlyList<BudgetOverride>)> GetRulesAndOverridesAsync(
         Guid ownerUserId,
         IReadOnlyList<Guid> purposeIds,
         BudgetPeriodKey from,

@@ -108,6 +108,7 @@ public sealed class BudgetPurpose : Entity, IAggregateRoot
     /// <summary>
     /// Sets how matching postings are valued for this purpose.
     /// </summary>
+    /// <param name="valuationType">The valuation type.</param>
     public void SetValuationType(BudgetValuationType valuationType)
     {
         ValuationType = Enum.IsDefined(valuationType) ? valuationType : BudgetValuationType.ExactPostings;
@@ -125,17 +126,20 @@ public sealed class BudgetPurpose : Entity, IAggregateRoot
     /// <param name="SourceId">Source id.</param>
     /// <param name="BudgetCategoryId">Optional category id.</param>
     /// <param name="ValuationType">Determines how matching postings are valued.</param>
+    /// <returns>The result.</returns>
     public sealed record BudgetPurposeBackupDto(Guid Id, Guid OwnerUserId, string Name, string? Description, BudgetSourceType SourceType, Guid SourceId, Guid? BudgetCategoryId, BudgetValuationType ValuationType = BudgetValuationType.ExactPostings);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this budget purpose.
     /// </summary>
+    /// <returns>The result.</returns>
     public BudgetPurposeBackupDto ToBackupDto()
         => new BudgetPurposeBackupDto(Id, OwnerUserId, Name, Description, SourceType, SourceId, BudgetCategoryId, ValuationType);
 
     /// <summary>
     /// Applies values from the provided backup DTO to this entity.
     /// </summary>
+    /// <param name="dto">The dto.</param>
     public void AssignBackupDto(BudgetPurposeBackupDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);

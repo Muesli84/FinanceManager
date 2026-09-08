@@ -195,7 +195,7 @@ public class ApiClientBackupsWithDemoDataTests : IClassFixture<TestWebApplicatio
         var securitysService = sp.GetRequiredService<ISecurityService>();
         var securities = await securitysService.ListAsync(userId, false, ct);
         var bankAccountService = sp.GetRequiredService<IAccountService>();
-        var bankAccounts = await bankAccountService.ListAsync(userId, 0, int.MaxValue, ct);
+        var bankAccounts = await bankAccountService.ListAsync(userId, 0, int.MaxValue, bankContactId: null, q: null, ct);
 
         var result = new List<AggregateDto>();
         foreach (var c in contacts.OrderBy(c => c.Name))

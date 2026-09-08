@@ -58,6 +58,7 @@ public sealed class AliasName : Entity
     /// <param name="Pattern">Alias pattern string.</param>
     /// <param name="CreatedUtc">Creation timestamp in UTC.</param>
     /// <param name="ModifiedUtc">Last modification timestamp in UTC, if any.</param>
+    /// <returns>The result.</returns>
     public sealed record AliasNameBackupDto(Guid Id, Guid ContactId, string Pattern, DateTime CreatedUtc, DateTime? ModifiedUtc);
 
     /// <summary>

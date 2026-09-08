@@ -12,6 +12,7 @@ namespace FinanceManager.Shared.Dtos.Security;
 /// <param name="UnknownUserLastFailedUtc">UTC timestamp of the last failed unknown user attempt.</param>
 /// <param name="CreatedUtc">UTC timestamp when the entry was created.</param>
 /// <param name="ModifiedUtc">UTC timestamp when the entry was last modified (if any).</param>
+/// <returns>The result.</returns>
 public sealed record IpBlockDto(
     Guid Id,
     string IpAddress,

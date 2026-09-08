@@ -55,6 +55,9 @@ public sealed class UsersController : ControllerBase
     /// </remarks>
     /// <exception cref="OperationCanceledException">When the provided cancellation token is triggered. This is handled and mapped to a 499 response.</exception>
     /// <exception cref="Exception">An unexpected exception that is logged and results in a 500 response.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="429">The HTTP 429 response.</response>
+    /// <response code="500">The HTTP 500 response.</response>
     [HttpGet("exists")]
     [ProducesResponseType(typeof(AnyUsersResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
@@ -92,6 +95,9 @@ public sealed class UsersController : ControllerBase
     /// 400 Bad Request when the <paramref name="userId"/> is empty.
     /// 500 Internal Server Error for unexpected errors.
     /// </returns>
+    /// <response code="202">The HTTP 202 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="500">The HTTP 500 response.</response>
     [HttpPost("demo/{userId:guid}")]
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

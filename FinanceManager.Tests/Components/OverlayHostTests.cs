@@ -3,6 +3,7 @@ using FinanceManager.Domain.Attachments;
 using FinanceManager.Shared;
 using FinanceManager.Web;
 using FinanceManager.Web.Components.Shared;
+using FinanceManager.Web.ViewModels;
 using FinanceManager.Web.ViewModels.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -83,8 +84,8 @@ public sealed class OverlayHostTests : BunitContext
 
         protected override bool IsSymbolUploadAllowed() => false;
 
-        protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent()
-            => (AttachmentEntityKind.Security, Guid.Empty);
+        protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.Security, Guid.Empty);
 
         protected override Task AssignNewSymbolAsync(Guid? attachmentId) => Task.CompletedTask;
 

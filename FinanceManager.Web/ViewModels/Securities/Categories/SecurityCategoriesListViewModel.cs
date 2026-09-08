@@ -12,6 +12,7 @@ namespace FinanceManager.Web.ViewModels.Securities.Categories;
 /// <param name="Id">Identifier of the security category.</param>
 /// <param name="Name">Display name of the category.</param>
 /// <param name="SymbolId">Optional attachment id used as display symbol.</param>
+/// <returns>The result.</returns>
 public sealed record SecurityCategoryItem(Guid Id, string Name, Guid? SymbolId) : IListItemNavigation
 {
     /// <summary>

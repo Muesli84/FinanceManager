@@ -55,7 +55,7 @@
 
           <div class="form-row" style="display:flex;align-items:center;gap:.4rem;justify-content:flex-start;">
               <label style="min-width:10rem;">@Localizer["Notifications_Holidays_Region"]</label>
-              <input placeholder="DE" style="width:6rem;" @bind="_vm.Model.HolidayCountryCode" @bind:after="(()=> _vm.OnCountryChanged())" />
+              <input placeholder="@Localizer["Notifications_Holidays_Region_Placeholder"]" style="width:6rem;" @bind="_vm.Model.HolidayCountryCode" @bind:after="(()=> _vm.OnCountryChanged())" />
               @if (_vm.Model.HolidayProvider != "Memory")
               {
                   <select style="width:10rem;" @bind="_vm.Model.HolidaySubdivisionCode" @bind:after="(()=> _vm.OnChanged())">

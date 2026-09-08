@@ -59,6 +59,30 @@ public sealed class DonutChartTests_PercentCalculation : BunitContext
     }
 
     /// <summary>
+    /// Optional preformatted legend values and details do not change percentage geometry for existing callers.
+    /// </summary>
+    [Fact]
+    public void OnParametersSet_OptionalLegendValue_RendersCustomLegendWithoutChangingSegments()
+    {
+        WithInvariantCulture(() =>
+        {
+            var slices = new List<DonutChart.DonutChartSlice>
+            {
+                new("A", 75m, "$75.00 · 75.0%", ["Positive: $75.00"], "A aria", "a"),
+                new("B", 25m)
+            };
+
+            var cut = Render<DonutChart>(builder => builder.Add(c => c.Slices, slices));
+
+            var legendValues = cut.FindAll(".donut-legend-value").Select(e => e.TextContent).ToList();
+            Assert.Equal(["$75.00 · 75.0%", "25.0%"], legendValues);
+            Assert.Contains("Positive: $75.00", cut.Markup);
+            Assert.Equal(2, cut.FindAll(".donut-segment").Count);
+            Assert.Equal("a", cut.Find("[data-statistics-group-key=\"a\"]").GetAttribute("data-statistics-group-key"));
+        });
+    }
+
+    /// <summary>
     /// When every slice has a zero value, the total is zero; the component must not divide by zero and
     /// instead render every slice at 0% without throwing and without any donut segment.
     /// </summary>

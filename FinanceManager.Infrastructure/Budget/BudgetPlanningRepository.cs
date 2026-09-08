@@ -34,7 +34,7 @@ public sealed class BudgetPlanningRepository : IBudgetPlanningRepository
     }
 
     /// <inheritdoc />
-    public async Task<(IReadOnlyList<BudgetRule> Rules, IReadOnlyList<BudgetOverride> Overrides)> GetRulesAndOverridesAsync(Guid ownerUserId, IReadOnlyList<Guid> purposeIds, BudgetPeriodKey @from, BudgetPeriodKey to, CancellationToken ct)
+    public async Task<(IReadOnlyList<BudgetRule>, IReadOnlyList<BudgetOverride>)> GetRulesAndOverridesAsync(Guid ownerUserId, IReadOnlyList<Guid> purposeIds, BudgetPeriodKey @from, BudgetPeriodKey to, CancellationToken ct)
     {
         @from.Validate();
         to.Validate();

@@ -1,7 +1,9 @@
 @using FinanceManager.Shared.Dtos.Contacts
 @using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Localization
+@using FinanceManager.Web.Services
 @inject FinanceManager.Shared.IApiClient Api
+@inject IConfirmationService ConfirmationService
 @inject IStringLocalizer<ContactDetail> Localizer
 
 <div class="contact-aliases" style="padding:1rem;border:1px solid var(--border);border-radius:.5rem;background:var(--panel-bg);margin-top:.75rem;">
@@ -131,6 +133,14 @@
     private async Task DeleteAliasAsync(Guid aliasId)
     {
         if (_busy || ContactId == Guid.Empty)
+        {
+            return;
+        }
+
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
         {
             return;
         }

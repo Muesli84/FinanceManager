@@ -14,6 +14,7 @@ namespace FinanceManager.Shared.Dtos.Reports;
 /// <param name="SecurityCategoryIds">Optional allowed security category ids.</param>
 /// <param name="SecuritySubTypes">Optional allowed security posting sub types (e.g., Buy/Sell/Dividend/Fee/Tax).</param>
 /// <param name="IncludeDividendRelated">When true, include Fee/Tax from dividend groups (net dividend).</param>
+/// <returns>The result.</returns>
 public sealed record ReportAggregationFilters(
     IReadOnlyCollection<Guid>? AccountIds = null,
     IReadOnlyCollection<Guid>? ContactIds = null,

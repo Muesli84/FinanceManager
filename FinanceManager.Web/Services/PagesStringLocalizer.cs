@@ -24,6 +24,7 @@ namespace FinanceManager.Web.Services
         /// Resolves the <see cref="ResourceSet"/> for the current request's UI culture.
         /// Must be called per-lookup (not cached) so that culture changes between requests are respected.
         /// </summary>
+        /// <returns>The result.</returns>
         private static ResourceSet? GetCurrentResourceSet() =>
             _rm.GetResourceSet(CultureInfo.CurrentUICulture, createIfNotExists: true, tryParents: true);
 

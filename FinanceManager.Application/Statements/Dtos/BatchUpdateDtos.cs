@@ -11,16 +11,19 @@ namespace FinanceManager.Application.Statements.Dtos
         /// <summary>
         /// List of entry updates to apply.
         /// </summary>
+        /// <returns>The result.</returns>
         public List<EntryUpdateDto> Updates { get; set; } = new();
 
         /// <summary>
         /// Persisted entry identifiers to delete.
         /// </summary>
+        /// <returns>The result.</returns>
         public List<Guid> Deletes { get; set; } = new();
 
         /// <summary>
         /// New entries to create during the same quick-edit save.
         /// </summary>
+        /// <returns>The result.</returns>
         public List<EntryCreateDto> Creates { get; set; } = new();
     }
 
@@ -37,6 +40,7 @@ namespace FinanceManager.Application.Statements.Dtos
         /// <summary>
         /// Mapping of field key to new value. Unknown keys are ignored by the service.
         /// </summary>
+        /// <returns>The result.</returns>
         public Dictionary<string, object?> Fields { get; set; } = new();
     }
 
@@ -110,6 +114,7 @@ namespace FinanceManager.Application.Statements.Dtos
         /// <summary>
         /// Per-entry validation errors.
         /// </summary>
+        /// <returns>The result.</returns>
         public List<EntryErrorDto> Errors { get; set; } = new();
     }
 
@@ -131,6 +136,7 @@ namespace FinanceManager.Application.Statements.Dtos
         /// <summary>
         /// List of field-level errors.
         /// </summary>
+        /// <returns>The result.</returns>
         public List<FieldErrorDto> FieldErrors { get; set; } = new();
     }
 

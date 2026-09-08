@@ -94,6 +94,7 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="onlyActive">When true only active securities are returned; otherwise archived ones are included.</param>
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>200 OK with a list of <see cref="SecurityDto"/> objects.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<SecurityDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
@@ -105,6 +106,7 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="onlyActive">When true only count active securities; otherwise count all.</param>
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>200 OK with an object containing the count.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("count")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public async Task<IActionResult> CountAsync([FromQuery] bool onlyActive = true, CancellationToken ct = default)
@@ -116,6 +118,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier (GUID).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="SecurityDto"/> when found; 404 NotFound when the security doesn't exist or is not owned by the current user.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}", Name = "GetSecurityAsync")]
     [ProducesResponseType(typeof(SecurityDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -132,6 +136,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns>201 Created with the created <see cref="SecurityDto"/>, or 400 Bad Request when validation fails.</returns>
     /// <exception cref="ArgumentException">May be thrown by the service for invalid input; will be mapped to 400 Bad Request.</exception>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(SecurityDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -173,6 +179,9 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="req">Update request payload.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with updated <see cref="SecurityDto"/>, 404 NotFound when not found, or 400 BadRequest for invalid input.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(SecurityDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -206,6 +215,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 NoContent on success; 404 NotFound when the security does not exist or is not owned by the user.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/archive")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -221,6 +232,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 NoContent on success; 404 NotFound when the security does not exist or is not owned by the user.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -237,6 +250,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="attachmentId">Attachment identifier to set as symbol.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 NoContent on success; 404 NotFound when the security or attachment is invalid.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -263,6 +278,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 NoContent on success; 404 NotFound when the security is invalid.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -291,6 +308,9 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="categoryId">Optional category id to classify the attachment.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with the created <see cref="AttachmentDto"/>, or 400 Bad Request for invalid input, or 500 on unexpected errors.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="500">The HTTP 500 response.</response>
     [HttpPost("{id:guid}/symbol")]
     [RequestSizeLimit(long.MaxValue)]
     [ProducesResponseType(typeof(AttachmentDto), StatusCodes.Status200OK)]
@@ -349,6 +369,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="maxYearsBack">Optional maximum years back to include.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with a list of <see cref="AggregatePointDto"/>, or 404 NotFound when no data is available.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{securityId:guid}/aggregates")]
     [ProducesResponseType(typeof(IReadOnlyList<AggregatePointDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -363,6 +385,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="take">Number of records to take (page size). Clamped to a maximum for safety.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with a list of <see cref="SecurityPriceDto"/>, or 404 NotFound when the security is not owned by the current user.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/prices")]
     [ProducesResponseType(typeof(IReadOnlyList<SecurityPriceDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -385,6 +409,10 @@ public sealed class SecuritiesController : ControllerBase
     /// 200 OK with <see cref="SecurityPriceImportResultDto"/> when at least one valid row was processed;
     /// 400 BadRequest when no valid rows exist or provider is unsupported.
     /// </returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
+    /// <response code="500">The HTTP 500 response.</response>
     [HttpPost("{id:guid}/prices/import")]
     [RequestSizeLimit(long.MaxValue)]
     [ProducesResponseType(typeof(SecurityPriceImportResultDto), StatusCodes.Status200OK)]
@@ -444,6 +472,8 @@ public sealed class SecuritiesController : ControllerBase
     /// </summary>
     /// <param name="req">Backfill request containing security id and optional date range.</param>
     /// <returns>200 OK with <see cref="BackgroundTaskInfo"/> describing the enqueued task.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost("backfill")]
     [ProducesResponseType(typeof(BackgroundTaskInfo), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -461,6 +491,7 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="take">Optional take parameter (ignored; kept for compatibility).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with a list of quarterly <see cref="AggregatePointDto"/> objects.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("dividends")]
     [ProducesResponseType(typeof(IReadOnlyList<AggregatePointDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IReadOnlyList<AggregatePointDto>>> GetDividendsAsync([FromQuery] string? period = null, [FromQuery] int? take = null, CancellationToken ct = default)
@@ -475,6 +506,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="ReturnSummaryDto"/>; 404 when not found or not owned by user.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/return-summary")]
     [ProducesResponseType(typeof(ReturnSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -491,6 +524,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="SparklineDataDto"/>; 404 when not found or insufficient price data.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/return-sparkline")]
     [ProducesResponseType(typeof(SparklineDataDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -507,6 +542,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="DetailedReturnMetricsDto"/>; 404 when not found or not owned by user.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/return-metrics")]
     [ProducesResponseType(typeof(DetailedReturnMetricsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -523,6 +560,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="PeriodicReturnsDto"/>; 404 when not found or not owned by user.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/return-periodic")]
     [ProducesResponseType(typeof(PeriodicReturnsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -539,6 +578,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="CashflowTimelineDto"/>; 404 when not found or not owned by user.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/return-cashflows")]
     [ProducesResponseType(typeof(CashflowTimelineDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -556,6 +597,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="timeRange">Time range for the chart (default: All).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="PerformanceChartDataDto"/>; 404 when not found or not owned by user.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/return-chart")]
     [ProducesResponseType(typeof(PerformanceChartDataDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -572,6 +615,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="BenchmarkComparisonDto"/>; 404 when no benchmark is configured or data is insufficient.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/return-benchmark")]
     [ProducesResponseType(typeof(BenchmarkComparisonDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -587,6 +632,7 @@ public sealed class SecuritiesController : ControllerBase
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with <see cref="ReturnAnalysisSettingsDto"/>.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet("return-analysis/settings")]
     [ProducesResponseType(typeof(ReturnAnalysisSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetReturnAnalysisSettingsAsync(CancellationToken ct = default)
@@ -602,6 +648,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="req">Settings request payload.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>204 NoContent on success; 400 BadRequest for invalid input.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPut("return-analysis/settings")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -630,6 +678,7 @@ public sealed class SecuritiesController : ControllerBase
     /// </summary>
     /// <param name="id">Security identifier.</param>
     /// <returns>204 NoContent on success.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
     [HttpDelete("{id:guid}/return-cache")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> InvalidateReturnCacheAsync(Guid id)
@@ -643,6 +692,7 @@ public sealed class SecuritiesController : ControllerBase
     /// Invalidates the return analysis cache for all securities of the current user.
     /// </summary>
     /// <returns>204 NoContent on success.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
     [HttpDelete("return-cache")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> InvalidateAllReturnCacheAsync()
@@ -658,6 +708,8 @@ public sealed class SecuritiesController : ControllerBase
     /// <param name="id">Security identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>200 OK with list of <see cref="KpiBreakdownDto"/>; 404 when not found or no data.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/return-kpi-breakdowns")]
     [ProducesResponseType(typeof(IReadOnlyList<KpiBreakdownDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

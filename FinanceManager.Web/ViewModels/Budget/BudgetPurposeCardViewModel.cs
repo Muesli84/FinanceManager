@@ -441,7 +441,8 @@ public sealed class BudgetPurposeCardViewModel : BaseCardViewModel<(string Key, 
     protected override bool IsSymbolUploadAllowed() => false;
 
     /// <inheritdoc />
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.None, Guid.Empty);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.None, Guid.Empty);
 
     /// <inheritdoc />
     protected override Task AssignNewSymbolAsync(Guid? attachmentId) => Task.CompletedTask;
@@ -617,6 +618,14 @@ public sealed class BudgetPurposeCardViewModel : BaseCardViewModel<(string Key, 
     public override async Task<bool> DeleteAsync()
     {
         if (Id == Guid.Empty)
+        {
+            return false;
+        }
+
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
         {
             return false;
         }

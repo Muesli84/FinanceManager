@@ -19,6 +19,7 @@ namespace FinanceManager.Shared.Dtos.Reports;
 /// <param name="PostingKinds">Optional collection of posting kinds to include (overrides primary PostingKind when provided).</param>
 /// <param name="Filters">Optional additional filters to apply to the report (categories, contacts, accounts, etc.).</param>
 /// <param name="UseValutaDate">When true, use valuta/booking date instead of value date when aggregating.</param>
+/// <returns>The result.</returns>
 [method: JsonConstructor]
 public sealed record ReportFavoriteCreateRequest(
     string Name,
@@ -59,6 +60,17 @@ public sealed record ReportFavoriteCreateRequest(
     /// <summary>
     /// Compatibility overload that disables projection when the caller does not provide it.
     /// </summary>
+    /// <param name="name">The name.</param>
+    /// <param name="postingKind">The posting kind.</param>
+    /// <param name="includeCategory">The include category.</param>
+    /// <param name="interval">The interval.</param>
+    /// <param name="comparePrevious">The compare previous.</param>
+    /// <param name="compareYear">The compare year.</param>
+    /// <param name="showChart">The show chart.</param>
+    /// <param name="expandable">The expandable.</param>
+    /// <param name="postingKinds">The posting kinds.</param>
+    /// <param name="filters">The filters.</param>
+    /// <param name="UseValutaDate">The use valuta date.</param>
     public ReportFavoriteCreateRequest(string name, PostingKind postingKind, bool includeCategory, ReportInterval interval,
         bool comparePrevious, bool compareYear, bool showChart, bool expandable,
         IReadOnlyCollection<PostingKind>? postingKinds = null, ReportFavoriteFiltersDto? filters = null, bool UseValutaDate = false)

@@ -11,6 +11,7 @@ namespace FinanceManager.Web.ViewModels.Budget;
 /// <param name="Start">Start date formatted for display.</param>
 /// <param name="End">End date formatted for display.</param>
 /// <param name="PurposePattern">Purpose pattern (regex or literal string), if defined.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetRuleListItem(
     Guid Id,
     string Interval,

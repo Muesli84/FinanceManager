@@ -21,6 +21,10 @@ public partial class HelpController : ControllerBase
     /// <summary>
     /// Initializes a new instance of HelpController.
     /// </summary>
+    /// <param name="env">The env.</param>
+    /// <param name="logger">Logger instance.</param>
+    /// <param name="renderer">The renderer.</param>
+    /// <param name="assetIntegrityValidator">The asset integrity validator.</param>
     public HelpController(
         IWebHostEnvironment env,
         ILogger<HelpController> logger,
@@ -36,6 +40,9 @@ public partial class HelpController : ControllerBase
     /// <summary>
     /// Gets a help documentation page by language and feature ID (legacy HTML endpoint).
     /// </summary>
+    /// <param name="language">The language.</param>
+    /// <param name="featureId">The feature id.</param>
+    /// <returns>The result.</returns>
     [HttpGet("{language}/{featureId}.html")]
     [Produces("text/html")]
     public async Task<IActionResult> GetHelpPage(string language, string featureId)
@@ -76,6 +83,9 @@ public partial class HelpController : ControllerBase
     /// Gets the markdown content for a feature by language and feature ID.
     /// Used by the Blazor help page view component.
     /// </summary>
+    /// <param name="language">The language.</param>
+    /// <param name="helpPath">The help path.</param>
+    /// <returns>The result.</returns>
     [HttpGet("markdown/{language}/{**helpPath}")]
     [Produces("text/html")]
     public async Task<IActionResult> GetMarkdown(string language, string helpPath)
@@ -139,6 +149,8 @@ public partial class HelpController : ControllerBase
     /// <summary>
     /// Gets the search index for help pages by language.
     /// </summary>
+    /// <param name="language">The language.</param>
+    /// <returns>The result.</returns>
     [HttpGet("search-index/{language}.json")]
     [Produces("application/json")]
     public async Task<IActionResult> GetSearchIndex(string language)

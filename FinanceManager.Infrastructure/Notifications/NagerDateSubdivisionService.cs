@@ -33,6 +33,7 @@ public sealed class NagerDateSubdivisionService : IHolidaySubdivisionService
     /// <param name="name">English name of the holiday.</param>
     /// <param name="countryCode">ISO country code the holiday applies to.</param>
     /// <param name="counties">Optional array of subdivision codes where the holiday applies; null/empty means country-wide.</param>
+    /// <returns>The result.</returns>
     private sealed record NagerHoliday(string date, string localName, string name, string countryCode, string[]? counties);
 
     /// <summary>

@@ -68,6 +68,8 @@ namespace FinanceManager.Infrastructure.Statements.Parsers
         /// multiple IBAN blocks, returns one <see cref="StatementParseResult"/> per IBAN block.
         /// For normal single-account statements, returns a single-element list.
         /// </summary>
+        /// <param name="statementFile">The statement file.</param>
+        /// <returns>The result.</returns>
         public override IReadOnlyList<StatementParseResult>? Parse(IStatementFile statementFile)
         {
             if (!CanParse(statementFile)) return null;
@@ -114,6 +116,8 @@ namespace FinanceManager.Infrastructure.Statements.Parsers
         /// <summary>
         /// Parses detailed information from the statement file. Delegates to <see cref="Parse"/>.
         /// </summary>
+        /// <param name="statementFile">The statement file.</param>
+        /// <returns>The result.</returns>
         public override IReadOnlyList<StatementParseResult>? ParseDetails(IStatementFile statementFile)
             => Parse(statementFile);
 

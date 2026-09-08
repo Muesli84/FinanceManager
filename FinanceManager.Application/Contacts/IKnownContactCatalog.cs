@@ -20,4 +20,5 @@ public interface IKnownContactCatalog
 /// <param name="Name">Display name for the contact.</param>
 /// <param name="Type">Contact type to create.</param>
 /// <param name="Aliases">Alias patterns to store for the created contact.</param>
+/// <returns>The result.</returns>
 public sealed record KnownContactMatch(string Name, ContactType Type, IReadOnlyList<string> Aliases);

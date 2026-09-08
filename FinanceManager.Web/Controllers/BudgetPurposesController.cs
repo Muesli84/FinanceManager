@@ -32,6 +32,10 @@ public sealed class BudgetPurposesController : ControllerBase
     /// <summary>
     /// Creates a new instance.
     /// </summary>
+    /// <param name="svc">The svc.</param>
+    /// <param name="current">The current.</param>
+    /// <param name="logger">Logger instance.</param>
+    /// <param name="localizer">The localizer.</param>
     public BudgetPurposesController(
         IBudgetPurposeService svc,
         ICurrentUserService current,
@@ -48,6 +52,15 @@ public sealed class BudgetPurposesController : ControllerBase
     /// Lists purposes for the current user.
     /// When <paramref name="from"/> and <paramref name="to"/> are provided, returns an overview including rule count and budget sum.
     /// </summary>
+    /// <param name="skip">The skip.</param>
+    /// <param name="take">The take.</param>
+    /// <param name="sourceType">The source type.</param>
+    /// <param name="q">The q.</param>
+    /// <param name="from">The from.</param>
+    /// <param name="to">The to.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<BudgetPurposeOverviewDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(
@@ -74,6 +87,11 @@ public sealed class BudgetPurposesController : ControllerBase
     /// <summary>
     /// Gets a budget purpose by id.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(BudgetPurposeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -94,6 +112,11 @@ public sealed class BudgetPurposesController : ControllerBase
     /// <summary>
     /// Creates a budget purpose.
     /// </summary>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(BudgetPurposeDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -139,6 +162,13 @@ public sealed class BudgetPurposesController : ControllerBase
     /// <summary>
     /// Updates a budget purpose.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="req">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -185,6 +215,11 @@ public sealed class BudgetPurposesController : ControllerBase
     /// <summary>
     /// Deletes a budget purpose.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Moq;
 
+using VmWithApiMock = (FinanceManager.Web.ViewModels.Contacts.ContactListViewModel, Moq.Mock<FinanceManager.Shared.IApiClient>);
+
 namespace FinanceManager.Tests.Web.ViewModels;
 
 /// <summary>
@@ -70,7 +72,7 @@ public sealed class ContactsViewModelTests
     /// </summary>
     /// <param name="isAuthenticated">Whether the simulated current user should appear authenticated.</param>
     /// <returns>The view model under test along with the API mock used to configure its responses.</returns>
-    private static (FinanceManager.Web.ViewModels.Contacts.ContactListViewModel vm, Mock<IApiClient> apiMock) CreateVm(bool isAuthenticated)
+    private static VmWithApiMock CreateVm(bool isAuthenticated)
     {
         var services = new ServiceCollection();
         services.AddSingleton<ICurrentUserService>(new TestCurrentUserService { IsAuthenticated = isAuthenticated });

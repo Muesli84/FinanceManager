@@ -7,4 +7,5 @@ namespace FinanceManager.Shared.Dtos.Common;
 /// <param name="Processed">Number of processed items so far.</param>
 /// <param name="Total">Total number of items to process.</param>
 /// <param name="Message">Optional status message.</param>
+/// <returns>The result.</returns>
 public sealed record AggregatesRebuildStatusDto(bool Running, int Processed, int Total, string? Message);

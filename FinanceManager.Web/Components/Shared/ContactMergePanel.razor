@@ -1,7 +1,9 @@
 @using FinanceManager.Shared.Dtos.Contacts
 @using FinanceManager.Shared.Dtos
 @using Microsoft.Extensions.Localization
+@using FinanceManager.Web.Services
 @inject FinanceManager.Shared.IApiClient Api
+@inject IConfirmationService ConfirmationService
 @inject NavigationManager Nav
 @inject IStringLocalizer<Pages> Localizer
 
@@ -9,7 +11,7 @@
     <div class="hint" style="font-size:.92rem;opacity:.85;margin-bottom:.5rem;">@Localizer["Merge_Hint"]</div>
 
     <div class="field" style="width:100%;margin-bottom:.5rem;">
-        <label style="display:block;font-size:.85rem;margin-bottom:.25rem;">@Localizer["Merge_Preference_LABEL"]</label>
+        <label style="display:block;font-size:.85rem;margin-bottom:.25rem;">@Localizer["Merge_Preference_Label"]</label>
         <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:.5rem;">
             <label style="display:flex;align-items:center;gap:.35rem;">
                 <input type="radio" name="mergePref" value="DestinationFirst" checked="@( _preference==MergePreference.DestinationFirst )" @onclick="(()=> SetPref(MergePreference.DestinationFirst))" />
@@ -102,6 +104,16 @@
     private async Task ConfirmMergeAsync()
     {
         if (_selected == Guid.Empty || _busy) return;
+
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Merge_Title",
+            MessageResourceKey: "Confirmation_Merge_Message",
+            ContextId: $"contacts/merge/{SourceId}/{_selected}",
+            Severity: ConfirmationSeverity.Warning)))
+        {
+            return;
+        }
+
         _error = null;
         _busy = true;
         try

@@ -29,6 +29,7 @@ public sealed class StatementDraftBookingGuard
     /// <summary>
     /// Gets or sets the unique identifier of the guard row.
     /// </summary>
+    /// <returns>The result.</returns>
     public Guid Id { get; set; } = Guid.NewGuid();
 
     /// <summary>

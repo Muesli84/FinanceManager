@@ -9,6 +9,7 @@ namespace FinanceManager.Shared.Dtos.HomeKpi;
 /// <param name="Title">Optional custom title override.</param>
 /// <param name="DisplayMode">Display mode of the KPI tile.</param>
 /// <param name="SortOrder">Sort order for placement on the dashboard.</param>
+/// <returns>The result.</returns>
 public sealed record HomeKpiUpdateRequest(
     HomeKpiKind Kind,
     Guid? ReportFavoriteId,

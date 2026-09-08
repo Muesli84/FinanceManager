@@ -6,4 +6,5 @@ namespace FinanceManager.Shared.Dtos.Contacts;
 /// <param name="Id">Unique identifier of the category.</param>
 /// <param name="Name">Display name of the category.</param>
 /// <param name="SymbolAttachmentId">Optional attachment id of the category symbol.</param>
+/// <returns>The result.</returns>
 public sealed record ContactCategoryDto(Guid Id, string Name, Guid? SymbolAttachmentId = null);

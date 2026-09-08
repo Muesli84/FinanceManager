@@ -37,6 +37,7 @@ public sealed class CurrentUserService : ICurrentUserService
     /// <summary>
     /// Gets the preferred language for the current user (value of the "pref_lang" claim) or <c>null</c> when not present.
     /// </summary>
+    /// <returns>The result.</returns>
     public string? PreferredLanguage => User?.FindFirstValue("pref_lang");
 
     /// <summary>
@@ -47,6 +48,7 @@ public sealed class CurrentUserService : ICurrentUserService
     /// <summary>
     /// Gets a value indicating whether the current user is in the "Admin" role.
     /// </summary>
+    /// <returns>Whether the operation succeeded.</returns>
     public bool IsAdmin => User?.IsInRole("Admin") ?? false;
 
     /// <summary>

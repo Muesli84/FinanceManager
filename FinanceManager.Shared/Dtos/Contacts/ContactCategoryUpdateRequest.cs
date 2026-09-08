@@ -6,4 +6,5 @@ namespace FinanceManager.Shared.Dtos.Contacts;
 /// Request payload to rename a contact category.
 /// </summary>
 /// <param name="Name">New display name of the category.</param>
+/// <returns>The result.</returns>
 public sealed record ContactCategoryUpdateRequest([Required, MinLength(2)] string Name);

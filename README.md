@@ -14,7 +14,7 @@ Die Anwendung bündelt Stammdatenverwaltung, Kontoauszugsimport, Budget- und Rep
 Im aktuellen Code sind unter anderem folgende Bereiche vorhanden:
 
 - **Authentifizierung und Benutzerverwaltung** über JWT-geschützte API-Endpunkte und ASP.NET Core Identity
-- **Konten, Kontakte, Sparpläne und Wertpapiere** mit eigenen Listen-, Detail- und Bearbeitungsbereichen
+- **Konten, Kontakte, Sparpläne und Wertpapiere** mit eigenen Listen-, Detail- und Bearbeitungsbereichen sowie Summen und Verteilungen in der Bankübersicht
 - **Kontoauszugsverarbeitung** mit Upload, Massenimport, Klassifizierung, Schnellbearbeitung und Buchung
 - **Budget- und Reporting-Funktionen** inklusive Budget-Kategorien, -Zwecken, -Regeln und Berichten
 - **Portfolio-Analyse** mit Bericht und benutzerspezifischer KPI-Konfiguration
@@ -203,6 +203,23 @@ Die aktuellen Testdateien enthalten unter anderem Abdeckung für:
 - JWT-Validierung und Refresh-Verhalten
 - Keepalive bei aktiver Navigation und Interaktion
 - Quick-Edit-Verhalten in Kontoauszugsentwürfen
+- Summen, Filterung und Fehlerzustände der Bankübersicht
+
+## Git-Hooks und Codequalität
+
+Das Repository verwendet Git-Hooks aus dem Verzeichnis **`.githooks/`**. Aktivierung nach dem Klonen:
+
+```cmd
+.githooks\install-hooks.cmd
+```
+
+bzw. unter Linux/macOS:
+
+```bash
+./.githooks/install-hooks.sh
+```
+
+Die Skripte setzen `core.hooksPath` auf `.githooks`. Der **pre-commit**-Hook blockiert Commits auf `main`/`staging` und prüft Übersetzungskonsistenz, XML-Dokumentation, hartkodierte UI-Texte in Razor-Komponenten, unreferenzierte Komponenten, Stub-Implementierungen (`NotImplementedException`) und die Enum-Testabdeckung. Der **pre-push**-Hook führt die Stub-, Komponenten- und Enum-Prüfungen strikt für das gesamte Repository aus.
 
 ## Help, Betrieb und Sicherheit
 

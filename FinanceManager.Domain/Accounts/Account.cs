@@ -194,13 +194,15 @@ public sealed class Account : Entity, IAggregateRoot
     /// <param name="ModifiedUtc">Entity last modified timestamp UTC, if any.</param>
     /// <param name="SecurityProcessingEnabled">Indicates whether security processing is allowed.</param>
     /// <param name="IsCollectionAccount">Indicates whether this is a collection account.</param>
+    /// <returns>The result.</returns>
     public sealed record AccountBackupDto(Guid Id, Guid OwnerUserId, AccountType Type, string Name, string? Iban, decimal CurrentBalance, Guid BankContactId, Guid? SymbolAttachmentId, SavingsPlanExpectation SavingsPlanExpectation, DateTime CreatedUtc, DateTime? ModifiedUtc, bool SecurityProcessingEnabled = true, bool IsCollectionAccount = false);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this account.
     /// </summary>
     /// <returns>A <see cref="AccountBackupDto"/> containing values needed to restore the account.</returns>
-    public AccountBackupDto ToBackupDto() => new AccountBackupDto(Id, OwnerUserId, Type, Name, Iban, CurrentBalance, BankContactId, SymbolAttachmentId, SavingsPlanExpectation, CreatedUtc, ModifiedUtc, SecurityProcessingEnabled, IsCollectionAccount);
+    public AccountBackupDto ToBackupDto()
+        => new AccountBackupDto(Id, OwnerUserId, Type, Name, Iban, CurrentBalance, BankContactId, SymbolAttachmentId, SavingsPlanExpectation, CreatedUtc, ModifiedUtc, SecurityProcessingEnabled, IsCollectionAccount);
 
     /// <summary>
     /// Applies values from a backup DTO to this account instance.

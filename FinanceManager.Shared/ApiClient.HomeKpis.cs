@@ -21,6 +21,9 @@ public partial class ApiClient
     /// <summary>
     /// Gets a single home KPI by id or null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<HomeKpiDto?> HomeKpis_GetAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.GetAsync($"/api/home-kpis/{id}", ct);
@@ -32,6 +35,9 @@ public partial class ApiClient
     /// <summary>
     /// Creates a new home KPI.
     /// </summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<HomeKpiDto> HomeKpis_CreateAsync(HomeKpiCreateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync("/api/home-kpis", request, ct);
@@ -42,6 +48,10 @@ public partial class ApiClient
     /// <summary>
     /// Updates an existing home KPI. Returns null when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<HomeKpiDto?> HomeKpis_UpdateAsync(Guid id, HomeKpiUpdateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PutAsJsonAsync($"/api/home-kpis/{id}", request, ct);
@@ -54,6 +64,9 @@ public partial class ApiClient
     /// <summary>
     /// Deletes a home KPI. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> HomeKpis_DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/home-kpis/{id}", ct);

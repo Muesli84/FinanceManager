@@ -63,6 +63,9 @@ public partial class ApiClient
     /// <summary>
     /// Deletes a contact category. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> ContactCategories_DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/contact-categories/{id}", ct);
@@ -74,6 +77,10 @@ public partial class ApiClient
     /// <summary>
     /// Assigns a symbol attachment to a contact category. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="attachmentId">The attachment id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> ContactCategories_SetSymbolAsync(Guid id, Guid attachmentId, CancellationToken ct = default)
     {
         var resp = await _http.PostAsync($"/api/contact-categories/{id}/symbol/{attachmentId}", content: null, ct);
@@ -85,6 +92,9 @@ public partial class ApiClient
     /// <summary>
     /// Clears the symbol attachment from a contact category. Returns false when not found.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> ContactCategories_ClearSymbolAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/contact-categories/{id}/symbol", ct);

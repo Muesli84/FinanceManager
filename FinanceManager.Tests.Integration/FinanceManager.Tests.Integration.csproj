@@ -29,4 +29,11 @@
     <ProjectReference Include="..\FinanceManager.Shared\FinanceManager.Shared.csproj" />
     <ProjectReference Include="..\FinanceManager.Tests\FinanceManager.Tests.csproj" />
   </ItemGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<WarningsAsErrors>$(WarningsAsErrors);NU1605;CS1591;</WarningsAsErrors>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<WarningsAsErrors>$(WarningsAsErrors);NU1605;CS1591;</WarningsAsErrors>
+	</PropertyGroup>
 </Project>

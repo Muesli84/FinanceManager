@@ -49,6 +49,10 @@ namespace FinanceManager.Web.Services
         /// Uses the OpenXML SDK to construct a minimal valid workbook that can be parsed by the test helper.
         /// Sheets produced: "Bank", "Contact", "SavingsPlan", "CategoriesAndPurposes".
         /// </summary>
+        /// <param name="ownerUserId">The owner user id.</param>
+        /// <param name="request">Request payload.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>The result.</returns>
         public async Task<(string ContentType, string FileName, Stream Content)> GenerateXlsxAsync(Guid ownerUserId, BudgetReportExportRequest request, CancellationToken ct)
         {
             var to = request.AsOfDate;

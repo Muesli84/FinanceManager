@@ -7,4 +7,5 @@ namespace FinanceManager.Shared.Dtos.Attachments;
 /// <param name="Name">Display name of the category.</param>
 /// <param name="IsSystem">True when the category is system-managed.</param>
 /// <param name="IsDefault">True when the category is the default selection.</param>
+/// <returns>The result.</returns>
 public sealed record AttachmentCategoryDto(Guid Id, string Name, bool IsSystem, bool IsDefault);

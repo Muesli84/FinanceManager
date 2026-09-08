@@ -13,6 +13,7 @@ namespace FinanceManager.Shared.Dtos.Reports;
 /// <param name="PreviousAmount">Optional amount in the previous comparison period.</param>
 /// <param name="YearAgoAmount">Optional amount in the same period one year ago.</param>
 /// <param name="ProjectionExpectedDividends">Expected dividend details contributing to the projection.</param>
+/// <returns>The result.</returns>
 public sealed record ReportAggregatePointDto(
     DateTime PeriodStart,
     string GroupKey,
@@ -29,6 +30,12 @@ public sealed record ReportAggregatePointDto(
 /// <summary>
 /// Details for a prior-year dividend that is still expected in the projected report period.
 /// </summary>
+/// <param name="SecurityId">The security id.</param>
+/// <param name="SecurityName">The security name.</param>
+/// <param name="ExpectedDate">The expected date.</param>
+/// <param name="PriorYearDate">The prior year date.</param>
+/// <param name="Amount">The amount.</param>
+/// <returns>The result.</returns>
 public sealed record ReportProjectionExpectedDividendDto(
     Guid SecurityId,
     string SecurityName,

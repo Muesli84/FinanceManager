@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/staging)
+      branch_name="${remote_ref#refs/heads/}"
+      echo "Direct pushes to '$branch_name' are blocked. Update this branch via pull request." >&2
+      exit 1
+      ;;
+  esac
+done
+
+# --- NotImplementedException/Stub Check (ganzes Repo, blockierend) ---
+echo "Running stub implementation check..."
+python "$repo_root/.githooks/no-notimplemented-check.py" --all --strict
+
+# --- Razor Usage Check (ganzes Repo, blockierend) ---
+echo "Running Razor usage check..."
+python "$repo_root/.githooks/razor-usage-check.py" --all --strict
+
+# --- Enum Coverage Check (ganzes Repo, blockierend) ---
+echo "Running enum coverage check..."
+python "$repo_root/.githooks/enum-coverage-check.py" --all --strict

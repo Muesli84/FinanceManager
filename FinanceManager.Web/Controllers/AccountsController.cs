@@ -38,31 +38,63 @@ public sealed class AccountsController : ControllerBase
     }
 
     /// <summary>
-    /// Returns a (paged) list of accounts owned by the current user. Optional filter by bank contact id.
+    /// Returns a (paged) list of accounts owned by the current user. Optional filter by bank contact id and search text.
     /// </summary>
     /// <param name="skip">Number of items to skip for paging.</param>
     /// <param name="take">Maximum number of items to return (clamped to 1..200).</param>
     /// <param name="bankContactId">Optional bank contact identifier to filter the accounts.</param>
+    /// <param name="q">Optional search text for account name or normalized IBAN.</param>
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 200 with a list of <see cref="AccountDto"/> matching the criteria.</returns>
     /// <exception cref="Exception">May throw on unexpected server errors which are translated to HTTP 500.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<AccountDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> ListAsync([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? bankContactId = null, CancellationToken ct = default)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ListAsync([FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] Guid? bankContactId = null, [FromQuery] string? q = null, CancellationToken ct = default)
     {
         take = Math.Clamp(take, 1, 200);
         try
         {
-            var list = await _accounts.ListAsync(_current.UserId, skip, take, ct);
-            if (bankContactId.HasValue)
-            {
-                list = list.Where(a => a.BankContactId == bankContactId.Value).ToList();
-            }
+            var list = await _accounts.ListAsync(_current.UserId, skip, take, bankContactId, q, ct);
             return Ok(list);
+        }
+        catch (ArgumentOutOfRangeException ex) when (ex.ParamName == "q")
+        {
+            return BadRequest(new { error = "Err_Invalid_q", message = ex.Message });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "List accounts failed");
+            return Problem("Unexpected error", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Returns unpaged account statistics for the current user and optional search text.
+    /// </summary>
+    /// <param name="q">Optional search text for account name or normalized IBAN.</param>
+    /// <param name="ct">Cancellation token to cancel the operation.</param>
+    /// <returns>HTTP 200 with statistics for the filtered account scope.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    [HttpGet("statistics")]
+    [ProducesResponseType(typeof(AccountStatisticsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> StatisticsAsync([FromQuery] string? q = null, CancellationToken ct = default)
+    {
+        try
+        {
+            return Ok(await _accounts.GetStatisticsAsync(_current.UserId, q, ct));
+        }
+        catch (ArgumentOutOfRangeException ex) when (ex.ParamName == "q")
+        {
+            return BadRequest(new { error = "Err_Invalid_q", message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Get account statistics failed");
             return Problem("Unexpected error", statusCode: 500);
         }
     }
@@ -76,6 +108,8 @@ public sealed class AccountsController : ControllerBase
     /// HTTP 200 with <see cref="AccountDto"/> when found; HTTP 404 when the account does not exist or is not owned by the current user.
     /// </returns>
     /// <exception cref="Exception">May throw on unexpected server errors which are translated to HTTP 500.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}", Name = "GetAccount")]
     [ProducesResponseType(typeof(AccountDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -104,6 +138,8 @@ public sealed class AccountsController : ControllerBase
     /// </returns>
     /// <exception cref="ArgumentException">Thrown when provided input values are invalid; translated to HTTP 400 with error details.</exception>
     /// <exception cref="Exception">Unexpected server errors are translated to HTTP 500.</exception>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(AccountDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -145,6 +181,8 @@ public sealed class AccountsController : ControllerBase
     /// </returns>
     /// <exception cref="ArgumentException">Thrown when provided input values are invalid; translated to HTTP 400.</exception>
     /// <exception cref="Exception">Unexpected server errors are translated to HTTP 500.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(AccountDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -185,6 +223,8 @@ public sealed class AccountsController : ControllerBase
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 204 when deletion succeeded; HTTP 404 when the account does not exist.</returns>
     /// <exception cref="Exception">Thrown on unexpected server errors which are translated to HTTP 500.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -210,6 +250,8 @@ public sealed class AccountsController : ControllerBase
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 204 when symbol assignment succeeds; HTTP 404 when account or attachment not found; HTTP 400 when input invalid.</returns>
     /// <exception cref="ArgumentException">Thrown when provided identifiers are invalid; translated to HTTP 404/400 as used in the controller.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -240,6 +282,8 @@ public sealed class AccountsController : ControllerBase
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 204 when the symbol was cleared; HTTP 404 when the account or resource was not found.</returns>
     /// <exception cref="ArgumentException">Thrown when provided identifiers are invalid; translated to HTTP 404/400 as used in the controller.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -269,6 +313,8 @@ public sealed class AccountsController : ControllerBase
     /// <param name="id">Account identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>HTTP 200 with a list of IBAN strings; HTTP 404 when account not found.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}/linked-ibans")]
     [ProducesResponseType(typeof(IReadOnlyList<string>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -294,6 +340,9 @@ public sealed class AccountsController : ControllerBase
     /// <param name="req">Request payload containing the IBAN to add.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>HTTP 204 when added; HTTP 400 when invalid; HTTP 404 when account not found.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/linked-ibans")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -336,6 +385,8 @@ public sealed class AccountsController : ControllerBase
     /// <param name="iban">The IBAN to remove.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>HTTP 204 when removed; HTTP 404 when not found.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}/linked-ibans/{iban}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

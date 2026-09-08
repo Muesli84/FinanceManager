@@ -1599,6 +1599,11 @@ namespace FinanceManager.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("ShowConfirmations")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("ShowSharpeRatio")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")

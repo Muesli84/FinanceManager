@@ -66,6 +66,7 @@ public sealed class Pbkdf2PasswordHasherTests
     /// returning <see cref="PasswordVerificationResult.Failed"/> instead of throwing, so a corrupted
     /// database value cannot crash the login path or accidentally grant access.
     /// </summary>
+    /// <param name="malformed">The malformed.</param>
     [Theory]
     [InlineData("")]
     [InlineData("abc")]

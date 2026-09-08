@@ -23,4 +23,5 @@ public enum MergePreference
 /// </summary>
 /// <param name="TargetContactId">The identifier of the target contact to merge into.</param>
 /// <param name="Preference">Preference strategy for resolving conflicting values.</param>
+/// <returns>The result.</returns>
 public sealed record ContactMergeRequest([Required] Guid TargetContactId, MergePreference Preference = MergePreference.DestinationFirst);

@@ -3,6 +3,9 @@ namespace FinanceManager.Shared.Dtos.Budget;
 /// <summary>
 /// Represents a deterministic monthly period key.
 /// </summary>
+/// <param name="Year">The year.</param>
+/// <param name="Month">The month.</param>
+/// <returns>The result.</returns>
 public readonly record struct BudgetPeriodKey(int Year, int Month)
 {
     /// <summary>
@@ -15,12 +18,26 @@ public readonly record struct BudgetPeriodKey(int Year, int Month)
     /// <summary>
     /// Returns the first day of the represented month.
     /// </summary>
-    public DateOnly StartDate => new(Year, Month, 1);
+    /// <returns>The result.</returns>
+    public DateOnly StartDate
+    {
+        get
+        {
+            return new DateOnly(Year, Month, 1);
+        }
+    }
 
     /// <summary>
     /// Returns the last day of the represented month.
     /// </summary>
-    public DateOnly EndDate => new(Year, Month, DateTime.DaysInMonth(Year, Month));
+    /// <returns>The result.</returns>
+    public DateOnly EndDate
+    {
+        get
+        {
+            return new DateOnly(Year, Month, DateTime.DaysInMonth(Year, Month));
+        }
+    }
 
     /// <summary>
     /// Adds months to this period key.
@@ -48,5 +65,6 @@ public readonly record struct BudgetPeriodKey(int Year, int Month)
     /// <summary>
     /// Returns YYYY-MM representation.
     /// </summary>
+    /// <returns>The result.</returns>
     public override string ToString() => $"{Year:D4}-{Month:D2}";
 }

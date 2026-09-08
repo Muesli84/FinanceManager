@@ -27,6 +27,7 @@ public sealed class SetupSecurityTxtViewModel : BaseViewModel
     }
 
     /// <summary>Current editable settings.</summary>
+    /// <returns>The result.</returns>
     public SecurityTxtSettingsDto Model { get; private set; } = new();
 
     /// <summary>Editable expiry value in HTML datetime-local format.</summary>
@@ -92,6 +93,7 @@ public sealed class SetupSecurityTxtViewModel : BaseViewModel
     public bool SavedOk { get; private set; }
 
     /// <summary>Loads the current settings.</summary>
+    /// <param name="ct">Cancellation token.</param>
     public async Task LoadAsync(CancellationToken ct = default)
     {
         Busy = true;
@@ -142,6 +144,7 @@ public sealed class SetupSecurityTxtViewModel : BaseViewModel
     }
 
     /// <summary>Saves the current settings.</summary>
+    /// <param name="ct">Cancellation token.</param>
     public async Task SaveAsync(CancellationToken ct = default)
     {
         if (_hasExpiresValidationError)

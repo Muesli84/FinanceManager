@@ -62,6 +62,7 @@ public sealed class PlaywrightWebAppFixture : IAsyncLifetime
     private string? _dbPath;
     private string? _updatesSourceDir;
     private string? _updatesWorkingDir;
+    private string? _accountStatisticsFaultFile;
     private string? _releaseMetadataPath;
     private string? _originalReleaseMetadata;
     private EventHandler? _processExitHandler;
@@ -72,12 +73,14 @@ public sealed class PlaywrightWebAppFixture : IAsyncLifetime
     /// The base URL of the running test server (e.g. <c>https://127.0.0.1:{port}</c>), for navigating to
     /// pages under test.
     /// </summary>
+    /// <returns>The result.</returns>
     public string BaseUrl => _baseUrl ?? throw new InvalidOperationException("The Playwright server is not initialized.");
 
     /// <summary>
     /// Filesystem path to the SQLite database backing the running test server, for seeding data directly
     /// (see <see cref="TestUserSeeder"/>) without going through the UI.
     /// </summary>
+    /// <returns>The result.</returns>
     public string DatabasePath => _dbPath ?? throw new InvalidOperationException("The Playwright database is not initialized.");
 
     /// <summary>
@@ -92,6 +95,7 @@ public sealed class PlaywrightWebAppFixture : IAsyncLifetime
         _dbPath = Path.Combine(Path.GetTempPath(), $"financemanager-e2e-{Guid.NewGuid():N}.db");
         _updatesSourceDir = Path.Combine(Path.GetTempPath(), $"financemanager-e2e-update-source-{Guid.NewGuid():N}");
         _updatesWorkingDir = Path.Combine(Path.GetTempPath(), $"financemanager-e2e-update-working-{Guid.NewGuid():N}");
+        _accountStatisticsFaultFile = Path.Combine(Path.GetTempPath(), $"financemanager-e2e-account-statistics-fault-{Guid.NewGuid():N}.flag");
 
         var webDll = ResolveWebDllPath();
         PrepareUpdateSource(_updatesSourceDir);
@@ -178,6 +182,7 @@ public sealed class PlaywrightWebAppFixture : IAsyncLifetime
         RestoreInstalledReleaseMetadata();
         DeleteDirectoryBestEffort(_updatesSourceDir);
         DeleteDirectoryBestEffort(_updatesWorkingDir);
+        ResetAccountStatisticsFault();
     }
 
     /// <summary>
@@ -193,6 +198,8 @@ public sealed class PlaywrightWebAppFixture : IAsyncLifetime
         {
             throw new InvalidOperationException("Browser is not initialized.");
         }
+
+        ResetAccountStatisticsFault();
 
         var context = await _browser.NewContextAsync(new BrowserNewContextOptions
         {
@@ -222,7 +229,37 @@ public sealed class PlaywrightWebAppFixture : IAsyncLifetime
         var page = await context.NewPageAsync();
         page.SetDefaultTimeout(_options.ActionTimeoutSeconds * 1000);
         page.SetDefaultNavigationTimeout(_options.NavigationTimeoutSeconds * 1000);
-        return new PlaywrightBrowserSession(context, page, artifactPrefix, _options.ArtifactCaptureEnabled, _options.TraceEnabled);
+        return new PlaywrightBrowserSession(context, page, artifactPrefix, _options.ArtifactCaptureEnabled, _options.TraceEnabled, () =>
+        {
+            ResetAccountStatisticsFault();
+            return ValueTask.CompletedTask;
+        });
+    }
+
+    /// <summary>
+    /// Enables a test-only fault for <c>GET /api/accounts/statistics</c> in the running E2E server.
+    /// </summary>
+    public void EnableAccountStatisticsFault()
+    {
+        if (string.IsNullOrWhiteSpace(_accountStatisticsFaultFile))
+        {
+            throw new InvalidOperationException("The Playwright server is not initialized.");
+        }
+
+        File.WriteAllText(_accountStatisticsFaultFile, "fail");
+    }
+
+    /// <summary>
+    /// Disables the test-only account statistics fault.
+    /// </summary>
+    public void ResetAccountStatisticsFault()
+    {
+        if (string.IsNullOrWhiteSpace(_accountStatisticsFaultFile) || !File.Exists(_accountStatisticsFaultFile))
+        {
+            return;
+        }
+
+        File.Delete(_accountStatisticsFaultFile);
     }
 
     /// <summary>
@@ -281,6 +318,8 @@ public sealed class PlaywrightWebAppFixture : IAsyncLifetime
         startInfo.Environment["Kestrel__Endpoints__Https__Url"] = $"https://127.0.0.1:{port}";
         startInfo.Environment["Api__BaseAddress"] = $"http://127.0.0.1:{port + 1}/";
         startInfo.Environment["E2E__DisableHttpsRedirection"] = "true";
+        startInfo.Environment["E2E__AccountStatisticsFaultInjectionEnabled"] = "true";
+        startInfo.Environment["E2E__AccountStatisticsFaultFile"] = _accountStatisticsFaultFile;
         startInfo.Environment["ConnectionStrings__Default"] = $"Data Source={dbPath}";
         startInfo.Environment["BackgroundTasks__Enabled"] = "false";
         startInfo.Environment["Workers__SecurityPriceWorker__Enabled"] = "false";

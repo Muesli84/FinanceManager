@@ -1,4 +1,0 @@
-#!/bin/sh
-# Validate localization keys and resx package consistency before each commit.
-set -e
-python githooks/translation-check.py

@@ -33,7 +33,8 @@ namespace FinanceManager.Web.ViewModels.Common
         /// </summary>
         /// <param name="id">Identifier used to load the card data.</param>
         /// <returns>A task that completes when initialization has finished.</returns>
-        public virtual Task InitializeAsync(System.Guid id) => LoadAsync(id);
+        public virtual Task InitializeAsync(System.Guid id)
+            => LoadAsync(id);
 
         /// <summary>
         /// Optional embedded list view model that can be rendered together with the card (e.g. entries for a statement draft).
@@ -63,14 +64,16 @@ namespace FinanceManager.Web.ViewModels.Common
         /// Derived classes should override to persist pending changes.
         /// </summary>
         /// <returns>A task that resolves to <c>true</c> when save succeeded; otherwise <c>false</c>.</returns>
-        public virtual Task<bool> SaveAsync() => Task.FromResult(true);
+        public virtual Task<bool> SaveAsync()
+            => Task.FromResult(true);
 
         /// <summary>
         /// Deletes the underlying entity represented by the card. Default implementation returns <c>false</c>.
         /// Derived classes may override to implement deletion behavior.
         /// </summary>
         /// <returns>A task that resolves to <c>true</c> when deletion succeeded; otherwise <c>false</c>.</returns>
-        public virtual Task<bool> DeleteAsync() => Task.FromResult(false);
+        public virtual Task<bool> DeleteAsync()
+            => Task.FromResult(false);
 
         /// <summary>
         /// The single card record rendered by the card view. Derived classes should populate this after loading.
@@ -80,6 +83,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Pending field values stored by label key. These values are kept in-memory until saved and applied on top of the authoritative CardRecord.
         /// </summary>
+        /// <returns>The result.</returns>
         protected readonly Dictionary<string, object?> _pendingFieldValues = new();
 
         /// <summary>
@@ -139,7 +143,8 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Clears all pending changes stored in the view model.
         /// </summary>
-        protected void ClearPendingChanges() => _pendingFieldValues.Clear();
+        protected void ClearPendingChanges()
+            => _pendingFieldValues.Clear();
 
         /// <summary>
         /// Applies in-memory pending field overrides to the supplied <see cref="CardRecord"/> instance.
@@ -207,7 +212,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// Implementations should return the appropriate <see cref="AttachmentEntityKind"/> and the (possibly <see cref="Guid.Empty"/>) parent id.
         /// </summary>
         /// <returns>A tuple of (AttachmentEntityKind, ParentId).</returns>
-        protected abstract (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent();
+        protected abstract SymbolParentRef GetSymbolParent();
 
         /// <summary>
         /// Called after a successful upload so the derived ViewModel can persist the new symbol attachment id

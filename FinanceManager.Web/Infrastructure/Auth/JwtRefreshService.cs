@@ -27,6 +27,7 @@ public interface IJwtRefreshService
 /// <param name="Token">Renewed JWT when refresh succeeded.</param>
 /// <param name="ExpiresUtc">Renewed token expiry in UTC when refresh succeeded.</param>
 /// <param name="FailureReason">Diagnostic rejection reason when refresh failed.</param>
+/// <returns>The result.</returns>
 public sealed record JwtRefreshResult(bool Succeeded, string? Token, DateTime? ExpiresUtc, string? FailureReason)
 {
     /// <summary>
@@ -35,14 +36,16 @@ public sealed record JwtRefreshResult(bool Succeeded, string? Token, DateTime? E
     /// <param name="token">Renewed JWT.</param>
     /// <param name="expiresUtc">Token expiry in UTC.</param>
     /// <returns>A successful refresh result.</returns>
-    public static JwtRefreshResult Success(string token, DateTime expiresUtc) => new(true, token, expiresUtc, null);
+    public static JwtRefreshResult Success(string token, DateTime expiresUtc)
+        => new(true, token, expiresUtc, null);
 
     /// <summary>
     /// Creates a failed refresh result.
     /// </summary>
     /// <param name="reason">Diagnostic rejection reason.</param>
     /// <returns>A failed refresh result.</returns>
-    public static JwtRefreshResult Fail(string reason) => new(false, null, null, reason);
+    public static JwtRefreshResult Fail(string reason)
+        => new(false, null, null, reason);
 }
 
 /// <summary>

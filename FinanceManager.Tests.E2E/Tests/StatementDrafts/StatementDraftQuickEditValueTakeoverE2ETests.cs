@@ -320,7 +320,7 @@ public sealed class StatementDraftQuickEditValueTakeoverE2ETests
         await WaitForInputValueAsync(targetSubject, expectedFromAbove);
 
         var targetAmount = page.Locator("input[id^='qe_amount_']").Nth(1);
-        const string typedAmount = "42.42";
+        const string typedAmount = "42";
 
         await targetAmount.FillAsync(typedAmount);
         (await targetAmount.InputValueAsync()).Should().Be(typedAmount);

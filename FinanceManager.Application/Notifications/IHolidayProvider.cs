@@ -12,5 +12,6 @@ public interface IHolidayProvider
     /// <param name="dateLocal">The local calendar date (no time component required).</param>
     /// <param name="countryCode">ISO 3166-1 alpha-2 country code (e.g., "DE", "US"). Nullable ? no holidays.</param>
     /// <param name="subdivisionCode">Optional ISO 3166-2 subdivision/state code (e.g., "DE-BY"). Nullable ? country-level only.</param>
+    /// <returns>Whether the operation succeeded.</returns>
     bool IsPublicHoliday(DateTime dateLocal, string? countryCode, string? subdivisionCode);
 }

@@ -34,6 +34,8 @@ public sealed class SecurityCategoriesController : ControllerBase
     /// An <see cref="IActionResult"/> that contains a <see cref="SecurityCategoryDto"/> and a 200 OK status when found,
     /// or a 404 Not Found when the category does not exist or does not belong to the current user.
     /// </returns>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}", Name = "GetSecurityCategory")]
     [ProducesResponseType(typeof(SecurityCategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -48,6 +50,7 @@ public sealed class SecurityCategoriesController : ControllerBase
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> containing a 200 OK response with a list of <see cref="SecurityCategoryDto"/>.</returns>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<SecurityCategoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
@@ -62,6 +65,8 @@ public sealed class SecurityCategoriesController : ControllerBase
     /// An <see cref="IActionResult"/> that contains the created <see cref="SecurityCategoryDto"/> and a 201 Created status.
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="req"/> is null.</exception>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(SecurityCategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -83,6 +88,9 @@ public sealed class SecurityCategoriesController : ControllerBase
     /// or a 404 Not Found when the category does not exist or does not belong to the current user.
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="req"/> is null.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(SecurityCategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -100,6 +108,8 @@ public sealed class SecurityCategoriesController : ControllerBase
     /// <param name="id">Category id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An <see cref="IActionResult"/> with 204 No Content when deletion succeeds or 404 Not Found when not found.</returns>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -120,6 +130,8 @@ public sealed class SecurityCategoriesController : ControllerBase
     /// Returns 404 Not Found when the category or attachment cannot be found or is invalid.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown by the underlying service when arguments are invalid (mapped to 404).</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -139,6 +151,8 @@ public sealed class SecurityCategoriesController : ControllerBase
     /// Returns 404 Not Found when the category cannot be found or the operation is invalid.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown by the underlying service when arguments are invalid (mapped to 404).</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

@@ -86,6 +86,7 @@ public static class HelpContentCatalog
     /// <summary>
     /// Markdown document names that are kept as technical documentation and excluded from user navigation.
     /// </summary>
+    /// <returns>The result.</returns>
     public static IReadOnlySet<string> TechnicalOnlyDocumentNames { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "api.md",
@@ -186,6 +187,7 @@ public static class HelpContentCatalog
 /// <param name="Title">The display title.</param>
 /// <param name="Description">The short user-facing description.</param>
 /// <param name="Documents">The published documents for the topic.</param>
+/// <returns>The result.</returns>
 public sealed record HelpTopic(string Id, string Title, string Description, IReadOnlyList<HelpTopicDocument> Documents)
 {
     /// <summary>
@@ -200,4 +202,5 @@ public sealed record HelpTopic(string Id, string Title, string Description, IRea
 /// <param name="RouteSegment">The route segment used below the topic route.</param>
 /// <param name="FileName">The markdown file name below the topic directory.</param>
 /// <param name="Title">The display label used in topic navigation.</param>
+/// <returns>The result.</returns>
 public sealed record HelpTopicDocument(string RouteSegment, string FileName, string Title);

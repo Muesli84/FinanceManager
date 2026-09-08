@@ -10,6 +10,8 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
+
+using SecurityUserPair = (FinanceManager.Domain.Securities.Security, FinanceManager.Domain.Users.User);
 using Moq;
 
 namespace FinanceManager.Tests.Securities;
@@ -86,7 +88,8 @@ public sealed class ReturnAnalysisServiceTests : IDisposable
     /// <summary>
     /// Creates a security and its owning user, persists both and returns them.
     /// </summary>
-    private (Security security, User user) SetupSecurityAndUser()
+    /// <returns>The created security and user.</returns>
+    private SecurityUserPair SetupSecurityAndUser()
     {
         var user = new User($"user-{Guid.NewGuid():N}", "hash");
         _db.Users.Add(user);
@@ -100,6 +103,11 @@ public sealed class ReturnAnalysisServiceTests : IDisposable
     /// <summary>
     /// Creates a Buy-type <see cref="Posting"/> for the given security without persisting it.
     /// </summary>
+    /// <param name="securityId">The security id.</param>
+    /// <param name="date">The date.</param>
+    /// <param name="amount">The amount.</param>
+    /// <param name="quantity">The quantity.</param>
+    /// <returns>The result.</returns>
     private static Posting CreateBuyPosting(Guid securityId, DateTime date, decimal amount, decimal quantity)
         => new Posting(
             Guid.NewGuid(),

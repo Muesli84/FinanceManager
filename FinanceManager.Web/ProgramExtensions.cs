@@ -176,6 +176,7 @@ namespace FinanceManager.Web
             }).AddHttpMessageHandler<AuthenticatedHttpClientHandler>();
             builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
             builder.Services.AddScoped<IApiClient>(sp => new ApiClient(sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api")));
+            builder.Services.AddScoped<IConfirmationService, ConfirmationService>();
             builder.Services.AddScoped<IKpiLocalStorageCache, KpiLocalStorageCache>();
 
             // Self-update services: the auto-update subsystem is provided by the external msTools.Updater release
@@ -371,6 +372,7 @@ namespace FinanceManager.Web
         /// populated when <see cref="UserPreferenceRequestCultureProvider"/> reads the JWT claims.
         /// </para>
         /// </summary>
+        /// <param name="_">The  .</param>
         /// <returns>Configured <see cref="RequestLocalizationOptions"/>.</returns>
         public static RequestLocalizationOptions BuildLocalizationOptions(this WebApplication _)
         {
@@ -410,6 +412,24 @@ namespace FinanceManager.Web
                 {
                     app.UseHttpsRedirection();
                 }
+            }
+
+            if (app.Configuration.GetValue<bool>("E2E:AccountStatisticsFaultInjectionEnabled"))
+            {
+                var accountStatisticsFaultFile = app.Configuration["E2E:AccountStatisticsFaultFile"];
+                app.Use(async (context, next) =>
+                {
+                    if (context.Request.Path.Equals("/api/accounts/statistics", StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrWhiteSpace(accountStatisticsFaultFile)
+                        && File.Exists(accountStatisticsFaultFile))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                        await context.Response.WriteAsJsonAsync(new { error = "E2E_AccountStatisticsFault", message = "Injected account statistics failure." });
+                        return;
+                    }
+
+                    await next();
+                });
             }
 
             app.Use(async (context, next) =>

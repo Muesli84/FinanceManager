@@ -15,6 +15,7 @@ namespace FinanceManager.Shared.Dtos.Reports;
 /// <param name="AnalysisDate">Optional analysis month (first day is used as anchor).</param>
 /// <param name="UseValutaDate">When true, aggregate by ValutaDate, falling back to BookingDate where needed.</param>
 /// <param name="Filters">Optional top-level filters.</param>
+/// <returns>The result.</returns>
 public sealed record ReportAggregationQuery(
     Guid OwnerUserId,
     PostingKind PostingKind,

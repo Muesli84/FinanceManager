@@ -52,6 +52,7 @@ namespace FinanceManager.Tests.Infrastructure
             /// <summary>The isolated temporary directory the backup service should treat as its content root.</summary>
             public string ContentRootPath { get; set; } = string.Empty;
             /// <summary>Not used by these tests; present only to satisfy the <see cref="IHostEnvironment"/> contract.</summary>
+            /// <returns>The result.</returns>
             public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
         }
 

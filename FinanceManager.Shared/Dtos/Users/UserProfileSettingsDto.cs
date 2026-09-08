@@ -16,4 +16,7 @@ public sealed class UserProfileSettingsDto
     public bool ShareAlphaVantageApiKey { get; set; }
     /// <summary>True when home page KPI data should be cached in the browser's local storage.</summary>
     public bool CacheKpisInLocalStorage { get; set; }
+
+    /// <summary>True when confirmation dialogs should be shown before destructive or irreversible actions.</summary>
+    public bool ShowConfirmations { get; set; } = true;
 }

@@ -8,6 +8,7 @@ namespace FinanceManager.Application.Securities.ReturnAnalysis;
 /// <param name="StartValue">Portfolio value at period start.</param>
 /// <param name="EndValue">Portfolio value at period end.</param>
 /// <param name="ExternalCashflow">External cashflow during the period (positive = inflow, negative = outflow).</param>
+/// <returns>The result.</returns>
 public sealed record TwrPeriodInput(DateTime Start, DateTime End, decimal StartValue, decimal EndValue, decimal ExternalCashflow);
 
 /// <summary>
@@ -15,6 +16,7 @@ public sealed record TwrPeriodInput(DateTime Start, DateTime End, decimal StartV
 /// </summary>
 /// <param name="Date">Date of the cashflow.</param>
 /// <param name="Amount">Amount (negative = outflow/investment, positive = inflow/return).</param>
+/// <returns>The result.</returns>
 public sealed record CashflowPoint(DateTime Date, decimal Amount);
 
 /// <summary>
@@ -26,4 +28,5 @@ public sealed record CashflowPoint(DateTime Date, decimal Amount);
 /// <param name="Amount">Monetary amount (negative for outflows, positive for inflows).</param>
 /// <param name="Quantity">Share quantity (positive for Buy, positive for Sell).</param>
 /// <param name="GroupId">Group identifier linking related transactions (e.g., dividend + tax).</param>
+/// <returns>The result.</returns>
 public sealed record SecurityTransaction(Guid Id, DateTime Date, SecurityPostingSubType Type, decimal Amount, decimal? Quantity, Guid GroupId);

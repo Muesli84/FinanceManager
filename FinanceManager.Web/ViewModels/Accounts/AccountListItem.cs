@@ -11,6 +11,7 @@ namespace FinanceManager.Web.ViewModels.Accounts
     /// <param name="Iban">Optional IBAN for the account.</param>
     /// <param name="CurrentBalance">Current account balance.</param>
     /// <param name="SymbolId">Optional attachment id used as symbol/icon for the account.</param>
+    /// <returns>The result.</returns>
     public sealed record AccountListItem(Guid Id, string Name, AccountType Type, string? Iban, decimal CurrentBalance, Guid? SymbolId) : IListItemNavigation
     {
         /// <summary>
