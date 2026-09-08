@@ -25,6 +25,7 @@ public sealed class UserAuthService : IUserAuthService
     private readonly ILogger<UserAuthService> _logger;
     private readonly IIpBlockService _ipBlocks;
     private readonly RoleManager<IdentityRole<Guid>>? _roleManager;
+    private readonly IBackgroundTaskManager? _backgroundTaskManager;
 
     /// <summary>
     /// Backwards-compatible constructor overload for tests and legacy callers.
@@ -37,7 +38,7 @@ public sealed class UserAuthService : IUserAuthService
     /// <param name="timeProvider">Clock provider for date/time.</param>
     /// <param name="logger">Logger instance.</param>
     public UserAuthService(AppDbContext db, UserManager<User> userManager, SignInManager<User> signInManager, IJwtTokenService jwt, IPasswordHashingService passwordHasher, TimeProvider timeProvider, ILogger<UserAuthService> logger)
-        : this(db, userManager, signInManager, jwt, passwordHasher, timeProvider, logger, new NoopIpBlockService(), null)
+        : this(db, userManager, signInManager, jwt, passwordHasher, timeProvider, logger, new NoopIpBlockService(), null, null)
     { }
 
     /// <summary>
@@ -52,6 +53,7 @@ public sealed class UserAuthService : IUserAuthService
     /// <param name="logger">Logger instance.</param>
     /// <param name="ipBlocks">IP block service used for rate-limiting / blocking decisions.</param>
     /// <param name="roleManager">Optional RoleManager used to create initial roles.</param>
+    /// <param name="backgroundTaskManager">Optional background task manager to enqueue demo-data generation.</param>
     public UserAuthService(
         AppDbContext db,
         UserManager<User> userManager,
@@ -61,7 +63,8 @@ public sealed class UserAuthService : IUserAuthService
         TimeProvider timeProvider,
         ILogger<UserAuthService> logger,
         IIpBlockService ipBlocks,
-        RoleManager<IdentityRole<Guid>>? roleManager = null)
+        RoleManager<IdentityRole<Guid>>? roleManager = null,
+        IBackgroundTaskManager? backgroundTaskManager = null)
     {
         _db = db;
         _userManager = userManager;
@@ -72,6 +75,7 @@ public sealed class UserAuthService : IUserAuthService
         _logger = logger;
         _ipBlocks = ipBlocks;
         _roleManager = roleManager;
+        _backgroundTaskManager = backgroundTaskManager;
     }
 
     /// <summary>
@@ -180,7 +184,11 @@ public sealed class UserAuthService : IUserAuthService
             await _db.SaveChangesAsync(ct);
         }
 
-        //await new DemoDataService(_db).CreateDemoDataForUserAsync(user.Id, ct);
+        if (command.CreateDemoData && isFirst && _backgroundTaskManager is not null)
+        {
+            var taskInfo = _backgroundTaskManager.Enqueue(BackgroundTaskType.CreateDemoData, user.Id, allowDuplicate: false);
+            _logger.LogInformation("Queued demo-data task {TaskId} for first user {UserId}", taskInfo.Id, user.Id);
+        }
 
         var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
         var token = _jwt.CreateToken(user.Id, user.UserName!, isAdmin, user.SecurityStamp!, out var expires, user.PreferredLanguage, user.TimeZoneId);

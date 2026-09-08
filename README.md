@@ -22,6 +22,8 @@ Im aktuellen Code sind unter anderem folgende Bereiche vorhanden:
 
 Die Navigation in `FinanceManager.Web/Components/Layout/MainLayout.razor` verweist aktuell auf Home, Konten, Kontoauszüge, Kontakte, Sparpläne, Wertpapiere, Budgetzwecke, Reports, Setup, Benutzerverwaltung und Help.
 
+Neu im Erstregistrierungsfluss: Beim ersten Benutzer steht auf der Registrierungsseite eine Checkbox `Demodaten anlegen` zur Verfügung. Wenn sie aktiviert ist, erzeugt die Anwendung im Hintergrund den Demo-Datenbestand und zeigt den Fortschritt über die vorhandene Background-Task-Anzeige auf der Startseite an.
+
 ## Tech-Stack
 
 - **.NET 10 / ASP.NET Core**

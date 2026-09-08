@@ -22,4 +22,5 @@
   <data name="Ribbon_Group_Navigation"><value>Navigation</value></data>
   <data name="Ribbon_Back"><value>Back</value></data>
   <data name="Ribbon_Tab_Register"><value>Register</value></data>
+  <data name="Checkbox_CreateDemoData"><value>Create demo data</value></data>
 </root>

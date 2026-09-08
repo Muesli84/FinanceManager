@@ -43,6 +43,10 @@
                    autocomplete="new-password" />
         <ValidationMessage For="() => _model.Password" />
     </div>
+    <div style="margin-top:1rem;display:flex;align-items:center;gap:.6rem;">
+        <InputCheckbox id="create-demo-data" @bind-Value="_model.CreateDemoData" />
+        <label for="create-demo-data">@L["Checkbox_CreateDemoData"]</label>
+    </div>
     <div style="margin-top:1.25rem;display:flex;gap:.5rem;align-items:center;">
         <button type="submit" disabled="@_busy">
             @(_busy ? L["Button_Wait"] : L["Button_Register"]) 
@@ -93,7 +97,7 @@
             }
             catch { }
 
-            var req = new RegisterRequest(_model.Username.Trim(), _model.Password, preferredLanguage, timeZoneId);
+            var req = new RegisterRequest(_model.Username.Trim(), _model.Password, preferredLanguage, timeZoneId, _model.CreateDemoData);
             try
             {
                 var _ = await Api.Auth_RegisterAsync(req, CancellationToken.None);
@@ -140,5 +144,6 @@
         public string Username { get; set; } = string.Empty;
         [Required, MinLength(6)]
         public string Password { get; set; } = string.Empty;
+        public bool CreateDemoData { get; set; }
     }
 }

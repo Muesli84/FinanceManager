@@ -158,7 +158,8 @@ public sealed class EnumCoverageTests
             nameof(FinanceManager.Shared.Dtos.Admin.BackgroundTaskType.BackupRestore),
             nameof(FinanceManager.Shared.Dtos.Admin.BackgroundTaskType.SecurityPricesBackfill),
             nameof(FinanceManager.Shared.Dtos.Admin.BackgroundTaskType.RebuildAggregates),
-            nameof(FinanceManager.Shared.Dtos.Admin.BackgroundTaskType.RefreshBudgetReportCache));
+            nameof(FinanceManager.Shared.Dtos.Admin.BackgroundTaskType.RefreshBudgetReportCache),
+            nameof(FinanceManager.Shared.Dtos.Admin.BackgroundTaskType.CreateDemoData));
 
     /// <summary>
     /// Verifies the declared values of the enum covered by this test.

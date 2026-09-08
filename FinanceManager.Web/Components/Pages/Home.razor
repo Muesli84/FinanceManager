@@ -26,8 +26,9 @@
 @if (_vm?.IsAuthenticated == true)
 {
     <HomeNotifications />
+<BackgroundTaskStatusPanel />
 
-    @if (_vm?.UploadInProgress == true)
+@if (_vm?.UploadInProgress == true)
     {
         <div class="upload-progress" role="status" aria-live="polite">
             <div class="hdr">
