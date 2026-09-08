@@ -117,9 +117,9 @@ Wichtig:
 ## Fortschritt und Backgroundtask-Anzeige
 
 - Task-Typ: `BackgroundTaskType.CreateDemoData`
-- Startmeldung: `Demo-Daten werden angelegt...`
-- Erfolgsmeldung: `Demo-Daten wurden angelegt.`
-- Abbruchmeldung: `Demo-Daten-Anlage abgebrochen.`
+- Startmeldung: lokalisiert (de: `Demo-Daten werden angelegt...`, en: `Creating demo data...`)
+- Erfolgsmeldung: lokalisiert (de: `Demo-Daten wurden angelegt.`, en: `Demo data has been created.`)
+- Abbruchmeldung: lokalisiert (de: `Demo-Daten-Anlage abgebrochen.`, en: `Demo data creation was canceled.`)
 
 Die Anzeige erfolgt ohne Sonder-UI über das generische `BackgroundTaskStatusPanel` auf `Home.razor`.
 

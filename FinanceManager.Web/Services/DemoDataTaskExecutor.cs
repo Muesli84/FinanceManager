@@ -1,5 +1,6 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Demo;
+using Microsoft.Extensions.Localization;
 
 namespace FinanceManager.Web.Services;
 
@@ -10,16 +11,22 @@ public sealed class DemoDataTaskExecutor : IBackgroundTaskExecutor
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<DemoDataTaskExecutor> _logger;
+    private readonly IStringLocalizer<DemoDataTaskExecutor> _localizer;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DemoDataTaskExecutor"/> class.
     /// </summary>
     /// <param name="scopeFactory">Scope factory used to resolve the demo-data service.</param>
     /// <param name="logger">Logger instance.</param>
-    public DemoDataTaskExecutor(IServiceScopeFactory scopeFactory, ILogger<DemoDataTaskExecutor> logger)
+    /// <param name="localizer">Localizer used for user-visible progress messages.</param>
+    public DemoDataTaskExecutor(
+        IServiceScopeFactory scopeFactory,
+        ILogger<DemoDataTaskExecutor> logger,
+        IStringLocalizer<DemoDataTaskExecutor> localizer)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _localizer = localizer;
     }
 
     /// <inheritdoc />
@@ -31,22 +38,22 @@ public sealed class DemoDataTaskExecutor : IBackgroundTaskExecutor
         using var scope = _scopeFactory.CreateScope();
         var demoDataService = scope.ServiceProvider.GetRequiredService<IDemoDataService>();
 
-        context.ReportProgress(0, 1, "Demo-Daten werden angelegt...", 0, 0);
+        context.ReportProgress(0, 1, _localizer["DD_Start"], 0, 0);
 
         try
         {
             await demoDataService.CreateDemoDataAsync(context.UserId, createPostings: true, ct);
-            context.ReportProgress(1, 1, "Demo-Daten wurden angelegt.", 0, 0);
+            context.ReportProgress(1, 1, _localizer["DD_Completed"], 0, 0);
         }
         catch (OperationCanceledException)
         {
-            context.ReportProgress(0, 1, "Demo-Daten-Anlage abgebrochen.", 0, 0);
+            context.ReportProgress(0, 1, _localizer["DD_Canceled"], 0, 0);
             throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Demo data generation failed for user {UserId}", context.UserId);
-            context.ReportProgress(0, 1, ex.Message, 0, 1);
+            context.ReportProgress(0, 1, _localizer["DD_Failed"], 0, 1);
             throw;
         }
     }
