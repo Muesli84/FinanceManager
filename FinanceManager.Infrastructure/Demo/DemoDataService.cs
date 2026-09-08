@@ -301,7 +301,7 @@ public sealed class DemoDataService : IDemoDataService
             null,
             null,
             ct);
-        
+
         var generalPlan = await _savingsPlanService.CreateAsync(
             userId,
             "Sparplan Allgemein",
@@ -742,7 +742,7 @@ public sealed class DemoDataService : IDemoDataService
                 for (var paymentIndex = 0; paymentIndex < paymentsThisWeek; paymentIndex++)
                 {
                     var shopOffset = random.Next(0, shopContacts.Length);
-                    var shop = shopContacts[shopOffset];                    
+                    var shop = shopContacts[shopOffset];
 
                     var paymentDay = ClampToBusinessDay(weekStart.AddDays(random.Next(0, 7)), monthStart, monthEnd);
                     var amount = Math.Round(priceFactor * (10m + ((decimal)random.NextDouble() * 20m)), 2, MidpointRounding.AwayFromZero);
