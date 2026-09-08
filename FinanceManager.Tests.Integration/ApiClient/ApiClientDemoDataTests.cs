@@ -4,6 +4,7 @@ using FinanceManager.Domain.Statements;
 using FinanceManager.Application.Demo;
 using FinanceManager.Infrastructure;
 using FinanceManager.Shared.Dtos.Budget;
+using FinanceManager.Shared.Dtos.HomeKpi;
 using FinanceManager.Shared.Dtos.Postings;
 using FinanceManager.Shared.Dtos.Securities;
 using FluentAssertions;
@@ -91,6 +92,7 @@ public class ApiClientDemoDataTests : IClassFixture<TestWebApplicationFactory>
             .ToListAsync(CancellationToken.None);
         contacts.Should().Contain(new[]
         {
+            "Mama",
             "Arbeitgeber GmbH",
             "Zentrial Versicherung",
             "SDAC",
@@ -167,6 +169,20 @@ public class ApiClientDemoDataTests : IClassFixture<TestWebApplicationFactory>
         worldPrices.First().Close.Should().Be(11.36m);
         postPrices.First().Close.Should().Be(44.25m);
 
+        var homeKpis = await db.HomeKpis
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userId)
+            .OrderBy(x => x.SortOrder)
+            .Select(x => new { x.Kind, x.PredefinedType, x.DisplayMode, x.SortOrder })
+            .ToListAsync(CancellationToken.None);
+        homeKpis.Should().HaveCount(5);
+        homeKpis.Should().Equal(
+            new { Kind = HomeKpiKind.Predefined, PredefinedType = (HomeKpiPredefined?)HomeKpiPredefined.AccountsAggregates, DisplayMode = HomeKpiDisplayMode.TotalOnly, SortOrder = 0 },
+            new { Kind = HomeKpiKind.Predefined, PredefinedType = (HomeKpiPredefined?)HomeKpiPredefined.SavingsPlanAggregates, DisplayMode = HomeKpiDisplayMode.TotalOnly, SortOrder = 1 },
+            new { Kind = HomeKpiKind.Predefined, PredefinedType = (HomeKpiPredefined?)HomeKpiPredefined.SecuritiesDividends, DisplayMode = HomeKpiDisplayMode.TotalOnly, SortOrder = 2 },
+            new { Kind = HomeKpiKind.Predefined, PredefinedType = (HomeKpiPredefined?)HomeKpiPredefined.MonthlyBudget, DisplayMode = HomeKpiDisplayMode.TotalOnly, SortOrder = 3 },
+            new { Kind = HomeKpiKind.Predefined, PredefinedType = (HomeKpiPredefined?)HomeKpiPredefined.OpenStatementDraftsCount, DisplayMode = HomeKpiDisplayMode.TotalOnly, SortOrder = 4 });
+
         var buys = await db.Postings
             .AsNoTracking()
             .Where(x => x.Kind == PostingKind.Security && x.SecuritySubType == SecurityPostingSubType.Buy)
@@ -174,6 +190,35 @@ public class ApiClientDemoDataTests : IClassFixture<TestWebApplicationFactory>
             .ToListAsync(CancellationToken.None);
         buys.Should().ContainSingle(x => x.SecurityId == worldSecurityId);
         buys.Should().ContainSingle(x => x.SecurityId == postSecurityId);
+
+        var firstMonth = referenceMonthStart.AddMonths(-23);
+        var expectedWorldBuyMonthStart = firstMonth.AddMonths(2);
+        var worldBuy = buys.Single(x => x.SecurityId == worldSecurityId);
+        worldBuy.BookingDate.Year.Should().Be(expectedWorldBuyMonthStart.Year);
+        worldBuy.BookingDate.Month.Should().Be(expectedWorldBuyMonthStart.Month);
+
+        var worldDividends = await db.Postings
+            .AsNoTracking()
+            .Where(x => x.Kind == PostingKind.Security && x.SecuritySubType == SecurityPostingSubType.Dividend)
+            .Where(x => x.SecurityId == worldSecurityId)
+            .OrderBy(x => x.BookingDate)
+            .ToListAsync(CancellationToken.None);
+        worldDividends.Should().NotBeEmpty();
+        worldDividends.All(x => x.BookingDate >= expectedWorldBuyMonthStart).Should().BeTrue();
+
+        var userAccountIds = await db.Accounts
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userId)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken.None);
+        var startgeld = await db.Postings
+            .AsNoTracking()
+            .Where(x => x.Subject == "Startgeld" && x.Amount == 5000.00m)
+            .Where(x => x.AccountId.HasValue && userAccountIds.Contains(x.AccountId.Value))
+            .ToListAsync(CancellationToken.None);
+        startgeld.Should().ContainSingle();
+        startgeld[0].BookingDate.Year.Should().Be(firstMonth.Year);
+        startgeld[0].BookingDate.Month.Should().Be(firstMonth.Month);
     }
 
     /// <summary>

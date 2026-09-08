@@ -38,7 +38,7 @@ Datumsbasis ist der erste Tag des aktuellen Monats (`referenceMonthStart`). Die 
 
 Angelegte Kontakte:
 - Banken: `Musterbank Nord`, `Musterbank Süd`
-- Organisationen/Personen: `Arbeitgeber GmbH`, `Zentrial Versicherung`, `SDAC`, `Sabbel Lüchtenhausen`
+- Organisationen/Personen: `Mama`, `Arbeitgeber GmbH`, `Zentrial Versicherung`, `SDAC`, `Sabbel Lüchtenhausen`
 - Märkte: `Adli`, `Didl`, `Adeka`
 - Bäckereien: `Bäckerei Kramphove`, `Bäckerei Feiping`, `Bäckerei Schlonz`
 - Self-Kontakt: vorhandener `ContactType.Self` wird genutzt oder als `Self` angelegt
@@ -90,12 +90,22 @@ Kursverlauf:
 - tägliche Veränderung nach dem ersten Kurs: Faktor zwischen -0,5 % und +2,0 %
 - Importpfad über bestehende Import-Infrastruktur (`ISecurityPriceImportServiceFactory`, `ImportAsync(...)`)
 
+### Home-KPI-Kacheln
+
+Für neu erzeugte Demo-Daten werden folgende KPI-Kacheln in dieser Reihenfolge angelegt:
+1. `Monthly turnover` (`HomeKpiPredefined.AccountsAggregates`)
+2. `Monthly savings` (`HomeKpiPredefined.SavingsPlanAggregates`)
+3. `Quarterly dividend` (`HomeKpiPredefined.SecuritiesDividends`)
+4. `Budget (current month)` (`HomeKpiPredefined.MonthlyBudget`)
+5. `Open drafts` (`HomeKpiPredefined.OpenStatementDraftsCount`)
+
 ### Buchungen und Kontoauszüge (24 Monate)
 
 `CreateMonthlyPostingPlanAsync(...)` erzeugt pro Monat drei Statement Drafts (Giro + 2x Sparkonto).
 
 Regeln pro Monat:
 - Gehalt auf Girokonto am letzten Werktag (im aktuellen Monat nur, wenn dieser Tag bereits erreicht ist)
+- Im ersten Monat der Reihe: Gutschrift `Startgeld` über +5.000,00 € auf dem Girokonto
 - Rückstellung Hausratversicherung: -5,22 € Giro / +5,22 € Sparkonto Rücklagen
 - Sparplan Urlaub: -50,00 € Giro / +50,00 € Sparkonto Urlaub
 - Rückstellung SDAC: -8,25 € Giro / +8,25 € Sparkonto Rücklagen
@@ -105,8 +115,8 @@ Regeln pro Monat:
 Zusatzregeln:
 - Dezember: Auflösung Hausrat-Rückstellung (+62,64 € Giro / -62,64 € Sparkonto Rücklagen) und Versicherungsbeitrag -62,60 € (ab 16.12. auf nächsten Werktag verschoben)
 - Januar: Auflösung SDAC-Rückstellung (+99,00 € Giro / -99,00 € Sparkonto Rücklagen)
-- Monat 1 der 24-Monatsreihe: Kauf `USHSIV-MSCI WLD` über 2.000,00 €
-- Jeder dritte Monat: Dividende `USHSIV-MSCI WLD` (Brutto zufällig 15,00 € bis 30,00 €, Steuer 25 %, Netto als Buchung)
+- Monat 3 der 24-Monatsreihe: Kauf `USHSIV-MSCI WLD` über 2.000,00 €
+- Ab Monat 3, dann alle drei Monate: Dividende `USHSIV-MSCI WLD` (Brutto zufällig 15,00 € bis 30,00 €, Steuer 25 %, Netto als Buchung)
 - Monat 6: Kauf `Inländische Post AG` mit 62 Stück zum verfügbaren Kurs
 - Ab Monat 6 jeweils im Mai: Dividende `Inländische Post AG` (4 % vom aktuellen Wert, 25 % Steuer)
 

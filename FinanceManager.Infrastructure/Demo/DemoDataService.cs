@@ -4,12 +4,14 @@ using FinanceManager.Application.Accounts;
 using FinanceManager.Application.Budget;
 using FinanceManager.Application.Contacts;
 using FinanceManager.Application.Demo;
+using FinanceManager.Application.Reports;
 using FinanceManager.Application.Savings;
 using FinanceManager.Application.Securities;
 using FinanceManager.Application.Statements;
 using FinanceManager.Shared.Dtos.Accounts;
 using FinanceManager.Shared.Dtos.Budget;
 using FinanceManager.Shared.Dtos.Contacts;
+using FinanceManager.Shared.Dtos.HomeKpi;
 using FinanceManager.Shared.Dtos.SavingsPlans;
 using FinanceManager.Shared.Dtos.Securities;
 using FinanceManager.Shared.Dtos.Statements;
@@ -34,6 +36,7 @@ public sealed class DemoDataService : IDemoDataService
     private readonly IBudgetCategoryService _budgetCategoryService;
     private readonly IBudgetPurposeService _budgetPurposeService;
     private readonly IBudgetRuleService _budgetRuleService;
+    private readonly IHomeKpiService _homeKpiService;
     private readonly ILogger<DemoDataService> _logger;
 
     /// <summary>
@@ -51,6 +54,7 @@ public sealed class DemoDataService : IDemoDataService
     /// <param name="budgetCategoryService">Service used to create budget categories.</param>
     /// <param name="budgetPurposeService">Service used to create budget purposes.</param>
     /// <param name="budgetRuleService">Service used to create budget rules.</param>
+    /// <param name="homeKpiService">Service used to create default home KPI tiles.</param>
     /// <param name="logger">Logger instance.</param>
     public DemoDataService(
         IAccountService accountService,
@@ -65,6 +69,7 @@ public sealed class DemoDataService : IDemoDataService
         IBudgetCategoryService budgetCategoryService,
         IBudgetPurposeService budgetPurposeService,
         IBudgetRuleService budgetRuleService,
+        IHomeKpiService homeKpiService,
         ILogger<DemoDataService> logger)
     {
         _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
@@ -79,6 +84,7 @@ public sealed class DemoDataService : IDemoDataService
         _budgetCategoryService = budgetCategoryService ?? throw new ArgumentNullException(nameof(budgetCategoryService));
         _budgetPurposeService = budgetPurposeService ?? throw new ArgumentNullException(nameof(budgetPurposeService));
         _budgetRuleService = budgetRuleService ?? throw new ArgumentNullException(nameof(budgetRuleService));
+        _homeKpiService = homeKpiService ?? throw new ArgumentNullException(nameof(homeKpiService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -101,6 +107,7 @@ public sealed class DemoDataService : IDemoDataService
         var (
             selfContact,
             giroBankContact,
+            mamaContact,
             employerContact,
             insuranceContact,
             rentContact,
@@ -126,6 +133,7 @@ public sealed class DemoDataService : IDemoDataService
                 random,
                 selfContact,
                 giroBankContact,
+                mamaContact,
                 employerContact,
                 insuranceContact,
                 rentContact,
@@ -144,11 +152,14 @@ public sealed class DemoDataService : IDemoDataService
                 householdContractNumber,
                 ct);
         }
+
+        await EnsureDefaultHomeKpisAsync(userId, ct);
     }
 
     private async Task<(
         ContactDto selfContact,
         ContactDto giroBankContact,
+        ContactDto mamaContact,
         ContactDto employerContact,
         ContactDto insuranceContact,
         ContactDto rentContact,
@@ -192,6 +203,7 @@ public sealed class DemoDataService : IDemoDataService
 
         var giroBankContact = await _contactService.CreateAsync(userId, "Musterbank Nord", ContactType.Bank, banksGroup.Id, null, false, ct);
         var secondBankContact = await _contactService.CreateAsync(userId, "Musterbank Süd", ContactType.Bank, banksGroup.Id, null, false, ct);
+        var mamaContact = await _contactService.CreateAsync(userId, "Mama", ContactType.Person, null, null, false, ct);
         var employerContact = await _contactService.CreateAsync(userId, "Arbeitgeber GmbH", ContactType.Organization, workGroup.Id, null, false, ct);
         var insuranceContact = await _contactService.CreateAsync(userId, "Zentrial Versicherung", ContactType.Organization, insuranceGroup.Id, null, false, ct);
         var sdacContact = await _contactService.CreateAsync(userId, "SDAC", ContactType.Organization, insuranceGroup.Id, null, false, ct);
@@ -377,6 +389,7 @@ public sealed class DemoDataService : IDemoDataService
         return (
             selfContact,
             giroBankContact,
+            mamaContact,
             employerContact,
             insuranceContact,
             rentContact,
@@ -401,6 +414,7 @@ public sealed class DemoDataService : IDemoDataService
         Random random,
         ContactDto selfContact,
         ContactDto giroBankContact,
+        ContactDto mamaContact,
         ContactDto employerContact,
         ContactDto insuranceContact,
         ContactDto rentContact,
@@ -574,6 +588,11 @@ public sealed class DemoDataService : IDemoDataService
                 await AddDraftEntryAsync(giroDraftId, lastBusinessDay, 3642.50m, "Gehalt", employerContact.Id);
             }
 
+            if (monthIndex == 0)
+            {
+                await AddDraftEntryAsync(giroDraftId, firstBusinessDay, 5000.00m, "Startgeld", mamaContact.Id);
+            }
+
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -5.22m, "Rückstellung Hausratversicherung", selfContact.Id, householdPlan.Id);
             await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 5.22m, "Rückstellung Hausratversicherung", selfContact.Id);
 
@@ -658,7 +677,7 @@ public sealed class DemoDataService : IDemoDataService
                 }
             }
 
-            if (monthIndex == 0)
+            if (monthIndex == 2)
             {
                 var price = GetPriceForDate(worldPriceHistory, firstBusinessDay);
                 var quantity = Math.Round(2000.00m / price, 6, MidpointRounding.AwayFromZero);
@@ -676,7 +695,7 @@ public sealed class DemoDataService : IDemoDataService
                     null);
             }
 
-            if ((monthIndex + 1) % 3 == 0)
+            if (monthIndex >= 2 && (monthIndex - 2) % 3 == 0)
             {
                 var gross = Math.Round(15m + ((decimal)random.NextDouble() * 15m), 2, MidpointRounding.AwayFromZero);
                 var tax = Math.Round(gross * 0.25m, 2, MidpointRounding.AwayFromZero);
@@ -740,6 +759,38 @@ public sealed class DemoDataService : IDemoDataService
                 await BookDraftAsync(primarySavingsDraftId);
                 await BookDraftAsync(secondarySavingsDraftId);
             }
+        }
+    }
+
+    private async Task EnsureDefaultHomeKpisAsync(Guid userId, CancellationToken ct)
+    {
+        var existingKpis = await _homeKpiService.ListAsync(userId, ct);
+        if (existingKpis.Count > 0)
+        {
+            return;
+        }
+
+        var defaults = new[]
+        {
+            HomeKpiPredefined.AccountsAggregates,
+            HomeKpiPredefined.SavingsPlanAggregates,
+            HomeKpiPredefined.SecuritiesDividends,
+            HomeKpiPredefined.MonthlyBudget,
+            HomeKpiPredefined.OpenStatementDraftsCount
+        };
+
+        for (var sortOrder = 0; sortOrder < defaults.Length; sortOrder++)
+        {
+            await _homeKpiService.CreateAsync(
+                userId,
+                new HomeKpiCreateRequest(
+                    HomeKpiKind.Predefined,
+                    null,
+                    defaults[sortOrder],
+                    null,
+                    HomeKpiDisplayMode.TotalOnly,
+                    sortOrder),
+                ct);
         }
     }
 
