@@ -27,6 +27,8 @@ else
     @* Render ribbon here so upload UI can be positioned directly under it *@
     <Ribbon TTabEnum="TabId" Provider="(IRibbonProvider)_provider" Localizer="Localizer" />
 
+    <ConfirmationDialogHost />
+
     <h3 class="list-page-title">@Localizer["General_PageTitle"]: @GetKindTitle()</h3>
 
     <UploadStatus ViewModel="@(_provider as FinanceManager.Web.ViewModels.Common.IUploadFilesViewModel)" />

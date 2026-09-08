@@ -422,6 +422,24 @@ form {
     padding: 1.25rem 1.35rem 1rem 1.35rem; 
 }
 
+.confirm-dialog {
+    max-width: min(28rem, calc(100% - 2rem));
+    width: 100%;
+}
+
+.confirm-dialog h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0;
+    padding-right: 2rem;
+}
+
+.confirm-dialog p {
+    margin: .75rem 0 0 0;
+    line-height: 1.4;
+    color: var(--text);
+}
+
 .split-scroll { 
     max-height: 300px; 
     overflow: auto; 

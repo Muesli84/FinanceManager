@@ -38,6 +38,8 @@ else
 
         <BackgroundTaskStatusPanel AllowedTypes="@((_vm as BaseViewModel)?.VisibleBackgroundTaskTypes)" />
 
+        <ConfirmationDialogHost />
+
         <EmbeddedPanelHost TKeyValue="(string,string)" Provider="_vm" Position="EmbeddedPanelPosition.AfterRibbon" />
         <GenericCardPage TKeyValue="(string, string)" Provider="_vm" Localizer="Localizer" LoadingText="@Localizer["General_Loading"]" />
 

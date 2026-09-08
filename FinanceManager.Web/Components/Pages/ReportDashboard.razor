@@ -26,6 +26,8 @@
 
 <Ribbon TTabEnum="ReportDashboard.TabId" Provider="_vm" Localizer="Localizer" />
 
+<ConfirmationDialogHost />
+
 <div class="report-dashboard-page">
     <h2 class="report-dashboard-heading">@(string.IsNullOrWhiteSpace(_vm?.FavoriteName) ? Localizer["Heading"] : _vm!.FavoriteName.Trim())</h2>
 

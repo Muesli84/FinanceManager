@@ -218,8 +218,6 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
                 .Where(IsSectionVisible)
                 .Select(section => new KeyValuePair<string, string>(section.Key, Localizer?[section.LocalizationKey].Value ?? section.FallbackTitle))
                 .ToList();
-
-            RaiseEmbeddedPanelUiAction();
         }
         catch (Exception ex)
         {
@@ -298,28 +296,34 @@ public sealed class SetupCardViewModel : BaseCardViewModel<(string Key, string V
         RaiseStateChanged();
     }
 
-    private void RaiseEmbeddedPanelUiAction()
+    /// <summary>
+    /// Returns the setup sections panel that is rendered immediately below the ribbon.
+    /// Using a declarative embedded panel avoids a race where <c>UiActionRequested</c> is raised
+    /// before the <c>EmbeddedPanelHost</c> has subscribed, which can happen for view models whose
+    /// initialization completes synchronously.
+    /// </summary>
+    /// <param name="position">The requested embedded panel position.</param>
+    /// <returns>A list containing the setup panel spec when <paramref name="position"/> is <see cref="EmbeddedPanelPosition.AfterRibbon"/>.</returns>
+    public override IReadOnlyList<EmbeddedPanelSpec> GetEmbeddedPanelSpecs(EmbeddedPanelPosition position)
     {
-        // Request embedded panel rendering for the setup sections component (placed after the ribbon)
-        try
+        if (position != EmbeddedPanelPosition.AfterRibbon)
         {
-            // inner parameters for the SetupSections component
-            var innerParms = new Dictionary<string, object> { ["Provider"] = this } as IDictionary<string, object>;
-            // outer parameters for the SetupPanel wrapper
-            var outerParms = new Dictionary<string, object?>
-            {
-                ["InnerComponentType"] = typeof(FinanceManager.Web.Components.Pages.SetupSections),
-                ["InnerParameters"] = innerParms
-            };
+            return Array.Empty<EmbeddedPanelSpec>();
+        }
 
-            var spec = new BaseViewModel.EmbeddedPanelSpec(typeof(FinanceManager.Web.Components.Shared.SetupPanel), outerParms, EmbeddedPanelPosition.AfterRibbon, true);
-            RaiseUiActionRequested("EmbeddedPanel", spec);
-        }
-        catch (Exception ex)
+        var innerParms = new Dictionary<string, object> { ["Provider"] = this } as IDictionary<string, object>;
+        var outerParms = new Dictionary<string, object?>
         {
-            _logger?.LogError(ex, "Failed to raise embedded panel UI action");
-        }
+            ["InnerComponentType"] = typeof(FinanceManager.Web.Components.Pages.SetupSections),
+            ["InnerParameters"] = innerParms
+        };
+
+        return new[]
+        {
+            new EmbeddedPanelSpec(typeof(FinanceManager.Web.Components.Shared.SetupPanel), outerParms, EmbeddedPanelPosition.AfterRibbon, true)
+        };
     }
+
     private static bool TryGetSectionDefinition(string key, out SetupSectionDefinition? sectionDefinition)
     {
         sectionDefinition = SectionDefinitions.FirstOrDefault(section => string.Equals(section.Key, key, StringComparison.OrdinalIgnoreCase));

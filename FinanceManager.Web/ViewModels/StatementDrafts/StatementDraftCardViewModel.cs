@@ -558,14 +558,6 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
     {
         if (DraftId == Guid.Empty) return;
 
-        if (!ignoreWarnings && !await ConfirmationService.ConfirmAsync(new(
-            TitleResourceKey: "Confirmation_Book_Title",
-            MessageResourceKey: "Confirmation_Book_Message",
-            Severity: ConfirmationSeverity.Warning)))
-        {
-            return;
-        }
-
         // clear panels to avoid duplicate validation panels
         RaiseUiActionRequested("ClearEmbeddedPanel");
         Loading = true; SetError(null, null); LastValidationResult = null; RaiseStateChanged();

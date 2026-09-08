@@ -5,7 +5,7 @@
 @if (Request != null)
 {
     <div class="split-center" @onclick="OnBackdropClick">
-        <div class="split-dialog confirm-dialog confirm-severity-@GetSeverityClass()" style="max-width:90vH;" @onclick:stopPropagation="true" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+        <div class="split-dialog confirm-dialog confirm-severity-@GetSeverityClass()" @onclick:stopPropagation="true" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
                 <h2 id="confirm-title">@Localizer[Request.TitleResourceKey]</h2>
                 <button class="icon-btn" title="@Localizer["Btn_Close"]" @onclick="OnCancel" aria-label="@Localizer["Btn_Close"]">
@@ -15,7 +15,7 @@
             <p id="confirm-message">@Localizer[Request.MessageResourceKey]</p>
             <div class="confirm-dialog-actions" style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem;">
                 <button class="btn secondary" @ref="_cancelButtonRef" @onclick="OnCancel">@Localizer["Btn_Cancel"]</button>
-                <button class="btn" @onclick="OnConfirm">@Localizer["Btn_Confirm"]</button>
+                <button class="btn btn-primary" @onclick="OnConfirm">@(Request.ConfirmButtonResourceKey is null ? Localizer["Btn_Confirm"] : Localizer[Request.ConfirmButtonResourceKey])</button>
             </div>
         </div>
     </div>
