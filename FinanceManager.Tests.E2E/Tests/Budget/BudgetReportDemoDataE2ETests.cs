@@ -1,15 +1,17 @@
 using System.Text.RegularExpressions;
+using System.Globalization;
 
 namespace FinanceManager.Tests.E2E;
 
 /// <summary>
 /// End-to-end regression test for the demo-data seeded budget report using a real browser session:
 /// register first user with demo-data generation, wait for background task completion, open budget report,
-/// move to previous month, and verify expected table positions.
+/// move to previous month, and verify expected budget/actual values.
 /// </summary>
 [Collection(PlaywrightCollection.CollectionName)]
 public sealed class BudgetReportDemoDataE2ETests
 {
+    private static readonly CultureInfo GermanCulture = CultureInfo.GetCultureInfo("de-DE");
     private readonly PlaywrightWebAppFixture _fixture;
 
     /// <summary>
@@ -23,7 +25,7 @@ public sealed class BudgetReportDemoDataE2ETests
 
     /// <summary>
     /// Registers a fresh first user, triggers demo-data creation, waits until the background task panel
-    /// disappears, then validates that the previous-month budget report contains all expected positions.
+    /// disappears, then validates that the previous-month budget report contains expected positions and values.
     /// </summary>
     [Fact]
     public async Task DemoDataBudgetReport_PreviousMonth_ShouldContainAllExpectedRows()
@@ -53,20 +55,48 @@ public sealed class BudgetReportDemoDataE2ETests
         await page.Locator("#PrevMonth").ClickAsync();
         await WaitForBudgetReportReadyAsync(page);
 
-        var allRowsText = await page.Locator(".budget-report-table tbody tr").AllInnerTextsAsync();
-        var normalized = allRowsText
-            .Select(NormalizeWhitespace)
-            .Where(static x => !string.IsNullOrWhiteSpace(x))
+        var detailsRows = await ReadDetailsRowsAsync(page);
+        var names = detailsRows
+            .Select(static x => x.Name)
             .ToList();
 
-        normalized.Should().Contain(row => row.Contains("Gehalt", StringComparison.Ordinal));
-        normalized.Should().Contain(row => row.Contains("Rückstellung Hausratversicherung", StringComparison.Ordinal));
-        normalized.Should().Contain(row => row.Contains("Hausratversicherung", StringComparison.Ordinal));
-        normalized.Should().Contain(row => row.Contains("Rückstellung SDAC", StringComparison.Ordinal));
-        normalized.Should().Contain(row => row.Contains("SDAC", StringComparison.Ordinal));
-        normalized.Should().Contain(row => row.Contains("Wohnungsmiete", StringComparison.Ordinal));
-        normalized.Should().Contain(row => row.Contains("Supermärkte & Einzelhandel", StringComparison.Ordinal));
-        normalized.Should().Contain(row => row.Contains("Bäckereien & Cafés", StringComparison.Ordinal));
+        names.Should().Contain("Gehalt");
+        names.Should().Contain("Rückstellung Hausratversicherung");
+        names.Should().Contain("Hausratversicherung");
+        names.Should().Contain("Rückstellung SDAC");
+        names.Should().Contain("SDAC");
+        names.Should().Contain("Wohnungsmiete");
+        names.Should().Contain("Supermärkte & Einzelhandel");
+        names.Should().Contain("Bäckereien & Cafés");
+
+        AssertRowValues(detailsRows, "Gehalt", 3642.50m, 3642.50m);
+        AssertRowValues(detailsRows, "Rückstellung Hausratversicherung", -5.22m, -5.22m);
+        AssertRowValues(detailsRows, "Rückstellung SDAC", -8.25m, -8.25m);
+        AssertRowValues(detailsRows, "Wohnungsmiete", -845.00m, -845.00m);
+        AssertRowValues(detailsRows, "Einkaufen & Verpflegung", -300.00m, -300.00m);
+
+        var bakeryRow = RequireRow(detailsRows, "Bäckereien & Cafés");
+        var marketRow = RequireRow(detailsRows, "Supermärkte & Einzelhandel");
+        var shoppingCategoryRow = RequireRow(detailsRows, "Einkaufen & Verpflegung");
+
+        bakeryRow.Actual.Should().NotBeNull();
+        marketRow.Actual.Should().NotBeNull();
+        shoppingCategoryRow.Actual.Should().NotBeNull();
+
+        bakeryRow.Actual!.Value.Should().BeLessThan(0m, "demo seeding creates weekly bakery postings");
+        marketRow.Actual!.Value.Should().BeLessThan(0m, "demo seeding creates weekly supermarket postings");
+        shoppingCategoryRow.Actual!.Value.Should().BeApproximately(
+            bakeryRow.Actual.Value + marketRow.Actual.Value,
+            0.01m,
+            "shopping category actual should aggregate bakery and supermarket actuals");
+
+        foreach (var row in detailsRows.Where(static x => x.Budget.HasValue && x.Actual.HasValue && x.Delta.HasValue))
+        {
+            row.Delta!.Value.Should().BeApproximately(
+                row.Actual!.Value - row.Budget!.Value,
+                0.01m,
+                $"delta for row '{row.Name}' must match actual-budget");
+        }
     }
 
     private static async Task WaitForBudgetReportReadyAsync(IPage page)
@@ -133,4 +163,78 @@ public sealed class BudgetReportDemoDataE2ETests
 
     private static string NormalizeWhitespace(string input)
         => Regex.Replace(input, "\\s+", " ").Trim();
+
+    private static async Task<List<BudgetRow>> ReadDetailsRowsAsync(IPage page)
+    {
+        var detailsTable = page.Locator(".budget-report-table").Nth(1);
+        var rowLocator = detailsTable.Locator("tbody tr");
+        var rowCount = await rowLocator.CountAsync();
+        var rows = new List<BudgetRow>(rowCount);
+
+        for (var i = 0; i < rowCount; i++)
+        {
+            var row = rowLocator.Nth(i);
+            var cells = row.Locator("td");
+            if (await cells.CountAsync() < 4)
+            {
+                continue;
+            }
+
+            var name = NormalizeWhitespace(await cells.Nth(0).InnerTextAsync());
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            rows.Add(new BudgetRow(
+                name,
+                ParseAmount(await cells.Nth(1).InnerTextAsync()),
+                ParseAmount(await cells.Nth(2).InnerTextAsync()),
+                ParseAmount(await cells.Nth(3).InnerTextAsync())));
+        }
+
+        return rows;
+    }
+
+    private static decimal? ParseAmount(string raw)
+    {
+        var normalized = NormalizeWhitespace(raw)
+            .Replace('\u00A0', ' ')
+            .Trim();
+
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return null;
+        }
+
+        if (decimal.TryParse(normalized, NumberStyles.Number | NumberStyles.AllowLeadingSign, GermanCulture, out var germanValue))
+        {
+            return germanValue;
+        }
+
+        if (decimal.TryParse(normalized, NumberStyles.Number | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var invariantValue))
+        {
+            return invariantValue;
+        }
+
+        throw new InvalidOperationException($"Unable to parse decimal amount from '{raw}'.");
+    }
+
+    private static void AssertRowValues(IEnumerable<BudgetRow> rows, string rowName, decimal expectedBudget, decimal expectedActual)
+    {
+        var row = RequireRow(rows, rowName);
+        row!.Budget.Should().NotBeNull($"row '{rowName}' must provide budget value");
+        row.Actual.Should().NotBeNull($"row '{rowName}' must provide actual value");
+        row.Budget!.Value.Should().Be(expectedBudget);
+        row.Actual!.Value.Should().Be(expectedActual);
+    }
+
+    private static BudgetRow RequireRow(IEnumerable<BudgetRow> rows, string rowName)
+    {
+        var row = rows.FirstOrDefault(x => x.Name.Equals(rowName, StringComparison.Ordinal));
+        row.Should().NotBeNull($"row '{rowName}' must exist in budget details table");
+        return row!;
+    }
+
+    private sealed record BudgetRow(string Name, decimal? Budget, decimal? Actual, decimal? Delta);
 }
