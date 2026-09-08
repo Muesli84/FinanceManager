@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using System.Net.Http.Json;
 
 namespace FinanceManager.Tests.E2E;
 
@@ -35,17 +34,8 @@ public sealed class BudgetReportDemoDataE2ETests
 
         var username = $"demo-budget-e2e-{Guid.NewGuid():N}";
         const string password = "Secret123";
-        var cancellationToken = TestContext.Current.CancellationToken;
-
-        using var client = new HttpClient
-        {
-            BaseAddress = new Uri(_fixture.BaseUrl),
-        };
-        using var response = await client.PostAsJsonAsync(
-            "/api/auth/register",
-            new RegisterRequest(username, password, "de", "Europe/Berlin", CreateDemoData: true),
-            cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await page.GotoAsync("/register");
+        await SubmitRegisterFormAsync(page, username, password);
 
         var backgroundPanel = page.Locator(".bgt-panel");
 
@@ -83,6 +73,62 @@ public sealed class BudgetReportDemoDataE2ETests
     {
         await page.Locator(".budget-report-table").First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 60_000 });
         await page.Locator(".budget-report-loading").WaitForAsync(new() { State = WaitForSelectorState.Hidden, Timeout = 60_000 });
+    }
+
+    private static async Task SubmitRegisterFormAsync(IPage page, string username, string password)
+    {
+        var usernameInput = page.Locator("#username");
+        var passwordInput = page.Locator("#password");
+        var demoCheckbox = page.Locator("#create-demo-data");
+
+        await demoCheckbox.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 15_000 });
+
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            await usernameInput.FillAsync(username);
+            await passwordInput.FillAsync(password);
+            await demoCheckbox.CheckAsync();
+            await page.EvaluateAsync(
+                """
+                ({ user, pass }) => {
+                    const usernameInput = document.querySelector("#username");
+                    const passwordInput = document.querySelector("#password");
+                    const demoCheckbox = document.querySelector("#create-demo-data");
+                    if (usernameInput) {
+                        usernameInput.value = user;
+                        usernameInput.dispatchEvent(new Event("input", { bubbles: true }));
+                        usernameInput.dispatchEvent(new Event("change", { bubbles: true }));
+                    }
+
+                    if (passwordInput) {
+                        passwordInput.value = pass;
+                        passwordInput.dispatchEvent(new Event("input", { bubbles: true }));
+                        passwordInput.dispatchEvent(new Event("change", { bubbles: true }));
+                    }
+
+                    if (demoCheckbox instanceof HTMLInputElement) {
+                        demoCheckbox.checked = true;
+                        demoCheckbox.dispatchEvent(new Event("input", { bubbles: true }));
+                        demoCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
+                    }
+                }
+                """,
+                new { user = username, pass = password });
+            await page.Locator("button[type=submit]").ClickAsync();
+            try
+            {
+                await page.WaitForFunctionAsync("() => location.pathname !== '/register'", null, new() { Timeout = 5_000 });
+                await page.Locator("body").WaitForAsync();
+                return;
+            }
+            catch (TimeoutException)
+            {
+                // Blazor event handlers may still be attaching immediately after first render.
+            }
+        }
+
+        var bodyText = await page.Locator("body").InnerTextAsync();
+        throw new TimeoutException($"Register form did not navigate away from /register. Url: {page.Url}. Body: {bodyText}");
     }
 
     private static string NormalizeWhitespace(string input)
