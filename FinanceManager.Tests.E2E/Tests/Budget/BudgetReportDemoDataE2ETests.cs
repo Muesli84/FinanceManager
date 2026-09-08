@@ -98,6 +98,14 @@ public sealed class BudgetReportDemoDataE2ETests
                 0.01m,
                 $"delta for row '{row.Name}' must match actual-budget");
         }
+
+        await AssertShowPostingsMatchesActualAsync(page, "Gehalt");
+        await AssertShowPostingsMatchesActualAsync(page, "Rückstellung Hausratversicherung");
+        await AssertShowPostingsMatchesActualAsync(page, "Rückstellung SDAC");
+        await AssertShowPostingsMatchesActualAsync(page, "Wohnungsmiete");
+        await AssertShowPostingsMatchesActualAsync(page, "Bäckereien & Cafés");
+        await AssertShowPostingsMatchesActualAsync(page, "Supermärkte & Einzelhandel");
+        await AssertShowPostingsMatchesActualAsync(page, "Nicht budgetiert");
     }
 
     private static async Task WaitForBudgetReportReadyAsync(IPage page)
@@ -164,6 +172,92 @@ public sealed class BudgetReportDemoDataE2ETests
 
     private static string NormalizeWhitespace(string input)
         => Regex.Replace(input, "\\s+", " ").Trim();
+
+    private static async Task AssertShowPostingsMatchesActualAsync(IPage page, string rowName)
+    {
+        var detailsTable = page.Locator(".budget-report-table").Nth(1);
+        var row = await FindDetailsRowByNameAsync(detailsTable, rowName);
+        row.Should().NotBeNull($"row '{rowName}' must exist for show-postings validation");
+
+        var showPostingsButton = row.Locator("button.icon-btn").First;
+        await showPostingsButton.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 30_000 });
+        await showPostingsButton.ClickAsync();
+
+        var overlay = page.Locator(".split-dialog").First;
+        await overlay.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 30_000 });
+        await page.WaitForFunctionAsync(
+            """
+            () => {
+                const dialog = document.querySelector(".split-dialog");
+                if (!dialog) {
+                    return false;
+                }
+
+                if (dialog.querySelectorAll("tbody tr").length > 0) {
+                    return true;
+                }
+
+                const paragraphs = Array.from(dialog.querySelectorAll("p"))
+                    .map(p => (p.textContent ?? "").trim())
+                    .filter(p => p.length > 0);
+
+                if (paragraphs.length === 0) {
+                    return false;
+                }
+
+                const loadingTokens = ["loading", "laden", "load"];
+                return paragraphs.some(text => {
+                    const lower = text.toLowerCase();
+                    return !loadingTokens.some(token => lower.includes(token));
+                });
+            }
+            """,
+            null,
+            new() { Timeout = 60_000 });
+
+        if (!string.Equals(rowName, "Nicht budgetiert", StringComparison.Ordinal))
+        {
+            var overlayTitle = NormalizeWhitespace(await overlay.Locator("h3").First.InnerTextAsync());
+            overlayTitle.Should().Be(rowName, "show-postings should open the overlay of the clicked detail row");
+        }
+
+        var overlayRows = overlay.Locator("tbody tr");
+        var overlayCount = await overlayRows.CountAsync();
+        overlayCount.Should().BeGreaterThan(0, $"show-postings overlay for '{rowName}' should contain postings");
+        for (var i = 0; i < overlayCount; i++)
+        {
+            var overlayRow = overlayRows.Nth(i);
+            var amountText = await overlayRow.Locator("td").Nth(3).InnerTextAsync();
+            var amount = ParseAmount(amountText);
+            amount.Should().NotBeNull($"overlay amount in row {i + 1} for '{rowName}' must be parseable");
+        }
+
+        await overlay.Locator("button.icon-btn").First.ClickAsync();
+        await overlay.WaitForAsync(new() { State = WaitForSelectorState.Hidden, Timeout = 30_000 });
+    }
+
+    private static async Task<ILocator?> FindDetailsRowByNameAsync(ILocator detailsTable, string rowName)
+    {
+        var rows = detailsTable.Locator("tbody tr");
+        var count = await rows.CountAsync();
+        for (var i = 0; i < count; i++)
+        {
+            var row = rows.Nth(i);
+            var cells = row.Locator("td");
+            if (await cells.CountAsync() == 0)
+            {
+                continue;
+            }
+
+            var name = NormalizeWhitespace(await cells.Nth(0).InnerTextAsync());
+            if (string.Equals(name, rowName, StringComparison.Ordinal))
+            {
+                return row;
+            }
+        }
+
+        return null;
+    }
 
     private static async Task<List<BudgetRow>> ReadDetailsRowsAsync(IPage page)
     {
