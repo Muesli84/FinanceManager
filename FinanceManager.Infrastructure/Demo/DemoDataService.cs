@@ -125,7 +125,9 @@ public sealed class DemoDataService : IDemoDataService
             sdacPlan,
             householdPlan,
             autoPlan,
+            generalPlan,
             vacationPlan,
+            securityBuySavingPlan,
             worldSecurity,
             postSecurity,
             worldPriceHistory,
@@ -153,7 +155,9 @@ public sealed class DemoDataService : IDemoDataService
                 sdacPlan,
                 householdPlan,
                 autoPlan,
+                generalPlan,
                 vacationPlan,
+                securityBuySavingPlan,
                 worldSecurity,
                 postSecurity,
                 worldPriceHistory,
@@ -182,7 +186,9 @@ public sealed class DemoDataService : IDemoDataService
         SavingsPlanDto sdacPlan,
         SavingsPlanDto householdPlan,
         SavingsPlanDto autoPlan,
+        SavingsPlanDto generalPlan,
         SavingsPlanDto vacationPlan,
+        SavingsPlanDto securityBuySavingPlan,
         SecurityDto worldSecurity,
         SecurityDto postSecurity,
         Dictionary<DateTime, decimal> worldPriceHistory,
@@ -274,9 +280,31 @@ public sealed class DemoDataService : IDemoDataService
             null,
             ct);
 
+        var securityBuySavingPlan = await _savingsPlanService.CreateAsync(
+            userId,
+            "Rückstellung Wertpapierneukauf",
+            SavingsPlanType.Open,
+            null,
+            null,
+            null,
+            null,
+            null,
+            ct);
+
         var vacationPlan = await _savingsPlanService.CreateAsync(
             userId,
             "Urlaub",
+            SavingsPlanType.Open,
+            null,
+            null,
+            null,
+            null,
+            null,
+            ct);
+        
+        var generalPlan = await _savingsPlanService.CreateAsync(
+            userId,
+            "Sparplan Allgemein",
             SavingsPlanType.Open,
             null,
             null,
@@ -313,6 +341,9 @@ public sealed class DemoDataService : IDemoDataService
 
         var rentPurpose = await _budgetPurposeService.CreateAsync(userId, "Wohnungsmiete", BudgetSourceType.Contact, rentContact.Id, null, budgetCategoryHousing.Id, ct);
         await _budgetRuleService.CreateAsync(userId, rentPurpose.Id, -845.00m, BudgetIntervalType.Monthly, null, budgetStart, null, null, false, ct);
+
+        var telcomPurpose = await _budgetPurposeService.CreateAsync(userId, "Strom", BudgetSourceType.Contact, telkommiContact.Id, null, budgetCategoryHousing.Id, ct);
+        await _budgetRuleService.CreateAsync(userId, telcomPurpose.Id, -49.90m, BudgetIntervalType.Monthly, null, budgetStart, null, null, false, ct);
 
         await _budgetPurposeService.CreateAsync(
             userId,
@@ -390,7 +421,7 @@ public sealed class DemoDataService : IDemoDataService
 
         var secondarySavingsAccount = await _accountService.CreateAsync(
             userId,
-            "Sparkonto Urlaub",
+            "Sparkonto Allgemein",
             AccountType.Savings,
             "DE21500105176123456789",
             secondBankContact.Id,
@@ -415,7 +446,9 @@ public sealed class DemoDataService : IDemoDataService
             sdacPlan,
             householdPlan,
             autoPlan,
+            generalPlan,
             vacationPlan,
+            securityBuySavingPlan,
             worldSecurity,
             postSecurity,
             worldPriceHistory,
@@ -442,7 +475,9 @@ public sealed class DemoDataService : IDemoDataService
         SavingsPlanDto sdacPlan,
         SavingsPlanDto householdPlan,
         SavingsPlanDto autoPlan,
+        SavingsPlanDto generalPlan,
         SavingsPlanDto vacationPlan,
+        SavingsPlanDto securityBuySavingPlan,
         SecurityDto worldSecurity,
         SecurityDto postSecurity,
         Dictionary<DateTime, decimal> worldPriceHistory,
@@ -586,9 +621,14 @@ public sealed class DemoDataService : IDemoDataService
             return cursor;
         }
 
+        var firstInsuranceStarted = firstMonth.Month == 12;
+        var secondInsuranceStarted = firstMonth.Month == 1;
+
         for (var monthIndex = 0; monthIndex < 24; monthIndex++)
         {
             ct.ThrowIfCancellationRequested();
+
+            var dividendAmount = 0m;
 
             var monthStart = firstMonth.AddMonths(monthIndex);
             var monthEnd = monthStart.AddMonths(1).AddDays(-1);
@@ -610,14 +650,23 @@ public sealed class DemoDataService : IDemoDataService
                 await AddDraftEntryAsync(giroDraftId, firstBusinessDay, 5000.00m, "Startgeld", mamaContact.Id);
             }
 
-            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -5.22m, "Rückstellung Hausratversicherung", selfContact.Id, householdPlan.Id);
-            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 5.22m, "Rückstellung Hausratversicherung", selfContact.Id);
+            if (firstInsuranceStarted)
+            {
+                await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -5.22m, "Rückstellung Hausratversicherung", selfContact.Id, householdPlan.Id);
+                await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 5.22m, "Rückstellung Hausratversicherung", selfContact.Id);
+            }
 
-            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -50.00m, "Sparplan Urlaub", selfContact.Id, vacationPlan.Id);
-            await AddDraftEntryAsync(secondarySavingsDraftId, firstBusinessDay, 50.00m, "Sparplan Urlaub", selfContact.Id);
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -50.00m, "Rückstellung Urlaub", selfContact.Id, vacationPlan.Id);
+            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 50.00m, "Rückstellung Urlaub", selfContact.Id);
 
-            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -70.00m, "Rückstellung Auto", selfContact.Id, autoPlan.Id);
-            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 70.00m, "Rückstellung Auto", selfContact.Id);
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -100.00m, "Sparplan Allgemein", selfContact.Id, generalPlan.Id);
+            await AddDraftEntryAsync(secondarySavingsDraftId, firstBusinessDay, 100.00m, "Sparplan Allgemein", selfContact.Id);
+
+            if (secondInsuranceStarted)
+            {
+                await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -70.00m, "Rückstellung Auto", selfContact.Id, autoPlan.Id);
+                await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 70.00m, "Rückstellung Auto", selfContact.Id);
+            }
 
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id, sdacPlan.Id);
             await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id);
@@ -633,32 +682,38 @@ public sealed class DemoDataService : IDemoDataService
                     insuranceChargeDay = insuranceChargeDay.AddDays(1);
                 }
 
-                await AddDraftEntryAsync(
-                    giroDraftId,
-                    firstBusinessDay,
-                    62.64m,
-                    "Auflösung Rückstellung Hausratversicherung",
-                    selfContact.Id,
-                    householdPlan.Id);
+                if (monthStart != firstMonth && firstInsuranceStarted)
+                {
+                    await AddDraftEntryAsync(
+                        giroDraftId,
+                        firstBusinessDay,
+                        62.64m,
+                        "Auflösung Rückstellung Hausratversicherung",
+                        selfContact.Id,
+                        householdPlan.Id);
 
-                await AddDraftEntryAsync(
-                    primarySavingsDraftId,
-                    firstBusinessDay,
-                    -62.64m,
-                    "Auflösung Rückstellung Hausratversicherung",
-                    selfContact.Id);
+                    await AddDraftEntryAsync(
+                        primarySavingsDraftId,
+                        firstBusinessDay,
+                        -62.64m,
+                        "Auflösung Rückstellung Hausratversicherung",
+                        selfContact.Id);
 
-                await AddDraftEntryAsync(
-                    giroDraftId,
-                    insuranceChargeDay,
-                    -62.60m,
-                    $"Beitrag Hausratversicherung {monthStart.Year}, Vertragsnummer {householdContractNumber}",
-                    insuranceContact.Id);
+                    await AddDraftEntryAsync(
+                        giroDraftId,
+                        insuranceChargeDay,
+                        -62.60m,
+                        $"Beitrag Hausratversicherung {monthStart.Year}, Vertragsnummer {householdContractNumber}",
+                        insuranceContact.Id);
+                }
+                firstInsuranceStarted = true;
             }
 
             if (monthStart.Month == 1)
             {
-                await AddDraftEntryAsync(
+                if (monthStart != firstMonth && secondInsuranceStarted)
+                {
+                    await AddDraftEntryAsync(
                     giroDraftId,
                     firstBusinessDay,
                     99.00m,
@@ -666,12 +721,14 @@ public sealed class DemoDataService : IDemoDataService
                     selfContact.Id,
                     sdacPlan.Id);
 
-                await AddDraftEntryAsync(
-                    primarySavingsDraftId,
-                    firstBusinessDay,
-                    -99.00m,
-                    "Auflösung Rückstellung SDAC Jahresgebühr",
-                    selfContact.Id);
+                    await AddDraftEntryAsync(
+                        primarySavingsDraftId,
+                        firstBusinessDay,
+                        -99.00m,
+                        "Auflösung Rückstellung SDAC Jahresgebühr",
+                        selfContact.Id);
+                }
+                secondInsuranceStarted = true;
             }
 
             var weekCounter = 0;
@@ -680,21 +737,22 @@ public sealed class DemoDataService : IDemoDataService
                 ct.ThrowIfCancellationRequested();
                 weekCounter++;
 
-                foreach (var shop in shopContacts)
+                var paymentsThisWeek = random.Next(1, 3);
+                var priceFactor = (decimal)(3 / paymentsThisWeek);
+                for (var paymentIndex = 0; paymentIndex < paymentsThisWeek; paymentIndex++)
                 {
-                    var paymentsThisWeek = random.Next(1, 3);
-                    for (var paymentIndex = 0; paymentIndex < paymentsThisWeek; paymentIndex++)
-                    {
-                        var paymentDay = ClampToBusinessDay(weekStart.AddDays(random.Next(0, 7)), monthStart, monthEnd);
-                        var amount = Math.Round(10m + ((decimal)random.NextDouble() * 20m), 2, MidpointRounding.AwayFromZero);
-                        var paymentSubject = $"Kartenzahlung {shop.Name} W{weekCounter:D2}-{paymentIndex + 1:D2}";
-                        await AddDraftEntryAsync(
-                            giroDraftId,
-                            paymentDay,
-                            -amount,
-                            paymentSubject,
-                            shop.Id);
-                    }
+                    var shopOffset = random.Next(0, shopContacts.Length);
+                    var shop = shopContacts[shopOffset];                    
+
+                    var paymentDay = ClampToBusinessDay(weekStart.AddDays(random.Next(0, 7)), monthStart, monthEnd);
+                    var amount = Math.Round(priceFactor * (10m + ((decimal)random.NextDouble() * 20m)), 2, MidpointRounding.AwayFromZero);
+                    var paymentSubject = $"Kartenzahlung {shop.Name} W{weekCounter:D2}-{paymentIndex + 1:D2}";
+                    await AddDraftEntryAsync(
+                        giroDraftId,
+                        paymentDay,
+                        -amount,
+                        paymentSubject,
+                        shop.Id);
                 }
             }
 
@@ -733,6 +791,7 @@ public sealed class DemoDataService : IDemoDataService
                     null,
                     null,
                     tax);
+                dividendAmount += net;
             }
 
             if (monthIndex == 5)
@@ -772,6 +831,29 @@ public sealed class DemoDataService : IDemoDataService
                     null,
                     null,
                     tax);
+                dividendAmount += net;
+            }
+
+            if (dividendAmount > 0)
+            {
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    lastBusinessDay,
+                    -dividendAmount,
+                    "Rückstellung Aktienneukauf",
+                    selfContact.Id,
+                    securityBuySavingPlan.Id,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null);
+                await AddDraftEntryAsync(
+                    primarySavingsDraftId,
+                    firstBusinessDay,
+                    dividendAmount,
+                    "Rückstellung Aktienneukauf",
+                    giroBankContact.Id);
             }
 
             if (!isCurrentMonth)
@@ -876,7 +958,7 @@ public sealed class DemoDataService : IDemoDataService
 
             if (firstPriceCreated)
             {
-                var factor = -0.005m + ((decimal)random.NextDouble() * 0.025m);
+                var factor = -0.010m + ((decimal)random.NextDouble() * 0.021m);
                 close = Math.Round(close * (1m + factor), 2, MidpointRounding.AwayFromZero);
                 if (close <= 0m)
                 {
