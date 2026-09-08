@@ -39,6 +39,7 @@ Datumsbasis ist der erste Tag des aktuellen Monats (`referenceMonthStart`). Die 
 Angelegte Kontakte:
 - Banken: `Musterbank Nord`, `Musterbank Süd`
 - Organisationen/Personen: `Mama`, `Arbeitgeber GmbH`, `Zentrial Versicherung`, `SDAC`, `Sabbel Lüchtenhausen`
+- Weitere laufende Vertragspartner: `Telkommi`
 - Märkte: `Adli`, `Didl`, `Adeka`
 - Bäckereien: `Bäckerei Kramphove`, `Bäckerei Feiping`, `Bäckerei Schlonz`
 - Self-Kontakt: vorhandener `ContactType.Self` wird genutzt oder als `Self` angelegt
@@ -99,6 +100,20 @@ Für neu erzeugte Demo-Daten werden folgende KPI-Kacheln in dieser Reihenfolge a
 4. `Budget (current month)` (`HomeKpiPredefined.MonthlyBudget`)
 5. `Open drafts` (`HomeKpiPredefined.OpenStatementDraftsCount`)
 
+### Report-Favoriten
+
+Für neu erzeugte Demo-Daten werden zusätzlich zwei Report-Favoriten angelegt:
+1. `Contacts Monthly Analysis` mit:
+   - Posting Kind `Contacts`
+   - Interval `Month`
+   - `Include Category = true`
+   - `Compare Previous = true`
+   - `Compare Year = true`
+2. `Securities Projection` mit:
+   - Posting Kind `Securities`
+   - Interval `Month`
+   - `Projection = true`
+
 ### Buchungen und Kontoauszüge (24 Monate)
 
 `CreateMonthlyPostingPlanAsync(...)` erzeugt pro Monat drei Statement Drafts (Giro + 2x Sparkonto).
@@ -106,8 +121,10 @@ Für neu erzeugte Demo-Daten werden folgende KPI-Kacheln in dieser Reihenfolge a
 Regeln pro Monat:
 - Gehalt auf Girokonto am letzten Werktag (im aktuellen Monat nur, wenn dieser Tag bereits erreicht ist)
 - Im ersten Monat der Reihe: Gutschrift `Startgeld` über +5.000,00 € auf dem Girokonto
+- Monatliche Lastschrift `Mobilfunkvertrag Telkommi` über -49,90 € auf dem Girokonto
 - Rückstellung Hausratversicherung: -5,22 € Giro / +5,22 € Sparkonto Rücklagen
 - Sparplan Urlaub: -50,00 € Giro / +50,00 € Sparkonto Urlaub
+- Rückstellung Auto: -70,00 € Giro / +70,00 € Sparkonto Rücklagen
 - Rückstellung SDAC: -8,25 € Giro / +8,25 € Sparkonto Rücklagen
 - Wohnungsmiete: -845,00 € am ersten Werktag
 - Kartenzahlungen für Märkte und Bäckereien: je Kontakt 1–2 Zahlungen pro Woche, Beträge 10,00 € bis 30,00 €

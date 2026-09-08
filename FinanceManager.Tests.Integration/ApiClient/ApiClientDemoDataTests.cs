@@ -1,4 +1,5 @@
 using FinanceManager.Domain.Postings;
+using FinanceManager.Domain.Reports;
 using FinanceManager.Domain.Securities;
 using FinanceManager.Domain.Statements;
 using FinanceManager.Application.Demo;
@@ -93,6 +94,7 @@ public class ApiClientDemoDataTests : IClassFixture<TestWebApplicationFactory>
         contacts.Should().Contain(new[]
         {
             "Mama",
+            "Telkommi",
             "Arbeitgeber GmbH",
             "Zentrial Versicherung",
             "SDAC",
@@ -183,6 +185,38 @@ public class ApiClientDemoDataTests : IClassFixture<TestWebApplicationFactory>
             new { Kind = HomeKpiKind.Predefined, PredefinedType = (HomeKpiPredefined?)HomeKpiPredefined.MonthlyBudget, DisplayMode = HomeKpiDisplayMode.TotalOnly, SortOrder = 3 },
             new { Kind = HomeKpiKind.Predefined, PredefinedType = (HomeKpiPredefined?)HomeKpiPredefined.OpenStatementDraftsCount, DisplayMode = HomeKpiDisplayMode.TotalOnly, SortOrder = 4 });
 
+        var reportFavorites = await db.ReportFavorites
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userId)
+            .OrderBy(x => x.Name)
+            .Select(x => new
+            {
+                x.Name,
+                x.PostingKind,
+                x.Interval,
+                x.IncludeCategory,
+                x.ComparePrevious,
+                x.CompareYear,
+                x.CompareProjection
+            })
+            .ToListAsync(CancellationToken.None);
+        reportFavorites.Should().ContainSingle(x =>
+            x.Name == "Contacts Monthly Analysis"
+            && x.PostingKind == PostingKind.Contact
+            && x.Interval == ReportInterval.Month
+            && x.IncludeCategory
+            && x.ComparePrevious
+            && x.CompareYear
+            && !x.CompareProjection);
+        reportFavorites.Should().ContainSingle(x =>
+            x.Name == "Securities Projection"
+            && x.PostingKind == PostingKind.Security
+            && x.Interval == ReportInterval.Month
+            && !x.IncludeCategory
+            && !x.ComparePrevious
+            && !x.CompareYear
+            && x.CompareProjection);
+
         var buys = await db.Postings
             .AsNoTracking()
             .Where(x => x.Kind == PostingKind.Security && x.SecuritySubType == SecurityPostingSubType.Buy)
@@ -219,6 +253,27 @@ public class ApiClientDemoDataTests : IClassFixture<TestWebApplicationFactory>
         startgeld.Should().ContainSingle();
         startgeld[0].BookingDate.Year.Should().Be(firstMonth.Year);
         startgeld[0].BookingDate.Month.Should().Be(firstMonth.Month);
+
+        var telkommiPostings = await db.Postings
+            .AsNoTracking()
+            .Where(x => x.Subject == "Mobilfunkvertrag Telkommi" && x.Amount == -49.90m)
+            .Where(x => x.AccountId.HasValue && userAccountIds.Contains(x.AccountId.Value))
+            .ToListAsync(CancellationToken.None);
+        telkommiPostings.Should().HaveCount(23);
+
+        var autoReserveDebits = await db.Postings
+            .AsNoTracking()
+            .Where(x => x.Subject == "Rückstellung Auto" && x.Amount == -70.00m)
+            .Where(x => x.AccountId.HasValue && userAccountIds.Contains(x.AccountId.Value))
+            .ToListAsync(CancellationToken.None);
+        autoReserveDebits.Should().HaveCount(23);
+
+        var autoReserveCredits = await db.Postings
+            .AsNoTracking()
+            .Where(x => x.Subject == "Rückstellung Auto" && x.Amount == 70.00m)
+            .Where(x => x.AccountId.HasValue && userAccountIds.Contains(x.AccountId.Value))
+            .ToListAsync(CancellationToken.None);
+        autoReserveCredits.Should().HaveCount(23);
     }
 
     /// <summary>

@@ -1,6 +1,9 @@
 using FinanceManager.Application;
 using FinanceManager.Application.Demo;
+using FinanceManager.Infrastructure;
 using Microsoft.Extensions.Localization;
+using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace FinanceManager.Web.Services;
 
@@ -37,11 +40,27 @@ public sealed class DemoDataTaskExecutor : IBackgroundTaskExecutor
     {
         using var scope = _scopeFactory.CreateScope();
         var demoDataService = scope.ServiceProvider.GetRequiredService<IDemoDataService>();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        context.ReportProgress(0, 1, _localizer["DD_Start"], 0, 0);
+        var language = await db.Users.AsNoTracking()
+            .Where(u => u.Id == context.UserId)
+            .Select(u => u.PreferredLanguage)
+            .FirstOrDefaultAsync(ct);
+
+        var originalCulture = CultureInfo.CurrentCulture;
+        var originalUiCulture = CultureInfo.CurrentUICulture;
+        var useLocalizedCulture = !string.IsNullOrWhiteSpace(language);
+
+        if (useLocalizedCulture)
+        {
+            var requestedCulture = CultureInfo.GetCultureInfo(language!);
+            CultureInfo.CurrentCulture = requestedCulture;
+            CultureInfo.CurrentUICulture = requestedCulture;
+        }
 
         try
         {
+            context.ReportProgress(0, 1, _localizer["DD_Start"], 0, 0);
             await demoDataService.CreateDemoDataAsync(context.UserId, createPostings: true, ct);
             context.ReportProgress(1, 1, _localizer["DD_Completed"], 0, 0);
         }
@@ -55,6 +74,14 @@ public sealed class DemoDataTaskExecutor : IBackgroundTaskExecutor
             _logger.LogError(ex, "Demo data generation failed for user {UserId}", context.UserId);
             context.ReportProgress(0, 1, _localizer["DD_Failed"], 0, 1);
             throw;
+        }
+        finally
+        {
+            if (useLocalizedCulture)
+            {
+                CultureInfo.CurrentCulture = originalCulture;
+                CultureInfo.CurrentUICulture = originalUiCulture;
+            }
         }
     }
 }

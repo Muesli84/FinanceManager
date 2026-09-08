@@ -12,6 +12,7 @@ using FinanceManager.Shared.Dtos.Accounts;
 using FinanceManager.Shared.Dtos.Budget;
 using FinanceManager.Shared.Dtos.Contacts;
 using FinanceManager.Shared.Dtos.HomeKpi;
+using FinanceManager.Shared.Dtos.Reports;
 using FinanceManager.Shared.Dtos.SavingsPlans;
 using FinanceManager.Shared.Dtos.Securities;
 using FinanceManager.Shared.Dtos.Statements;
@@ -37,6 +38,7 @@ public sealed class DemoDataService : IDemoDataService
     private readonly IBudgetPurposeService _budgetPurposeService;
     private readonly IBudgetRuleService _budgetRuleService;
     private readonly IHomeKpiService _homeKpiService;
+    private readonly IReportFavoriteService _reportFavoriteService;
     private readonly ILogger<DemoDataService> _logger;
 
     /// <summary>
@@ -55,6 +57,7 @@ public sealed class DemoDataService : IDemoDataService
     /// <param name="budgetPurposeService">Service used to create budget purposes.</param>
     /// <param name="budgetRuleService">Service used to create budget rules.</param>
     /// <param name="homeKpiService">Service used to create default home KPI tiles.</param>
+    /// <param name="reportFavoriteService">Service used to create default report favorites.</param>
     /// <param name="logger">Logger instance.</param>
     public DemoDataService(
         IAccountService accountService,
@@ -70,6 +73,7 @@ public sealed class DemoDataService : IDemoDataService
         IBudgetPurposeService budgetPurposeService,
         IBudgetRuleService budgetRuleService,
         IHomeKpiService homeKpiService,
+        IReportFavoriteService reportFavoriteService,
         ILogger<DemoDataService> logger)
     {
         _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
@@ -85,6 +89,7 @@ public sealed class DemoDataService : IDemoDataService
         _budgetPurposeService = budgetPurposeService ?? throw new ArgumentNullException(nameof(budgetPurposeService));
         _budgetRuleService = budgetRuleService ?? throw new ArgumentNullException(nameof(budgetRuleService));
         _homeKpiService = homeKpiService ?? throw new ArgumentNullException(nameof(homeKpiService));
+        _reportFavoriteService = reportFavoriteService ?? throw new ArgumentNullException(nameof(reportFavoriteService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -108,6 +113,7 @@ public sealed class DemoDataService : IDemoDataService
             selfContact,
             giroBankContact,
             mamaContact,
+            telkommiContact,
             employerContact,
             insuranceContact,
             rentContact,
@@ -118,6 +124,7 @@ public sealed class DemoDataService : IDemoDataService
             secondarySavingsAccount,
             sdacPlan,
             householdPlan,
+            autoPlan,
             vacationPlan,
             worldSecurity,
             postSecurity,
@@ -134,6 +141,7 @@ public sealed class DemoDataService : IDemoDataService
                 selfContact,
                 giroBankContact,
                 mamaContact,
+                telkommiContact,
                 employerContact,
                 insuranceContact,
                 rentContact,
@@ -144,6 +152,7 @@ public sealed class DemoDataService : IDemoDataService
                 secondarySavingsAccount,
                 sdacPlan,
                 householdPlan,
+                autoPlan,
                 vacationPlan,
                 worldSecurity,
                 postSecurity,
@@ -154,12 +163,14 @@ public sealed class DemoDataService : IDemoDataService
         }
 
         await EnsureDefaultHomeKpisAsync(userId, ct);
+        await EnsureDefaultReportFavoritesAsync(userId, ct);
     }
 
     private async Task<(
         ContactDto selfContact,
         ContactDto giroBankContact,
         ContactDto mamaContact,
+        ContactDto telkommiContact,
         ContactDto employerContact,
         ContactDto insuranceContact,
         ContactDto rentContact,
@@ -170,6 +181,7 @@ public sealed class DemoDataService : IDemoDataService
         AccountDto secondarySavingsAccount,
         SavingsPlanDto sdacPlan,
         SavingsPlanDto householdPlan,
+        SavingsPlanDto autoPlan,
         SavingsPlanDto vacationPlan,
         SecurityDto worldSecurity,
         SecurityDto postSecurity,
@@ -204,6 +216,7 @@ public sealed class DemoDataService : IDemoDataService
         var giroBankContact = await _contactService.CreateAsync(userId, "Musterbank Nord", ContactType.Bank, banksGroup.Id, null, false, ct);
         var secondBankContact = await _contactService.CreateAsync(userId, "Musterbank Süd", ContactType.Bank, banksGroup.Id, null, false, ct);
         var mamaContact = await _contactService.CreateAsync(userId, "Mama", ContactType.Person, null, null, false, ct);
+        var telkommiContact = await _contactService.CreateAsync(userId, "Telkommi", ContactType.Organization, serviceGroup.Id, null, false, ct);
         var employerContact = await _contactService.CreateAsync(userId, "Arbeitgeber GmbH", ContactType.Organization, workGroup.Id, null, false, ct);
         var insuranceContact = await _contactService.CreateAsync(userId, "Zentrial Versicherung", ContactType.Organization, insuranceGroup.Id, null, false, ct);
         var sdacContact = await _contactService.CreateAsync(userId, "SDAC", ContactType.Organization, insuranceGroup.Id, null, false, ct);
@@ -250,7 +263,7 @@ public sealed class DemoDataService : IDemoDataService
             householdContractNumber,
             ct);
 
-        await _savingsPlanService.CreateAsync(
+        var autoPlan = await _savingsPlanService.CreateAsync(
             userId,
             "Auto",
             SavingsPlanType.OneTime,
@@ -390,6 +403,7 @@ public sealed class DemoDataService : IDemoDataService
             selfContact,
             giroBankContact,
             mamaContact,
+            telkommiContact,
             employerContact,
             insuranceContact,
             rentContact,
@@ -400,6 +414,7 @@ public sealed class DemoDataService : IDemoDataService
             secondarySavingsAccount,
             sdacPlan,
             householdPlan,
+            autoPlan,
             vacationPlan,
             worldSecurity,
             postSecurity,
@@ -415,6 +430,7 @@ public sealed class DemoDataService : IDemoDataService
         ContactDto selfContact,
         ContactDto giroBankContact,
         ContactDto mamaContact,
+        ContactDto telkommiContact,
         ContactDto employerContact,
         ContactDto insuranceContact,
         ContactDto rentContact,
@@ -425,6 +441,7 @@ public sealed class DemoDataService : IDemoDataService
         AccountDto secondarySavingsAccount,
         SavingsPlanDto sdacPlan,
         SavingsPlanDto householdPlan,
+        SavingsPlanDto autoPlan,
         SavingsPlanDto vacationPlan,
         SecurityDto worldSecurity,
         SecurityDto postSecurity,
@@ -599,10 +616,14 @@ public sealed class DemoDataService : IDemoDataService
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -50.00m, "Sparplan Urlaub", selfContact.Id, vacationPlan.Id);
             await AddDraftEntryAsync(secondarySavingsDraftId, firstBusinessDay, 50.00m, "Sparplan Urlaub", selfContact.Id);
 
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -70.00m, "Rückstellung Auto", selfContact.Id, autoPlan.Id);
+            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 70.00m, "Rückstellung Auto", selfContact.Id);
+
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id, sdacPlan.Id);
             await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id);
 
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -845.00m, "Wohnungsmiete", rentContact.Id);
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -49.90m, "Mobilfunkvertrag Telkommi", telkommiContact.Id);
 
             if (monthStart.Month == 12)
             {
@@ -792,6 +813,43 @@ public sealed class DemoDataService : IDemoDataService
                     sortOrder),
                 ct);
         }
+    }
+
+    private async Task EnsureDefaultReportFavoritesAsync(Guid userId, CancellationToken ct)
+    {
+        var existingFavorites = await _reportFavoriteService.ListAsync(userId, ct);
+        if (existingFavorites.Count > 0)
+        {
+            return;
+        }
+
+        await _reportFavoriteService.CreateAsync(
+            userId,
+            new ReportFavoriteCreateRequest(
+                "Contacts Monthly Analysis",
+                PostingKind.Contact,
+                includeCategory: true,
+                ReportInterval.Month,
+                comparePrevious: true,
+                compareYear: true,
+                compareProjection: false,
+                showChart: true,
+                expandable: true),
+            ct);
+
+        await _reportFavoriteService.CreateAsync(
+            userId,
+            new ReportFavoriteCreateRequest(
+                "Securities Projection",
+                PostingKind.Security,
+                includeCategory: false,
+                ReportInterval.Month,
+                comparePrevious: false,
+                compareYear: false,
+                compareProjection: true,
+                showChart: true,
+                expandable: true),
+            ct);
     }
 
     private async Task<Dictionary<DateTime, decimal>> CreateSecurityPriceHistoryAsync(
