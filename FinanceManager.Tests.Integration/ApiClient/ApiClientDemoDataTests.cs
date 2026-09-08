@@ -1,17 +1,23 @@
-using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Xunit;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
+using FinanceManager.Domain.Postings;
+using FinanceManager.Domain.Securities;
+using FinanceManager.Domain.Statements;
+using FinanceManager.Application.Demo;
 using FinanceManager.Infrastructure;
+using FinanceManager.Shared.Dtos.Budget;
+using FinanceManager.Shared.Dtos.Postings;
+using FinanceManager.Shared.Dtos.Securities;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
 
 namespace FinanceManager.Tests.Integration.ApiClient;
 
 /// <summary>
-/// End-to-end test for the demo-data seeding endpoint used to give new users a realistic starting
-/// dataset (accounts, postings, etc.) instead of an empty account.
+/// Integration tests for full demo-data generation via the public API endpoint.
 /// </summary>
+[Collection("DemoDataSerial")]
 public class ApiClientDemoDataTests : IClassFixture<TestWebApplicationFactory>
 {
     private readonly TestWebApplicationFactory _factory;
@@ -19,7 +25,7 @@ public class ApiClientDemoDataTests : IClassFixture<TestWebApplicationFactory>
     /// <summary>
     /// Initializes a new instance of the <see cref="ApiClientDemoDataTests"/> class.
     /// </summary>
-    /// <param name="factory">Shared web application factory providing the in-memory test server.</param>
+    /// <param name="factory">Shared application factory for integration testing.</param>
     public ApiClientDemoDataTests(TestWebApplicationFactory factory)
     {
         _factory = factory;
@@ -31,42 +37,238 @@ public class ApiClientDemoDataTests : IClassFixture<TestWebApplicationFactory>
         return new FinanceManager.Shared.ApiClient(http);
     }
 
-    private async Task EnsureAuthenticatedAsync(FinanceManager.Shared.ApiClient api, string userName)
-    {
-        await api.Auth_RegisterAsync(new FinanceManager.Shared.Dtos.Users.RegisterRequest(userName, "Secret123", PreferredLanguage: null, TimeZoneId: null));
-    }
-
-    /// <summary>
-    /// Verifies that requesting demo-data creation for a freshly registered user actually populates the
-    /// database with the expected accounts (a giro account plus at least two savings accounts), not just
-    /// that the request is accepted - the endpoint is fire-and-forget from the caller's perspective, so
-    /// this checks the background side effect directly via the DbContext.
-    /// </summary>
-    [Fact]
-    public async Task Users_CreateDemoData_Should_ReturnAccepted()
+    private async Task<(FinanceManager.Shared.ApiClient Api, Guid UserId)> CreateAuthenticatedUserAsync()
     {
         var api = CreateClient();
         var username = $"demouser_{Guid.NewGuid():N}";
-        await EnsureAuthenticatedAsync(api, username);
+        await api.Auth_RegisterAsync(new FinanceManager.Shared.Dtos.Users.RegisterRequest(username, "Secret123", null, null), CancellationToken.None);
 
-        // get user id from server
-        Guid userId;
-        using (var scope = _factory.Services.CreateScope())
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var userId = await db.Users
+            .Where(x => x.UserName == username)
+            .Select(x => x.Id)
+            .FirstAsync(CancellationToken.None);
+
+        return (api, userId);
+    }
+
+    private async Task CreateDemoDataForUserAsync(Guid userId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var demoDataService = scope.ServiceProvider.GetRequiredService<IDemoDataService>();
+        await demoDataService.CreateDemoDataAsync(userId, true, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Verifies that the public demo-data endpoint returns a successful response for an authenticated user.
+    /// </summary>
+    [Fact]
+    public async Task Users_CreateDemoData_ShouldReturnAccepted_WhenCalledThroughApi()
+    {
+        var (api, userId) = await CreateAuthenticatedUserAsync();
+
+        await api.Users_CreateDemoDataAsync(userId, false, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Verifies that the endpoint creates the required contacts, savings plans, budgets,
+    /// securities, imported price histories and security buy postings.
+    /// </summary>
+    [Fact]
+    public async Task CreateDemoDataAsync_ShouldCreateCompleteSeedSet_WhenCreatePostingsTrue()
+    {
+        var (_, userId) = await CreateAuthenticatedUserAsync();
+        await CreateDemoDataForUserAsync(userId);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var contacts = await db.Contacts
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userId)
+            .Select(x => x.Name)
+            .ToListAsync(CancellationToken.None);
+        contacts.Should().Contain(new[]
         {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var user = await db.Users.FirstAsync(u => u.UserName == username, cancellationToken: TestContext.Current.CancellationToken);
-            userId = user.Id;
+            "Arbeitgeber GmbH",
+            "Zentrial Versicherung",
+            "SDAC",
+            "Sabbel Lüchtenhausen",
+            "Adli",
+            "Didl",
+            "Adeka",
+            "Bäckerei Kramphove",
+            "Bäckerei Feiping",
+            "Bäckerei Schlonz"
+        });
+
+        var savingsPlans = await db.SavingsPlans
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userId)
+            .Select(x => new { x.Name, x.TargetAmount, x.ContractNumber })
+            .ToListAsync(CancellationToken.None);
+        savingsPlans.Should().Contain(x => x.Name == "SDAC Gebühr" && x.TargetAmount == 99.00m && !string.IsNullOrWhiteSpace(x.ContractNumber));
+        savingsPlans.Should().Contain(x => x.Name == "Hausratversicherung" && x.TargetAmount == 62.60m && !string.IsNullOrWhiteSpace(x.ContractNumber));
+        savingsPlans.Should().Contain(x => x.Name == "Auto" && x.TargetAmount == 14000.00m);
+        savingsPlans.Should().Contain(x => x.Name == "Urlaub" && x.TargetAmount == null);
+
+        var budgetPurposes = await db.BudgetPurposes
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userId)
+            .Select(x => new { x.Name, x.ValuationType })
+            .ToListAsync(CancellationToken.None);
+        budgetPurposes.Should().Contain(x => x.Name == "Gehalt");
+        budgetPurposes.Should().Contain(x => x.Name == "Rückstellung Hausratversicherung");
+        budgetPurposes.Should().Contain(x => x.Name == "Hausratversicherung");
+        budgetPurposes.Should().Contain(x => x.Name == "Rückstellung SDAC");
+        budgetPurposes.Should().Contain(x => x.Name == "SDAC");
+        budgetPurposes.Should().Contain(x => x.Name == "Wohnungsmiete");
+        budgetPurposes.Should().Contain(x => x.Name == "Supermärkte & Einzelhandel" && x.ValuationType == BudgetValuationType.TotalBudget);
+        budgetPurposes.Should().Contain(x => x.Name == "Bäckereien & Cafés" && x.ValuationType == BudgetValuationType.TotalBudget);
+
+        var securities = await db.Securities
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userId)
+            .Select(x => new { x.Id, x.Name, x.Identifier, x.CurrencyCode, x.AlphaVantageCode, x.Region, x.Sector, x.Description })
+            .ToListAsync(CancellationToken.None);
+        securities.Should().Contain(x => x.Name == "USHSIV-MSCI WLD"
+                                         && x.Identifier == "LU00ABACAD96"
+                                         && x.CurrencyCode == "EUR"
+                                         && string.IsNullOrEmpty(x.AlphaVantageCode)
+                                         && x.Region == "Global"
+                                         && x.Sector == "MSCI World"
+                                         && x.Description == "UShares MSCI World ETF");
+        securities.Should().Contain(x => x.Name == "Inländische Post AG"
+                                         && x.Identifier == "DE0001112026"
+                                         && x.CurrencyCode == "EUR"
+                                         && x.Region == "DE"
+                                         && x.Sector == "Logistik");
+
+        var worldSecurityId = securities.Single(x => x.Name == "USHSIV-MSCI WLD").Id;
+        var postSecurityId = securities.Single(x => x.Name == "Inländische Post AG").Id;
+        var referenceMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var firstPriceDate = referenceMonthStart.AddYears(-2);
+        var expectedBusinessDays = CountBusinessDays(firstPriceDate, referenceMonthStart);
+
+        var worldPrices = await db.SecurityPrices
+            .AsNoTracking()
+            .Where(x => x.SecurityId == worldSecurityId)
+            .OrderBy(x => x.Date)
+            .ToListAsync(CancellationToken.None);
+        var postPrices = await db.SecurityPrices
+            .AsNoTracking()
+            .Where(x => x.SecurityId == postSecurityId)
+            .OrderBy(x => x.Date)
+            .ToListAsync(CancellationToken.None);
+
+        worldPrices.Should().HaveCount(expectedBusinessDays);
+        postPrices.Should().HaveCount(expectedBusinessDays);
+        worldPrices.First().Close.Should().Be(11.36m);
+        postPrices.First().Close.Should().Be(44.25m);
+
+        var buys = await db.Postings
+            .AsNoTracking()
+            .Where(x => x.Kind == PostingKind.Security && x.SecuritySubType == SecurityPostingSubType.Buy)
+            .Where(x => x.SecurityId == worldSecurityId || x.SecurityId == postSecurityId)
+            .ToListAsync(CancellationToken.None);
+        buys.Should().ContainSingle(x => x.SecurityId == worldSecurityId);
+        buys.Should().ContainSingle(x => x.SecurityId == postSecurityId);
+    }
+
+    /// <summary>
+    /// Verifies that drafts for the current month remain unbooked and therefore do not create
+    /// postings in the current month.
+    /// </summary>
+    [Fact]
+    public async Task CreateDemoDataAsync_ShouldSkipCurrentMonthPostings()
+    {
+        var (_, userId) = await CreateAuthenticatedUserAsync();
+        await CreateDemoDataForUserAsync(userId);
+
+        var now = DateTime.UtcNow;
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var postingsCurrentMonth = await db.Postings
+            .AsNoTracking()
+            .Where(x => x.AccountId != null)
+            .Where(x => x.BookingDate.Year == now.Year && x.BookingDate.Month == now.Month)
+            .CountAsync(CancellationToken.None);
+        postingsCurrentMonth.Should().Be(0);
+
+        var currentMonthDrafts = await db.StatementDrafts
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userId && x.Status == StatementDraftStatus.Draft)
+            .ToListAsync(CancellationToken.None);
+        currentMonthDrafts.Should().HaveCount(3);
+    }
+
+    /// <summary>
+    /// Verifies reproducibility by comparing a deterministic sample of generated card postings
+    /// across two independently seeded users.
+    /// </summary>
+    [Fact]
+    public async Task CreateDemoDataAsync_ShouldUseDeterministicSeed()
+    {
+        var (_, userIdA) = await CreateAuthenticatedUserAsync();
+        await CreateDemoDataForUserAsync(userIdA);
+        var (_, userIdB) = await CreateAuthenticatedUserAsync();
+        await CreateDemoDataForUserAsync(userIdB);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var accountIdsA = await db.Accounts
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userIdA)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken.None);
+        var accountIdsB = await db.Accounts
+            .AsNoTracking()
+            .Where(x => x.OwnerUserId == userIdB)
+            .Select(x => x.Id)
+            .ToListAsync(CancellationToken.None);
+
+        var sampleA = await db.Postings
+            .AsNoTracking()
+            .Where(x => x.AccountId != null)
+            .Where(x => x.Subject != null && x.Subject.StartsWith("Kartenzahlung"))
+            .Where(x => accountIdsA.Contains(x.AccountId!.Value))
+            .OrderBy(x => x.BookingDate)
+            .ThenBy(x => x.Subject)
+            .Select(x => new { x.BookingDate, x.Subject, x.Amount })
+            .Take(40)
+            .ToListAsync(CancellationToken.None);
+
+        var sampleB = await db.Postings
+            .AsNoTracking()
+            .Where(x => x.AccountId != null)
+            .Where(x => x.Subject != null && x.Subject.StartsWith("Kartenzahlung"))
+            .Where(x => accountIdsB.Contains(x.AccountId!.Value))
+            .OrderBy(x => x.BookingDate)
+            .ThenBy(x => x.Subject)
+            .Select(x => new { x.BookingDate, x.Subject, x.Amount })
+            .Take(40)
+            .ToListAsync(CancellationToken.None);
+
+        sampleA.Should().HaveCount(40);
+        sampleB.Should().HaveCount(40);
+        sampleA.Should().BeEquivalentTo(sampleB);
+    }
+
+    private static int CountBusinessDays(DateTime start, DateTime end)
+    {
+        var count = 0;
+        for (var day = start.Date; day <= end.Date; day = day.AddDays(1))
+        {
+            if (day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            {
+                continue;
+            }
+
+            count++;
         }
 
-        // request demo data creation
-        await api.Users_CreateDemoDataAsync(userId, true, TestContext.Current.CancellationToken);
-
-        // Verify that accounts were created for user
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var accounts = await db.Accounts.Where(a => a.OwnerUserId == userId).ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
-            Assert.True(accounts.Count >= 3); // one giro + two savings
-        }
+        return count;
     }
 }

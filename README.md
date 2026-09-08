@@ -22,7 +22,7 @@ Im aktuellen Code sind unter anderem folgende Bereiche vorhanden:
 
 Die Navigation in `FinanceManager.Web/Components/Layout/MainLayout.razor` verweist aktuell auf Home, Konten, Kontoauszüge, Kontakte, Sparpläne, Wertpapiere, Budgetzwecke, Reports, Setup, Benutzerverwaltung und Help.
 
-Neu im Erstregistrierungsfluss: Beim ersten Benutzer steht auf der Registrierungsseite eine Checkbox `Demodaten anlegen` zur Verfügung. Wenn sie aktiviert ist, erzeugt die Anwendung im Hintergrund den Demo-Datenbestand und zeigt den Fortschritt über die vorhandene Background-Task-Anzeige auf der Startseite an.
+Neu im Erstregistrierungsfluss: Wenn noch kein Benutzer vorhanden ist, wird beim Start auf die Registrierungsseite weitergeleitet. Dort erscheint nur für den ersten Benutzer die Checkbox `Demodaten anlegen`, sie ist standardmäßig deaktiviert. Wenn sie aktiviert ist, startet nach der Erstregistrierung automatisch ein Hintergrundtask, der mit den vorhandenen Business-Services den vollständigen Demo-Datenbestand erstellt. Der Fortschritt wird in der allgemeinen Background-Task-Anzeige auf der Startseite sichtbar. Es gibt dafür keine zusätzliche globale Konfiguration.
 
 ## Tech-Stack
 

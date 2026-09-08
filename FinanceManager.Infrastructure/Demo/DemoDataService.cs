@@ -1,555 +1,835 @@
-using DocumentFormat.OpenXml.Bibliography;
+using System.Globalization;
+using System.Text;
 using FinanceManager.Application.Accounts;
-using FinanceManager.Application.Attachments;
 using FinanceManager.Application.Budget;
 using FinanceManager.Application.Contacts;
 using FinanceManager.Application.Demo;
 using FinanceManager.Application.Savings;
 using FinanceManager.Application.Securities;
 using FinanceManager.Application.Statements;
-using FinanceManager.Domain.Attachments;
-using FinanceManager.Domain.Statements;
 using FinanceManager.Shared.Dtos.Accounts;
 using FinanceManager.Shared.Dtos.Budget;
 using FinanceManager.Shared.Dtos.Contacts;
+using FinanceManager.Shared.Dtos.SavingsPlans;
+using FinanceManager.Shared.Dtos.Securities;
 using FinanceManager.Shared.Dtos.Statements;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Formats.Asn1;
-using System.IO;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace FinanceManager.Infrastructure.Demo;
 
 /// <summary>
-/// Demo data service implementation (skeleton).
-/// Creates a small set of domain objects for demo purposes using application services.
-/// The implementation is intentionally minimal and can be extended later to create richer demo datasets.
+/// Creates deterministic demo data using the same business services as the interactive user flows.
 /// </summary>
 public sealed class DemoDataService : IDemoDataService
 {
     private readonly IAccountService _accountService;
     private readonly IContactService _contactService;
     private readonly IContactCategoryService _contactCategoryService;
-    private readonly IAttachmentService _attachmentService;
     private readonly ISavingsPlanCategoryService _savingsPlanCategoryService;
     private readonly ISavingsPlanService _savingsPlanService;
     private readonly ISecurityService _securityService;
-    private readonly ISecurityPriceService _securityPriceService;
     private readonly ISecurityCategoryService _securityCategoryService;
-    private readonly ILogger<DemoDataService> _logger;
+    private readonly ISecurityPriceImportServiceFactory _securityPriceImportServiceFactory;
     private readonly IStatementDraftService _statementDraftService;
-    private readonly IAttachmentCategoryService _attachmentCategoryService;
+    private readonly IBudgetCategoryService _budgetCategoryService;
     private readonly IBudgetPurposeService _budgetPurposeService;
     private readonly IBudgetRuleService _budgetRuleService;
+    private readonly ILogger<DemoDataService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DemoDataService"/> class.
     /// </summary>
-    /// <param name="accountService">Account service used to create accounts.</param>
-    /// <param name="contactCategoryService">Contact category service used to create categories.</param>
-    /// <param name="contactService">Contact service used to create contacts.</param>
-    /// <param name="attachmentService">Attachment service used to upload symbol images.</param>
-    /// <param name="savingsPlanCategoryService">Savings plan category service used to create savings plans.</param>
-    /// <param name="savingsPlanService">Savings plan service used to create and manage savings plans.</param>
-    /// <param name="securityCategoryService">Security category service used to create security categories.</param>
-    /// <param name="securityService">Security service used to create and manage securities.</param>
-    /// <param name="securityPriceService">Security price service used to create demo security price history.</param>
-    /// <param name="statementDraftService">Statement draft service used to create and book demo statement drafts.</param>
-    /// <param name="attachmentCategoryService">Attachment category service used to create attachment categories.</param>
-    /// <param name="budgetPurposeService">Budget purpose service used to create demo budget purposes.</param>
-    /// <param name="budgetRuleService">Budget rule service used to create demo budget rules.</param>
+    /// <param name="accountService">Service used to create demo accounts.</param>
+    /// <param name="contactService">Service used to create demo contacts.</param>
+    /// <param name="contactCategoryService">Service used to create contact groups.</param>
+    /// <param name="savingsPlanCategoryService">Service used to create savings plan categories.</param>
+    /// <param name="savingsPlanService">Service used to create savings plans.</param>
+    /// <param name="securityService">Service used to create securities.</param>
+    /// <param name="securityCategoryService">Service used to create security categories.</param>
+    /// <param name="securityPriceImportServiceFactory">Factory used to resolve the security price import service.</param>
+    /// <param name="statementDraftService">Service used to create and book statement drafts.</param>
+    /// <param name="budgetCategoryService">Service used to create budget categories.</param>
+    /// <param name="budgetPurposeService">Service used to create budget purposes.</param>
+    /// <param name="budgetRuleService">Service used to create budget rules.</param>
     /// <param name="logger">Logger instance.</param>
     public DemoDataService(
         IAccountService accountService,
-        IContactCategoryService contactCategoryService,
         IContactService contactService,
-        IAttachmentService attachmentService,
+        IContactCategoryService contactCategoryService,
         ISavingsPlanCategoryService savingsPlanCategoryService,
         ISavingsPlanService savingsPlanService,
-        ISecurityCategoryService securityCategoryService,
         ISecurityService securityService,
-        ISecurityPriceService securityPriceService,
+        ISecurityCategoryService securityCategoryService,
+        ISecurityPriceImportServiceFactory securityPriceImportServiceFactory,
         IStatementDraftService statementDraftService,
-        IAttachmentCategoryService attachmentCategoryService,
+        IBudgetCategoryService budgetCategoryService,
         IBudgetPurposeService budgetPurposeService,
         IBudgetRuleService budgetRuleService,
         ILogger<DemoDataService> logger)
     {
         _accountService = accountService ?? throw new ArgumentNullException(nameof(accountService));
-        _contactCategoryService = contactCategoryService ?? throw new ArgumentNullException(nameof(contactCategoryService));
         _contactService = contactService ?? throw new ArgumentNullException(nameof(contactService));
-        _attachmentService = attachmentService ?? throw new ArgumentNullException(nameof(attachmentService));
+        _contactCategoryService = contactCategoryService ?? throw new ArgumentNullException(nameof(contactCategoryService));
         _savingsPlanCategoryService = savingsPlanCategoryService ?? throw new ArgumentNullException(nameof(savingsPlanCategoryService));
         _savingsPlanService = savingsPlanService ?? throw new ArgumentNullException(nameof(savingsPlanService));
-        _securityCategoryService = securityCategoryService ?? throw new ArgumentNullException(nameof(securityCategoryService));
         _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
-        _securityPriceService = securityPriceService ?? throw new ArgumentNullException(nameof(securityPriceService));
+        _securityCategoryService = securityCategoryService ?? throw new ArgumentNullException(nameof(securityCategoryService));
+        _securityPriceImportServiceFactory = securityPriceImportServiceFactory ?? throw new ArgumentNullException(nameof(securityPriceImportServiceFactory));
         _statementDraftService = statementDraftService ?? throw new ArgumentNullException(nameof(statementDraftService));
-        _attachmentCategoryService = attachmentCategoryService ?? throw new ArgumentNullException(nameof(attachmentCategoryService));
+        _budgetCategoryService = budgetCategoryService ?? throw new ArgumentNullException(nameof(budgetCategoryService));
         _budgetPurposeService = budgetPurposeService ?? throw new ArgumentNullException(nameof(budgetPurposeService));
         _budgetRuleService = budgetRuleService ?? throw new ArgumentNullException(nameof(budgetRuleService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
-    /// Creates demo data for the specified user. Currently creates one Giro account and two Savings accounts.
+    /// Creates the full demo data set for the provided user.
     /// </summary>
-    /// <param name="userId">Identifier of the user to create demo data for.</param>
-    /// <param name="createPostings">Whether to create postings and statement imports for demo savings plans.</param>
-    /// <param name="ct">Cancellation token.</param>    
+    /// <param name="userId">Identifier of the user who receives demo data.</param>
+    /// <param name="createPostings">When true, statement drafts and postings for the past 24 months are generated.</param>
+    /// <param name="ct">Cancellation token.</param>
     public async Task CreateDemoDataAsync(Guid userId, bool createPostings, CancellationToken ct)
     {
-        if (userId == Guid.Empty) throw new ArgumentException("userId required", nameof(userId));
-
-        _logger.LogInformation("Creating demo data for user {UserId}", userId);
-
-        try
+        if (userId == Guid.Empty)
         {
-            // create attachment category for symbols and ensure attachments representing symbols are categorized
-            var symbolsAttachmentCategory = await _attachmentCategoryService.CreateAsync(userId, "Symbole", ct);
-
-            // create contact categories
-            var banksCat = await _contactCategoryService.CreateAsync(userId, "Banken", ct);
-            var insurancesCat = await _contactCategoryService.CreateAsync(userId, "Versicherungen", ct);
-            var providersCat = await _contactCategoryService.CreateAsync(userId, "Dienstleister", ct);
-            var retailCat = await _contactCategoryService.CreateAsync(userId, "Superm�rkte & Einzelhandel", ct);
-
-            var attachmentId = await CreateSvgSymbolAsync(userId, AttachmentEntityKind.ContactCategory, banksCat.Id, "bank-symbol.svg", banksCat.Name, symbolsAttachmentCategory.Id, ct);
-            await _contactCategoryService.SetSymbolAttachmentAsync(banksCat.Id, userId, attachmentId, ct);
-
-            // create two bank contacts: one for Giro, one for Savings
-            var giroBank = await CreateContactAsync(userId, "Demo Giro Bank", ContactType.Bank, banksCat.Id, "Demo bank for giro account", false, "", ct);
-            var savingsBank = await CreateContactAsync(userId, "Demo Savings Bank", ContactType.Bank, banksCat.Id, "Demo bank for savings accounts", false, "", ct);
-            var contAldi = await CreateContactAsync(userId, "Aldi", ContactType.Organization, retailCat.Id, "Demo contact for grocery store", false, "*Aldi Payments*", ct);
-
-            // create savings plan categories
-            var spInsurances = await _savingsPlanCategoryService.CreateAsync(userId, "Versicherungen", ct);
-            var spSparen = await _savingsPlanCategoryService.CreateAsync(userId, "Sparen", ct);
-            var spRuckstellungen = await _savingsPlanCategoryService.CreateAsync(userId, "R�ckstellungen", ct);
-
-            // create security categories
-            var secAktien = await _securityCategoryService.CreateAsync(userId, "Aktien", ct);
-            var secFonds = await _securityCategoryService.CreateAsync(userId, "Fonds", ct);
-
-            // create a sample security: MSCI World assigned to Fonds
-            var msci = await _securityService.CreateAsync(userId, "MSCI World", "MSCIW", "Global equity index fund", null, "USD", secFonds.Id, ct);
-            // assign a symbol to the security
-            var msciSymbolId = await CreateSvgSymbolAsync(userId, AttachmentEntityKind.Security, msci.Id, "msci-symbol.svg", msci.Name, symbolsAttachmentCategory.Id, ct);
-            await _securityService.SetSymbolAttachmentAsync(msci.Id, userId, msciSymbolId, ct);
-
-            // create monthly security prices for the past 24 months (demo data)
-            await CreateSecurityPrices(userId, msci, ct);
-
-            // create three savings plans
-            // 1) Urlaubskasse, type Open
-            var sp1 = await _savingsPlanService.CreateAsync(userId, "Urlaubskasse", SavingsPlanType.Open, null, null, null, spSparen.Id, null, ct);
-
-            // 2) KFZ Versicherung, recurring annually, target in three months, amount 432
-            var threeMonths = DateTime.UtcNow.Date.AddMonths(3);
-            var kfz = await _savingsPlanService.CreateAsync(userId, "KFZ Versicherung", SavingsPlanType.Recurring, 432m, threeMonths, SavingsPlanInterval.Annually, spInsurances.Id, null, ct);
-
-            // 3) Auto, target in 10 years, amount 12500
-            var tenYears = DateTime.UtcNow.Date.AddYears(10);
-            var sp3 = await _savingsPlanService.CreateAsync(userId, "Auto", SavingsPlanType.OneTime, 12500m, tenYears, null, spRuckstellungen.Id, null, ct);
-
-            // create insurance contact (counterparty for yearly payment)
-            var contInsurance = await CreateContactAsync(userId, "KFZ Versicherung", ContactType.Organization, insurancesCat.Id, "Insurance provider (demo)", false, "*kfz versicherung*", ct);
-
-            // create budgets
-            await CreateDemoBudgetsAsync(userId, sp1, sp3, kfz, contInsurance, ct);
-
-            // Create one Giro (checking) account
-            var accGiro = await _accountService.CreateAsync(
-                ownerUserId: userId,
-                name: "Demo Giro Account",
-                type: AccountType.Giro,
-                iban: "DE00DEMO0000000001",
-                bankContactId: giroBank.Id,
-                expectation: SavingsPlanExpectation.Optional,
-                securityProcessingEnabled: true,
-                isCollectionAccount: false,
-                ct: ct);
-
-            // Create two savings accounts
-            var accSave1 = await _accountService.CreateAsync(
-                ownerUserId: userId,
-                name: "Demo Savings 1",
-                type: AccountType.Savings,
-                iban: "DE00DEMO0000000002",
-                bankContactId: savingsBank.Id,
-                expectation: SavingsPlanExpectation.None,
-                securityProcessingEnabled: true,
-                isCollectionAccount: false,
-                ct: ct);
-
-            var accSave2 = await _accountService.CreateAsync(
-                ownerUserId: userId,
-                name: "Demo Savings 2",
-                type: AccountType.Savings,
-                iban: "DE00DEMO0000000003",
-                bankContactId: savingsBank.Id,
-                expectation: SavingsPlanExpectation.None,
-                securityProcessingEnabled: true,
-                isCollectionAccount: false,
-                ct: ct);
-
-            // if requested, create statement draft and entries for KFZ Versicherung
-            if (createPostings)
-            {
-                // determine accounts to attach imports to
-                var giroAccountId = accGiro.Id;
-                var savingsAccountId = accSave1.Id;
-                var savingsAccountId2 = accSave2.Id;
-
-                // debit side on Giro: negative amounts, assign to savings plan
-                await CreateDemoPostingsForInsurance(userId, kfz, giroAccountId, positive: false, assignSavingsPlan: true, ct);
-
-                // credit side on Savings account: positive amounts, do NOT assign to savings plan
-                await CreateDemoPostingsForInsurance(userId, kfz, savingsAccountId, positive: true, assignSavingsPlan: false, ct);
-
-                // also create vacation savings postings: 15 months of 100� each
-                await CreateDemoPostingsForSavingsPlan(userId, sp1, giroAccountId, savingsAccountId2, 100m, 15, ct);
-                // create car savings postings: 12 months of 150� each
-                await CreateDemoPostingsForSavingsPlan(userId, sp3, giroAccountId, savingsAccountId2, 150m, 12, ct);
-
-                // create unbooked monthly account statements for the current month
-                await CreateMonthlyUnbookedStatementsAsync(userId, accGiro.Id, savingsAccountId, savingsAccountId2, sp1, kfz, sp3, contAldi, ct);
-            }
-
-            _logger.LogInformation("Demo data creation finished for user {UserId}", userId);
+            throw new ArgumentException("userId required", nameof(userId));
         }
-        catch (OperationCanceledException)
+
+        var referenceMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+        var random = new Random(BuildDeterministicSeed());
+
+        var (
+            selfContact,
+            giroBankContact,
+            employerContact,
+            insuranceContact,
+            rentContact,
+            marketContacts,
+            bakeryContacts,
+            giroAccount,
+            primarySavingsAccount,
+            secondarySavingsAccount,
+            sdacPlan,
+            householdPlan,
+            vacationPlan,
+            worldSecurity,
+            postSecurity,
+            worldPriceHistory,
+            postPriceHistory,
+            householdContractNumber) = await CreateDemoDataSetAsync(userId, referenceMonthStart, random, ct);
+
+        if (createPostings)
         {
-            _logger.LogInformation("Demo data creation cancelled for user {UserId}", userId);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error while creating demo data for user {UserId}", userId);
-            throw;
+            await CreateMonthlyPostingPlanAsync(
+                userId,
+                referenceMonthStart,
+                random,
+                selfContact,
+                giroBankContact,
+                employerContact,
+                insuranceContact,
+                rentContact,
+                marketContacts,
+                bakeryContacts,
+                giroAccount,
+                primarySavingsAccount,
+                secondarySavingsAccount,
+                sdacPlan,
+                householdPlan,
+                vacationPlan,
+                worldSecurity,
+                postSecurity,
+                worldPriceHistory,
+                postPriceHistory,
+                householdContractNumber,
+                ct);
         }
     }
 
-    private async Task CreateSecurityPrices(Guid userId, SecurityDto msci, CancellationToken ct)
-    {
-        // deterministic random seed based on security id to keep demo reproducible
-        var rnd = new Random(msci.Id.GetHashCode());
-        decimal basePrice = 100m; // starting base price for demo
-        for (int monthsAgo = 24; monthsAgo >= 1; monthsAgo--)
-        {
-            var priceDate = DateTime.UtcNow.Date.AddMonths(-monthsAgo);
-            // simulate small monthly change within �5%
-            var change = (decimal)(rnd.NextDouble() * 0.10 - 0.05);
-            basePrice = Math.Max(0.01m, Math.Round(basePrice * (1 + change), 2));
-            await _securityPriceService.CreateAsync(userId, msci.Id, priceDate, basePrice, ct);
-        }
-    }
-
-    private async Task<ContactDto> CreateContactAsync(Guid userId, string name, ContactType contactType, Guid categoryId, string description, bool isPaymentIntermediary, string secondaryAlias, CancellationToken ct)
-    {
-        var contact = await _contactService.CreateAsync(userId, name, contactType, categoryId, description, isPaymentIntermediary, ct);
-        await _contactService.AddAliasAsync(contact.Id, userId, $"*{name.ToLowerInvariant().Replace(" ", ".")}*", ct);
-        if (!string.IsNullOrWhiteSpace(secondaryAlias))
-            await _contactService.AddAliasAsync(contact.Id, userId, secondaryAlias, ct);
-        return contact;
-    }
-    private async Task CreateDemoPostingsForInsurance(Guid userId, SavingsPlanDto kfz, Guid accountId, bool positive, bool assignSavingsPlan, CancellationToken ct)
-    {
-        // ensure Self contact exists
-        var selfList = await _contactService.ListAsync(userId, 0, 10, ContactType.Self, null, ct);
-        var self = selfList.Count > 0 ? selfList[0] : await _contactService.CreateAsync(userId, "Self", ContactType.Self, null, null, false, ct);
-
-        // create empty draft (acts as account statement container)
-        var draft = await _statementDraftService.CreateEmptyDraftAsync(userId, positive ? "demo_kfz_credit.csv" : "demo_kfz_debit.csv", ct);
-        if (draft == null) throw new InvalidOperationException("Failed to create statement draft");
-        await _statementDraftService.SetAccountAsync(draft.DraftId, userId, accountId, ct);
-
-        // create 9 monthly entries for past 9 months
-        var monthly = (kfz.TargetAmount ?? 0m) / 12m;
-        var amount = positive ? monthly : -monthly;
-        for (int i = 1; i <= 9; i++)
-        {
-            var bookingDate = DateTime.UtcNow.Date.AddMonths(-i);
-            await _statementDraftService.AddEntryAsync(draft.DraftId, userId, bookingDate, amount, $"Rueckstellung {kfz.Name}", ct);
-        }
-
-        // update entries with recipient name and booking description
-        var entries = (await _statementDraftService.GetDraftEntriesAsync(draft.DraftId, ct)).ToList();
-        foreach (var e in entries)
-        {
-            await _statementDraftService.UpdateEntryCoreAsync(draft.DraftId, e.Id, userId, e.BookingDate, e.BookingDate, e.Amount, e.Subject, self.Name, "EUR", $"Rueckstellung {kfz.Name}", ct);
-        }
-
-        // run classification to attempt auto-matching
-        await _statementDraftService.ClassifyAsync(draft.DraftId, null, userId, ct);
-
-        // validate draft and ensure no errors
-        var validation = await _statementDraftService.ValidateAsync(draft.DraftId, null, userId, ct);
-        if (!validation.IsValid)
-        {
-            // if any error, log and throw to surface problem in demo setup
-            _logger.LogError("Draft validation failed for demo draft {DraftId}: {Messages}", draft.DraftId, string.Join(";", validation.Messages.Select(m => m.Message)));
-            throw new InvalidOperationException("Draft validation reported errors during demo data creation");
-        }
-
-        // when assignment requested ensure assignment exists, otherwise ensure none are assigned
-        entries = (await _statementDraftService.GetDraftEntriesAsync(draft.DraftId, ct)).ToList();
-        if (assignSavingsPlan)
-        {
-            if (entries.Any(e => e.SavingsPlanId is null || e.SavingsPlanId != kfz.Id))
-            {
-                _logger.LogError("Draft entries not assigned to savings plan as expected");
-                throw new InvalidOperationException("Draft entries not assigned to savings plan as expected");
-            }
-        }
-        else
-        {
-            if (entries.Any(e => e.SavingsPlanId is not null))
-            {
-                _logger.LogError("Draft entries unexpectedly assigned to savings plan");
-                throw new InvalidOperationException("Draft entries must not be assigned to savings plans");
-            }
-        }
-
-        var bookingResult = await _statementDraftService.BookAsync(draft.DraftId, null, userId, true, ct);
-        if (!bookingResult.Success)
-        {
-            _logger.LogError("Booking failed for demo draft {DraftId}", draft.DraftId);
-            throw new InvalidOperationException("Booking failed during demo data creation");
-        }
-
-        if (assignSavingsPlan)
-        {
-            var refreshedKfz = await _savingsPlanService.GetAsync(kfz.Id, userId, ct);
-            if (refreshedKfz is null)
-            {
-                _logger.LogError("Savings plan {SavingsPlanId} not found after booking demo postings", kfz.Id);
-                throw new InvalidOperationException("Savings plan not found after booking demo postings");
-            }
-            kfz = refreshedKfz;
-            var expectedRemaining = kfz.TargetAmount - (9 * monthly);
-            if (kfz.RemainingAmount != expectedRemaining)
-            {
-                _logger.LogError("No postings created for demo savings plan {SavingsPlanId}", kfz.Id);
-                throw new InvalidOperationException("No postings created for demo savings plan");
-            }
-        }
-    }
-
-    private async Task CreateDemoPostingsForSavingsPlan(Guid userId, SavingsPlanDto plan, Guid accountIdDebit, Guid accountIdCredit, decimal monthlyAmount, int months, CancellationToken ct)
-    {
-        // ensure Self contact exists
-        var selfList = await _contactService.ListAsync(userId, 0, 10, ContactType.Self, null, ct);
-        var self = selfList.Count > 0 ? selfList[0] : await _contactService.CreateAsync(userId, "Self", ContactType.Self, null, null, false, ct);
-
-        // DEBIT draft on Giro (negative amounts) assigned to savings plan
-        var debitDraft = await _statementDraftService.CreateEmptyDraftAsync(userId, $"demo_{plan.Name}_{months}months_debit.csv", ct);
-        if (debitDraft == null) throw new InvalidOperationException("Failed to create debit statement draft for vacation savings");
-        debitDraft = await _statementDraftService.SetAccountAsync(debitDraft.DraftId, userId, accountIdDebit, ct);
-        if (debitDraft == null) throw new InvalidOperationException("Failed to set account on debit statement draft for vacation savings");
-
-        for (int i = 1; i <= months; i++)
-        {
-            var bookingDate = DateTime.UtcNow.Date.AddMonths(-i);
-            await _statementDraftService.AddEntryAsync(debitDraft.DraftId, userId, bookingDate, -monthlyAmount, $"{plan.Name} Einzahlung", ct);
-        }
-
-        var debitEntries = (await _statementDraftService.GetDraftEntriesAsync(debitDraft.DraftId, ct)).ToList();
-        foreach (var e in debitEntries)
-        {
-            await _statementDraftService.UpdateEntryCoreAsync(debitDraft.DraftId, e.Id, userId, e.BookingDate, e.BookingDate, e.Amount, e.Subject, self.Name, "EUR", $"{plan.Name}", ct);
-        }
-
-        await _statementDraftService.ClassifyAsync(debitDraft.DraftId, null, userId, ct);
-        var debitValidation = await _statementDraftService.ValidateAsync(debitDraft.DraftId, null, userId, ct);
-        if (!debitValidation.IsValid)
-        {
-            _logger.LogError("Debit draft (vacation) validation failed for demo draft {DraftId}: {Messages}", debitDraft.DraftId, string.Join(";", debitValidation.Messages.Select(m => m.Message)));
-            throw new InvalidOperationException("Debit draft (vacation) validation reported errors during demo data creation");
-        }
-
-        // ensure assignment to savings plan
-        debitEntries = (await _statementDraftService.GetDraftEntriesAsync(debitDraft.DraftId, ct)).ToList();
-        if (debitEntries.Any(e => e.SavingsPlanId is null || e.SavingsPlanId != plan.Id))
-        {
-            _logger.LogError("Debit draft entries (vacation) not assigned to savings plan as expected");
-            throw new InvalidOperationException("Debit draft entries (vacation) not assigned to savings plan as expected");
-        }
-
-        var debitBooking = await _statementDraftService.BookAsync(debitDraft.DraftId, null, userId, true, ct);
-        if (!debitBooking.Success)
-        {
-            _logger.LogError("Booking failed for debit vacation draft {DraftId}", debitDraft.DraftId);
-            throw new InvalidOperationException("Booking failed during demo data creation (vacation debit)");
-        }
-
-        // CREDIT draft on savings account (positive amounts), must NOT be assigned to savings plan
-        var creditDraft = await _statementDraftService.CreateEmptyDraftAsync(userId, $"demo_{plan.Name}_{months}months_credit.csv", ct);
-        if (creditDraft == null) throw new InvalidOperationException("Failed to create credit statement draft for vacation savings");
-        creditDraft = await _statementDraftService.SetAccountAsync(creditDraft.DraftId, userId, accountIdCredit, ct);
-        if (creditDraft == null) throw new InvalidOperationException("Failed to set account on credit statement draft for vacation savings");
-
-        for (int i = 1; i <= months; i++)
-        {
-            var bookingDate = DateTime.UtcNow.Date.AddMonths(-i);
-            await _statementDraftService.AddEntryAsync(creditDraft.DraftId, userId, bookingDate, monthlyAmount, $"Gegenbuchung {plan.Name}", ct);
-        }
-
-        var creditEntries = (await _statementDraftService.GetDraftEntriesAsync(creditDraft.DraftId, ct)).ToList();
-        foreach (var e in creditEntries)
-        {
-            await _statementDraftService.UpdateEntryCoreAsync(creditDraft.DraftId, e.Id, userId, e.BookingDate, e.BookingDate, e.Amount, e.Subject, self.Name, "EUR", $"Gegenbuchung {plan.Name}", ct);
-        }
-
-        await _statementDraftService.ClassifyAsync(creditDraft.DraftId, null, userId, ct);
-        var creditValidation = await _statementDraftService.ValidateAsync(creditDraft.DraftId, null, userId, ct);
-        if (!creditValidation.IsValid)
-        {
-            _logger.LogError("Credit draft (vacation) validation failed for demo draft {DraftId}: {Messages}", creditDraft.DraftId, string.Join(";", creditValidation.Messages.Select(m => m.Message)));
-            throw new InvalidOperationException("Credit draft (vacation) validation reported errors during demo data creation");
-        }
-
-        creditEntries = (await _statementDraftService.GetDraftEntriesAsync(creditDraft.DraftId, ct)).ToList();
-        if (creditEntries.Any(e => e.SavingsPlanId is not null))
-        {
-            _logger.LogError("Credit draft entries (vacation) unexpectedly assigned to savings plan");
-            throw new InvalidOperationException("Credit draft entries (vacation) must not be assigned to savings plans");
-        }
-
-        var creditBooking = await _statementDraftService.BookAsync(creditDraft.DraftId, null, userId, true, ct);
-        if (!creditBooking.Success)
-        {
-            _logger.LogError("Booking failed for credit vacation draft {DraftId}", creditDraft.DraftId);
-            throw new InvalidOperationException("Booking failed during demo data creation (vacation credit)");
-        }
-
-        var refreshedPlan = await _savingsPlanService.GetAsync(plan.Id, userId, ct);
-        if (refreshedPlan is null)
-        {
-            _logger.LogError("Savings plan {SavingsPlanId} not found after booking demo postings", plan.Id);
-            throw new InvalidOperationException("Savings plan not found after booking demo postings");
-        }
-        if (refreshedPlan.CurrentAmount != months * monthlyAmount)
-        {
-            _logger.LogError("No postings created for demo savings plan {SavingsPlanId}", refreshedPlan.Id);
-            throw new InvalidOperationException($"No postings created for demo savings plan ({refreshedPlan.Name})");
-        }
-    }
-
-    private async Task<Guid> CreateSvgSymbolAsync(Guid ownerUserId, AttachmentEntityKind kind, Guid entityId, string fileName, string displayName, Guid? categoryId, CancellationToken ct)
-    {
-        ArgumentNullException.ThrowIfNull(fileName);
-        displayName = (displayName ?? string.Empty).Trim();
-        var letter = 'B';
-        if (!string.IsNullOrEmpty(displayName))
-        {
-            letter = char.ToUpperInvariant(displayName[0]);
-        }
-
-        var svg = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
-                  "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\" viewBox=\"0 0 64 64\">" +
-                  "<circle cx=\"32\" cy=\"32\" r=\"30\" fill=\"#2b6cb0\"/>" +
-                  $"<text x=\"32\" y=\"38\" font-size=\"28\" text-anchor=\"middle\" fill=\"#ffffff\" font-family=\"Arial, Helvetica, sans-serif\">{letter}</text>" +
-                  "</svg>";
-
-        var svgBytes = Encoding.UTF8.GetBytes(svg);
-        await using var ms = new MemoryStream(svgBytes);
-        var attachment = await _attachmentService.UploadAsync(ownerUserId, kind, entityId, ms, fileName, "image/svg+xml", categoryId, ct);
-        return attachment.Id;
-    }
-
-    private async Task CreateMonthlyUnbookedStatementsAsync(Guid userId, Guid giroAccountId, Guid savingsAccountId, Guid savingsAccountId2, SavingsPlanDto sp1, SavingsPlanDto kfz, SavingsPlanDto sp3, ContactDto contAldi, CancellationToken ct)
-    {
-        // ensure Self contact exists
-        var selfList = await _contactService.ListAsync(userId, 0, 10, ContactType.Self, null, ct);
-        var self = selfList.Count > 0 ? selfList[0] : await _contactService.CreateAsync(userId, "Self", ContactType.Self, null, null, false, ct);
-
-        var firstOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-
-        // Giro account draft
-        var giroDraft = await _statementDraftService.CreateEmptyDraftAsync(userId, "demo_monthly_giro.csv", ct);
-        if (giroDraft == null) throw new InvalidOperationException("Failed to create giro statement draft");
-        await _statementDraftService.SetAccountAsync(giroDraft.DraftId, userId, giroAccountId, ct);
-
-        // Add entries on giro (negative amounts)
-        await _statementDraftService.AddEntryAsync(giroDraft.DraftId, userId, firstOfMonth, -100m, $"Rueckstellung {sp1.Name}", ct);
-        await _statementDraftService.AddEntryAsync(giroDraft.DraftId, userId, firstOfMonth, -150m, $"Rueckstellung {sp3.Name}", ct);
-        var kfzMonthly = (kfz.TargetAmount ?? 0m) / 12m;
-        await _statementDraftService.AddEntryAsync(giroDraft.DraftId, userId, firstOfMonth, -kfzMonthly, $"Rueckstellung {kfz.Name}", ct);
-        await _statementDraftService.AddEntryAsync(giroDraft.DraftId, userId, firstOfMonth, -32.95m, "VISA Aldi", ct);
-        await _statementDraftService.AddEntryAsync(giroDraft.DraftId, userId, firstOfMonth, -16.20m, "Lastschrift Lidl", ct);
-
-        // Update entries: set recipient and description
-        var giroEntries = (await _statementDraftService.GetDraftEntriesAsync(giroDraft.DraftId, ct)).ToList();
-        foreach (var e in giroEntries)
-        {
-            var desc = e.Subject;
-            var recipient = self.Name;
-            if (e.Subject.Contains("Aldi", StringComparison.OrdinalIgnoreCase)) recipient = contAldi.Name;
-            await _statementDraftService.UpdateEntryCoreAsync(giroDraft.DraftId, e.Id, userId, e.BookingDate, e.BookingDate, e.Amount, e.Subject, recipient, "EUR", desc, ct);
-        }
-
-        // Savings account 2: credits for sp1 and sp3 (counter bookings)
-        var save2Draft = await _statementDraftService.CreateEmptyDraftAsync(userId, "demo_monthly_save2.csv", ct);
-        if (save2Draft == null) throw new InvalidOperationException("Failed to create savings account 2 draft");
-        await _statementDraftService.SetAccountAsync(save2Draft.DraftId, userId, savingsAccountId2, ct);
-        await _statementDraftService.AddEntryAsync(save2Draft.DraftId, userId, firstOfMonth, 100m, $"Gegenbuchung {sp1.Name}", ct);
-        await _statementDraftService.AddEntryAsync(save2Draft.DraftId, userId, firstOfMonth, 150m, $"Gegenbuchung {sp3.Name}", ct);
-        var save2Entries = (await _statementDraftService.GetDraftEntriesAsync(save2Draft.DraftId, ct)).ToList();
-        foreach (var e in save2Entries)
-        {
-            await _statementDraftService.UpdateEntryCoreAsync(save2Draft.DraftId, e.Id, userId, e.BookingDate, e.BookingDate, e.Amount, e.Subject, self.Name, "EUR", e.Subject, ct);
-        }
-
-        // Savings account 1: credit for kfz
-        var save1Draft = await _statementDraftService.CreateEmptyDraftAsync(userId, "demo_monthly_save1.csv", ct);
-        if (save1Draft == null) throw new InvalidOperationException("Failed to create savings account 1 draft");
-        await _statementDraftService.SetAccountAsync(save1Draft.DraftId, userId, savingsAccountId, ct);
-        await _statementDraftService.AddEntryAsync(save1Draft.DraftId, userId, firstOfMonth, kfzMonthly, $"Gegenbuchung {kfz.Name}", ct);
-        var save1Entries = (await _statementDraftService.GetDraftEntriesAsync(save1Draft.DraftId, ct)).ToList();
-        foreach (var e in save1Entries)
-        {
-            await _statementDraftService.UpdateEntryCoreAsync(save1Draft.DraftId, e.Id, userId, e.BookingDate, e.BookingDate, e.Amount, e.Subject, self.Name, "EUR", e.Subject, ct);
-        }
-
-        await _statementDraftService.ClassifyAsync(giroDraft.DraftId, null, userId, ct);
-        await _statementDraftService.ClassifyAsync(save1Draft.DraftId, null, userId, ct);
-        await _statementDraftService.ClassifyAsync(save2Draft.DraftId, null, userId, ct);
-    }
-
-    private async Task CreateDemoBudgetsAsync(
-        Guid ownerUserId,
-        SavingsPlanDto vacationPlan,
-        SavingsPlanDto carPlan,
-        SavingsPlanDto insurancePlan,
+    private async Task<(
+        ContactDto selfContact,
+        ContactDto giroBankContact,
+        ContactDto employerContact,
         ContactDto insuranceContact,
+        ContactDto rentContact,
+        IReadOnlyList<ContactDto> marketContacts,
+        IReadOnlyList<ContactDto> bakeryContacts,
+        AccountDto giroAccount,
+        AccountDto primarySavingsAccount,
+        AccountDto secondarySavingsAccount,
+        SavingsPlanDto sdacPlan,
+        SavingsPlanDto householdPlan,
+        SavingsPlanDto vacationPlan,
+        SecurityDto worldSecurity,
+        SecurityDto postSecurity,
+        Dictionary<DateTime, decimal> worldPriceHistory,
+        Dictionary<DateTime, decimal> postPriceHistory,
+        string householdContractNumber)> CreateDemoDataSetAsync(Guid userId, DateTime referenceMonthStart, Random random, CancellationToken ct)
+    {
+        var selfContacts = await _contactService.ListAsync(userId, 0, 1, ContactType.Self, null, ct);
+        var selfContact = selfContacts.FirstOrDefault()
+                          ?? await _contactService.CreateAsync(userId, "Self", ContactType.Self, null, null, false, ct);
+
+        var firstMonth = referenceMonthStart.AddMonths(-23);
+        var nextJanuary = new DateTime(referenceMonthStart.Year, 1, 1);
+        if (nextJanuary <= referenceMonthStart)
+        {
+            nextJanuary = nextJanuary.AddYears(1);
+        }
+
+        var nextDecember = new DateTime(referenceMonthStart.Year, 12, 1);
+        if (nextDecember <= referenceMonthStart)
+        {
+            nextDecember = nextDecember.AddYears(1);
+        }
+
+        var banksGroup = await _contactCategoryService.CreateAsync(userId, "Banken", ct);
+        var workGroup = await _contactCategoryService.CreateAsync(userId, "Arbeit", ct);
+        var insuranceGroup = await _contactCategoryService.CreateAsync(userId, "Versicherungen", ct);
+        var serviceGroup = await _contactCategoryService.CreateAsync(userId, "Dienstleister", ct);
+        var marketGroup = await _contactCategoryService.CreateAsync(userId, "Supermärkte & Einzelhandel", ct);
+        var bakeryGroup = await _contactCategoryService.CreateAsync(userId, "Bäckereien & Cafés", ct);
+
+        var giroBankContact = await _contactService.CreateAsync(userId, "Musterbank Nord", ContactType.Bank, banksGroup.Id, null, false, ct);
+        var secondBankContact = await _contactService.CreateAsync(userId, "Musterbank Süd", ContactType.Bank, banksGroup.Id, null, false, ct);
+        var employerContact = await _contactService.CreateAsync(userId, "Arbeitgeber GmbH", ContactType.Organization, workGroup.Id, null, false, ct);
+        var insuranceContact = await _contactService.CreateAsync(userId, "Zentrial Versicherung", ContactType.Organization, insuranceGroup.Id, null, false, ct);
+        var sdacContact = await _contactService.CreateAsync(userId, "SDAC", ContactType.Organization, insuranceGroup.Id, null, false, ct);
+        var rentContact = await _contactService.CreateAsync(userId, "Sabbel Lüchtenhausen", ContactType.Person, serviceGroup.Id, null, false, ct);
+
+        var marketContacts = new List<ContactDto>
+        {
+            await _contactService.CreateAsync(userId, "Adli", ContactType.Organization, marketGroup.Id, null, false, ct),
+            await _contactService.CreateAsync(userId, "Didl", ContactType.Organization, marketGroup.Id, null, false, ct),
+            await _contactService.CreateAsync(userId, "Adeka", ContactType.Organization, marketGroup.Id, null, false, ct)
+        };
+        var bakeryContacts = new List<ContactDto>
+        {
+            await _contactService.CreateAsync(userId, "Bäckerei Kramphove", ContactType.Organization, bakeryGroup.Id, null, false, ct),
+            await _contactService.CreateAsync(userId, "Bäckerei Feiping", ContactType.Organization, bakeryGroup.Id, null, false, ct),
+            await _contactService.CreateAsync(userId, "Bäckerei Schlonz", ContactType.Organization, bakeryGroup.Id, null, false, ct)
+        };
+
+        var recurringExpensesCategory = await _savingsPlanCategoryService.CreateAsync(userId, "Wiederkehrende Ausgaben", ct);
+        var investmentCategory = await _savingsPlanCategoryService.CreateAsync(userId, "Anlage", ct);
+
+        var sdacContractNumber = $"{random.Next(100000, 999999)}-{random.Next(1000, 9999)}";
+        var householdContractNumber = $"{random.Next(100000, 999999)}-{random.Next(1000, 9999)}";
+
+        var sdacPlan = await _savingsPlanService.CreateAsync(
+            userId,
+            "SDAC Gebühr",
+            SavingsPlanType.Recurring,
+            99.00m,
+            nextJanuary,
+            SavingsPlanInterval.Annually,
+            recurringExpensesCategory.Id,
+            sdacContractNumber,
+            ct);
+
+        var householdPlan = await _savingsPlanService.CreateAsync(
+            userId,
+            "Hausratversicherung",
+            SavingsPlanType.Recurring,
+            62.60m,
+            nextDecember,
+            SavingsPlanInterval.Annually,
+            recurringExpensesCategory.Id,
+            householdContractNumber,
+            ct);
+
+        await _savingsPlanService.CreateAsync(
+            userId,
+            "Auto",
+            SavingsPlanType.OneTime,
+            14000.00m,
+            new DateTime(referenceMonthStart.Year + 10, 7, 6),
+            null,
+            investmentCategory.Id,
+            null,
+            ct);
+
+        var vacationPlan = await _savingsPlanService.CreateAsync(
+            userId,
+            "Urlaub",
+            SavingsPlanType.Open,
+            null,
+            null,
+            null,
+            null,
+            null,
+            ct);
+
+        var budgetCategoryWork = await _budgetCategoryService.CreateAsync(userId, "Arbeit", ct);
+        var budgetCategoryInsurance = await _budgetCategoryService.CreateAsync(userId, "Versicherungen", ct);
+        var budgetCategoryHousing = await _budgetCategoryService.CreateAsync(userId, "Wohnen", ct);
+        var budgetCategoryShopping = await _budgetCategoryService.CreateAsync(userId, "Einkaufen & Verpflegung", ct);
+
+        var budgetStart = DateOnly.FromDateTime(firstMonth);
+        var decemberStart = new DateOnly(firstMonth.Year, 12, 1);
+        var januaryStart = new DateOnly(firstMonth.Year, 1, 1);
+
+        var salaryPurpose = await _budgetPurposeService.CreateAsync(userId, "Gehalt", BudgetSourceType.Contact, employerContact.Id, null, budgetCategoryWork.Id, ct);
+        await _budgetRuleService.CreateAsync(userId, salaryPurpose.Id, 3642.50m, BudgetIntervalType.Monthly, null, budgetStart, null, null, false, ct);
+
+        var householdReservePurpose = await _budgetPurposeService.CreateAsync(userId, "Rückstellung Hausratversicherung", BudgetSourceType.Contact, selfContact.Id, null, budgetCategoryInsurance.Id, ct);
+        await _budgetRuleService.CreateAsync(userId, householdReservePurpose.Id, -5.22m, BudgetIntervalType.Monthly, null, budgetStart, null, null, false, ct);
+        await _budgetRuleService.CreateAsync(userId, householdReservePurpose.Id, 62.64m, BudgetIntervalType.Yearly, null, decemberStart, null, null, false, ct);
+
+        var householdPurpose = await _budgetPurposeService.CreateAsync(userId, "Hausratversicherung", BudgetSourceType.Contact, insuranceContact.Id, null, budgetCategoryInsurance.Id, ct);
+        await _budgetRuleService.CreateAsync(userId, householdPurpose.Id, -62.60m, BudgetIntervalType.Yearly, null, decemberStart, null, null, false, ct);
+
+        var sdacReservePurpose = await _budgetPurposeService.CreateAsync(userId, "Rückstellung SDAC", BudgetSourceType.Contact, selfContact.Id, null, budgetCategoryInsurance.Id, ct);
+        await _budgetRuleService.CreateAsync(userId, sdacReservePurpose.Id, -8.25m, BudgetIntervalType.Monthly, null, budgetStart, null, null, false, ct);
+        await _budgetRuleService.CreateAsync(userId, sdacReservePurpose.Id, 99.00m, BudgetIntervalType.Yearly, null, januaryStart, null, null, false, ct);
+
+        var sdacPurpose = await _budgetPurposeService.CreateAsync(userId, "SDAC", BudgetSourceType.Contact, sdacContact.Id, null, budgetCategoryInsurance.Id, ct);
+        await _budgetRuleService.CreateAsync(userId, sdacPurpose.Id, -99.00m, BudgetIntervalType.Yearly, null, januaryStart, null, null, false, ct);
+
+        var rentPurpose = await _budgetPurposeService.CreateAsync(userId, "Wohnungsmiete", BudgetSourceType.Contact, rentContact.Id, null, budgetCategoryHousing.Id, ct);
+        await _budgetRuleService.CreateAsync(userId, rentPurpose.Id, -845.00m, BudgetIntervalType.Monthly, null, budgetStart, null, null, false, ct);
+
+        await _budgetPurposeService.CreateAsync(
+            userId,
+            "Supermärkte & Einzelhandel",
+            BudgetSourceType.ContactGroup,
+            marketGroup.Id,
+            null,
+            budgetCategoryShopping.Id,
+            ct,
+            BudgetValuationType.TotalBudget);
+
+        await _budgetPurposeService.CreateAsync(
+            userId,
+            "Bäckereien & Cafés",
+            BudgetSourceType.ContactGroup,
+            bakeryGroup.Id,
+            null,
+            budgetCategoryShopping.Id,
+            ct,
+            BudgetValuationType.TotalBudget);
+
+        await _budgetRuleService.CreateForCategoryAsync(userId, budgetCategoryShopping.Id, -300.00m, BudgetIntervalType.Monthly, null, budgetStart, null, ct);
+
+        var etfCategory = await _securityCategoryService.CreateAsync(userId, "ETF", ct);
+        var stockCategory = await _securityCategoryService.CreateAsync(userId, "Aktien", ct);
+
+        var worldSecurity = await _securityService.CreateAsync(
+            userId,
+            "USHSIV-MSCI WLD",
+            "LU00ABACAD96",
+            "UShares MSCI World ETF",
+            string.Empty,
+            "EUR",
+            etfCategory.Id,
+            ct,
+            "Global",
+            "MSCI World");
+
+        var postSecurity = await _securityService.CreateAsync(
+            userId,
+            "Inländische Post AG",
+            "DE0001112026",
+            null,
+            null,
+            "EUR",
+            stockCategory.Id,
+            ct,
+            "DE",
+            "Logistik");
+
+        var worldPriceHistory = await CreateSecurityPriceHistoryAsync(userId, worldSecurity, referenceMonthStart, 11.36m, random, ct);
+        var postPriceHistory = await CreateSecurityPriceHistoryAsync(userId, postSecurity, referenceMonthStart, 44.25m, random, ct);
+
+        var giroAccount = await _accountService.CreateAsync(
+            userId,
+            "Girokonto",
+            AccountType.Giro,
+            "DE12500105170648489890",
+            giroBankContact.Id,
+            SavingsPlanExpectation.Optional,
+            true,
+            false,
+            ct);
+
+        var primarySavingsAccount = await _accountService.CreateAsync(
+            userId,
+            "Sparkonto Rücklagen",
+            AccountType.Savings,
+            "DE44500105175407324931",
+            giroBankContact.Id,
+            SavingsPlanExpectation.None,
+            true,
+            false,
+            ct);
+
+        var secondarySavingsAccount = await _accountService.CreateAsync(
+            userId,
+            "Sparkonto Urlaub",
+            AccountType.Savings,
+            "DE21500105176123456789",
+            secondBankContact.Id,
+            SavingsPlanExpectation.None,
+            true,
+            false,
+            ct);
+
+        return (
+            selfContact,
+            giroBankContact,
+            employerContact,
+            insuranceContact,
+            rentContact,
+            marketContacts,
+            bakeryContacts,
+            giroAccount,
+            primarySavingsAccount,
+            secondarySavingsAccount,
+            sdacPlan,
+            householdPlan,
+            vacationPlan,
+            worldSecurity,
+            postSecurity,
+            worldPriceHistory,
+            postPriceHistory,
+            householdContractNumber);
+    }
+
+    private async Task CreateMonthlyPostingPlanAsync(
+        Guid userId,
+        DateTime referenceMonthStart,
+        Random random,
+        ContactDto selfContact,
+        ContactDto giroBankContact,
+        ContactDto employerContact,
+        ContactDto insuranceContact,
+        ContactDto rentContact,
+        IReadOnlyList<ContactDto> marketContacts,
+        IReadOnlyList<ContactDto> bakeryContacts,
+        AccountDto giroAccount,
+        AccountDto primarySavingsAccount,
+        AccountDto secondarySavingsAccount,
+        SavingsPlanDto sdacPlan,
+        SavingsPlanDto householdPlan,
+        SavingsPlanDto vacationPlan,
+        SecurityDto worldSecurity,
+        SecurityDto postSecurity,
+        Dictionary<DateTime, decimal> worldPriceHistory,
+        Dictionary<DateTime, decimal> postPriceHistory,
+        string householdContractNumber,
         CancellationToken ct)
     {
-        var monthStart = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-        monthStart = new DateOnly(monthStart.Year, monthStart.Month, 1);
+        var shopContacts = marketContacts.Concat(bakeryContacts).ToArray();
+        var firstMonth = referenceMonthStart.AddMonths(-23);
+        var now = DateTime.UtcNow.Date;
 
-        // SavingsPlan: Urlaubskasse -> -100 monthly
-        var vacationPurpose = await _budgetPurposeService.CreateAsync(ownerUserId, "Budget Urlaubskasse", BudgetSourceType.SavingsPlan, vacationPlan.Id, null, null, ct);
-        await _budgetRuleService.CreateAsync(ownerUserId, vacationPurpose.Id, -100m, BudgetIntervalType.Monthly, null, monthStart, null, null, false, ct);
+        async Task<Guid> CreateDraftAsync(AccountDto account, DateTime monthStart)
+        {
+            var draft = await _statementDraftService.CreateEmptyDraftAsync(userId, $"{account.Name}-{monthStart:yyyy-MM}.csv", ct);
+            if (draft is null)
+            {
+                throw new InvalidOperationException("Statement draft could not be created.");
+            }
 
-        // SavingsPlan: Auto -> -150 monthly
-        var carPurpose = await _budgetPurposeService.CreateAsync(ownerUserId, "Budget Auto", BudgetSourceType.SavingsPlan, carPlan.Id, null, null, ct);
-        await _budgetRuleService.CreateAsync(ownerUserId, carPurpose.Id, -150m, BudgetIntervalType.Monthly, null, monthStart, null, null, false, ct);
+            var withAccount = await _statementDraftService.SetAccountAsync(draft.DraftId, userId, account.Id, ct);
+            if (withAccount is null)
+            {
+                throw new InvalidOperationException("Statement draft account could not be assigned.");
+            }
 
-        // SavingsPlan: Versicherung-R�ckstellung: +432 yearly in three months and -1/12 monthly
-        var reservePurpose = await _budgetPurposeService.CreateAsync(ownerUserId, "Budget R�ckstellung Versicherung", BudgetSourceType.SavingsPlan, insurancePlan.Id, null, null, ct);
+            return draft.DraftId;
+        }
 
-        var payoutDate = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddMonths(3));
-        payoutDate = new DateOnly(payoutDate.Year, payoutDate.Month, 1);
+        async Task AddDraftEntryAsync(
+            Guid draftId,
+            DateTime bookingDate,
+            decimal amount,
+            string subject,
+            Guid contactId,
+            Guid? savingsPlanId = null,
+            Guid? securityId = null,
+            SecurityTransactionType? securityTransactionType = null,
+            decimal? securityQuantity = null,
+            decimal? securityFee = null,
+            decimal? securityTax = null)
+        {
+            var draft = await _statementDraftService.AddEntryAsync(draftId, userId, bookingDate, amount, subject, ct);
+            if (draft is null)
+            {
+                throw new InvalidOperationException("Statement draft entry could not be created.");
+            }
 
-        await _budgetRuleService.CreateAsync(ownerUserId, reservePurpose.Id, 432m, BudgetIntervalType.Yearly, null, payoutDate, null, null, false, ct);
-        await _budgetRuleService.CreateAsync(ownerUserId, reservePurpose.Id, -(432m / 12m), BudgetIntervalType.Monthly, null, monthStart, null, null, false, ct);
+            var entry = draft.Entries.OrderByDescending(x => x.EntryNumber).First();
+            var withContact = await _statementDraftService.SetEntryContactAsync(draftId, entry.Id, contactId, userId, ct);
+            if (withContact is null)
+            {
+                throw new InvalidOperationException("Statement draft entry contact could not be assigned.");
+            }
 
-        // Contact: Versicherung-Zahlung: -432 yearly in three months
-        var paymentPurpose = await _budgetPurposeService.CreateAsync(ownerUserId, "Budget Versicherungszahlung", BudgetSourceType.Contact, insuranceContact.Id, null, null, ct);
-        await _budgetRuleService.CreateAsync(ownerUserId, paymentPurpose.Id, -432m, BudgetIntervalType.Yearly, null, payoutDate, null, null, false, ct);
+            if (savingsPlanId.HasValue)
+            {
+                await _statementDraftService.AssignSavingsPlanAsync(draftId, entry.Id, savingsPlanId, userId, ct);
+            }
+
+            if (securityId.HasValue)
+            {
+                var securityResult = await _statementDraftService.SetEntrySecurityAsync(
+                    draftId,
+                    entry.Id,
+                    securityId,
+                    securityTransactionType,
+                    securityQuantity,
+                    securityFee,
+                    securityTax,
+                    userId,
+                    ct);
+                if (securityResult is null)
+                {
+                    throw new InvalidOperationException("Statement draft entry security could not be assigned.");
+                }
+            }
+        }
+
+        async Task BookDraftAsync(Guid draftId)
+        {
+            var result = await _statementDraftService.BookAsync(draftId, null, userId, true, ct);
+            if (!result.Success)
+            {
+                var errors = string.Join("; ", result.Validation.Messages.Select(x => x.Message));
+                throw new InvalidOperationException($"Booking statement draft failed: {errors}");
+            }
+        }
+
+        decimal GetPriceForDate(Dictionary<DateTime, decimal> priceHistory, DateTime date)
+        {
+            var cursor = date.Date;
+            decimal price;
+            while (!priceHistory.TryGetValue(cursor, out price))
+            {
+                cursor = cursor.AddDays(-1);
+                if (cursor < priceHistory.Keys.Min())
+                {
+                    throw new InvalidOperationException("No price available for requested date.");
+                }
+            }
+
+            return price;
+        }
+
+        DateTime ClampToBusinessDay(DateTime date, DateTime monthStart, DateTime monthEnd)
+        {
+            var cursor = date.Date;
+            if (cursor < monthStart)
+            {
+                cursor = monthStart;
+            }
+
+            if (cursor > monthEnd)
+            {
+                cursor = monthEnd;
+            }
+
+            if (cursor.DayOfWeek == DayOfWeek.Saturday)
+            {
+                if (cursor.AddDays(2) <= monthEnd)
+                {
+                    cursor = cursor.AddDays(2);
+                }
+                else
+                {
+                    cursor = cursor.AddDays(-1);
+                }
+            }
+            else if (cursor.DayOfWeek == DayOfWeek.Sunday)
+            {
+                if (cursor.AddDays(1) <= monthEnd)
+                {
+                    cursor = cursor.AddDays(1);
+                }
+                else
+                {
+                    cursor = cursor.AddDays(-2);
+                }
+            }
+
+            return cursor;
+        }
+
+        for (var monthIndex = 0; monthIndex < 24; monthIndex++)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var monthStart = firstMonth.AddMonths(monthIndex);
+            var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+            var isCurrentMonth = monthStart.Year == referenceMonthStart.Year && monthStart.Month == referenceMonthStart.Month;
+            var firstBusinessDay = GetFirstBusinessDayOfMonth(monthStart);
+            var lastBusinessDay = GetLastBusinessDayOfMonth(monthStart);
+
+            var giroDraftId = await CreateDraftAsync(giroAccount, monthStart);
+            var primarySavingsDraftId = await CreateDraftAsync(primarySavingsAccount, monthStart);
+            var secondarySavingsDraftId = await CreateDraftAsync(secondarySavingsAccount, monthStart);
+
+            if (!isCurrentMonth || now >= lastBusinessDay)
+            {
+                await AddDraftEntryAsync(giroDraftId, lastBusinessDay, 3642.50m, "Gehalt", employerContact.Id);
+            }
+
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -5.22m, "Rückstellung Hausratversicherung", selfContact.Id, householdPlan.Id);
+            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 5.22m, "Rückstellung Hausratversicherung", selfContact.Id);
+
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -50.00m, "Sparplan Urlaub", selfContact.Id, vacationPlan.Id);
+            await AddDraftEntryAsync(secondarySavingsDraftId, firstBusinessDay, 50.00m, "Sparplan Urlaub", selfContact.Id);
+
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id, sdacPlan.Id);
+            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id);
+
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -845.00m, "Wohnungsmiete", rentContact.Id);
+
+            if (monthStart.Month == 12)
+            {
+                var insuranceChargeDay = new DateTime(monthStart.Year, 12, 16);
+                while (insuranceChargeDay.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+                {
+                    insuranceChargeDay = insuranceChargeDay.AddDays(1);
+                }
+
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    firstBusinessDay,
+                    62.64m,
+                    "Auflösung Rückstellung Hausratversicherung",
+                    selfContact.Id,
+                    householdPlan.Id);
+
+                await AddDraftEntryAsync(
+                    primarySavingsDraftId,
+                    firstBusinessDay,
+                    -62.64m,
+                    "Auflösung Rückstellung Hausratversicherung",
+                    selfContact.Id);
+
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    insuranceChargeDay,
+                    -62.60m,
+                    $"Beitrag Hausratversicherung {monthStart.Year}, Vertragsnummer {householdContractNumber}",
+                    insuranceContact.Id);
+            }
+
+            if (monthStart.Month == 1)
+            {
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    firstBusinessDay,
+                    99.00m,
+                    "Auflösung Rückstellung SDAC Jahresgebühr",
+                    selfContact.Id,
+                    sdacPlan.Id);
+
+                await AddDraftEntryAsync(
+                    primarySavingsDraftId,
+                    firstBusinessDay,
+                    -99.00m,
+                    "Auflösung Rückstellung SDAC Jahresgebühr",
+                    selfContact.Id);
+            }
+
+            var weekCounter = 0;
+            for (var weekStart = monthStart; weekStart <= monthEnd; weekStart = weekStart.AddDays(7))
+            {
+                ct.ThrowIfCancellationRequested();
+                weekCounter++;
+
+                foreach (var shop in shopContacts)
+                {
+                    var paymentsThisWeek = random.Next(1, 3);
+                    for (var paymentIndex = 0; paymentIndex < paymentsThisWeek; paymentIndex++)
+                    {
+                        var paymentDay = ClampToBusinessDay(weekStart.AddDays(random.Next(0, 7)), monthStart, monthEnd);
+                        var amount = Math.Round(10m + ((decimal)random.NextDouble() * 20m), 2, MidpointRounding.AwayFromZero);
+                        var paymentSubject = $"Kartenzahlung {shop.Name} W{weekCounter:D2}-{paymentIndex + 1:D2}";
+                        await AddDraftEntryAsync(
+                            giroDraftId,
+                            paymentDay,
+                            -amount,
+                            paymentSubject,
+                            shop.Id);
+                    }
+                }
+            }
+
+            if (monthIndex == 0)
+            {
+                var price = GetPriceForDate(worldPriceHistory, firstBusinessDay);
+                var quantity = Math.Round(2000.00m / price, 6, MidpointRounding.AwayFromZero);
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    firstBusinessDay,
+                    -2000.00m,
+                    "Wertpapierkauf USHSIV-MSCI WLD",
+                    giroBankContact.Id,
+                    null,
+                    worldSecurity.Id,
+                    SecurityTransactionType.Buy,
+                    quantity,
+                    null,
+                    null);
+            }
+
+            if ((monthIndex + 1) % 3 == 0)
+            {
+                var gross = Math.Round(15m + ((decimal)random.NextDouble() * 15m), 2, MidpointRounding.AwayFromZero);
+                var tax = Math.Round(gross * 0.25m, 2, MidpointRounding.AwayFromZero);
+                var net = gross - tax;
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    firstBusinessDay,
+                    net,
+                    "Dividende USHSIV-MSCI WLD",
+                    giroBankContact.Id,
+                    null,
+                    worldSecurity.Id,
+                    SecurityTransactionType.Dividend,
+                    null,
+                    null,
+                    tax);
+            }
+
+            if (monthIndex == 5)
+            {
+                var price = GetPriceForDate(postPriceHistory, firstBusinessDay);
+                var tradeAmount = Math.Round(price * 62.00m, 2, MidpointRounding.AwayFromZero);
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    firstBusinessDay,
+                    -tradeAmount,
+                    "Wertpapierkauf Inländische Post AG",
+                    giroBankContact.Id,
+                    null,
+                    postSecurity.Id,
+                    SecurityTransactionType.Buy,
+                    62.00m,
+                    null,
+                    null);
+            }
+
+            if (monthIndex >= 5 && monthStart.Month == 5)
+            {
+                var price = GetPriceForDate(postPriceHistory, firstBusinessDay);
+                var currentValue = Math.Round(price * 62.00m, 2, MidpointRounding.AwayFromZero);
+                var gross = Math.Round(currentValue * 0.04m, 2, MidpointRounding.AwayFromZero);
+                var tax = Math.Round(gross * 0.25m, 2, MidpointRounding.AwayFromZero);
+                var net = gross - tax;
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    firstBusinessDay,
+                    net,
+                    "Dividende Inländische Post AG",
+                    giroBankContact.Id,
+                    null,
+                    postSecurity.Id,
+                    SecurityTransactionType.Dividend,
+                    null,
+                    null,
+                    tax);
+            }
+
+            if (!isCurrentMonth)
+            {
+                await BookDraftAsync(giroDraftId);
+                await BookDraftAsync(primarySavingsDraftId);
+                await BookDraftAsync(secondarySavingsDraftId);
+            }
+        }
     }
+
+    private async Task<Dictionary<DateTime, decimal>> CreateSecurityPriceHistoryAsync(
+        Guid userId,
+        SecurityDto security,
+        DateTime referenceMonthStart,
+        decimal startPrice,
+        Random random,
+        CancellationToken ct)
+    {
+        var culture = CultureInfo.GetCultureInfo("de-DE");
+        var priceHistory = new Dictionary<DateTime, decimal>();
+        var firstDate = referenceMonthStart.AddYears(-2);
+        var lastDate = referenceMonthStart;
+
+        var close = startPrice;
+        var firstPriceCreated = false;
+        for (var day = firstDate; day <= lastDate; day = day.AddDays(1))
+        {
+            if (day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            {
+                continue;
+            }
+
+            if (firstPriceCreated)
+            {
+                var factor = -0.005m + ((decimal)random.NextDouble() * 0.025m);
+                close = Math.Round(close * (1m + factor), 2, MidpointRounding.AwayFromZero);
+                if (close <= 0m)
+                {
+                    close = 0.01m;
+                }
+            }
+
+            priceHistory[day.Date] = close;
+            firstPriceCreated = true;
+        }
+
+        var csv = new StringBuilder();
+        csv.AppendLine("Wertpapierhistorie");
+        csv.AppendLine($"Zeit;{security.Name}");
+        foreach (var item in priceHistory.OrderBy(x => x.Key))
+        {
+            csv.Append(item.Key.ToString("dd.MM.yyyy HH:mm:ss", culture));
+            csv.Append(';');
+            csv.AppendLine(item.Value.ToString("0.00", culture));
+        }
+
+        var context = new SecurityPriceImportContext("ing", $"demo-{security.Identifier}.csv", "text/csv");
+        var importService = _securityPriceImportServiceFactory.Resolve(context);
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(csv.ToString()));
+        var importResult = await importService.ImportAsync(userId, security.Id, stream, context, ct);
+        if (importResult.Errors.Count > 0)
+        {
+            var error = string.Join("; ", importResult.Errors.Select(x => $"L{x.LineNumber}: {x.Message}"));
+            throw new InvalidOperationException($"Security price import failed for {security.Name}: {error}");
+        }
+
+        _logger.LogInformation(
+            "Imported {Inserted} security prices for {SecurityName} ({SecurityId})",
+            importResult.Inserted + importResult.Updated + importResult.Unchanged,
+            security.Name,
+            security.Id);
+
+        return priceHistory;
+    }
+
+    private static DateTime GetFirstBusinessDayOfMonth(DateTime monthStart)
+    {
+        var day = new DateTime(monthStart.Year, monthStart.Month, 1);
+        while (day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        {
+            day = day.AddDays(1);
+        }
+
+        return day;
+    }
+
+    private static DateTime GetLastBusinessDayOfMonth(DateTime monthStart)
+    {
+        var day = new DateTime(monthStart.Year, monthStart.Month, 1).AddMonths(1).AddDays(-1);
+        while (day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        {
+            day = day.AddDays(-1);
+        }
+
+        return day;
+    }
+
+    private static int BuildDeterministicSeed()
+        => 907_240_113;
 }

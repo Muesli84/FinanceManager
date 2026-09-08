@@ -184,9 +184,9 @@ public sealed class UserAuthService : IUserAuthService
             await _db.SaveChangesAsync(ct);
         }
 
-        if (command.CreateDemoData && isFirst && _backgroundTaskManager is not null)
+        if (ShouldCreateDemoDataForFirstUser(command.CreateDemoData, isFirst))
         {
-            var taskInfo = _backgroundTaskManager.Enqueue(BackgroundTaskType.CreateDemoData, user.Id, allowDuplicate: false);
+            var taskInfo = _backgroundTaskManager!.Enqueue(BackgroundTaskType.CreateDemoData, user.Id, allowDuplicate: false);
             _logger.LogInformation("Queued demo-data task {TaskId} for first user {UserId}", taskInfo.Id, user.Id);
         }
 
@@ -265,6 +265,9 @@ public sealed class UserAuthService : IUserAuthService
     // wrapper to keep calls test-friendly / readable
     private Task<IdentityResult> _user_manager_create_wrapper(User user, string password)
         => _userManager.CreateAsync(user, password);
+
+    private bool ShouldCreateDemoDataForFirstUser(bool createDemoData, bool isFirst)
+        => createDemoData && isFirst && _backgroundTaskManager is not null;
 
     // Minimal no-op implementation to keep legacy constructors/tests working
     /// <summary>

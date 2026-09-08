@@ -489,7 +489,7 @@ public sealed class SetupImportService : ISetupImportService
                     mappedCategoryId = mappedCat;
                 }
 
-                var entity = new BudgetPurpose(userId, dto.Name, dto.SourceType, mappedSourceId, dto.Description);
+                var entity = new BudgetPurpose(userId, dto.Name, dto.SourceType, mappedSourceId, dto.Description, dto.ValuationType);
                 entity.SetCategory(mappedCategoryId);
 
                 _db.BudgetPurposes.Add(entity);
