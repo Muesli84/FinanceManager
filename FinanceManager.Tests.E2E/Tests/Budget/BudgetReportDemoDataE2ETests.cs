@@ -73,12 +73,13 @@ public sealed class BudgetReportDemoDataE2ETests
         AssertRowValues(detailsRows, "Rückstellung Hausratversicherung", -5.22m, -5.22m);
         AssertRowValues(detailsRows, "Rückstellung SDAC", -8.25m, -8.25m);
         AssertRowValues(detailsRows, "Wohnungsmiete", -845.00m, -845.00m);
-        AssertRowValues(detailsRows, "Einkaufen & Verpflegung", -300.00m, -300.00m);
 
         var bakeryRow = RequireRow(detailsRows, "Bäckereien & Cafés");
         var marketRow = RequireRow(detailsRows, "Supermärkte & Einzelhandel");
         var shoppingCategoryRow = RequireRow(detailsRows, "Einkaufen & Verpflegung");
 
+        shoppingCategoryRow.Budget.Should().NotBeNull();
+        shoppingCategoryRow.Budget!.Value.Should().Be(-300.00m);
         bakeryRow.Actual.Should().NotBeNull();
         marketRow.Actual.Should().NotBeNull();
         shoppingCategoryRow.Actual.Should().NotBeNull();
