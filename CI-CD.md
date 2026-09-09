@@ -293,7 +293,7 @@ Feature-Branch
 ## Weiterführende Ressourcen
 
 - [CONTRIBUTING.md](CONTRIBUTING.md#branch-workflow-staging--master) — Branch-Workflow für Entwickler
-- [README.md](README.md) — Projekteinsteig und Weiterführende Ressourcen
+- [README.md](README.md) — Projekteinstieg und Weiterführende Ressourcen
 - [.github/workflows/test.yml](.github/workflows/test.yml) — Test-Workflow (Quelle)
 - [.github/workflows/staging-to-master.yml](.github/workflows/staging-to-master.yml) — Promotion-Workflow (Quelle)
 - [.github/workflows/release.yml](.github/workflows/release.yml) — Release-Workflow (Quelle)
