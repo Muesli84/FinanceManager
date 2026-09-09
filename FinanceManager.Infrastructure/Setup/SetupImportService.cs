@@ -701,30 +701,7 @@ public sealed class SetupImportService : ISetupImportService
             {
                 _logger.LogDebug("ImportVersion3: ReportFavorite create - BackupId={BackupId}, Name={Name}", dto.Id, dto.Name);
                 var entity = new ReportFavorite(userId, dto.Name, dto.PostingKind, dto.IncludeCategory, dto.Interval, dto.ComparePrevious, dto.CompareYear, dto.ShowChart, dto.Expandable, dto.Take);
-                if (!string.IsNullOrWhiteSpace(dto.PostingKindsCsv))
-                {
-                    var kinds = dto.PostingKindsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .Select(s => int.TryParse(s, out var v) ? v : (int?)null)
-                        .Where(v => v.HasValue).Select(v => (PostingKind)v!.Value).ToArray();
-                    if (kinds.Length > 0) entity.SetPostingKinds(kinds);
-                }
-
-                static IReadOnlyCollection<Guid>? ToGuids(string? csv)
-                    => string.IsNullOrWhiteSpace(csv) ? null : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Guid.Parse).ToArray();
-
-                entity.SetFilters(ToGuids(dto.AccountIdsCsv), ToGuids(dto.ContactIdsCsv), ToGuids(dto.SavingsPlanIdsCsv), ToGuids(dto.SecurityIdsCsv), ToGuids(dto.ContactCategoryIdsCsv), ToGuids(dto.SavingsPlanCategoryIdsCsv), ToGuids(dto.SecurityCategoryIdsCsv), null);
-
-                if (!string.IsNullOrWhiteSpace(dto.SecuritySubTypesCsv))
-                {
-                    var ints = dto.SecuritySubTypesCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                        .Select(s => int.TryParse(s, out var v) ? v : (int?)null)
-                        .Where(v => v.HasValue).Select(v => v!.Value).ToArray();
-                    if (ints.Length > 0)
-                    {
-                        _db.Entry(entity).Property("SecuritySubTypesCsv").CurrentValue = string.Join(',', ints);
-                    }
-                }
-
+                entity.AssignBackupDto(dto);
                 _db.ReportFavorites.Add(entity);
                 reportMap[dto.Id] = entity.Id;
             }

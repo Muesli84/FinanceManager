@@ -662,11 +662,8 @@ public sealed class DemoDataService : IDemoDataService
                 await AddDraftEntryAsync(giroDraftId, firstBusinessDay, 5000.00m, "Startgeld", mamaContact.Id);
             }
 
-            if (firstInsuranceStarted)
-            {
-                await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -5.22m, "Rückstellung Hausratversicherung", selfContact.Id, householdPlan.Id);
-                await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 5.22m, "Rückstellung Hausratversicherung", selfContact.Id);
-            }
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -5.22m, "Rückstellung Hausratversicherung", selfContact.Id, householdPlan.Id);
+            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 5.22m, "Rückstellung Hausratversicherung", selfContact.Id);
 
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -50.00m, "Rückstellung Urlaub", selfContact.Id, vacationPlan.Id);
             await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 50.00m, "Rückstellung Urlaub", selfContact.Id);
@@ -674,11 +671,8 @@ public sealed class DemoDataService : IDemoDataService
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -100.00m, "Sparplan Allgemein", selfContact.Id, generalPlan.Id);
             await AddDraftEntryAsync(secondarySavingsDraftId, firstBusinessDay, 100.00m, "Sparplan Allgemein", selfContact.Id);
 
-            if (secondInsuranceStarted)
-            {
-                await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -70.00m, "Rückstellung Auto", selfContact.Id, autoPlan.Id);
-                await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 70.00m, "Rückstellung Auto", selfContact.Id);
-            }
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -70.00m, "Rückstellung Auto", selfContact.Id, autoPlan.Id);
+            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 70.00m, "Rückstellung Auto", selfContact.Id);
 
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id, sdacPlan.Id);
             await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id);
