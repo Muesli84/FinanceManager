@@ -103,7 +103,7 @@ public sealed class BudgetReportDemoDataE2ETests
         await AssertShowPostingsMatchesActualAsync(page, "Bäckereien & Cafés");
         await AssertShowPostingsMatchesActualAsync(page, "Supermärkte & Einzelhandel");
         await AssertShowPostingsMatchesActualAsync(page, "Rückstellung Hausratversicherung");
-        await AssertShowPostingsMatchesActualAsync(page, "Rückstellung SDAC");        
+        await AssertShowPostingsMatchesActualAsync(page, "Rückstellung SDAC");
         await AssertShowPostingsMatchesActualAsync(page, "Strom");
         await AssertShowPostingsMatchesActualAsync(page, "Wohnungsmiete");
         await AssertShowPostingsMatchesActualAsync(page, "Nicht budgetiert");
