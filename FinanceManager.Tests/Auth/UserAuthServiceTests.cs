@@ -3,6 +3,7 @@ using FinanceManager.Application.Users;
 using FinanceManager.Domain.Users;
 using FinanceManager.Infrastructure;
 using FinanceManager.Infrastructure.Auth;
+using FinanceManager.Shared.Dtos.Admin;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -23,7 +24,7 @@ namespace FinanceManager.Tests.Auth;
 /// </summary>
 public sealed class UserAuthServiceTests
 {
-    private static (UserAuthService sut, AppDbContext db, Mock<UserManager<User>> userManager, Mock<SignInManager<User>> signInManager, Mock<IJwtTokenService> jwt, TimeProvider timeProvider) Create()
+    private static (UserAuthService sut, AppDbContext db, Mock<UserManager<User>> userManager, Mock<SignInManager<User>> signInManager, Mock<IJwtTokenService> jwt, TimeProvider timeProvider) Create(IBackgroundTaskManager? backgroundTaskManager = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -146,7 +147,17 @@ public sealed class UserAuthServiceTests
             });
 
         // pass signInManagerMock.Object and real roleManager to service
-        var sut = new UserAuthService(db, userManagerMock.Object, signInManagerMock.Object, jwt.Object, passwordHasherMock.Object, timeProvider, logger.Object, new FinanceManager.Infrastructure.Auth.UserAuthService.NoopIpBlockService(), roleManager);
+        var sut = new UserAuthService(
+            db,
+            userManagerMock.Object,
+            signInManagerMock.Object,
+            jwt.Object,
+            passwordHasherMock.Object,
+            timeProvider,
+            logger.Object,
+            new FinanceManager.Infrastructure.Auth.UserAuthService.NoopIpBlockService(),
+            roleManager,
+            backgroundTaskManager);
         return (sut, db, userManagerMock, signInManagerMock, jwt, timeProvider);
     }
 
@@ -217,6 +228,45 @@ public sealed class UserAuthServiceTests
         Assert.False(res2.Success);
         Assert.Contains("required", res1.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("required", res2.Error ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Verifies that a first registration with <c>CreateDemoData=true</c> enqueues exactly one
+    /// background task of type <see cref="BackgroundTaskType.CreateDemoData"/>.
+    /// </summary>
+    [Fact]
+    public async Task RegisterAsync_ShouldQueueDemoData_WhenFirstUserAndCreateDemoDataEnabled()
+    {
+        var backgroundTaskManager = new BackgroundTaskManager();
+        var (sut, _, _, _, _, _) = Create(backgroundTaskManager);
+
+        var result = await sut.RegisterAsync(new RegisterUserCommand("first-demo", "Password123", null, null, true), CancellationToken.None);
+
+        Assert.True(result.Success);
+        var tasks = backgroundTaskManager.GetAll();
+        Assert.Single(tasks);
+        Assert.Equal(BackgroundTaskType.CreateDemoData, tasks[0].Type);
+        Assert.Equal(result.Value!.UserId, tasks[0].UserId);
+        Assert.Equal(BackgroundTaskStatus.Queued, tasks[0].Status);
+    }
+
+    /// <summary>
+    /// Verifies that the demo-data enqueue flag is ignored for non-first registrations even when
+    /// the caller sends <c>CreateDemoData=true</c>.
+    /// </summary>
+    [Fact]
+    public async Task RegisterAsync_ShouldNotQueueDemoData_WhenNotFirstUser()
+    {
+        var backgroundTaskManager = new BackgroundTaskManager();
+        var (sut, db, _, _, _, _) = Create(backgroundTaskManager);
+
+        db.Users.Add(new User("existing-user", "HASH::existing", false));
+        db.SaveChanges();
+
+        var result = await sut.RegisterAsync(new RegisterUserCommand("second-demo", "Password123", null, null, true), CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Empty(backgroundTaskManager.GetAll());
     }
 
     /// <summary>
@@ -404,4 +454,3 @@ public sealed class UserAuthServiceTests
     }
 
 }
-

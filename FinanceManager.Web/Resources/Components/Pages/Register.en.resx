@@ -12,6 +12,7 @@
   <data name="Button_Wait"><value>Please wait...</value></data>
   <data name="Error_MissingCredentials"><value>Username and password required.</value></data>
   <data name="Error_RegisterFailed"><value>Registration failed.</value></data>
+  <data name="Error_FirstUserCheckFailed"><value>The initial setup state could not be loaded. Please try again.</value></data>
   <data name="Error_Unexpected"><value>Unexpected error: {0}</value></data>
   <data name="DebugModel_Title"><value>Debug Model:</value></data>
   <data name="DebugModel_Username"><value>Username</value></data>
@@ -22,4 +23,5 @@
   <data name="Ribbon_Group_Navigation"><value>Navigation</value></data>
   <data name="Ribbon_Back"><value>Back</value></data>
   <data name="Ribbon_Tab_Register"><value>Register</value></data>
+  <data name="Checkbox_CreateDemoData"><value>Create demo data</value></data>
 </root>

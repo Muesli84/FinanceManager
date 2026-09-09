@@ -49,6 +49,44 @@ public sealed class BudgetberichtTests_Scenarios
     }
 
     /// <summary>
+    /// End-to-end run for a category that only has a category-level budget rule while its contact-group
+    /// purposes have no own rules: actual postings must still be attributed to the matching purpose rows
+    /// (not only to the category subtotal), so the detail table remains diagnostically useful.
+    /// </summary>
+    [Fact]
+    public void Scenario_CategoryRuleOnly_WithGroupedPurposes_StillShowsPurposeActuals()
+    {
+        var category = CreateCategory("Shopping & Food");
+        var marketContactGroup = Guid.NewGuid();
+        var bakeryContactGroup = Guid.NewGuid();
+        var marketPurpose = CreatePurpose("Markets", BudgetSourceType.ContactGroup, marketContactGroup, category.Id, BudgetValuationType.TotalBudget);
+        var bakeryPurpose = CreatePurpose("Bakeries", BudgetSourceType.ContactGroup, bakeryContactGroup, category.Id, BudgetValuationType.TotalBudget);
+        var rules = new[]
+        {
+            CreateCategoryRule(category.Id, -300m, BudgetIntervalType.Monthly, new DateOnly(2026, 1, 1))
+        };
+
+        var budgetbericht = new Budgetbericht(new DateOnly(2026, 1, 1), 1, BudgetReportInterval.Month, BudgetReportDateBasis.BookingDate);
+        budgetbericht.SetPlanung(new[] { category }, new[] { marketPurpose, bakeryPurpose }, rules);
+
+        budgetbericht.AddPosting(CreateContactPosting(-45.30m, new DateTime(2026, 1, 4), Guid.NewGuid(), marketContactGroup), BudgetReportDateBasis.BookingDate);
+        budgetbericht.AddPosting(CreateContactPosting(-6.20m, new DateTime(2026, 1, 6), Guid.NewGuid(), bakeryContactGroup), BudgetReportDateBasis.BookingDate);
+        budgetbericht.Finish();
+
+        var group = budgetbericht.MonthlyResults.Single().ExpectationGroups.Single();
+        group.Purposes.Single(p => p.Name == "Markets").SumExpectedAmount.Should().Be(0m);
+        group.Purposes.Single(p => p.Name == "Markets").SumActualAmount.Should().Be(-45.30m);
+        group.Purposes.Single(p => p.Name == "Bakeries").SumExpectedAmount.Should().Be(0m);
+        group.Purposes.Single(p => p.Name == "Bakeries").SumActualAmount.Should().Be(-6.20m);
+        group.DirectExpectations.Single().SumExpectedAmount.Should().Be(-300m);
+        group.DirectExpectations.Single().SumActualAmount.Should().Be(0m);
+
+        var subtotalRow = budgetbericht.GetCurrentResult().Single(e => e.RowKind == BudgetReportEntryRowKind.Subtotal);
+        subtotalRow.BudgetedAmount.Should().Be(-300m);
+        subtotalRow.ActualAmount.Should().Be(-51.50m);
+    }
+
+    /// <summary>
     /// End-to-end run over a full 12-month report combining a recurring monthly expense with a one-off
     /// yearly income rule, verifying the Total row's budgeted amount correctly sums twelve monthly
     /// occurrences plus a single yearly occurrence, and the actual amount reflects only the two postings

@@ -16,6 +16,8 @@ namespace FinanceManager.Shared.Dtos.Admin
         /// <summary>Rebuild posting aggregates for the current user.</summary>
         RebuildAggregates,
         /// <summary>Refresh cached budget report data.</summary>
-        RefreshBudgetReportCache
+        RefreshBudgetReportCache,
+        /// <summary>Generate demo data for a newly registered first user.</summary>
+        CreateDemoData
     }
 }

@@ -112,6 +112,7 @@ namespace FinanceManager.Web
             builder.Services.AddSingleton<IBackgroundTaskExecutor, SecurityPricesBackfillExecutor>();
             builder.Services.AddSingleton<IBackgroundTaskExecutor, RebuildAggregatesTaskExecutor>();
             builder.Services.AddSingleton<IBackgroundTaskExecutor, ReportCacheRefreshTaskExecutor>();
+            builder.Services.AddSingleton<IBackgroundTaskExecutor, DemoDataTaskExecutor>();
             // Conditionally enable BackgroundTaskRunner via config flag
             var enableTaskRunner = builder.Configuration.GetValue<bool?>("BackgroundTasks:Enabled") ?? true;
             if (enableTaskRunner)

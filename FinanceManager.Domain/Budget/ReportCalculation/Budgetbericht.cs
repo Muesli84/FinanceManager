@@ -38,6 +38,7 @@ namespace FinanceManager.Domain.Budget.ReportCalculation;
 public sealed class Budgetbericht
 {
     private const string UncategorizedCategoryName = "Uncategorized";
+    private const decimal ImplicitTotalBudgetAssignmentCapacity = 1_000_000_000m;
 
     private readonly DateOnly _periodStart;
     private readonly DateOnly _periodEnd;
@@ -561,6 +562,9 @@ public sealed class Budgetbericht
         Dictionary<(Guid CategoryId, DateOnly Month), List<MonthlyBudgetExpectationPosting>> categoryExpectationPostingsByHomeMonth)
     {
         var uncategorizedPurposes = purposes.Where(p => !p.BudgetCategoryId.HasValue).OrderBy(p => p.Name).ToList();
+        var purposeIdsWithOwnRules = purposeExpectationPostingsByHomeMonth.Keys
+            .Select(x => x.PurposeId)
+            .ToHashSet();
 
         foreach (var monthStart in _monthlyResultsByMonth.Keys.OrderBy(m => m))
         {
@@ -584,7 +588,11 @@ public sealed class Budgetbericht
 
                 foreach (var purpose in purposes.Where(p => p.BudgetCategoryId == category.Id).OrderBy(p => p.Name))
                 {
-                    group.AddPurposeExpectation(BuildPurposeExpectation(purpose, monthStart, purposeExpectationPostingsByHomeMonth));
+                    group.AddPurposeExpectation(BuildPurposeExpectation(
+                        purpose,
+                        monthStart,
+                        purposeExpectationPostingsByHomeMonth,
+                        hasOwnRules: purposeIdsWithOwnRules.Contains(purpose.Id)));
                 }
 
                 groupsByCategory.Add(group);
@@ -595,7 +603,11 @@ public sealed class Budgetbericht
                 var uncategorizedGroup = new MonthlyBudgetExpectationGroup(Guid.Empty, UncategorizedCategoryName);
                 foreach (var purpose in uncategorizedPurposes)
                 {
-                    uncategorizedGroup.AddPurposeExpectation(BuildPurposeExpectation(purpose, monthStart, purposeExpectationPostingsByHomeMonth));
+                    uncategorizedGroup.AddPurposeExpectation(BuildPurposeExpectation(
+                        purpose,
+                        monthStart,
+                        purposeExpectationPostingsByHomeMonth,
+                        hasOwnRules: purposeIdsWithOwnRules.Contains(purpose.Id)));
                 }
 
                 groupsByCategory.Add(uncategorizedGroup);
@@ -611,7 +623,8 @@ public sealed class Budgetbericht
     private MonthlyBudgetExpectation BuildPurposeExpectation(
         BudgetPurposeDto purpose,
         DateOnly monthStart,
-        Dictionary<(Guid PurposeId, DateOnly Month), List<MonthlyBudgetExpectationPosting>> purposeExpectationPostingsByHomeMonth)
+        Dictionary<(Guid PurposeId, DateOnly Month), List<MonthlyBudgetExpectationPosting>> purposeExpectationPostingsByHomeMonth,
+        bool hasOwnRules)
     {
         var expectation = new MonthlyBudgetExpectation(purpose.Id, purpose.Name);
         if (purposeExpectationPostingsByHomeMonth.TryGetValue((purpose.Id, monthStart), out var postings))
@@ -620,9 +633,33 @@ public sealed class Budgetbericht
             {
                 expectation.AddPosting(posting);
             }
+
+            return expectation;
+        }
+
+        // A purpose without any own rules still needs a monthly fallback expectation so
+        // category-level budgets can be broken down into purpose rows in the report details table.
+        if (!hasOwnRules && _purposeCandidatePostings.TryGetValue(purpose.Id, out var purposeCandidates))
+        {
+            var fallbackPosting = CreateImplicitPurposePosting(monthStart);
+            purposeCandidates.Add(fallbackPosting);
+            expectation.AddPosting(fallbackPosting);
         }
 
         return expectation;
+    }
+
+    private static MonthlyBudgetExpectationPosting CreateImplicitPurposePosting(DateOnly monthStart)
+    {
+        var periodEnd = monthStart.AddMonths(1).AddDays(-1);
+        return new MonthlyBudgetExpectationPosting(
+            ImplicitTotalBudgetAssignmentCapacity,
+            BudgetValuationType.TotalBudget,
+            DateOnly.MinValue,
+            int.MinValue,
+            new RuleOccurrencePeriod(monthStart, periodEnd),
+            new PurposeMatchPattern(null, false),
+            isCarriedOverAcrossReportBoundary: true);
     }
 
     private static void AddToHomeMonth<TKey>(Dictionary<TKey, List<MonthlyBudgetExpectationPosting>> map, TKey key, MonthlyBudgetExpectationPosting posting) where TKey : notnull

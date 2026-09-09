@@ -1,5 +1,6 @@
 @page "/reports"
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 @inject NavigationManager Nav
 @inject IServiceProvider Services
 @inject Microsoft.Extensions.Localization.IStringLocalizer<FinanceManager.Web.Components.Pages.ReportsHome> Localizer
@@ -54,11 +55,13 @@
         {
             _vm.StateChanged -= VmOnStateChanged;
             _vm.AuthenticationRequired -= VmOnAuthenticationRequired;
+            _vm.UiActionRequestedEx -= VmOnUiActionRequestedEx;
             await _vm.DisposeAsync();
         }
         _vm = ActivatorUtilities.CreateInstance<ReportsHomeViewModel>(Services);
         _vm.StateChanged += VmOnStateChanged;
         _vm.AuthenticationRequired += VmOnAuthenticationRequired;
+        _vm.UiActionRequestedEx += VmOnUiActionRequestedEx;
         await _vm.InitializeAsync();
         StateHasChanged();
     }
@@ -75,8 +78,29 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
+    private void VmOnUiActionRequestedEx(object? sender, ViewModelBase.UiActionEventArgs? e)
+    {
+        if (e?.Action == "New")
+        {
+            Nav.NavigateTo("/reports/dashboard?edit=true");
+        }
+    }
+
     private void OpenFavorite(Guid id)
     {
         Nav.NavigateTo($"/reports/dashboard?favoriteId={id}&edit=false");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        _vm.StateChanged -= VmOnStateChanged;
+        _vm.AuthenticationRequired -= VmOnAuthenticationRequired;
+        _vm.UiActionRequestedEx -= VmOnUiActionRequestedEx;
+        await _vm.DisposeAsync();
     }
 }

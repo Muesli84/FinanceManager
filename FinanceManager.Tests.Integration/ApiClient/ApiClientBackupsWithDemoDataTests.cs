@@ -659,14 +659,14 @@ public class ApiClientBackupsWithDemoDataTests : IClassFixture<TestWebApplicatio
         }).ToList();
 
         // Remap postings references
-        // Build lookup for after postings by composite key to remap posting Ids deterministically
-        string PostingKey(FinanceManager.Domain.Postings.Posting.PostingBackupDto p, Snapshot snap)
-            => $"{p.BookingDate.Ticks}|{p.ValutaDate.Ticks}|{p.Kind}|{p.SourceId}|{p.AccountId}|{p.RecipientName}|{p.Subject}|{p.Amount}";
+        // Build lookup for after postings by business-key (without SourceId, which may change during restore).
+        string PostingKey(FinanceManager.Domain.Postings.Posting.PostingBackupDto p)
+            => $"{p.BookingDate.Ticks}|{p.ValutaDate.Ticks}|{p.Kind}|{p.AccountId}|{p.ContactId}|{p.SavingsPlanId}|{p.SecurityId}|{p.Amount}|{p.OriginalAmount}|{p.Subject}|{p.RecipientName}|{p.Description}|{p.SecuritySubType}|{p.Quantity}|{p.IsPreliminary}";
 
         var afterPostingMap = new Dictionary<string, Guid>();
         foreach (var ap in after.Postings)
         {
-            var key = PostingKey(ap, after);
+            var key = PostingKey(ap);
             if (!afterPostingMap.ContainsKey(key)) afterPostingMap[key] = ap.Id;
         }
 
@@ -685,8 +685,8 @@ public class ApiClientBackupsWithDemoDataTests : IClassFixture<TestWebApplicatio
 
             var adjusted = p with { AccountId = accountId, ContactId = contactId, SavingsPlanId = savingsPlanId, SecurityId = securityId };
 
-            // build key using adjusted values (use account id as string)
-            string key = $"{adjusted.BookingDate.Ticks}|{adjusted.ValutaDate.Ticks}|{adjusted.Kind}|{adjusted.SourceId}|{adjusted.AccountId?.ToString() ?? string.Empty}|{adjusted.RecipientName ?? string.Empty}|{adjusted.Subject ?? string.Empty}|{adjusted.Amount}";
+            // build key using adjusted values
+            var key = PostingKey(adjusted);
             if (afterPostingMap.TryGetValue(key, out var mappedPid))
             {
                 adjusted = adjusted with { Id = mappedPid };
@@ -717,9 +717,9 @@ public class ApiClientBackupsWithDemoDataTests : IClassFixture<TestWebApplicatio
             draftIdMap[bd.Id] = mapped;
         }
 
-        //Build lookup for after draft entries by composite key (DraftId + BookingDate + ValutaDate + Amount + Subject + RecipientName)
+        //Build lookup for after draft entries by business key.
         string DraftEntryKey(FinanceManager.Domain.Statements.StatementDraftEntry.StatementDraftEntryBackupDto e)
-            => $"{e.DraftId}|{e.BookingDate.Ticks}|{(e.ValutaDate.HasValue ? e.ValutaDate.Value.Ticks : 0)}|{e.Amount}|{e.Subject ?? string.Empty}|{e.RecipientName ?? string.Empty}";
+            => $"{e.DraftId}|{e.BookingDate.Ticks}|{(e.ValutaDate.HasValue ? e.ValutaDate.Value.Ticks : 0)}|{e.Amount}|{e.Subject}|{e.RecipientName}|{e.CurrencyCode}|{e.IsAnnounced}|{e.IsCostNeutral}|{e.Status}|{e.ContactId}|{e.SavingsPlanId}|{e.ArchiveSavingsPlanOnBooking}|{e.SecurityId}|{e.SecurityTransactionType}|{e.SecurityQuantity}|{e.SecurityFeeAmount}|{e.SecurityTaxAmount}";
 
         var afterDraftEntryMap = new Dictionary<string, Guid>();
         foreach (var ade in after.StatementDraftEntries)
@@ -732,14 +732,37 @@ public class ApiClientBackupsWithDemoDataTests : IClassFixture<TestWebApplicatio
         var draftEntries = before.StatementDraftEntries.Select(e =>
         {
             var newDraftId = draftIdMap.TryGetValue(e.DraftId, out var nd) ? nd : e.DraftId;
-            var key = $"{newDraftId}|{e.BookingDate.Ticks}|{(e.ValutaDate.HasValue ? e.ValutaDate.Value.Ticks : 0)}|{e.Amount}|{e.Subject ?? string.Empty}|{e.RecipientName ?? string.Empty}";
-            var newId = afterDraftEntryMap.TryGetValue(key, out var aid) ? aid : e.Id;
             var newSavingPlanId = e.SavingsPlanId.HasValue && savingsPlanNameToId.ContainsKey(before.SavingsPlans.FirstOrDefault(sp => sp.Id == e.SavingsPlanId)?.Name ?? string.Empty) ? savingsPlanNameToId.GetValueOrDefault(before.SavingsPlans.FirstOrDefault(sp => sp.Id == e.SavingsPlanId)?.Name ?? string.Empty) : e.SavingsPlanId;
             var newContactId = e.ContactId.HasValue && contactIdMap.TryGetValue(e.ContactId.Value, out var nc) ? nc : e.ContactId;
-            return e with { Id = newId, DraftId = newDraftId, SavingsPlanId = newSavingPlanId, ContactId = newContactId };
+            var newSecurityId = e.SecurityId;
+            if (e.SecurityId.HasValue)
+            {
+                var beforeSecurityName = before.Securities.FirstOrDefault(s => s.Id == e.SecurityId.Value)?.Name;
+                if (!string.IsNullOrEmpty(beforeSecurityName) && securityNameToId.TryGetValue(beforeSecurityName, out var mappedSecurityId))
+                {
+                    newSecurityId = mappedSecurityId;
+                }
+            }
+
+            var adjusted = e with
+            {
+                DraftId = newDraftId,
+                SavingsPlanId = newSavingPlanId,
+                ContactId = newContactId,
+                SecurityId = newSecurityId
+            };
+
+            var key = DraftEntryKey(adjusted);
+            var newId = afterDraftEntryMap.TryGetValue(key, out var aid) ? aid : e.Id;
+            return adjusted with { Id = newId };
         }).ToList();
 
-        var reportFavorites = before.ReportFavorites.ToList();
+        var reportFavoriteNameToId = after.ReportFavorites.ToDictionary(r => r.Name, r => r.Id);
+        var reportFavorites = before.ReportFavorites.Select(rf =>
+        {
+            if (reportFavoriteNameToId.TryGetValue(rf.Name, out var nid)) return rf with { Id = nid };
+            return rf;
+        }).ToList();
         var homeKpis = before.HomeKpis.ToList();
         var attachmentCategories = remappedAttachmentCategories;
         var notifications = before.Notifications.ToList();
@@ -920,16 +943,82 @@ public class ApiClientBackupsWithDemoDataTests : IClassFixture<TestWebApplicatio
             s.SavingsPlans.OrderBy(sp => sp.Name).ToList(),
             s.SecurityCategories.OrderBy(c => c.Name).ToList(),
             s.Securities.OrderBy(sec => sec.Name).ToList(),
-            s.SecurityPrices.OrderBy(p => p.Id).ToList(),
-            s.Postings.OrderBy(p => p.Id).ToList(),
+            s.SecurityPrices
+                .OrderBy(p => p.SecurityId)
+                .ThenBy(p => p.Date)
+                .ThenBy(p => p.Close)
+                .ToList(),
+            s.Postings
+                .OrderBy(p => p.BookingDate)
+                .ThenBy(p => p.ValutaDate)
+                .ThenBy(p => p.Kind)
+                .ThenBy(p => p.AccountId)
+                .ThenBy(p => p.ContactId)
+                .ThenBy(p => p.SavingsPlanId)
+                .ThenBy(p => p.SecurityId)
+                .ThenBy(p => p.SecuritySubType)
+                .ThenBy(p => p.Quantity)
+                .ThenBy(p => p.Amount)
+                .ThenBy(p => p.Subject)
+                .ThenBy(p => p.RecipientName)
+                .ThenBy(p => p.Description)
+                .ThenBy(p => p.OriginalAmount)
+                .ThenBy(p => p.IsPreliminary)
+                .ThenBy(p => p.Id)
+                .ToList(),
             s.StatementImports.OrderBy(i => i.OriginalFileName).ToList(),
-            s.StatementEntries.OrderBy(e => e.BookingDate).ToList(),
-            s.StatementDrafts.OrderBy(d => d.Id).ToList(),
-            s.StatementDraftEntries.OrderBy(e => e.Id).ToList(),
+            s.StatementEntries
+                .OrderBy(e => e.BookingDate)
+                .ThenBy(e => e.ValutaDate)
+                .ThenBy(e => e.Amount)
+                .ThenBy(e => e.Subject)
+                .ThenBy(e => e.RecipientName)
+                .ThenBy(e => e.CurrencyCode)
+                .ThenBy(e => e.RawHash)
+                .ThenBy(e => e.Status)
+                .ThenBy(e => e.ContactId)
+                .ThenBy(e => e.SavingsPlanId)
+                .ThenBy(e => e.SecurityTransactionId)
+                .ThenBy(e => e.Id)
+                .ToList(),
+            s.StatementDrafts
+                .OrderBy(d => d.OriginalFileName)
+                .ThenBy(d => d.AccountName)
+                .ThenBy(d => d.Status)
+                .ThenBy(d => d.Id)
+                .ToList(),
+            s.StatementDraftEntries
+                .OrderBy(e => e.DraftId)
+                .ThenBy(e => e.BookingDate)
+                .ThenBy(e => e.ValutaDate)
+                .ThenBy(e => e.Amount)
+                .ThenBy(e => e.Subject)
+                .ThenBy(e => e.RecipientName)
+                .ThenBy(e => e.CurrencyCode)
+                .ThenBy(e => e.Status)
+                .ThenBy(e => e.ContactId)
+                .ThenBy(e => e.SavingsPlanId)
+                .ThenBy(e => e.ArchiveSavingsPlanOnBooking)
+                .ThenBy(e => e.SplitDraftId)
+                .ThenBy(e => e.SecurityId)
+                .ThenBy(e => e.SecurityTransactionType)
+                .ThenBy(e => e.SecurityQuantity)
+                .ThenBy(e => e.SecurityFeeAmount)
+                .ThenBy(e => e.SecurityTaxAmount)
+                .ThenBy(e => e.Id)
+                .ToList(),
             s.ReportFavorites.OrderBy(r => r.Name).ToList(),
             s.HomeKpis.OrderBy(h => h.SortOrder).ToList(),
             s.AttachmentCategories.OrderBy(ac => ac.Name).ToList(),
-            s.Attachments.OrderBy(a => a.Id).ToList(),
+            s.Attachments
+                .OrderBy(a => a.EntityKind)
+                .ThenBy(a => a.EntityId)
+                .ThenBy(a => a.FileName)
+                .ThenBy(a => a.ContentType)
+                .ThenBy(a => a.SizeBytes)
+                .ThenBy(a => a.Sha256)
+                .ThenBy(a => a.Id)
+                .ToList(),
             s.Notifications.OrderBy(n => n.Title).ToList(),
             s.AccountShares.OrderBy(sh => sh.AccountId).ToList(),
             s.BudgetCategories.OrderBy(c => c.Name).ToList(),
