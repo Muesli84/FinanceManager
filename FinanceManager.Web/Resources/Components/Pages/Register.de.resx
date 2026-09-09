@@ -13,6 +13,7 @@
   <data name="Button_Wait"><value>Bitte warten...</value></data>
   <data name="Error_MissingCredentials"><value>Benutzername und Passwort erforderlich.</value></data>
   <data name="Error_RegisterFailed"><value>Registrierung fehlgeschlagen.</value></data>
+  <data name="Error_FirstUserCheckFailed"><value>Der Status der Ersteinrichtung konnte nicht geladen werden. Bitte versuche es erneut.</value></data>
   <data name="Error_Unexpected"><value>Unerwarteter Fehler: {0}</value></data>
   <data name="DebugModel_Title"><value>Debug Modell:</value></data>
   <data name="DebugModel_Username"><value>Benutzername</value></data>
@@ -23,4 +24,5 @@
   <data name="Ribbon_Group_Navigation"><value>Navigation</value></data>
   <data name="Ribbon_Back"><value>Zurück</value></data>
   <data name="Ribbon_Tab_Register"><value>Registrierung</value></data>
+  <data name="Checkbox_CreateDemoData"><value>Demodaten anlegen</value></data>
 </root>

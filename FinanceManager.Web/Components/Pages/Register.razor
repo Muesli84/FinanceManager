@@ -11,6 +11,7 @@
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
 @inject FinanceManager.Shared.IApiClient Api // use typed ApiClient
+@inject ILogger<Register> Logger
 
 <PageTitle>@L["PageTitle"]</PageTitle>
 
@@ -43,6 +44,13 @@
                    autocomplete="new-password" />
         <ValidationMessage For="() => _model.Password" />
     </div>
+    @if (_isFirstUser)
+    {
+        <div style="margin-top:1rem;display:flex;align-items:center;gap:.6rem;">
+            <InputCheckbox id="create-demo-data" @bind-Value="_model.CreateDemoData" />
+            <label for="create-demo-data">@L["Checkbox_CreateDemoData"]</label>
+        </div>
+    }
     <div style="margin-top:1.25rem;display:flex;gap:.5rem;align-items:center;">
         <button type="submit" disabled="@_busy">
             @(_busy ? L["Button_Wait"] : L["Button_Register"]) 
@@ -53,8 +61,29 @@
 @code {
     private readonly RegisterVm _model = new();
     private bool _busy;
+    private bool _isFirstUser;
     private string? _error;
     private IJSObjectReference? _profileModule;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _isFirstUser = !await UserRead.HasAnyUsersAsync(CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+            _isFirstUser = false;
+            _error = L["Error_FirstUserCheckFailed"];
+            Logger.LogInformation("Register initialization cancelled while checking first-user state.");
+        }
+        catch (Exception ex)
+        {
+            _isFirstUser = false;
+            _error = L["Error_FirstUserCheckFailed"];
+            Logger.LogError(ex, "Failed to determine first-user state on register page.");
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -93,7 +122,7 @@
             }
             catch { }
 
-            var req = new RegisterRequest(_model.Username.Trim(), _model.Password, preferredLanguage, timeZoneId);
+            var req = new RegisterRequest(_model.Username.Trim(), _model.Password, preferredLanguage, timeZoneId, _isFirstUser && _model.CreateDemoData);
             try
             {
                 var _ = await Api.Auth_RegisterAsync(req, CancellationToken.None);
@@ -140,5 +169,6 @@
         public string Username { get; set; } = string.Empty;
         [Required, MinLength(6)]
         public string Password { get; set; } = string.Empty;
+        public bool CreateDemoData { get; set; }
     }
 }
