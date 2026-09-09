@@ -15,6 +15,12 @@ updates:
       interval: weekly
     labels:
       - dependencies
+    ignore:
+      # 10.x requires conventional-changelog-writer >= 9, but
+      # @semantic-release/release-notes-generator still pins writer ^8 - un-ignore once a
+      # compatible release-notes-generator version exists.
+      - dependency-name: "conventional-changelog-conventionalcommits"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
