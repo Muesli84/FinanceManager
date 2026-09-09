@@ -33,9 +33,10 @@ Die Skripte liegen unter [`scripts/screenshots/`](../scripts/screenshots/):
    npx playwright install chromium
    ```
 
-2. **Anwendung veröffentlichen**
+2. **Anwendung veröffentlichen** (aus dem Repository-Root)
 
    ```bash
+   cd ../..  # zurück ins Repository-Root
    dotnet publish FinanceManager.Web -c Release
    ```
 
