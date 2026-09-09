@@ -24,6 +24,14 @@ Die Navigation in `FinanceManager.Web/Components/Layout/MainLayout.razor` verwei
 
 Neu im Erstregistrierungsfluss: Wenn noch kein Benutzer vorhanden ist, wird beim Start auf die Registrierungsseite weitergeleitet. Dort erscheint nur für den ersten Benutzer die Checkbox `Demodaten anlegen`, sie ist standardmäßig deaktiviert. Wenn sie aktiviert ist, startet nach der Erstregistrierung automatisch ein Hintergrundtask, der mit den vorhandenen Business-Services den vollständigen Demo-Datenbestand erstellt. Der Fortschritt wird in der allgemeinen Background-Task-Anzeige auf der Startseite sichtbar. Es gibt dafür keine zusätzliche globale Konfiguration.
 
+## Screenshots
+
+Die folgenden Screenshots zeigen die Anwendung nach einer Erstregistrierung mit aktivierter Demodaten-Option:
+
+![Demo-GIF](Docs/screenshots/demo.gif)
+
+Die Screenshots und das GIF können mit den Skripten unter `scripts/screenshots/` erneuert werden, siehe [Docs/screenshot-generation.md](Docs/screenshot-generation.md).
+
 ## Tech-Stack
 
 - **.NET 10 / ASP.NET Core**

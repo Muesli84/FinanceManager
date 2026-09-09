@@ -234,7 +234,7 @@ public sealed class DemoDataService : IDemoDataService
         var onlineShops = new List<ContactDto>
         {
             await _contactService.CreateAsync(userId, "Pear Store", ContactType.Organization, onlineShopGroup.Id, null, false, ct),
-            await _contactService.CreateAsync(userId, "Borneon", ContactType.Organization, onlineShopGroup.Id, null, false, ct),            
+            await _contactService.CreateAsync(userId, "Borneon", ContactType.Organization, onlineShopGroup.Id, null, false, ct),
             await _contactService.CreateAsync(userId, "Anna", ContactType.Organization, onlineShopGroup.Id, null, false, ct)
         };
         var marketContacts = new List<ContactDto>
