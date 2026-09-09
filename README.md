@@ -28,10 +28,6 @@ Die Screenshots zeigen die Anwendung nach einer Erstregistrierung mit aktivierte
 
 ![Demo-GIF](Docs/screenshots/demo.gif)
 
-Eine aufgezeichnete Tour durch die Anwendung mit Demodaten gibt es als Video:
-
-[![Demo-Tour (Video)](Docs/screenshots/home.png)](Docs/screenshots/demo-tour.mp4)
-
 ## Tech-Stack
 
 - **.NET 10 / ASP.NET Core**
