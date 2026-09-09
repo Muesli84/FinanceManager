@@ -260,8 +260,8 @@ public sealed class CollectionAccountImportPlaywrightTests
         await bookButton.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 10_000 });
         await bookButton.ClickAsync();
 
-        // If a confirmation dialog appears, click "Fortfahren"
-        var proceedButton = page.Locator("button.btn-primary").Filter(new() { HasText = "Fortfahren" });
+        // If a confirmation/warning dialog appears, click the primary proceed button
+        var proceedButton = page.Locator("button.btn-primary");
         try
         {
             await proceedButton.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 10_000 });
@@ -396,8 +396,8 @@ public sealed class CollectionAccountImportPlaywrightTests
         // Click the "Book" ribbon button
         await page.Locator("button#Book").ClickAsync();
 
-        // If a confirmation dialog appears, click "Fortfahren"
-        var proceedButton = page.Locator("button.btn-primary").Filter(new() { HasText = "Fortfahren" });
+        // If a confirmation/warning dialog appears, click the primary proceed button
+        var proceedButton = page.Locator("button.btn-primary");
         try
         {
             await proceedButton.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5_000 });

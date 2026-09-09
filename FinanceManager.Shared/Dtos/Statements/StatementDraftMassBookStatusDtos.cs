@@ -11,6 +11,7 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// <param name="Errors">Total error messages accumulated.</param>
 /// <param name="Message">Progress / status message.</param>
 /// <param name="Issues">Collected issue list (may be empty when not tracked).</param>
+/// <returns>The result.</returns>
 public sealed record StatementDraftMassBookStatusDto(
     bool Running,
     int Processed,

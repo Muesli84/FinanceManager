@@ -10,6 +10,7 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// <param name="EntryId">Optional affected entry id.</param>
 /// <param name="RelatedRecordKind">Optional card route kind of a related record (for example <c>savings-plans</c>).</param>
 /// <param name="RelatedRecordId">Optional identifier of the related record card.</param>
+/// <returns>The result.</returns>
 public sealed record DraftValidationMessageDto(
     string Code,
     string Severity,

@@ -7,7 +7,9 @@ namespace FinanceManager.Application.Users;
 /// <param name="Password">Plain-text password provided by the user (should be validated and hashed by the caller/service).</param>
 /// <param name="PreferredLanguage">Optional preferred UI language tag (e.g. "en", "de").</param>
 /// <param name="TimeZoneId">Optional IANA time zone identifier (e.g. "Europe/Berlin").</param>
-public sealed record RegisterUserCommand(string Username, string Password, string? PreferredLanguage, string? TimeZoneId);
+/// <param name="CreateDemoData">Whether the first user should trigger demo-data generation after registration.</param>
+/// <returns>The result.</returns>
+public sealed record RegisterUserCommand(string Username, string Password, string? PreferredLanguage, string? TimeZoneId, bool CreateDemoData = false);
 
 /// <summary>
 /// Command used to authenticate a user with username and password and optional context information.
@@ -65,4 +67,5 @@ public sealed record LoginCommand
 /// <param name="IsAdmin">Whether the authenticated user has administrative privileges.</param>
 /// <param name="Token">Authentication token (e.g. JWT) to be used for subsequent requests.</param>
 /// <param name="ExpiresUtc">UTC expiration time of the token.</param>
+/// <returns>The result.</returns>
 public sealed record AuthResult(Guid UserId, string Username, bool IsAdmin, string Token, DateTime ExpiresUtc);

@@ -38,6 +38,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// The list of items currently loaded by the view model. Derived classes append to this collection when pages are loaded.
         /// </summary>
+        /// <returns>The result.</returns>
         public List<TItem> Items { get; } = new();
 
         IReadOnlyList<object> IListProvider.Items => Items.Cast<object>().ToList();
@@ -65,12 +66,16 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Column metadata used by the generic list renderer.
         /// </summary>
-        public IReadOnlyList<ListColumn> Columns { get; protected set; } = Array.Empty<ListColumn>();
+        /// <returns>The result.</returns>
+        public IReadOnlyList<ListColumn> Columns { get; protected set; }
+            = Array.Empty<ListColumn>();
 
         /// <summary>
         /// Rendered records derived from <see cref="Items"/> and <see cref="Columns"/>.
         /// </summary>
-        public IReadOnlyList<ListRecord> Records { get; protected set; } = Array.Empty<ListRecord>();
+        /// <returns>The result.</returns>
+        public IReadOnlyList<ListRecord> Records { get; protected set; }
+            = Array.Empty<ListRecord>();
 
         /// <summary>
         /// Controls whether date range filtering is allowed for this list. Default is <c>true</c>.
@@ -164,8 +169,10 @@ namespace FinanceManager.Web.ViewModels.Common
             Records = Items.Select(i => new ListRecord(new[] { new ListCell(ListCellKind.Text, Text: i?.ToString() ?? string.Empty) }, i)).ToList();
         }
 
-        void IListProvider.SetSearch(string value) => SetSearch(value);
-        void IListProvider.SetRange(DateTime? from, DateTime? to) => SetRange(from, to);
+        void IListProvider.SetSearch(string value)
+            => SetSearch(value);
+        void IListProvider.SetRange(DateTime? from, DateTime? to)
+            => SetRange(from, to);
 
         /// <summary>
         /// Sets the search string used to filter results. This only updates the internal state; callers must trigger loading.
@@ -179,7 +186,8 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Clears the current search string.
         /// </summary>
-        public void ClearSearch() => SetSearch(string.Empty);
+        public void ClearSearch()
+            => SetSearch(string.Empty);
 
         /// <summary>
         /// Sets the inclusive date range used for filtering items.
@@ -194,7 +202,8 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Clears any applied date range filters.
         /// </summary>
-        public void ClearRange() => SetRange(null, null);
+        public void ClearRange()
+            => SetRange(null, null);
 
         /// <summary>
         /// Resets internal items and marks the list as able to load more pages. Callers typically call this before performing a search.
@@ -212,6 +221,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// Derived classes override to expose the editable field keys (e.g. "BookingDate", "Subject").
         /// Default: empty (no editable fields).
         /// </summary>
+        /// <returns>The result.</returns>
         public virtual IReadOnlyList<string> EditableFields { get; } = Array.Empty<string>();
 
         /// <summary>
@@ -224,6 +234,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// Default implementation returns <c>false</c> — override in derived classes.
         /// </summary>
         /// <param name="item">Item instance as <see cref="object"/>.</param>
+        /// <returns>Whether the operation succeeded.</returns>
         public virtual bool IsRowEditable(object item) => false;
 
         /// <summary>
@@ -250,6 +261,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// Default implementation returns an empty dictionary.
         /// Derived classes providing quick-edit capabilities must override to return actual changed values.
         /// </summary>
+        /// <returns>The result.</returns>
         public virtual IReadOnlyDictionary<Guid, IDictionary<string, object?>> CollectChangedRows()
         {
             return new Dictionary<Guid, IDictionary<string, object?>>();

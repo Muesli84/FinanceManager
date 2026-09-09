@@ -10,6 +10,7 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// <param name="MaxEntriesPerDraft">Maximum entries per draft according to settings.</param>
 /// <param name="LargestDraftSize">Largest draft size in number of entries.</param>
 /// <param name="MonthlyThreshold">Monthly split threshold used for hybrid mode.</param>
+/// <returns>The result.</returns>
 public sealed record ImportSplitInfoDto(
     string Mode,
     bool EffectiveMonthly,

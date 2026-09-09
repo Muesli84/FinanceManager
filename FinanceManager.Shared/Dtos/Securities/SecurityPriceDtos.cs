@@ -5,4 +5,5 @@ namespace FinanceManager.Shared.Dtos.Securities;
 /// </summary>
 /// <param name="Date">Date of the closing price.</param>
 /// <param name="Close">Closing price amount.</param>
+/// <returns>The result.</returns>
 public sealed record SecurityPriceDto(DateTime Date, decimal Close);

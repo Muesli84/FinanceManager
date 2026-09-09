@@ -25,6 +25,7 @@ public sealed class SetupProfileViewModel : BaseViewModel
     /// <summary>
     /// Current editable model representing the user's profile settings.
     /// </summary>
+    /// <returns>The result.</returns>
     public UserProfileSettingsDto Model { get; private set; } = new();
     private UserProfileSettingsDto _original = new();
 
@@ -127,13 +128,20 @@ public sealed class SetupProfileViewModel : BaseViewModel
                 AlphaVantageApiKey: string.IsNullOrWhiteSpace(KeyInput) ? null : KeyInput.Trim(),
                 ClearAlphaVantageApiKey: _clearRequested ? true : null,
                 ShareAlphaVantageApiKey: ShareKey,
-                CacheKpisInLocalStorage: Model.CacheKpisInLocalStorage
+                CacheKpisInLocalStorage: Model.CacheKpisInLocalStorage,
+                ShowConfirmations: Model.ShowConfirmations
             );
 
             var ok = await ApiClient.UserSettings_UpdateProfileAsync(request, ct);
             if (ok)
             {
                 Model.ShareAlphaVantageApiKey = ShareKey;
+
+                if (Model.ShowConfirmations != _original.ShowConfirmations)
+                {
+                    try { await ConfirmationService.InvalidateCacheAsync(); } catch { /* ignored */ }
+                }
+
                 _original = Clone(Model);
                 HasKey = !_clearRequested && (HasKey || !string.IsNullOrWhiteSpace(KeyInput));
                 KeyInput = string.Empty;
@@ -223,7 +231,8 @@ public sealed class SetupProfileViewModel : BaseViewModel
     private void RecomputeDirty()
     {
         var baseDirty = Model.PreferredLanguage != _original.PreferredLanguage || Model.TimeZoneId != _original.TimeZoneId ||
-                        Model.CacheKpisInLocalStorage != _original.CacheKpisInLocalStorage;
+                        Model.CacheKpisInLocalStorage != _original.CacheKpisInLocalStorage ||
+                        Model.ShowConfirmations != _original.ShowConfirmations;
         var keyDirty = !string.IsNullOrWhiteSpace(KeyInput) || _clearRequested || ShareKey != _original.ShareAlphaVantageApiKey;
         Dirty = baseDirty || keyDirty;
     }
@@ -234,7 +243,8 @@ public sealed class SetupProfileViewModel : BaseViewModel
         TimeZoneId = src.TimeZoneId,
         HasAlphaVantageApiKey = src.HasAlphaVantageApiKey,
         ShareAlphaVantageApiKey = src.ShareAlphaVantageApiKey,
-        CacheKpisInLocalStorage = src.CacheKpisInLocalStorage
+        CacheKpisInLocalStorage = src.CacheKpisInLocalStorage,
+        ShowConfirmations = src.ShowConfirmations
     };
 
     /// <summary>

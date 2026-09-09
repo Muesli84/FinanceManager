@@ -77,6 +77,17 @@ public sealed class BudgetRuleService : IBudgetRuleService
     /// <summary>
     /// Creates a new rule for a category. Validates the category and invariants and persists the rule.
     /// </summary>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="budgetCategoryId">The budget category id.</param>
+    /// <param name="amount">The amount.</param>
+    /// <param name="interval">The interval.</param>
+    /// <param name="customIntervalMonths">The custom interval months.</param>
+    /// <param name="startDate">The start date.</param>
+    /// <param name="endDate">The end date.</param>
+    /// <param name="purposePattern">The purpose pattern.</param>
+    /// <param name="useRegex">The use regex.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<BudgetRuleDto> CreateForCategoryAsync(Guid ownerUserId, Guid budgetCategoryId, decimal amount, BudgetIntervalType interval, int? customIntervalMonths, DateOnly startDate, DateOnly? endDate, string? purposePattern, bool useRegex, CancellationToken ct)
     {
         if (ownerUserId == Guid.Empty)
@@ -172,6 +183,17 @@ public sealed class BudgetRuleService : IBudgetRuleService
     /// <summary>
     /// Updates an existing rule identified by id. Applies new schedule, amount and purpose pattern.
     /// </summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="amount">The amount.</param>
+    /// <param name="interval">The interval.</param>
+    /// <param name="customIntervalMonths">The custom interval months.</param>
+    /// <param name="startDate">The start date.</param>
+    /// <param name="endDate">The end date.</param>
+    /// <param name="purposePattern">The purpose pattern.</param>
+    /// <param name="useRegex">The use regex.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<BudgetRuleDto?> UpdateAsync(Guid id, Guid ownerUserId, decimal amount, BudgetIntervalType interval, int? customIntervalMonths, DateOnly startDate, DateOnly? endDate, string? purposePattern, bool useRegex, CancellationToken ct)
     {
         var entity = await _db.BudgetRules.FirstOrDefaultAsync(r => r.Id == id && r.OwnerUserId == ownerUserId, ct);

@@ -32,6 +32,7 @@ namespace FinanceManager.Shared.Dtos.Postings
     /// <param name="ReversedByPostingId">Id of the reversal posting that reversed this posting; populated when <see cref="IsReversed"/> is <c>true</c>.</param>
     /// <param name="ReversalForPostingId">Id of the original posting that this posting reverses; populated when <see cref="IsReversal"/> is <c>true</c>.</param>
     /// <param name="IsPreliminary">Indicates whether this posting is a preliminary (provisional) booking.</param>
+    /// <returns>The result.</returns>
     public sealed record PostingServiceDto(
         Guid Id,
         DateTime BookingDate,

@@ -34,11 +34,13 @@ public sealed class PortfolioAnalysisReportPageViewModel : BaseViewModel
     /// <summary>
     /// Tile order currently being edited. Only meaningful while <see cref="IsEditMode"/> is <c>true</c>.
     /// </summary>
+    /// <returns>The result.</returns>
     public List<PortfolioTileId> EditOrder { get; } = new();
 
     /// <summary>
     /// Tile ids currently marked as active/visible while editing. Only meaningful while <see cref="IsEditMode"/> is <c>true</c>.
     /// </summary>
+    /// <returns>The result.</returns>
     public HashSet<PortfolioTileId> EditActive { get; } = new();
 
     /// <summary>

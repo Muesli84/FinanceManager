@@ -9,8 +9,11 @@ namespace FinanceManager.Shared.Dtos.Users;
 /// <param name="Password">Desired password.</param>
 /// <param name="PreferredLanguage">Optional preferred language code.</param>
 /// <param name="TimeZoneId">Optional time zone identifier.</param>
+/// <param name="CreateDemoData">Whether the first user should trigger demo-data generation after registration.</param>
+/// <returns>The result.</returns>
 public sealed record RegisterRequest(
     [Required, MinLength(3)] string Username,
     [Required, MinLength(6)] string Password,
     string? PreferredLanguage,
-    string? TimeZoneId);
+    string? TimeZoneId,
+    bool CreateDemoData = false);

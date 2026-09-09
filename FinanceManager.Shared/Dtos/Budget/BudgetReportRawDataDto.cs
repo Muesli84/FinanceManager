@@ -21,16 +21,22 @@ public sealed record BudgetReportRawDataDto
     /// <summary>
     /// Gets the categorized purposes.
     /// </summary>
-    public BudgetReportCategoryRawDataDto[] Categories { get; init; } = Array.Empty<BudgetReportCategoryRawDataDto>();
+    /// <returns>The result.</returns>
+    public BudgetReportCategoryRawDataDto[] Categories { get; init; }
+        = Array.Empty<BudgetReportCategoryRawDataDto>();
 
     /// <summary>
     /// Gets purposes that are not assigned to any budget category.
     /// </summary>
-    public BudgetReportPurposeRawDataDto[] UncategorizedPurposes { get; init; } = Array.Empty<BudgetReportPurposeRawDataDto>();
+    /// <returns>The result.</returns>
+    public BudgetReportPurposeRawDataDto[] UncategorizedPurposes { get; init; }
+        = Array.Empty<BudgetReportPurposeRawDataDto>();
     /// <summary>
     /// Gets or sets the collection of postings that are not associated with any budget category.
     /// </summary>
-    public BudgetReportPostingRawDataDto[] UnbudgetedPostings { get; set; } = Array.Empty<BudgetReportPostingRawDataDto>();
+    /// <returns>The result.</returns>
+    public BudgetReportPostingRawDataDto[] UnbudgetedPostings { get; set; }
+        = Array.Empty<BudgetReportPostingRawDataDto>();
 }
 
 /// <summary>
@@ -73,7 +79,9 @@ public sealed record BudgetReportCategoryRawDataDto
     /// <summary>
     /// Gets the purposes assigned to the category.
     /// </summary>
-    public BudgetReportPurposeRawDataDto[] Purposes { get; init; } = Array.Empty<BudgetReportPurposeRawDataDto>();
+    /// <returns>The result.</returns>
+    public BudgetReportPurposeRawDataDto[] Purposes { get; init; }
+        = Array.Empty<BudgetReportPurposeRawDataDto>();
 }
 
 /// <summary>
@@ -131,7 +139,9 @@ public sealed record BudgetReportPurposeRawDataDto
     /// <summary>
     /// Gets the contributing postings for the purpose in the requested period.
     /// </summary>
-    public BudgetReportPostingRawDataDto[] Postings { get; init; } = Array.Empty<BudgetReportPostingRawDataDto>();
+    /// <returns>The result.</returns>
+    public BudgetReportPostingRawDataDto[] Postings { get; init; }
+        = Array.Empty<BudgetReportPostingRawDataDto>();
 }
 
 /// <summary>

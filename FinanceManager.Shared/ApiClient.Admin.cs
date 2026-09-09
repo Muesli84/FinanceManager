@@ -8,6 +8,7 @@ public partial class ApiClient
 
     /// <summary>Lists users (admin only).</summary>
     /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IReadOnlyList<UserAdminDto>> Admin_ListUsersAsync(CancellationToken ct = default)
     {
         var resp = await _http.GetAsync("/api/admin/users", ct);
@@ -16,6 +17,9 @@ public partial class ApiClient
     }
 
     /// <summary>Gets a user (admin only) or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<UserAdminDto?> Admin_GetUserAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.GetAsync($"/api/admin/users/{id}", ct);
@@ -25,6 +29,9 @@ public partial class ApiClient
     }
 
     /// <summary>Creates a new user (admin only).</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<UserAdminDto> Admin_CreateUserAsync(CreateUserRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync("/api/admin/users", request, ct);
@@ -33,6 +40,10 @@ public partial class ApiClient
     }
 
     /// <summary>Updates a user (admin only). Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<UserAdminDto?> Admin_UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PutAsJsonAsync($"/api/admin/users/{id}", request, ct);
@@ -42,6 +53,10 @@ public partial class ApiClient
     }
 
     /// <summary>Resets a user's password (admin only). Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Admin_ResetPasswordAsync(Guid id, ResetPasswordRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync($"/api/admin/users/{id}/reset-password", request, ct);
@@ -51,6 +66,9 @@ public partial class ApiClient
     }
 
     /// <summary>Unlocks a user (admin only). Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Admin_UnlockUserAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.PostAsync($"/api/admin/users/{id}/unlock", content: null, ct);
@@ -60,6 +78,9 @@ public partial class ApiClient
     }
 
     /// <summary>Deletes a user (admin only). Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Admin_DeleteUserAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/admin/users/{id}", ct);
@@ -73,6 +94,9 @@ public partial class ApiClient
     #region Admin - IP Blocks
 
     /// <summary>Lists IP block entries with optional filter.</summary>
+    /// <param name="onlyBlocked">The only blocked.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IReadOnlyList<IpBlockDto>> Admin_ListIpBlocksAsync(bool? onlyBlocked = null, CancellationToken ct = default)
     {
         var url = "/api/admin/ip-blocks";
@@ -86,6 +110,9 @@ public partial class ApiClient
     }
 
     /// <summary>Creates a new IP block entry.</summary>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IpBlockDto> Admin_CreateIpBlockAsync(IpBlockCreateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync("/api/admin/ip-blocks", request, ct);
@@ -94,6 +121,9 @@ public partial class ApiClient
     }
 
     /// <summary>Gets a single IP block entry or null if not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IpBlockDto?> Admin_GetIpBlockAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.GetAsync($"/api/admin/ip-blocks/{id}", ct);
@@ -103,6 +133,10 @@ public partial class ApiClient
     }
 
     /// <summary>Updates an IP block entry. Returns null when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="request">Request payload.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<IpBlockDto?> Admin_UpdateIpBlockAsync(Guid id, IpBlockUpdateRequest request, CancellationToken ct = default)
     {
         var resp = await _http.PutAsJsonAsync($"/api/admin/ip-blocks/{id}", request, ct);
@@ -112,6 +146,10 @@ public partial class ApiClient
     }
 
     /// <summary>Blocks an IP. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="reason">The reason.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Admin_BlockIpAsync(Guid id, string? reason, CancellationToken ct = default)
     {
         var resp = await _http.PostAsJsonAsync($"/api/admin/ip-blocks/{id}/block", new IpBlockUpdateRequest(reason, null), ct);
@@ -121,6 +159,9 @@ public partial class ApiClient
     }
 
     /// <summary>Unblocks an IP. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Admin_UnblockIpAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.PostAsync($"/api/admin/ip-blocks/{id}/unblock", content: null, ct);
@@ -130,6 +171,9 @@ public partial class ApiClient
     }
 
     /// <summary>Resets counters for an IP block entry. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Admin_ResetCountersAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.PostAsync($"/api/admin/ip-blocks/{id}/reset-counters", content: null, ct);
@@ -139,6 +183,9 @@ public partial class ApiClient
     }
 
     /// <summary>Deletes an IP block entry. Returns false when not found.</summary>
+    /// <param name="id">Identifier of the entity.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     public async Task<bool> Admin_DeleteIpBlockAsync(Guid id, CancellationToken ct = default)
     {
         var resp = await _http.DeleteAsync($"/api/admin/ip-blocks/{id}", ct);

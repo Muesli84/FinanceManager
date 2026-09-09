@@ -1,0 +1,10 @@
+{
+  "name": "financemanager-screenshots",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "1.62.0",
+    "pngjs": "7.0.0",
+    "gifenc": "1.0.3"
+  }
+}

@@ -296,6 +296,14 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
     public override async Task<bool> DeleteAsync()
     {
         if (DraftId == Guid.Empty) return false;
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return false;
+        }
+
         try
         {
             var ok = await ApiClient.StatementDrafts_DeleteAsync(DraftId, CancellationToken.None);
@@ -319,7 +327,8 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
     /// Returns the attachment parent information for symbol assignments. For statement drafts this returns <see cref="Domain.Attachments.AttachmentEntityKind.StatementDraft"/>.
     /// </summary>
     /// <returns>Tuple of attachment kind and parent id.</returns>
-    protected override (Domain.Attachments.AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (Domain.Attachments.AttachmentEntityKind.StatementDraft, DraftId);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(Domain.Attachments.AttachmentEntityKind.StatementDraft, DraftId);
 
     /// <summary>
     /// No-op for statement draft symbols; assignment not supported.
@@ -381,7 +390,8 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
             new UiRibbonAction("SaveQuickEdit", localizer["Ribbon_SaveQuickEdit"].Value, (Loading ? "<svg class='spin'><use href='/icons/sprite.svg#spinner'/></svg>" : "<svg><use href='/icons/sprite.svg#save'/></svg>"), UiRibbonItemSize.Small,
                 // compute Disabled dynamically using embedded list state
                 !(EmbeddedList is StatementDraftEntriesListViewModel sevm && sevm.HasPendingQuickEditChanges() && sevm.QuickEditRowsAreValid() && !Loading),
-                null, new Func<Task>(async () => { await SaveQuickEditAsync(); })) { FileCallback = null, Hidden = !(EmbeddedList is StatementDraftEntriesListViewModel saveEvm && saveEvm.IsQuickEditActive) },
+                null, new Func<Task>(async ()
+                    => { await SaveQuickEditAsync(); })) { FileCallback = null, Hidden = !(EmbeddedList is StatementDraftEntriesListViewModel saveEvm && saveEvm.IsQuickEditActive) },
             new UiRibbonAction("CancelQuickEdit", localizer["Ribbon_CancelQuickEdit"].Value, "<svg><use href='/icons/sprite.svg#close'/></svg>", UiRibbonItemSize.Small, Draft == null, null, new Func<Task>(async () => { await CancelQuickEditAsync(); })) { Hidden = !(EmbeddedList is StatementDraftEntriesListViewModel cancelEvm && cancelEvm.IsQuickEditActive) }
         };
         tabs.Add(new UiRibbonTab(localizer["Ribbon_Group_QuickEdit"].Value, quickEditItems));
@@ -543,9 +553,11 @@ public sealed class StatementDraftCardViewModel : BaseCardViewModel<(string Key,
     /// Attempts to book the draft. If booking succeeds attempts to navigate to next draft or overview.
     /// If booking is withheld due to warnings the validation messages are stored in <see cref="LastValidationResult"/>.
     /// </summary>
+    /// <param name="ignoreWarnings">The ignore warnings.</param>
     public async Task BookAsync(bool ignoreWarnings = false)
     {
         if (DraftId == Guid.Empty) return;
+
         // clear panels to avoid duplicate validation panels
         RaiseUiActionRequested("ClearEmbeddedPanel");
         Loading = true; SetError(null, null); LastValidationResult = null; RaiseStateChanged();

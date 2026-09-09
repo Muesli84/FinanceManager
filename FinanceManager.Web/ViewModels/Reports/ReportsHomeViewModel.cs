@@ -26,6 +26,7 @@ public sealed class ReportsHomeViewModel : ViewModelBase
     /// <summary>
     /// Collection of saved report favorites available to the user.
     /// </summary>
+    /// <returns>The result.</returns>
     public List<ReportFavoriteDto> Favorites { get; } = new();
 
     /// <summary>

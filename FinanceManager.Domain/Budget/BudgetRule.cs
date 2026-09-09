@@ -219,6 +219,7 @@ public sealed class BudgetRule : Entity, IAggregateRoot
     /// <param name="CustomIntervalMonths">Custom interval months.</param>
     /// <param name="StartDate">Start date.</param>
     /// <param name="EndDate">Optional end date.</param>
+    /// <returns>The result.</returns>
     public sealed record BudgetRuleBackupDto(
         Guid Id,
         Guid OwnerUserId,
@@ -233,12 +234,14 @@ public sealed class BudgetRule : Entity, IAggregateRoot
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this budget rule.
     /// </summary>
+    /// <returns>The result.</returns>
     public BudgetRuleBackupDto ToBackupDto()
         => new BudgetRuleBackupDto(Id, OwnerUserId, BudgetPurposeId, BudgetCategoryId, Amount, Interval, CustomIntervalMonths, StartDate, EndDate);
 
     /// <summary>
     /// Applies values from the provided backup DTO to this entity.
     /// </summary>
+    /// <param name="dto">The dto.</param>
     public void AssignBackupDto(BudgetRuleBackupDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);

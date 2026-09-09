@@ -2,6 +2,7 @@ using FinanceManager.Shared;
 using Microsoft.Extensions.Localization;
 using FinanceManager.Domain.Attachments;
 using FinanceManager.Web.Components.Shared;
+using FinanceManager.Web.Services;
 using Microsoft.Extensions.DependencyInjection;
 using FinanceManager.Application;
 using FinanceManager.Shared.Dtos.Admin;
@@ -66,6 +67,7 @@ namespace FinanceManager.Web.ViewModels.Common
         private readonly List<BaseViewModel> _childViewModels = new();
         private IApiClient? _ApiClient;
         private NavigationManager? _Navigation;
+        private IConfirmationService? _confirmationService;
 
         /// <summary>
         /// Human-readable title for a view. Derived classes may override.
@@ -112,12 +114,41 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <summary>
         /// Lazily resolved API client instance taken from the service provider.
         /// </summary>
-        protected IApiClient ApiClient => _ApiClient ??= ServiceProvider.GetRequiredService<IApiClient>();
+        /// <returns>The result.</returns>
+        protected IApiClient ApiClient
+        {
+            get
+            {
+                return _ApiClient ??= ServiceProvider.GetRequiredService<IApiClient>();
+            }
+        }
 
         /// <summary>
         /// Lazily resolved navigation manager used for composing navigation URLs.
         /// </summary>
-        protected NavigationManager Navigation => _Navigation ??= ServiceProvider.GetRequiredService<NavigationManager>();
+        /// <returns>The result.</returns>
+        protected NavigationManager Navigation
+        {
+            get
+            {
+                return _Navigation ??= ServiceProvider.GetRequiredService<NavigationManager>();
+            }
+        }
+
+        /// <summary>
+        /// Lazily resolved confirmation service used to request user confirmation before destructive actions.
+        /// </summary>
+        /// <value>The shared confirmation service or a no-op fallback.</value>
+        protected IConfirmationService ConfirmationService
+        {
+            get
+            {
+                return _confirmationService ??= GetConfirmationService();
+            }
+        }
+
+        private IConfirmationService GetConfirmationService()
+            => (ServiceProvider.GetService(typeof(IConfirmationService)) as IConfirmationService) ?? NullConfirmationService.Instance;
 
         // Lazy-resolved localizer. Resolve on first access and swallow resolution errors (e.g. provider disposed).
         private IStringLocalizer<Pages>? _localizerCache;
@@ -200,6 +231,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <param name="ComponentType">Component type to render.</param>
         /// <param name="Parameters">Optional parameter dictionary passed to the component.</param>
         /// <param name="Modal">If true the overlay is modal.</param>
+        /// <returns>The result.</returns>
         public sealed record UiOverlaySpec(Type ComponentType, IReadOnlyDictionary<string, object?>? Parameters = null, bool Modal = true);
 
         /// <summary>
@@ -209,6 +241,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// <param name="Parameters">Optional parameters passed to the embedded panel component.</param>
         /// <param name="Position">Position on the card page where the panel should be rendered.</param>
         /// <param name="Visible">Whether the panel should be initially visible.</param>
+        /// <returns>The result.</returns>
         public sealed record EmbeddedPanelSpec(Type ComponentType, IReadOnlyDictionary<string, object?>? Parameters = null, EmbeddedPanelPosition Position = EmbeddedPanelPosition.AfterCard, bool Visible = true);
 
         /// <summary>
@@ -222,39 +255,45 @@ namespace FinanceManager.Web.ViewModels.Common
         /// </summary>
         /// <param name="Key">Identifier of the lookup item.</param>
         /// <param name="Name">Display name of the lookup item.</param>
+        /// <returns>The result.</returns>
         public sealed record LookupItem(System.Guid Key, string Name);
 
         /// <summary>
         /// Raises <see cref="StateChanged"/> so consumers update the UI state.
         /// </summary>
-        protected void RaiseStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
+        protected void RaiseStateChanged()
+            => StateChanged?.Invoke(this, EventArgs.Empty);
 
         /// <summary>
         /// Requests a UI action with no payload.
         /// </summary>
         /// <param name="action">Action identifier.</param>
-        protected void RaiseUiActionRequested(string? action) => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, null));
+        protected void RaiseUiActionRequested(string? action)
+            => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, null));
 
         /// <summary>
         /// Requests a UI action with a string payload.
         /// </summary>
         /// <param name="action">Action identifier.</param>
         /// <param name="payload">String payload to pass to the UI.</param>
-        protected void RaiseUiActionRequested(string? action, string? payload) => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, payload));
+        protected void RaiseUiActionRequested(string? action, string? payload)
+            => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, payload));
 
         /// <summary>
         /// Requests a UI action with an arbitrary object payload.
         /// </summary>
         /// <param name="action">Action identifier.</param>
         /// <param name="payloadObject">Object payload passed to the UI subscriber.</param>
-        protected void RaiseUiActionRequested(string? action, object? payloadObject) => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, payloadObject));
+        protected void RaiseUiActionRequested(string? action, object? payloadObject)
+            => UiActionRequested?.Invoke(this, new UiActionEventArgs(action, payloadObject));
 
         /// <summary>
         /// Convenience helper to request an embedded inline panel on the Card page.
         /// View pages will render the supplied <see cref="EmbeddedPanelSpec"/> at the requested position.
         /// </summary>
         /// <param name="spec">Specification describing the embedded panel to show.</param>
-        protected void RaiseUiEmbeddedPanelRequested(EmbeddedPanelSpec spec) => UiActionRequested?.Invoke(this, new UiActionEventArgs("EmbeddedPanel", spec));
+        protected void RaiseUiEmbeddedPanelRequested(EmbeddedPanelSpec spec)
+            => UiActionRequested?.Invoke(this, new UiActionEventArgs("EmbeddedPanel", spec));
 
         /// <summary>
         /// Returns embedded panels that should be rendered whenever a host for the specified position is present.
@@ -262,12 +301,20 @@ namespace FinanceManager.Web.ViewModels.Common
         /// </summary>
         /// <param name="position">Position requested by the page host.</param>
         /// <returns>Embedded panel specifications for the requested position.</returns>
-        public virtual IReadOnlyList<EmbeddedPanelSpec> GetEmbeddedPanelSpecs(EmbeddedPanelPosition position) => Array.Empty<EmbeddedPanelSpec>();
+        public virtual IReadOnlyList<EmbeddedPanelSpec> GetEmbeddedPanelSpecs(EmbeddedPanelPosition position)
+            => Array.Empty<EmbeddedPanelSpec>();
 
         /// <summary>
         /// Background task types that a page should show for this ViewModel. Default: none.
         /// </summary>
-        public virtual BackgroundTaskType[]? VisibleBackgroundTaskTypes => Array.Empty<BackgroundTaskType>();
+        /// <returns>The result.</returns>
+        public virtual BackgroundTaskType[]? VisibleBackgroundTaskTypes
+        {
+            get
+            {
+                return Array.Empty<BackgroundTaskType>();
+            }
+        }
 
         /// <summary>
         /// Convenience helper for requesting the Attachments overlay from any ViewModel.
@@ -608,7 +655,8 @@ namespace FinanceManager.Web.ViewModels.Common
         /// </summary>
         /// <param name="localizer">Localizer used to resolve labels.</param>
         /// <returns>Ribbon registers or <c>null</c>.</returns>
-        public IReadOnlyList<UiRibbonRegister>? GetRibbon(IStringLocalizer localizer) => GetRibbonRegisterDefinition(localizer);
+        public IReadOnlyList<UiRibbonRegister>? GetRibbon(IStringLocalizer localizer)
+            => GetRibbonRegisterDefinition(localizer);
 
         /// <summary>
         /// Sets the currently active ribbon tab. Default implementation is a no-op; override as needed.

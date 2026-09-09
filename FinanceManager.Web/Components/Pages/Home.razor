@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @using FinanceManager.Web.Services
@@ -19,13 +19,16 @@
 
 <Ribbon TTabEnum="TabId" Provider="_vm" Localizer="Localizer" />
 
+<ConfirmationDialogHost />
+
 <h1>@Localizer["Home_PageTitle"]</h1>
 
 @if (_vm?.IsAuthenticated == true)
 {
     <HomeNotifications />
+<BackgroundTaskStatusPanel />
 
-    @if (_vm?.UploadInProgress == true)
+@if (_vm?.UploadInProgress == true)
     {
         <div class="upload-progress" role="status" aria-live="polite">
             <div class="hdr">

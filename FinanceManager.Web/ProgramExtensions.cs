@@ -112,6 +112,7 @@ namespace FinanceManager.Web
             builder.Services.AddSingleton<IBackgroundTaskExecutor, SecurityPricesBackfillExecutor>();
             builder.Services.AddSingleton<IBackgroundTaskExecutor, RebuildAggregatesTaskExecutor>();
             builder.Services.AddSingleton<IBackgroundTaskExecutor, ReportCacheRefreshTaskExecutor>();
+            builder.Services.AddSingleton<IBackgroundTaskExecutor, DemoDataTaskExecutor>();
             // Conditionally enable BackgroundTaskRunner via config flag
             var enableTaskRunner = builder.Configuration.GetValue<bool?>("BackgroundTasks:Enabled") ?? true;
             if (enableTaskRunner)
@@ -176,6 +177,7 @@ namespace FinanceManager.Web
             }).AddHttpMessageHandler<AuthenticatedHttpClientHandler>();
             builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
             builder.Services.AddScoped<IApiClient>(sp => new ApiClient(sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api")));
+            builder.Services.AddScoped<IConfirmationService, ConfirmationService>();
             builder.Services.AddScoped<IKpiLocalStorageCache, KpiLocalStorageCache>();
 
             // Self-update services: the auto-update subsystem is provided by the external msTools.Updater release
@@ -371,6 +373,7 @@ namespace FinanceManager.Web
         /// populated when <see cref="UserPreferenceRequestCultureProvider"/> reads the JWT claims.
         /// </para>
         /// </summary>
+        /// <param name="_">The  .</param>
         /// <returns>Configured <see cref="RequestLocalizationOptions"/>.</returns>
         public static RequestLocalizationOptions BuildLocalizationOptions(this WebApplication _)
         {

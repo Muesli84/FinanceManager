@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -2874,4 +2874,59 @@
   <data name="BK_Progress" xml:space="preserve">
     <value>Booking</value>
   </data>
+  <data name="Nav_AppLogoAlt" xml:space="preserve"><value>App logo</value></data>
+  <data name="Nav_MenuAriaLabel" xml:space="preserve"><value>Menu</value></data>
+  <data name="Help_SkipToSearch" xml:space="preserve"><value>Skip to help search</value></data>
+  <data name="Error_Heading" xml:space="preserve"><value>An error occurred while processing your request.</value></data>
+  <data name="Error_RequestId" xml:space="preserve"><value>Request ID:</value></data>
+  <data name="Error_DevMode_Heading" xml:space="preserve"><value>Development Mode</value></data>
+  <data name="Error_DevMode_Info" xml:space="preserve"><value>Swapping to the Development environment will display more detailed information about the error that occurred.</value></data>
+  <data name="Error_DevMode_Warning" xml:space="preserve"><value>The Development environment should not be enabled for deployed applications.</value></data>
+  <data name="Error_DevMode_Details" xml:space="preserve"><value>It can result in displaying sensitive information from exceptions to end users. For local debugging, enable the Development environment by setting the ASPNETCORE_ENVIRONMENT environment variable to Development and restarting the app.</value></data>
+  <data name="Generic_NoProvider" xml:space="preserve"><value>No provider</value></data>
+  <data name="Benchmark_Loading" xml:space="preserve"><value>Loading benchmark data...</value></data>
+  <data name="Benchmark_None" xml:space="preserve"><value>No benchmark configured.</value></data>
+  <data name="Benchmark_SetupHint1" xml:space="preserve"><value>You can designate an existing security as a benchmark for all your securities. Use the button</value></data>
+  <data name="Benchmark_SetupAction" xml:space="preserve"><value>Set up benchmark</value></data>
+  <data name="Benchmark_SetupHint2" xml:space="preserve"><value>in the action bar.</value></data>
+  <data name="Benchmark_Legend_This" xml:space="preserve"><value>This security</value></data>
+  <data name="Benchmark_ChartAria" xml:space="preserve"><value>Benchmark comparison chart</value></data>
+  <data name="Overview_Loading" xml:space="preserve"><value>Loading chart data...</value></data>
+  <data name="Overview_NoData" xml:space="preserve"><value>No price data available for the selected period.</value></data>
+  <data name="Overview_ChartAria" xml:space="preserve"><value>Performance chart</value></data>
+  <data name="TimeSeries_Loading" xml:space="preserve"><value>Loading data...</value></data>
+  <data name="TimeSeries_NoData" xml:space="preserve"><value>No return data available.</value></data>
+  <data name="TimeSeries_Annual_Title" xml:space="preserve"><value>Annual returns</value></data>
+  <data name="TimeSeries_Annual_NoData" xml:space="preserve"><value>No annual data available.</value></data>
+  <data name="TimeSeries_YtdNote" xml:space="preserve"><value>* Until end of analysis period</value></data>
+  <data name="TimeSeries_Monthly_Aria" xml:space="preserve"><value>Monthly returns heatmap</value></data>
+  <data name="TimeSeries_Monthly_Title" xml:space="preserve"><value>Monthly returns</value></data>
+  <data name="TimeSeries_Monthly_NoData" xml:space="preserve"><value>No monthly data available.</value></data>
+  <data name="TimeSeries_Monthly_TableAria" xml:space="preserve"><value>Monthly returns</value></data>
+  <data name="TimeSeries_LegendAria" xml:space="preserve"><value>Color scale</value></data>
+  <data name="TimeSeries_Simulated_Banner" xml:space="preserve"><value>Note: No price data is available for this security. Returns were extrapolated from transaction prices (linear interpolation) and do not reflect the real price development.</value></data>
+  <data name="TimeSeries_Col_Year" xml:space="preserve"><value>Year</value></data>
+  <data name="TimeSeries_Col_Gross" xml:space="preserve"><value>Gross</value></data>
+  <data name="TimeSeries_Col_Net" xml:space="preserve"><value>Net</value></data>
+  <data name="TimeSeries_Col_CumNet" xml:space="preserve"><value>Cum. net</value></data>
+  <data name="SetupBackup_Btn_CreateFallback" xml:space="preserve"><value>Create backup</value></data>
+  <data name="Notifications_Holidays_Region_Placeholder" xml:space="preserve"><value>DE</value></data>
+  <data name="SetupProfile_Lang_de" xml:space="preserve"><value>German (de)</value></data>
+  <data name="SetupProfile_Lang_en" xml:space="preserve"><value>English (en)</value></data>
+  <data name="SetupProfile_TimeZone_Placeholder" xml:space="preserve"><value>Europe/Berlin</value></data>
+  <data name="Panel_Label_ValidationResult" xml:space="preserve"><value>Validation</value></data>
+  <data name="Panel_Label_Setup" xml:space="preserve"><value>Settings</value></data>
+  <data name="Panel_Label_AccountsStatistics" xml:space="preserve"><value>Account statistics</value></data>
+  <data name="Settings_ShowConfirmations_Label" xml:space="preserve"><value>Bestätigungsdialoge anzeigen</value></data>
+  <data name="Settings_ShowConfirmations_Description" xml:space="preserve"><value>Vor kritischen Aktionen wie Löschen oder Verbuchen nachfragen.</value></data>
+  <data name="Confirmation_Delete_Title" xml:space="preserve"><value>Löschen bestätigen</value></data>
+  <data name="Confirmation_Delete_Message" xml:space="preserve"><value>Der Eintrag wird dauerhaft entfernt.</value></data>
+  <data name="Confirmation_Finalize_Title" xml:space="preserve"><value>Abschließen bestätigen</value></data>
+  <data name="Confirmation_Finalize_Message" xml:space="preserve"><value>Die Aktion kann nicht rückgängig gemacht werden.</value></data>
+  <data name="Confirmation_Merge_Title" xml:space="preserve"><value>Zusammenführen bestätigen</value></data>
+  <data name="Confirmation_Merge_Message" xml:space="preserve"><value>Die ausgewählten Kontakte werden zusammengeführt.</value></data>
+  <data name="Confirmation_Archive_Title" xml:space="preserve"><value>Archivieren bestätigen</value></data>
+  <data name="Confirmation_Archive_Message" xml:space="preserve"><value>Das Objekt wird archiviert.</value></data>
+  <data name="Confirmation_Book_Title" xml:space="preserve"><value>Verbuchen bestätigen</value></data>
+  <data name="Confirmation_Book_Message" xml:space="preserve"><value>Die Buchungen werden finalisiert.</value></data>
 </root>

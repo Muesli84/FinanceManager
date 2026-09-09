@@ -37,6 +37,7 @@ namespace FinanceManager.Tests.Components
             CultureInfo.CurrentCulture = new CultureInfo("en-US");
             CultureInfo.CurrentUICulture = new CultureInfo("en-US");
             Services.AddScoped<LoadingBarService>();
+            Services.AddSingleton<IConfirmationService>(Mock.Of<IConfirmationService>());
             JSInterop.SetupVoid("financeManager.loadingBar.start").SetVoidResult();
             JSInterop.SetupVoid("financeManager.loadingBar.stop").SetVoidResult();
         }

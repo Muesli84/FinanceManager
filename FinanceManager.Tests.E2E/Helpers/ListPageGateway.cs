@@ -79,6 +79,7 @@ public sealed class ListPageGateway
     /// <summary>
     /// Scrolls to the infinite-scroll sentinel and waits until the expected account is loaded.
     /// </summary>
+    /// <param name="text">The text.</param>
     public async Task LoadMoreUntilAccountVisibleAsync(string text)
     {
         await _page.Locator(".infinite-sentinel").Last.ScrollIntoViewIfNeededAsync();
@@ -99,6 +100,8 @@ public sealed class ListPageGateway
     /// <summary>
     /// Counts currently visible account rows/cards containing the given text.
     /// </summary>
+    /// <param name="text">The text.</param>
+    /// <returns>The result.</returns>
     public Task<int> CountVisibleRowsAsync(string text)
         => _page.Locator(".generic-list-mobile-card:visible, tbody tr:visible").Filter(new() { HasText = text }).CountAsync();
 
@@ -115,18 +118,21 @@ public sealed class ListPageGateway
     }
 
     /// <summary>The account statistics tile locator.</summary>
+    /// <returns>The result.</returns>
     public ILocator StatisticsTile => _page.Locator(".accounts-statistics");
 
     /// <summary>
     /// Returns a statistics KPI locator by its stable key.
     /// </summary>
     /// <param name="key">KPI key, e.g. <c>Total</c>, <c>Year</c> or <c>Month</c>.</param>
+    /// <returns>The result.</returns>
     public ILocator StatisticsKpi(string key) => _page.Locator($"[data-statistics-kpi='{key}']");
 
     /// <summary>
     /// Returns a statistics group locator by its stable key.
     /// </summary>
     /// <param name="key">Group key rendered by the donut legend.</param>
+    /// <returns>The result.</returns>
     public ILocator StatisticsGroup(string key) => _page.Locator($"[data-statistics-group-key='{key}']");
 
     /// <summary>

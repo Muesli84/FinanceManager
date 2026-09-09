@@ -11,6 +11,7 @@ public interface INotificationService
     /// <param name="ownerUserId">Owner user id.</param>
     /// <param name="asOfUtc">Point in time to evaluate active notifications (UTC).</param>
     /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<IReadOnlyList<NotificationDto>> ListActiveAsync(Guid ownerUserId, DateTime asOfUtc, CancellationToken ct);
 
     /// <summary>
@@ -19,5 +20,6 @@ public interface INotificationService
     /// <param name="id">Notification id.</param>
     /// <param name="ownerUserId">Owner user id requesting dismissal.</param>
     /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result.</returns>
     Task<bool> DismissAsync(Guid id, Guid ownerUserId, CancellationToken ct);
 }

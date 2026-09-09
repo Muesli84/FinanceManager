@@ -33,6 +33,10 @@ namespace FinanceManager.Application
         /// <summary>
         /// Creates a new BackgroundTaskContext instance.
         /// </summary>
+        /// <param name="taskId">The task id.</param>
+        /// <param name="userId">The user id.</param>
+        /// <param name="payload">The payload.</param>
+        /// <param name="reportProgress">The report progress.</param>
         public BackgroundTaskContext(Guid taskId, Guid userId, object? payload, Action<int, int?, string?, int, int> reportProgress)
         {
             TaskId = taskId;
@@ -55,6 +59,8 @@ namespace FinanceManager.Application
         /// <summary>
         /// Executes a background task with the provided context.
         /// </summary>
+        /// <param name="context">The context.</param>
+        /// <param name="ct">Cancellation token.</param>
         Task ExecuteAsync(BackgroundTaskContext context, CancellationToken ct);
     }
 
@@ -70,6 +76,9 @@ namespace FinanceManager.Application
         /// <summary>
         /// Creates a new BackgroundTaskRunner.
         /// </summary>
+        /// <param name="manager">The manager.</param>
+        /// <param name="logger">Logger instance.</param>
+        /// <param name="executors">The executors.</param>
         public BackgroundTaskRunner(IBackgroundTaskManager manager, ILogger<BackgroundTaskRunner> logger, IEnumerable<IBackgroundTaskExecutor> executors)
         {
             _manager = manager;

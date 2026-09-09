@@ -6,7 +6,7 @@
 
 @if (Provider == null)
 {
-    <p style="opacity:.7;">No provider</p>
+    <p style="opacity:.7;">@(Localizer?["Generic_NoProvider"].Value ?? "No provider")</p>
 }
 else
 {

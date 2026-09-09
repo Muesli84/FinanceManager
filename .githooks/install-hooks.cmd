@@ -1,4 +1,4 @@
 @echo off
-git config --local core.hooksPath githooks
+git config --local core.hooksPath .githooks
 echo Pre-commit hook enabled for this repository.
 pause

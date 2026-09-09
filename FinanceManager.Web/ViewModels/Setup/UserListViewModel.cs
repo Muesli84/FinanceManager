@@ -15,6 +15,7 @@ namespace FinanceManager.Web.ViewModels.Setup;
 /// <param name="Active">Whether the user account is active.</param>
 /// <param name="LockoutEnd">Optional lockout end date/time (UTC) when the account is blocked.</param>
 /// <param name="LastLoginUtc">Optional last login timestamp (UTC).</param>
+/// <returns>The result.</returns>
 public record UserListItem(Guid Id, string Username, bool IsAdmin, bool Active, DateTime? LockoutEnd, DateTime? LastLoginUtc) : IListItemNavigation
 {
     /// <summary>

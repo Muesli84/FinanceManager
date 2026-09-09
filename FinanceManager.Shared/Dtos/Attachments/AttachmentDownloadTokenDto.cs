@@ -4,4 +4,5 @@ namespace FinanceManager.Shared.Dtos.Attachments;
 /// DTO containing a short-lived download token that allows anonymous download of an attachment.
 /// </summary>
 /// <param name="Token">A protected token string that encodes attachment id, owner id and expiry.</param>
+/// <returns>The result.</returns>
 public sealed record AttachmentDownloadTokenDto(string Token);

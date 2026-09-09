@@ -12,6 +12,7 @@ namespace FinanceManager.Shared.Dtos.Admin;
 /// <param name="IsDismissed">Indicates whether the notification has been dismissed by the user.</param>
 /// <param name="CreatedUtc">UTC timestamp when the notification was created.</param>
 /// <param name="TriggerEventKey">Optional event key to drive UI actions/links.</param>
+/// <returns>The result.</returns>
 public sealed record NotificationDto(
     Guid Id,
     string Title,

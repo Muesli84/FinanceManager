@@ -1,6 +1,7 @@
 using System.Net;
 using Bunit;
 using FinanceManager.Application;
+using FluentAssertions;
 using FinanceManager.Shared;
 using FinanceManager.Shared.Dtos.Admin;
 using FinanceManager.Web.Components;
@@ -80,6 +81,28 @@ public sealed class BackgroundTaskStatusPanelTests : BunitContext
     }
 
     /// <summary>
+    /// Verifies that the panel renders a running <see cref="BackgroundTaskType.CreateDemoData"/>
+    /// task with its progress counters and message in the generic active-task UI.
+    /// </summary>
+    [Fact]
+    public void RendersDemoDataTaskProgress_WhenCreateDemoDataTaskIsRunning()
+    {
+        var apiMock = new Mock<IApiClient>();
+        apiMock.Setup(x => x.BackgroundTasks_GetActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { CreateTask(BackgroundTaskStatus.Running, BackgroundTaskType.CreateDemoData, 2, 5, "Demo-Daten werden angelegt...") });
+        RegisterServices(apiMock, isAuthenticated: true);
+
+        var cut = Render<BackgroundTaskStatusPanel>(parameters => parameters.Add(p => p.PollInterval, 10_000));
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.Should().Contain("Bgt_Type_CreateDemoData");
+            cut.Markup.Should().Contain("2 / 5");
+            cut.Markup.Should().Contain("Demo-Daten werden angelegt...");
+        });
+    }
+
+    /// <summary>
     /// Verifies that once the active-tasks request fails with an HTTP 401 Unauthorized, the panel
     /// stops scheduling further poll requests entirely (verified by waiting past several poll
     /// intervals and confirming the call count stays at one) - a session that has been signed out
@@ -139,16 +162,21 @@ public sealed class BackgroundTaskStatusPanelTests : BunitContext
         }
     }
 
-    private static BackgroundTaskInfo CreateTask(BackgroundTaskStatus status)
+    private static BackgroundTaskInfo CreateTask(
+        BackgroundTaskStatus status,
+        BackgroundTaskType type = BackgroundTaskType.ClassifyAllDrafts,
+        int? processed = 1,
+        int? total = 2,
+        string? message = "Processing")
         => new(
             Guid.NewGuid(),
-            BackgroundTaskType.ClassifyAllDrafts,
+            type,
             Guid.NewGuid(),
             DateTime.UtcNow,
             status,
-            1,
-            2,
-            "Processing",
+            processed,
+            total,
+            message,
             0,
             0,
             null,

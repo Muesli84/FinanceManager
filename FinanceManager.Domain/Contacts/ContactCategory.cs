@@ -66,13 +66,15 @@ public sealed class ContactCategory : Entity, IAggregateRoot
     /// <param name="OwnerUserId">Owner user identifier.</param>
     /// <param name="Name">Category display name.</param>
     /// <param name="SymbolAttachmentId">Optional symbol attachment id.</param>
+    /// <returns>The result.</returns>
     public sealed record ContactCategoryBackupDto(Guid Id, Guid OwnerUserId, string Name, Guid? SymbolAttachmentId);
 
     /// <summary>
     /// Converts this ContactCategory to a backup DTO.
     /// </summary>
     /// <returns>A <see cref="ContactCategoryBackupDto"/> representing this category.</returns>
-    public ContactCategoryBackupDto ToBackupDto() => new ContactCategoryBackupDto(Id, OwnerUserId, Name, SymbolAttachmentId);
+    public ContactCategoryBackupDto ToBackupDto()
+        => new ContactCategoryBackupDto(Id, OwnerUserId, Name, SymbolAttachmentId);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity.

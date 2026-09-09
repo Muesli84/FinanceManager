@@ -5,6 +5,7 @@ Dieser Bereich bündelt Benutzerverwaltung, Sicherheit, Benachrichtigungen, Sich
 ## Inhalt
 
 - [Beschreibung](beschreibung.md)
+- [Demo-Daten für den ersten Benutzer](demo-daten.md)
 - [Technischer Ablauf](ablauf-technisch.md)
 - [Ablauf für Anwender](ablauf-anwender.md)
 - [API](api.md)

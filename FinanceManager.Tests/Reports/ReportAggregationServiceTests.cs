@@ -9,6 +9,8 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using MonthlyExpected = (decimal Current, decimal? Prev, decimal? Year);
+
 namespace FinanceManager.Tests.Reports;
 
 /// <summary>
@@ -589,6 +591,11 @@ public sealed class ReportAggregationServiceTests
     /// For each entity and month two postings are added (1st and 15th), with a global amount counter starting at 1.00€ and increasing by 0.01€ per posting to ensure uniqueness.
     /// Returns the created entities, the list of months and a sum lookup for expected assertions.
     /// </summary>
+    /// <param name="db">The db.</param>
+    /// <param name="ownerUserId">The owner user id.</param>
+    /// <param name="analysisMonth">The analysis month.</param>
+    /// <param name="monthsBack">The months back.</param>
+    /// <returns>The result.</returns>
     private static async Task<SeedResult> SeedAllKindsAsync(AppDbContext db, Guid ownerUserId, DateTime analysisMonth, int monthsBack)
     {
         var bank = new FinanceManager.Domain.Contacts.Contact(ownerUserId, "Bank", ContactType.Bank, null, null);
@@ -698,7 +705,15 @@ public sealed class ReportAggregationServiceTests
     /// <summary>
     /// Hilfsfunktion: Erwartete Monats?Summe je Entität und Vergleichswerte (Vormonat, Vorjahr) aus Seed?Lookup berechnen.
     /// </summary>
-    private static (decimal current, decimal? prev, decimal? year)
+    /// <param name="seed">Seeded lookup values.</param>
+    /// <param name="kind">Posting kind.</param>
+    /// <param name="accountId">Account id filter.</param>
+    /// <param name="contactId">Contact id filter.</param>
+    /// <param name="savId">Savings plan id filter.</param>
+    /// <param name="secId">Security id filter.</param>
+    /// <param name="analysis">Analysis date.</param>
+    /// <returns>Current, previous-month and year-ago sums.</returns>
+    private static MonthlyExpected
         GetMonthlyExpected(
             SeedResult seed,
             PostingKind kind,
@@ -803,6 +818,7 @@ public sealed class ReportAggregationServiceTests
     /// Previous comparisons are checked for the exact previous interval when applicable, YearAgo for yearly.
     /// For AllHistory, verify total across all returned periods equals the seeded total.
     /// </summary>
+    /// <param name="interval">The interval.</param>
     [Theory]
     [InlineData(ReportInterval.Quarter)]
     [InlineData(ReportInterval.HalfYear)]

@@ -53,7 +53,7 @@ public sealed class RequestLoggingMiddlewareTests
     {
         var logger = new CapturingLogger<RequestLoggingMiddleware>();
         var middleware = new RequestLoggingMiddleware(
-            _ => throw new InvalidOperationException("boom"),
+            _ => Task.FromException(new InvalidOperationException("boom")),
             logger);
         var context = CreateContext("/api/attachments/id/download?token=exception-secret&foo=bar");
 

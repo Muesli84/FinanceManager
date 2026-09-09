@@ -108,6 +108,7 @@ public sealed class SavingsPlanCategoryListViewModel : BaseListViewModel<Savings
     /// <param name="Id">Category identifier.</param>
     /// <param name="Name">Display name of the category.</param>
     /// <param name="SymbolId">Optional symbol attachment id.</param>
+    /// <returns>The result.</returns>
     public sealed record SavingsPlanCategoryListItem(Guid Id, string Name, Guid? SymbolId) : IListItemNavigation
     {
         /// <summary>

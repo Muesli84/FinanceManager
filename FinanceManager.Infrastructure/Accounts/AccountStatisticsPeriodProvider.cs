@@ -15,6 +15,9 @@ public sealed class AccountStatisticsPeriodProvider : IAccountStatisticsPeriodPr
     /// <summary>
     /// Initializes a new instance of the <see cref="AccountStatisticsPeriodProvider"/> class.
     /// </summary>
+    /// <param name="db">The db.</param>
+    /// <param name="timeProvider">The time provider.</param>
+    /// <param name="timeZoneResolver">The time zone resolver.</param>
     public AccountStatisticsPeriodProvider(AppDbContext db, TimeProvider timeProvider, ITimeZoneResolver timeZoneResolver)
     {
         _db = db;

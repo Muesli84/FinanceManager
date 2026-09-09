@@ -48,6 +48,7 @@ public sealed class SetupSecurityViewModel : BaseViewModel
     /// <summary>
     /// Current list of IP blocks shown in the UI.
     /// </summary>
+    /// <returns>The result.</returns>
     public List<IpBlockItem> Items { get; private set; } = new();
 
     /// <summary>
@@ -183,6 +184,14 @@ public sealed class SetupSecurityViewModel : BaseViewModel
     /// <returns>A task that completes when the operation has finished. Swallows exceptions and reloads the list afterwards.</returns>
     public async Task ResetCountersAsync(Guid id, CancellationToken ct = default)
     {
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Finalize_Title",
+            MessageResourceKey: "Confirmation_Finalize_Message",
+            Severity: ConfirmationSeverity.Warning)))
+        {
+            return;
+        }
+
         try { await ApiClient.Admin_ResetCountersAsync(id, ct); }
         catch { }
         await ReloadAsync(ct);
@@ -196,6 +205,14 @@ public sealed class SetupSecurityViewModel : BaseViewModel
     /// <returns>A task that completes when the operation has finished. Swallows exceptions and reloads the list afterwards.</returns>
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return;
+        }
+
         try { await ApiClient.Admin_DeleteIpBlockAsync(id, ct); }
         catch { }
         await ReloadAsync(ct);

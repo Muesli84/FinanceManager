@@ -25,4 +25,6 @@ global using FinanceManager.Web.ViewModels.Securities;
 global using FinanceManager.Web.ViewModels.Setup;
 global using FinanceManager.Web.ViewModels.StatementDrafts;
 
+global using FinanceManager.Web.Services;
+
 global using FinanceManager.Web;

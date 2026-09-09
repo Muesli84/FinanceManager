@@ -24,6 +24,9 @@ namespace FinanceManager.Web.Controllers
         /// <summary>
         /// Initializes a new instance of <see cref="StatementDraftEntriesController"/>.
         /// </summary>
+        /// <param name="service">The service.</param>
+        /// <param name="current">The current.</param>
+        /// <param name="logger">Logger instance.</param>
         public StatementDraftEntriesController(
             IStatementDraftService service,
             ICurrentUserService current,

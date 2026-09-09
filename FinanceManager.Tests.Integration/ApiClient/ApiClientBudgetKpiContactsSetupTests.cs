@@ -43,6 +43,8 @@ public sealed class ApiClientBudgetKpiContactsSetupTests : IClassFixture<TestWeb
     /// Validates the budget report XLSX export and builds a map of sheet data.
     /// Exposed as a separate helper to keep tests concise.
     /// </summary>
+    /// <param name="contentBytes">The content bytes.</param>
+    /// <returns>The result.</returns>
     private static Dictionary<string, List<Dictionary<string, object>>> ValidateBudgetReportExport(byte[] contentBytes)
     {
         using var ms = new System.IO.MemoryStream(contentBytes);

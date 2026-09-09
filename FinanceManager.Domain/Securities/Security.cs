@@ -231,7 +231,8 @@ public sealed class Security : Entity
     /// Creates a backup DTO representing this security.
     /// </summary>
     /// <returns>A <see cref="SecurityBackupDto"/> with serializable security data.</returns>
-    public SecurityBackupDto ToBackupDto() => new SecurityBackupDto(Id, OwnerUserId, Name, Identifier, Description, AlphaVantageCode, CurrencyCode, CategoryId, IsActive, CreatedUtc, ModifiedUtc, ArchivedUtc, SymbolAttachmentId, Region, Sector);
+    public SecurityBackupDto ToBackupDto()
+        => new SecurityBackupDto(Id, OwnerUserId, Name, Identifier, Description, AlphaVantageCode, CurrencyCode, CategoryId, IsActive, CreatedUtc, ModifiedUtc, ArchivedUtc, SymbolAttachmentId, Region, Sector);
 
     /// <summary>
     /// Assigns values from a backup DTO to this entity.

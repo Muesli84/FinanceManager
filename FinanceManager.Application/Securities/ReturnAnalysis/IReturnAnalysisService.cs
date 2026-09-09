@@ -131,6 +131,7 @@ public interface IReturnAnalysisService
 /// <param name="BenchmarkSecurityName">Display name of the benchmark security, or null.</param>
 /// <param name="ShowSharpeRatio">Whether Sharpe Ratio is enabled.</param>
 /// <param name="RiskFreeRate">Risk-free rate for Sharpe Ratio (e.g. 0.04 = 4%).</param>
+/// <returns>The result.</returns>
 public sealed record ReturnAnalysisSettingsDto(
     Guid? BenchmarkSecurityId,
     string? BenchmarkSecurityName,

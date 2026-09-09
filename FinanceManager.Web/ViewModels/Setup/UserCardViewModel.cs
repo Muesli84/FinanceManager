@@ -193,6 +193,14 @@ public sealed class UserCardViewModel : BaseCardViewModel<(string Key, string Va
     public async Task<bool> DeleteAsync(CancellationToken ct = default)
     {
         if (User == null) return false;
+        if (!await ConfirmationService.ConfirmAsync(new(
+            TitleResourceKey: "Confirmation_Delete_Title",
+            MessageResourceKey: "Confirmation_Delete_Message",
+            Severity: ConfirmationSeverity.Critical)))
+        {
+            return false;
+        }
+
         try
         {
             var ok = await _api.Admin_DeleteUserAsync(User.Id, ct);
@@ -295,9 +303,9 @@ public sealed class UserCardViewModel : BaseCardViewModel<(string Key, string Va
     /// Returns the attachment parent kind and id for symbol uploads. Returns <see cref="AttachmentEntityKind.None"/>.
     /// </summary>
     /// <returns>Tuple containing <see cref="AttachmentEntityKind.None"/> and <see cref="Guid.Empty"/>.</returns>
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent()
+    protected override SymbolParentRef GetSymbolParent()
     {
-        return (AttachmentEntityKind.None, Guid.Empty);
+        return new(AttachmentEntityKind.None, Guid.Empty);
     }
 
     /// <summary>

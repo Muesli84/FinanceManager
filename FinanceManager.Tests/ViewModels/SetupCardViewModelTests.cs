@@ -64,28 +64,19 @@ namespace FinanceManager.Tests.ViewModels
         }
 
         /// <summary>
-        /// Verifies that loading raises an "EmbeddedPanel" UI action targeting <c>SetupPanel</c>,
-        /// positioned after the ribbon, with the inner component type and parameters passed through - the
-        /// mechanism by which the host page embeds the setup sections panel below the ribbon.
+        /// Verifies that the setup card view model declaratively exposes a setup panel embedded panel spec
+        /// positioned after the ribbon, with the inner component type and parameters passed through.
         /// </summary>
         [Fact]
-        public async Task LoadAsync_Requests_EmbeddedSectionsPanel_AfterRibbon()
+        public void GetEmbeddedPanelSpecs_Returns_SetupPanel_AfterRibbon()
         {
             var sp = BuildServices();
             var vm = new SetupCardViewModel(sp);
 
-            BaseViewModel.UiActionEventArgs? received = null;
-            // subscribe to the legacy UiActionRequested event which carries UiActionEventArgs
-            BaseViewModel baseVm = vm;
-            baseVm.UiActionRequested += (_, e) => received = e;
+            var specs = vm.GetEmbeddedPanelSpecs(EmbeddedPanelPosition.AfterRibbon);
 
-            await vm.LoadAsync(Guid.Empty);
-
-            received.Should().NotBeNull();
-            received!.Action.Should().Be("EmbeddedPanel");
-            received.PayloadObject.Should().BeOfType<BaseViewModel.EmbeddedPanelSpec>();
-
-            var spec = (BaseViewModel.EmbeddedPanelSpec)received.PayloadObject!;
+            specs.Should().ContainSingle();
+            var spec = specs[0];
             spec.ComponentType.Should().Be(typeof(FinanceManager.Web.Components.Shared.SetupPanel));
             spec.Position.Should().Be(EmbeddedPanelPosition.AfterRibbon);
 

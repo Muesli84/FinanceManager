@@ -153,6 +153,12 @@ public sealed partial class User : IdentityUser<Guid>, IAggregateRoot
     public bool CacheKpisInLocalStorage { get; private set; }
 
     /// <summary>
+    /// Whether confirmation dialogs should be shown before destructive or irreversible actions.
+    /// </summary>
+    /// <value><c>true</c> when confirmation dialogs are enabled; otherwise <c>false</c>.</value>
+    public bool ShowConfirmations { get; private set; } = true;
+
+    /// <summary>
     /// Admin flag persisted in the database.
     /// </summary>
     /// <value><c>true</c> for administrators.</value>
@@ -257,6 +263,16 @@ public sealed partial class User : IdentityUser<Guid>, IAggregateRoot
     public void SetCacheKpisInLocalStorage(bool enabled)
     {
         CacheKpisInLocalStorage = enabled;
+        Touch();
+    }
+
+    /// <summary>
+    /// Enables or disables confirmation dialogs before destructive or irreversible actions.
+    /// </summary>
+    /// <param name="enabled">True to show confirmation dialogs; false to suppress them.</param>
+    public void SetShowConfirmations(bool enabled)
+    {
+        ShowConfirmations = enabled;
         Touch();
     }
 

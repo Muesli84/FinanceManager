@@ -1,0 +1,25 @@
+@using FinanceManager.Web.Services
+@inject IConfirmationService ConfirmationService
+@implements IDisposable
+
+@if (ConfirmationService.CurrentRequest != null)
+{
+    <ConfirmDialog Request="ConfirmationService.CurrentRequest" />
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        ConfirmationService.OnChanged += OnConfirmationChanged;
+    }
+
+    private void OnConfirmationChanged(object? sender, EventArgs args)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ConfirmationService.OnChanged -= OnConfirmationChanged;
+    }
+}

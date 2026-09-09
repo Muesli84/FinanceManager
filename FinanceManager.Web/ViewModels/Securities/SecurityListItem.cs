@@ -11,6 +11,7 @@ namespace FinanceManager.Web.ViewModels.Securities;
 /// <param name="CategoryName">Optional category display name.</param>
 /// <param name="IsActive">Indicates whether the security is active (not archived).</param>
 /// <param name="SymbolId">Optional attachment id used as display symbol.</param>
+/// <returns>The result.</returns>
 public sealed record SecurityListItem(Guid Id, string Name, string Identifier, string? AlphaVantageCode, Guid? CategoryId, string? CategoryName, bool IsActive, Guid? SymbolId) : IListItemNavigation
 {
     /// <summary>

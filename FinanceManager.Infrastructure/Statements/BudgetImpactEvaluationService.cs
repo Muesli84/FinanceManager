@@ -32,6 +32,9 @@ public sealed class BudgetImpactEvaluationService : IBudgetImpactEvaluationServi
     /// <summary>
     /// Initializes a new instance of <see cref="BudgetImpactEvaluationService"/>.
     /// </summary>
+    /// <param name="db">The db.</param>
+    /// <param name="planning">The planning.</param>
+    /// <param name="logger">Logger instance.</param>
     public BudgetImpactEvaluationService(
         AppDbContext db,
         IBudgetPlanningService planning,

@@ -123,6 +123,8 @@ public sealed class AccountsApiSeedHelper
     /// <summary>
     /// Creates a bank contact directly in the E2E database.
     /// </summary>
+    /// <param name="name">The name.</param>
+    /// <returns>The result.</returns>
     public async Task<Guid> CreateBankContactAsync(string name)
     {
         if (string.IsNullOrWhiteSpace(_databasePath) || !_ownerUserId.HasValue)
@@ -140,6 +142,11 @@ public sealed class AccountsApiSeedHelper
     /// <summary>
     /// Creates an account that references a missing bank contact for fallback-group scenarios.
     /// </summary>
+    /// <param name="name">The name.</param>
+    /// <param name="iban">The iban.</param>
+    /// <param name="type">The type.</param>
+    /// <param name="currentBalance">The current balance.</param>
+    /// <returns>The result.</returns>
     public async Task<SeededAccount> CreateAccountWithUnknownBankContactAsync(string name, string iban, AccountType type, decimal currentBalance)
     {
         if (string.IsNullOrWhiteSpace(_databasePath) || !_ownerUserId.HasValue)
@@ -161,6 +168,7 @@ public sealed class AccountsApiSeedHelper
     /// </summary>
     /// <param name="BookingDate">Booking date used by account statistics.</param>
     /// <param name="Amount">Posting amount.</param>
+    /// <returns>The result.</returns>
     public sealed record SeededPosting(DateTime BookingDate, decimal Amount);
 
     /// <summary>
@@ -168,6 +176,7 @@ public sealed class AccountsApiSeedHelper
     /// </summary>
     /// <param name="AccountId">Seeded account identifier.</param>
     /// <param name="BankContactId">Seeded bank contact identifier.</param>
+    /// <returns>The result.</returns>
     public sealed record SeededAccount(Guid AccountId, Guid BankContactId);
 
     private static AppDbContext CreateContext(string databasePath)

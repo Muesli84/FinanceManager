@@ -3,6 +3,7 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// <summary>
 /// DTO representing a statement draft with optional split and upload group information.
 /// </summary>
+/// <returns>The result.</returns>
 public sealed record StatementDraftDto(
     Guid DraftId,
     string OriginalFileName,

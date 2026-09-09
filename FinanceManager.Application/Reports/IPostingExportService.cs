@@ -27,6 +27,7 @@ public enum PostingExportFormat
 /// <param name="From">Optional from date filter.</param>
 /// <param name="To">Optional to date filter.</param>
 /// <param name="Q">Optional search query.</param>
+/// <returns>The result.</returns>
 public sealed record PostingExportQuery(
     Guid OwnerUserId,
     PostingKind ContextKind,
@@ -54,6 +55,7 @@ public sealed record PostingExportQuery(
 /// <param name="SecurityId">Optional security id referenced.</param>
 /// <param name="SecuritySubType">Optional security posting subtype.</param>
 /// <param name="Quantity">Optional quantity for security postings.</param>
+/// <returns>The result.</returns>
 public sealed record PostingExportRow(
     DateTime BookingDate,
     DateTime ValutaDate,

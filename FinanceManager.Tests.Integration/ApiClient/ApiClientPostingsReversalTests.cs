@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using Xunit;
 
+using ApiClientsPair = (FinanceManager.Shared.ApiClient, System.Net.Http.HttpClient);
+
 namespace FinanceManager.Tests.Integration.ApiClient;
 
 /// <summary>
@@ -31,7 +33,8 @@ public sealed class ApiClientPostingsReversalTests : IClassFixture<TestWebApplic
     /// Creates a typed API client together with the underlying raw HttpClient
     /// so tests can inspect HTTP status codes directly when needed.
     /// </summary>
-    private (FinanceManager.Shared.ApiClient api, HttpClient http) CreateClients()
+    /// <returns>The typed API client and the underlying HTTP client.</returns>
+    private ApiClientsPair CreateClients()
     {
         var http = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -51,6 +54,8 @@ public sealed class ApiClientPostingsReversalTests : IClassFixture<TestWebApplic
     /// <summary>
     /// Registers a fresh user (and auto-logs in via cookie) using a unique username.
     /// </summary>
+    /// <param name="api">The API client used for registration.</param>
+    /// <returns>The result.</returns>
     private static async Task<string> RegisterUserAsync(FinanceManager.Shared.ApiClient api)
     {
         var username = $"rev_user_{Guid.NewGuid():N}";
@@ -62,6 +67,8 @@ public sealed class ApiClientPostingsReversalTests : IClassFixture<TestWebApplic
     /// Runs the full statement-import flow to produce a single booked posting.
     /// Returns the account id and the id of the first created posting.
     /// </summary>
+    /// <param name="api">The API client used for the statement flow.</param>
+    /// <returns>The result.</returns>
     private static async Task<(Guid accountId, Guid postingId)> BookPostingViaStatementAsync(
         FinanceManager.Shared.ApiClient api)
     {

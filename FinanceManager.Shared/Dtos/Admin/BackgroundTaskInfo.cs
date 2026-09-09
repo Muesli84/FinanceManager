@@ -20,6 +20,7 @@ namespace FinanceManager.Shared.Dtos.Admin
     /// <param name="Processed2">Optional secondary processed counter.</param>
     /// <param name="Total2">Optional secondary total counter.</param>
     /// <param name="Message2">Optional secondary message.</param>
+    /// <returns>The result.</returns>
     public sealed record BackgroundTaskInfo(
         Guid Id,
         BackgroundTaskType Type,

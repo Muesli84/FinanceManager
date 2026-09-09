@@ -15,6 +15,8 @@ public sealed class SecurityTxtSettingsService : ISecurityTxtSettingsService
     private readonly IConfiguration _configuration;
 
     /// <summary>Creates a new instance.</summary>
+    /// <param name="db">The db.</param>
+    /// <param name="configuration">Configuration instance.</param>
     public SecurityTxtSettingsService(AppDbContext db, IConfiguration configuration)
     {
         _db = db;

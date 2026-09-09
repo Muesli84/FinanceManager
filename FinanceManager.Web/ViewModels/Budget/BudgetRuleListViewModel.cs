@@ -37,6 +37,7 @@ public sealed class BudgetRuleListViewModel : BaseListViewModel<BudgetRuleListIt
     /// <summary>
     /// Sets the budget purpose id and triggers loading.
     /// </summary>
+    /// <param name="budgetPurposeId">The budget purpose id.</param>
     public async Task InitializeForPurposeAsync(Guid budgetPurposeId)
     {
         BudgetPurposeId = budgetPurposeId;
@@ -47,6 +48,7 @@ public sealed class BudgetRuleListViewModel : BaseListViewModel<BudgetRuleListIt
     /// <summary>
     /// Sets the budget category id and triggers loading.
     /// </summary>
+    /// <param name="budgetCategoryId">The budget category id.</param>
     public async Task InitializeForCategoryAsync(Guid budgetCategoryId)
     {
         BudgetCategoryId = budgetCategoryId;

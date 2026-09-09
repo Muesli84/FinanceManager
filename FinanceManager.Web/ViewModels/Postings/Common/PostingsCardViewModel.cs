@@ -153,7 +153,8 @@ public sealed class PostingsCardViewModel : BaseCardViewModel<(string Key, strin
     /// Returns the attachment parent kind and id for symbol uploads. For postings symbol assignment is not supported and a default value is returned.
     /// </summary>
     /// <returns>A tuple containing the <see cref="AttachmentEntityKind.Posting"/> and an empty Guid as parent id.</returns>
-    protected override (AttachmentEntityKind Kind, Guid ParentId) GetSymbolParent() => (AttachmentEntityKind.Posting, Guid.Empty);
+    protected override SymbolParentRef GetSymbolParent()
+        => new(AttachmentEntityKind.Posting, Guid.Empty);
 
     /// <summary>
     /// No-op symbol assignment implementation for postings. Postings do not support symbol assignment via the card UI.
@@ -169,13 +170,15 @@ public sealed class PostingsCardViewModel : BaseCardViewModel<(string Key, strin
     /// <param name="fileName">Original file name.</param>
     /// <param name="contentType">MIME type of the uploaded file.</param>
     /// <returns>A task that resolves to <c>null</c> because postings do not support symbols.</returns>
-    public override Task<Guid?> ValidateSymbolAsync(System.IO.Stream stream, string fileName, string contentType) => Task.FromResult<Guid?>(null);
+    public override Task<Guid?> ValidateSymbolAsync(System.IO.Stream stream, string fileName, string contentType)
+        => Task.FromResult<Guid?>(null);
 
     /// <summary>
     /// Reloads the current posting by reloading the card for the current <see cref="Id"/>.
     /// </summary>
     /// <returns>A task that completes when reload has finished.</returns>
-    public override Task ReloadAsync() => LoadAsync(Id);
+    public override Task ReloadAsync()
+        => LoadAsync(Id);
 
     /// <summary>
     /// Reverses the current posting by calling the API and navigates to the created reversal posting on success.

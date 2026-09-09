@@ -27,6 +27,8 @@ else
     @* Render ribbon here so upload UI can be positioned directly under it *@
     <Ribbon TTabEnum="TabId" Provider="(IRibbonProvider)_provider" Localizer="Localizer" />
 
+    <ConfirmationDialogHost />
+
     <h3 class="list-page-title">@Localizer["General_PageTitle"]: @GetKindTitle()</h3>
 
     <UploadStatus ViewModel="@(_provider as FinanceManager.Web.ViewModels.Common.IUploadFilesViewModel)" />
@@ -276,10 +278,13 @@ else
         if (_overlaySpec == null) return string.Empty;
         if (_overlaySpec.Parameters != null && _overlaySpec.Parameters.TryGetValue("OverlayTitle", out var v) && v is string s && !string.IsNullOrWhiteSpace(s)) return s;
         var t = _overlaySpec.ComponentType;
-        if (t == typeof(FinanceManager.Web.Components.Shared.AttachmentsPanel)) return Localizer["Attachments_Title"];
-        if (t == typeof(FinanceManager.Web.Components.Shared.ContactMergePanel)) return Localizer["Merge_Title"];
-        if (t == typeof(FinanceManager.Web.Components.Shared.SecurityPriceImportPanel)) return Localizer["SecurityPricesImport_Title"];
-        if (t == typeof(FinanceManager.Web.Components.Shared.SecurityPricesBackfillPanel)) return Localizer["SecurityPricesBackfill_Title"];
+        if (t == typeof(AttachmentsPanel)) return Localizer["Attachments_Title"];
+        if (t == typeof(ContactMergePanel)) return Localizer["Merge_Title"];
+        if (t == typeof(SecurityPriceImportPanel)) return Localizer["SecurityPricesImport_Title"];
+        if (t == typeof(SecurityPricesBackfillPanel)) return Localizer["SecurityPricesBackfill_Title"];
+        if (t == typeof(SetPasswordOverlay)) return Localizer["Users_SetPassword_Title"];
+        if (t == typeof(AssignStatementOverlay)) return Localizer["AssignStatement_Title"];
+        if (t == typeof(MassBookingOptionsPanel)) return Localizer["MassBooking_Title"];
         return Localizer["Attachments_Title"];
     }
 }

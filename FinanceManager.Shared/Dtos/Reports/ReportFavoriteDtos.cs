@@ -5,6 +5,7 @@ namespace FinanceManager.Shared.Dtos.Reports;
 /// <summary>
 /// DTO representing a saved user report favorite.
 /// </summary>
+/// <returns>The result.</returns>
 [method: JsonConstructor]
 public sealed record ReportFavoriteDto(
     Guid Id,

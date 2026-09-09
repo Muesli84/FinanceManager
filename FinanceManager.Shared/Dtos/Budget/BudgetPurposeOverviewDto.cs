@@ -18,6 +18,7 @@ namespace FinanceManager.Shared.Dtos.Budget;
 /// <param name="BudgetCategoryId">Optional category id assigned to this purpose.</param>
 /// <param name="BudgetCategoryName">Resolved display name of the assigned category.</param>
 /// <param name="ValuationType">Determines how matching postings are valued for this purpose.</param>
+/// <returns>The result.</returns>
 public sealed record BudgetPurposeOverviewDto(
     Guid Id,
     Guid OwnerUserId,

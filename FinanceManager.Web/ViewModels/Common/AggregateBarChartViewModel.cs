@@ -118,6 +118,7 @@ namespace FinanceManager.Web.ViewModels.Common
         /// </summary>
         /// <param name="PeriodStart">Start date/time of the period.</param>
         /// <param name="Amount">Aggregated amount for the period.</param>
+        /// <returns>The result.</returns>
         public record TimeSeriesPoint(DateTime PeriodStart, decimal Amount);
 
         /// <summary>

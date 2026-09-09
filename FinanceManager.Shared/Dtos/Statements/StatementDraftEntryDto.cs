@@ -3,6 +3,7 @@ namespace FinanceManager.Shared.Dtos.Statements;
 /// <summary>
 /// DTO representing an entry within a statement draft.
 /// </summary>
+/// <returns>The result.</returns>
 public sealed record StatementDraftEntryDto(
     Guid Id,
     int EntryNumber,

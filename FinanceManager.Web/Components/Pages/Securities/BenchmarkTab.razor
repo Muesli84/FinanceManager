@@ -1,14 +1,15 @@
 @using FinanceManager.Application
 @using FinanceManager.Web.ViewModels.Securities.ReturnAnalysis
 @inject IServiceProvider Services
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Pages> Localizer
 
 <div class="benchmark-tab">
-    @if (_vm?.IsLoading == true) { <div role="status">Lade Benchmark-Daten...</div> }
+    @if (_vm?.IsLoading == true) { <div role="status">@Localizer["Benchmark_Loading"]</div> }
     else if (_vm?.Data == null)
     {
         <div class="no-benchmark-hint">
-            <p>Kein Benchmark konfiguriert.</p>
-            <p>Sie können ein vorhandenes Wertpapier als Benchmark für alle Ihre Wertpapiere festlegen. Nutzen Sie dazu die Schaltfläche <strong>Benchmark einrichten</strong> in der Aktionsleiste.</p>
+            <p>@Localizer["Benchmark_None"]</p>
+            <p>@Localizer["Benchmark_SetupHint1"] <strong>@Localizer["Benchmark_SetupAction"]</strong> @Localizer["Benchmark_SetupHint2"]</p>
         </div>
     }
     else
@@ -16,7 +17,7 @@
         <div class="benchmark-chart-area">
             <p class="benchmark-name">Benchmark: <strong>@_vm.Data.BenchmarkName</strong></p>
             <div class="benchmark-legend">
-                <span class="legend-item security">Dieses Wertpapier</span>
+                <span class="legend-item security">@Localizer["Benchmark_Legend_This"]</span>
                 <span class="legend-item benchmark">@_vm.Data.BenchmarkName</span>
             </div>
             @{
@@ -72,7 +73,7 @@
                     : compDays;
             }
             <div class="benchmark-svg-wrap">
-                <svg viewBox="0 0 @totalDays 115" preserveAspectRatio="none" class="benchmark-svg" role="img" aria-label="Benchmark-Vergleichschart">
+                <svg viewBox="0 0 @totalDays 115" preserveAspectRatio="none" class="benchmark-svg" role="img" aria-label="@Localizer["Benchmark_ChartAria"]">
                     <title>Benchmark-Vergleich</title>
 
                     @if (hasPreOverlap)

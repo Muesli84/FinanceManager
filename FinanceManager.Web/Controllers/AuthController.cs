@@ -99,7 +99,7 @@ public sealed class AuthController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
-        var result = await _auth.RegisterAsync(new RegisterUserCommand(request.Username, request.Password, request.PreferredLanguage, request.TimeZoneId), ct);
+        var result = await _auth.RegisterAsync(new RegisterUserCommand(request.Username, request.Password, request.PreferredLanguage, request.TimeZoneId, request.CreateDemoData), ct);
         if (!result.Success)
         {
             const string code = "Err_Conflict_UserAlreadyExists";

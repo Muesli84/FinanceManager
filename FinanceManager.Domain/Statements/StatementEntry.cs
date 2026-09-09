@@ -138,13 +138,15 @@ public sealed class StatementEntry : Entity
     /// <param name="SavingsPlanId">Optional assigned savings plan id when matched.</param>
     /// <param name="SecurityTransactionId">Optional security transaction id when matched.</param>
     /// <param name="Status">Processing status of the imported entry.</param>
+    /// <returns>The result.</returns>
     public sealed record StatementEntryBackupDto(Guid Id, Guid StatementImportId, DateTime BookingDate, DateTime? ValutaDate, decimal Amount, string Subject, string RawHash, string? RecipientName, string CurrencyCode, string? BookingDescription, bool IsAnnounced, bool IsCostNeutral, Guid? ContactId, Guid? SavingsPlanId, Guid? SecurityTransactionId, StatementEntryStatus Status);
 
     /// <summary>
     /// Creates a backup DTO representing the serializable state of this statement entry.
     /// </summary>
     /// <returns>A <see cref="StatementEntryBackupDto"/> containing the entry state suitable for backup/restore.</returns>
-    public StatementEntryBackupDto ToBackupDto() => new StatementEntryBackupDto(Id, StatementImportId, BookingDate, ValutaDate, Amount, Subject, RawHash, RecipientName, CurrencyCode, BookingDescription, IsAnnounced, IsCostNeutral, ContactId, SavingsPlanId, SecurityTransactionId, Status);
+    public StatementEntryBackupDto ToBackupDto()
+        => new StatementEntryBackupDto(Id, StatementImportId, BookingDate, ValutaDate, Amount, Subject, RawHash, RecipientName, CurrencyCode, BookingDescription, IsAnnounced, IsCostNeutral, ContactId, SavingsPlanId, SecurityTransactionId, Status);
 
     /// <summary>
     /// Applies values from the provided backup DTO to this <see cref="StatementEntry"/> instance.

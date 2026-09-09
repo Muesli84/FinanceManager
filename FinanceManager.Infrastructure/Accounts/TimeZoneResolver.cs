@@ -13,6 +13,7 @@ public sealed class TimeZoneResolver : ITimeZoneResolver
     /// <summary>
     /// Initializes a new instance of the <see cref="TimeZoneResolver"/> class.
     /// </summary>
+    /// <param name="logger">Logger instance.</param>
     public TimeZoneResolver(ILogger<TimeZoneResolver> logger)
     {
         _logger = logger;

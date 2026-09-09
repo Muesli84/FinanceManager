@@ -7,6 +7,7 @@ namespace FinanceManager.Shared.Dtos.Common;
 public sealed class PageResult<T>
 {
     /// <summary>List of items contained in the current page.</summary>
+    /// <returns>The result.</returns>
     public List<T> Items { get; set; } = new();
     /// <summary>True when more items are available beyond this page.</summary>
     public bool HasMore { get; set; }

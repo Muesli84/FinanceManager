@@ -52,6 +52,7 @@ public sealed class ContactCategoriesController : ControllerBase
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 200 with a read-only list of <see cref="ContactCategoryDto"/> on success; HTTP 500 on unexpected error.</returns>
     /// <exception cref="Exception">Thrown when an unexpected server error occurs while listing categories.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<ContactCategoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAsync(CancellationToken ct)
@@ -79,6 +80,8 @@ public sealed class ContactCategoriesController : ControllerBase
     /// HTTP 500 on unexpected error.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown when the provided name is invalid; translated to HTTP 400.</exception>
+    /// <response code="201">The HTTP 201 response.</response>
+    /// <response code="400">The HTTP 400 response.</response>
     [HttpPost]
     [ProducesResponseType(typeof(ContactCategoryDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -116,6 +119,8 @@ public sealed class ContactCategoriesController : ControllerBase
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 200 with <see cref="ContactCategoryDto"/> when found; HTTP 404 when not found; HTTP 500 on unexpected error.</returns>
     /// <exception cref="Exception">Thrown when an unexpected server error occurs while retrieving the category.</exception>
+    /// <response code="200">The HTTP 200 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ContactCategoryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -141,6 +146,8 @@ public sealed class ContactCategoriesController : ControllerBase
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 204 on success; HTTP 404 when the category is not found; HTTP 400 when the request is invalid; HTTP 500 on unexpected error.</returns>
     /// <exception cref="ArgumentException">Thrown when the category is not found or input is invalid; translated to HTTP 404/400.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -179,6 +186,8 @@ public sealed class ContactCategoriesController : ControllerBase
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 204 on success; HTTP 404 when the category is not found; HTTP 500 on unexpected error.</returns>
     /// <exception cref="ArgumentException">Thrown when the category cannot be deleted; translated to HTTP 404.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -209,6 +218,8 @@ public sealed class ContactCategoriesController : ControllerBase
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 204 on success; HTTP 404 when the category or attachment is not found; HTTP 500 on unexpected error.</returns>
     /// <exception cref="ArgumentException">Thrown when provided identifiers are invalid; translated to HTTP 404.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpPost("{id:guid}/symbol/{attachmentId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -238,6 +249,8 @@ public sealed class ContactCategoriesController : ControllerBase
     /// <param name="ct">Cancellation token to cancel the operation.</param>
     /// <returns>HTTP 204 on success; HTTP 404 when the category is not found; HTTP 500 on unexpected error.</returns>
     /// <exception cref="ArgumentException">Thrown when the category id is invalid; translated to HTTP 404.</exception>
+    /// <response code="204">The HTTP 204 response.</response>
+    /// <response code="404">The HTTP 404 response.</response>
     [HttpDelete("{id:guid}/symbol")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

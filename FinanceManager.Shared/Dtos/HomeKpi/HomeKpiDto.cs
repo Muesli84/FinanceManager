@@ -13,6 +13,7 @@ namespace FinanceManager.Shared.Dtos.HomeKpi;
 /// <param name="SortOrder">Sort order for placement on the dashboard.</param>
 /// <param name="CreatedUtc">UTC timestamp when the KPI was created.</param>
 /// <param name="ModifiedUtc">UTC timestamp when the KPI was last modified, if any.</param>
+/// <returns>The result.</returns>
 public sealed record HomeKpiDto(
     Guid Id,
     HomeKpiKind Kind,
