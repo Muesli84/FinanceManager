@@ -118,6 +118,7 @@ public sealed class DemoDataService : IDemoDataService
             insuranceContact,
             rentContact,
             marketContacts,
+            onlineShopContacts,
             bakeryContacts,
             giroAccount,
             primarySavingsAccount,
@@ -148,6 +149,7 @@ public sealed class DemoDataService : IDemoDataService
                 insuranceContact,
                 rentContact,
                 marketContacts,
+                onlineShopContacts,
                 bakeryContacts,
                 giroAccount,
                 primarySavingsAccount,
@@ -179,6 +181,7 @@ public sealed class DemoDataService : IDemoDataService
         ContactDto insuranceContact,
         ContactDto rentContact,
         IReadOnlyList<ContactDto> marketContacts,
+        IReadOnlyList<ContactDto> onlineShops,
         IReadOnlyList<ContactDto> bakeryContacts,
         AccountDto giroAccount,
         AccountDto primarySavingsAccount,
@@ -217,6 +220,7 @@ public sealed class DemoDataService : IDemoDataService
         var insuranceGroup = await _contactCategoryService.CreateAsync(userId, "Versicherungen", ct);
         var serviceGroup = await _contactCategoryService.CreateAsync(userId, "Dienstleister", ct);
         var marketGroup = await _contactCategoryService.CreateAsync(userId, "Supermärkte & Einzelhandel", ct);
+        var onlineShopGroup = await _contactCategoryService.CreateAsync(userId, "Onlineshops", ct);
         var bakeryGroup = await _contactCategoryService.CreateAsync(userId, "Bäckereien & Cafés", ct);
 
         var giroBankContact = await _contactService.CreateAsync(userId, "Musterbank Nord", ContactType.Bank, banksGroup.Id, null, false, ct);
@@ -227,7 +231,12 @@ public sealed class DemoDataService : IDemoDataService
         var insuranceContact = await _contactService.CreateAsync(userId, "Zentrial Versicherung", ContactType.Organization, insuranceGroup.Id, null, false, ct);
         var sdacContact = await _contactService.CreateAsync(userId, "SDAC", ContactType.Organization, insuranceGroup.Id, null, false, ct);
         var rentContact = await _contactService.CreateAsync(userId, "Sabbel Lüchtenhausen", ContactType.Person, serviceGroup.Id, null, false, ct);
-
+        var onlineShops = new List<ContactDto>
+        {
+            await _contactService.CreateAsync(userId, "Pear Store", ContactType.Organization, onlineShopGroup.Id, null, false, ct),
+            await _contactService.CreateAsync(userId, "Borneon", ContactType.Organization, onlineShopGroup.Id, null, false, ct),            
+            await _contactService.CreateAsync(userId, "Anna", ContactType.Organization, onlineShopGroup.Id, null, false, ct)
+        };
         var marketContacts = new List<ContactDto>
         {
             await _contactService.CreateAsync(userId, "Adli", ContactType.Organization, marketGroup.Id, null, false, ct),
@@ -439,6 +448,7 @@ public sealed class DemoDataService : IDemoDataService
             insuranceContact,
             rentContact,
             marketContacts,
+            onlineShops,
             bakeryContacts,
             giroAccount,
             primarySavingsAccount,
@@ -468,6 +478,7 @@ public sealed class DemoDataService : IDemoDataService
         ContactDto insuranceContact,
         ContactDto rentContact,
         IReadOnlyList<ContactDto> marketContacts,
+        IReadOnlyList<ContactDto> onlineShopContacts,
         IReadOnlyList<ContactDto> bakeryContacts,
         AccountDto giroAccount,
         AccountDto primarySavingsAccount,
@@ -623,8 +634,9 @@ public sealed class DemoDataService : IDemoDataService
 
         var firstInsuranceStarted = firstMonth.Month == 12;
         var secondInsuranceStarted = firstMonth.Month == 1;
+        var totalMonthCount = 24;
 
-        for (var monthIndex = 0; monthIndex < 24; monthIndex++)
+        for (var monthIndex = 0; monthIndex < totalMonthCount; monthIndex++)
         {
             ct.ThrowIfCancellationRequested();
 
@@ -729,6 +741,25 @@ public sealed class DemoDataService : IDemoDataService
                         selfContact.Id);
                 }
                 secondInsuranceStarted = true;
+            }
+
+            var onlineStoreCount = random.Next(0, 2);
+            if (onlineStoreCount == 0 && monthIndex >= totalMonthCount - 2)
+                onlineStoreCount = 1;
+            for (var storeIndex = 0; storeIndex < onlineStoreCount; storeIndex++)
+            {
+                var shopOffset = random.Next(0, onlineShopContacts.Count);
+                var shop = onlineShopContacts[shopOffset];
+                var paymentDay = ClampToBusinessDay(firstBusinessDay.AddDays(random.Next(0, 20)), monthStart, monthEnd);
+                var amount = Math.Round(10m + ((decimal)random.NextDouble() * 20m), 2, MidpointRounding.AwayFromZero);
+                var invoiceNo = $"INV-{random.Next(100000, 999999)}";
+                var paymentSubject = $"{invoiceNo}, Ihr Einkauf bei {shop.Name}";
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    paymentDay,
+                    -amount,
+                    paymentSubject,
+                    shop.Id);
             }
 
             var weekCounter = 0;
