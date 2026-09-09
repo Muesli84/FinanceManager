@@ -24,6 +24,27 @@ Die Navigation in `FinanceManager.Web/Components/Layout/MainLayout.razor` verwei
 
 Neu im Erstregistrierungsfluss: Wenn noch kein Benutzer vorhanden ist, wird beim Start auf die Registrierungsseite weitergeleitet. Dort erscheint nur für den ersten Benutzer die Checkbox `Demodaten anlegen`, sie ist standardmäßig deaktiviert. Wenn sie aktiviert ist, startet nach der Erstregistrierung automatisch ein Hintergrundtask, der mit den vorhandenen Business-Services den vollständigen Demo-Datenbestand erstellt. Der Fortschritt wird in der allgemeinen Background-Task-Anzeige auf der Startseite sichtbar. Es gibt dafür keine zusätzliche globale Konfiguration.
 
+## Screenshots
+
+Die folgenden Screenshots zeigen die Anwendung nach einer Erstregistrierung mit aktivierter Demodaten-Option:
+
+![Demo-GIF](Docs/screenshots/demo.gif)
+
+Eine aufgezeichnete Tour durch die Anwendung mit Demodaten gibt es als Video:
+
+[![Demo-Tour (Video)](Docs/screenshots/home.png)](Docs/screenshots/demo-tour.mp4)
+
+Die Screenshots und das GIF können mit den Skripten unter `scripts/screenshots/` erneuert werden, siehe [Docs/screenshot-generation.md](Docs/screenshot-generation.md).
+
+## Demodaten lokal testen
+
+Der Demodaten-Bestand lässt sich lokal ohne externe Dienste erzeugen:
+
+1. `dotnet publish FinanceManager.Web -c Release` aus dem Repository-Root ausführen.
+2. Die App aus dem Publish-Verzeichnis (`FinanceManager.Web/bin/Release/net10.0/publish/`) starten. Die benötigten Umgebungsvariablen stehen vollständig in [`scripts/screenshots/generate-screenshots.js`](scripts/screenshots/generate-screenshots.js): freier Port für `ASPNETCORE_URLS` und `Api__BaseAddress`, frische SQLite-Datei über `ConnectionStrings__Default`, `BackgroundTasks__Enabled=true` sowie deaktivierte externe Worker (`Workers__SecurityPriceWorker__Enabled=false`, `Updates__HostedServicesEnabled=false`).
+3. Auf `/register` den ersten Benutzer mit aktivierter Checkbox `Demodaten anlegen` registrieren; die Registrierung meldet den Browser nicht an, anschließend über `/login` einloggen.
+4. Der Hintergrundtask `CreateDemoData` legt danach Stammdaten, Konten, Wertpapiere, Budgets und gebuchte Kontoauszüge für 24 Monate an (~1 Minute). Danach zeigen Startseite, Listen und Berichte den Demo-Datenbestand.
+
 ## Tech-Stack
 
 - **.NET 10 / ASP.NET Core**
@@ -249,6 +270,11 @@ Aus den aktuellen Workflow-Dateien ergeben sich diese Punkte:
 - Der Release-Workflow baut `FinanceManager.Web` als **self-contained** Paket für **`win-x64`** und **`linux-x64`**.
 - Zusätzlich wird ein **`update.json`**-Manifest für das Update-System erzeugt.
 - Versionsableitung für automatische Releases erfolgt über **Semantic Release** und Conventional Commits.
+
+## Bekannte Einschränkungen
+
+- Die Registrierungsseite zeigt vor dem ersten Login englische Bezeichnungen (z. B. `Registration`, `Create demo data`); erst nach dem Login erscheint die deutsche Benutzeroberfläche.
+- Einzelne Seiten geben Währungs- bzw. Trennzeichen verzerrt aus (`¤`-Symbol bzw. Ersatzzeichen), etwa bei Kontosalden, dem Budget-KPI auf der Startseite und im Berichtszeitraum.
 
 ## Weitere Dokumentation
 

@@ -757,7 +757,12 @@ public class ApiClientBackupsWithDemoDataTests : IClassFixture<TestWebApplicatio
             return adjusted with { Id = newId };
         }).ToList();
 
-        var reportFavorites = before.ReportFavorites.ToList();
+        var reportFavoriteNameToId = after.ReportFavorites.ToDictionary(r => r.Name, r => r.Id);
+        var reportFavorites = before.ReportFavorites.Select(rf =>
+        {
+            if (reportFavoriteNameToId.TryGetValue(rf.Name, out var nid)) return rf with { Id = nid };
+            return rf;
+        }).ToList();
         var homeKpis = before.HomeKpis.ToList();
         var attachmentCategories = remappedAttachmentCategories;
         var notifications = before.Notifications.ToList();

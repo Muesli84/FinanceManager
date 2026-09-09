@@ -632,8 +632,8 @@ public sealed class DemoDataService : IDemoDataService
             return cursor;
         }
 
-        var firstInsuranceStarted = firstMonth.Month == 12;
-        var secondInsuranceStarted = firstMonth.Month == 1;
+        var householdReservePot = 0m;
+        var sdacReservePot = 0m;
         var totalMonthCount = 24;
 
         for (var monthIndex = 0; monthIndex < totalMonthCount; monthIndex++)
@@ -662,11 +662,9 @@ public sealed class DemoDataService : IDemoDataService
                 await AddDraftEntryAsync(giroDraftId, firstBusinessDay, 5000.00m, "Startgeld", mamaContact.Id);
             }
 
-            if (firstInsuranceStarted)
-            {
-                await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -5.22m, "Rückstellung Hausratversicherung", selfContact.Id, householdPlan.Id);
-                await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 5.22m, "Rückstellung Hausratversicherung", selfContact.Id);
-            }
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -5.22m, "Rückstellung Hausratversicherung", selfContact.Id, householdPlan.Id);
+            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 5.22m, "Rückstellung Hausratversicherung", selfContact.Id);
+            householdReservePot += 5.22m;
 
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -50.00m, "Rückstellung Urlaub", selfContact.Id, vacationPlan.Id);
             await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 50.00m, "Rückstellung Urlaub", selfContact.Id);
@@ -674,14 +672,12 @@ public sealed class DemoDataService : IDemoDataService
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -100.00m, "Sparplan Allgemein", selfContact.Id, generalPlan.Id);
             await AddDraftEntryAsync(secondarySavingsDraftId, firstBusinessDay, 100.00m, "Sparplan Allgemein", selfContact.Id);
 
-            if (secondInsuranceStarted)
-            {
-                await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -70.00m, "Rückstellung Auto", selfContact.Id, autoPlan.Id);
-                await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 70.00m, "Rückstellung Auto", selfContact.Id);
-            }
+            await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -70.00m, "Rückstellung Auto", selfContact.Id, autoPlan.Id);
+            await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 70.00m, "Rückstellung Auto", selfContact.Id);
 
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id, sdacPlan.Id);
             await AddDraftEntryAsync(primarySavingsDraftId, firstBusinessDay, 8.25m, "Rückstellung SDAC Jahresgebühr", selfContact.Id);
+            sdacReservePot += 8.25m;
 
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -845.00m, "Wohnungsmiete", rentContact.Id);
             await AddDraftEntryAsync(giroDraftId, firstBusinessDay, -49.90m, "Mobilfunkvertrag Telkommi", telkommiContact.Id);
@@ -694,53 +690,49 @@ public sealed class DemoDataService : IDemoDataService
                     insuranceChargeDay = insuranceChargeDay.AddDays(1);
                 }
 
-                if (monthStart != firstMonth && firstInsuranceStarted)
-                {
-                    await AddDraftEntryAsync(
-                        giroDraftId,
-                        firstBusinessDay,
-                        62.64m,
-                        "Auflösung Rückstellung Hausratversicherung",
-                        selfContact.Id,
-                        householdPlan.Id);
+                var householdRelease = Math.Min(householdReservePot, 62.64m);
+                householdReservePot -= householdRelease;
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    firstBusinessDay,
+                    householdRelease,
+                    "Auflösung Rückstellung Hausratversicherung",
+                    selfContact.Id,
+                    householdPlan.Id);
 
-                    await AddDraftEntryAsync(
-                        primarySavingsDraftId,
-                        firstBusinessDay,
-                        -62.64m,
-                        "Auflösung Rückstellung Hausratversicherung",
-                        selfContact.Id);
+                await AddDraftEntryAsync(
+                    primarySavingsDraftId,
+                    firstBusinessDay,
+                    -householdRelease,
+                    "Auflösung Rückstellung Hausratversicherung",
+                    selfContact.Id);
 
-                    await AddDraftEntryAsync(
-                        giroDraftId,
-                        insuranceChargeDay,
-                        -62.60m,
-                        $"Beitrag Hausratversicherung {monthStart.Year}, Vertragsnummer {householdContractNumber}",
-                        insuranceContact.Id);
-                }
-                firstInsuranceStarted = true;
+                await AddDraftEntryAsync(
+                    giroDraftId,
+                    insuranceChargeDay,
+                    -62.60m,
+                    $"Beitrag Hausratversicherung {monthStart.Year}, Vertragsnummer {householdContractNumber}",
+                    insuranceContact.Id);
             }
 
             if (monthStart.Month == 1)
             {
-                if (monthStart != firstMonth && secondInsuranceStarted)
-                {
-                    await AddDraftEntryAsync(
+                var sdacRelease = Math.Min(sdacReservePot, 99.00m);
+                sdacReservePot -= sdacRelease;
+                await AddDraftEntryAsync(
                     giroDraftId,
                     firstBusinessDay,
-                    99.00m,
+                    sdacRelease,
                     "Auflösung Rückstellung SDAC Jahresgebühr",
                     selfContact.Id,
                     sdacPlan.Id);
 
-                    await AddDraftEntryAsync(
-                        primarySavingsDraftId,
-                        firstBusinessDay,
-                        -99.00m,
-                        "Auflösung Rückstellung SDAC Jahresgebühr",
-                        selfContact.Id);
-                }
-                secondInsuranceStarted = true;
+                await AddDraftEntryAsync(
+                    primarySavingsDraftId,
+                    firstBusinessDay,
+                    -sdacRelease,
+                    "Auflösung Rückstellung SDAC Jahresgebühr",
+                    selfContact.Id);
             }
 
             var onlineStoreCount = random.Next(0, 2);

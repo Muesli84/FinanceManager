@@ -130,8 +130,8 @@ Regeln pro Monat:
 - Kartenzahlungen für Märkte und Bäckereien: je Kontakt 1–2 Zahlungen pro Woche, Beträge 10,00 € bis 30,00 €
 
 Zusatzregeln:
-- Dezember: Auflösung Hausrat-Rückstellung (+62,64 € Giro / -62,64 € Sparkonto Rücklagen) und Versicherungsbeitrag -62,60 € (ab 16.12. auf nächsten Werktag verschoben)
-- Januar: Auflösung SDAC-Rückstellung (+99,00 € Giro / -99,00 € Sparkonto Rücklagen)
+- Dezember: Auflösung Hausrat-Rückstellung (max. +62,64 € Giro / -62,64 € Sparkonto Rücklagen, begrenzt auf die bis dahin eingezahlten Rückstellungen) und Versicherungsbeitrag -62,60 € (ab 16.12. auf nächsten Werktag verschoben)
+- Januar: Auflösung SDAC-Rückstellung (max. +99,00 € Giro / -99,00 € Sparkonto Rücklagen, begrenzt auf die bis dahin eingezahlten Rückstellungen)
 - Monat 3 der 24-Monatsreihe: Kauf `USHSIV-MSCI WLD` über 2.000,00 €
 - Ab Monat 3, dann alle drei Monate: Dividende `USHSIV-MSCI WLD` (Brutto zufällig 15,00 € bis 30,00 €, Steuer 25 %, Netto als Buchung)
 - Monat 6: Kauf `Inländische Post AG` mit 62 Stück zum verfügbaren Kurs
